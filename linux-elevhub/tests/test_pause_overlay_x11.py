@@ -20,6 +20,7 @@ import sys
 import tempfile
 import time
 import unittest
+from unittest import mock
 
 
 if sys.platform.startswith("linux"):
@@ -108,6 +109,12 @@ root.mainloop()
 class _Xvfb:
     """Start a private Xvfb and scope the process environment to it."""
 
+    _TK_PROBE = (
+        "import tkinter as tk; "
+        "root = tk.Tk(); root.withdraw(); "
+        "root.update_idletasks(); root.destroy()"
+    )
+
     def __init__(self):
         self._temporary = None
         self._process = None
@@ -115,6 +122,45 @@ class _Xvfb:
         self._old_xauthority = None
         self.display = None
         self.xauthority = None
+
+    def _wait_for_tk(self, process, display_name, timeout=5):
+        """Wait until a Tk client can connect, not merely until Xvfb is alive."""
+        env = os.environ.copy()
+        env["DISPLAY"] = display_name
+        env["XAUTHORITY"] = self.xauthority
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            if process.poll() is not None:
+                return False
+            remaining = deadline - time.monotonic()
+            try:
+                result = subprocess.run(
+                    [sys.executable, "-c", self._TK_PROBE],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    env=env,
+                    timeout=min(1, remaining),
+                    check=False,
+                )
+                if result.returncode == 0:
+                    return True
+            except subprocess.TimeoutExpired:
+                pass
+            time.sleep(min(0.05, max(0, deadline - time.monotonic())))
+        return False
+
+    @staticmethod
+    def _stop_failed_start(process):
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=2)
+        if process.stderr:
+            process.stderr.close()
 
     def __enter__(self):
         xvfb = shutil.which("Xvfb")
@@ -148,18 +194,20 @@ class _Xvfb:
                     continue
                 process = subprocess.Popen(
                     [xvfb, display_name, "-screen", "0",
-                     f"{_SCREEN_WIDTH}x{_SCREEN_HEIGHT}x24", "-nolisten", "tcp",
+                     f"{_SCREEN_WIDTH}x{_SCREEN_HEIGHT}x24", "-nolisten", "tcp", "-noreset",
                      "-auth", self.xauthority],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.PIPE,
                     text=True,
                 )
-                time.sleep(0.08)
-                if process.poll() is None:
+                if self._wait_for_tk(process, display_name):
                     self.display = display_name
                     self._process = process
                     break
-                process.stderr.close()
+                was_running = process.poll() is None
+                self._stop_failed_start(process)
+                if was_running:
+                    break
         else:
             # An isolated server with access control disabled is still safer
             # than falling back to the user's display.  XAUTHORITY remains a
@@ -168,17 +216,19 @@ class _Xvfb:
                 display_name = f":{display_number}"
                 process = subprocess.Popen(
                     [xvfb, display_name, "-screen", "0",
-                     f"{_SCREEN_WIDTH}x{_SCREEN_HEIGHT}x24", "-nolisten", "tcp", "-ac"],
+                     f"{_SCREEN_WIDTH}x{_SCREEN_HEIGHT}x24", "-nolisten", "tcp", "-noreset", "-ac"],
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.PIPE,
                     text=True,
                 )
-                time.sleep(0.08)
-                if process.poll() is None:
+                if self._wait_for_tk(process, display_name):
                     self.display = display_name
                     self._process = process
                     break
-                process.stderr.close()
+                was_running = process.poll() is None
+                self._stop_failed_start(process)
+                if was_running:
+                    break
 
         if self._process is None:
             self._temporary.cleanup()
@@ -212,6 +262,24 @@ class _Xvfb:
                 self._process.stderr.close()
         if self._temporary is not None:
             self._temporary.cleanup()
+
+
+class XvfbStartupTest(unittest.TestCase):
+    def test_waits_for_tk_connection_after_xvfb_process_starts(self):
+        server = mock.Mock()
+        server.poll.return_value = None
+        xvfb = _Xvfb()
+        xvfb.xauthority = "/tmp/test-Xauthority"
+        outcomes = [
+            subprocess.CompletedProcess([], 1, "", "could not connect yet"),
+            subprocess.CompletedProcess([], 0, "", ""),
+        ]
+        with mock.patch.object(subprocess, "run", side_effect=outcomes) as probe, \
+                mock.patch.object(time, "sleep"):
+            self.assertTrue(xvfb._wait_for_tk(server, ":90", timeout=2))
+        self.assertEqual(probe.call_count, 2)
+        self.assertEqual(probe.call_args.kwargs["env"]["DISPLAY"], ":90")
+        self.assertEqual(probe.call_args.kwargs["env"]["XAUTHORITY"], xvfb.xauthority)
 
 
 class _XTest:

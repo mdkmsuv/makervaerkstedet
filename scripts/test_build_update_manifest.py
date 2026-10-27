@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import shutil
 import tempfile
 import tarfile
 import unittest
@@ -61,6 +62,36 @@ class ManifestBuilderTests(unittest.TestCase):
     def build(self,package,**kwargs):
         kwargs.setdefault('approved_binary_sha256',self.binary_pins)
         return builder.build_manifest(self.source,'2026.10.20','Neutral release notes.',[package],self.output,**kwargs)
+    def server_archive(self,expected_client_release='2026.10.20',release_id='2026.10.20'):
+        credit=(builder.public_source.AUTHOR_CREDIT+"\n"+builder.public_source.CREDIT).encode()
+        runtime={
+            'runtime/python.exe':b'python executable fixture',
+            'runtime/python314.dll':b'python dll fixture',
+            'runtime/python314.zip':b'python stdlib fixture',
+        }
+        role_files={}
+        trusted_runtime={name:hashlib.sha256(data).hexdigest() for name,data in runtime.items()}
+        for role in ('hub','print'):
+            role_files[role]={'CREDITS.md':credit,**runtime}
+        role_files['hub']['hub/release.json']=json.dumps({
+            'release_id':release_id,'expected_client_release':expected_client_release,
+        }).encode()
+        inventories={role:{name:hashlib.sha256(data).hexdigest() for name,data in files.items()}
+                     for role,files in role_files.items()}
+        candidate={'format':'makervaerkstedet-school-flat-update-v1','version':'2026.10.20',
+                   'files':inventories,'trusted_runtime':trusted_runtime}
+        files={'CREDITS.md':credit,'candidate/candidate.json':json.dumps(candidate).encode()}
+        for role,entries in role_files.items():
+            files.update({f'candidate/{role}/{name}':data for name,data in entries.items()})
+        marker={'schema':1,'role':'windows_server','format':'school-server-v1','version':'2026.10.20',
+                'files':{name:hashlib.sha256(data).hexdigest() for name,data in files.items()}}
+        archive=self.root/'server-package.zip'
+        with zipfile.ZipFile(archive,'w') as z:
+            for name,data in files.items():z.writestr(name,data)
+            z.writestr('update-package.json',json.dumps(marker))
+        self.binary_pins=list(trusted_runtime.values())
+        return {'path':archive,'role':'windows_server','format':'school-server-v1',
+                'expected_sha256':hashlib.sha256(archive.read_bytes()).hexdigest()}
     def test_valid_reviewed_zip_emits_feed_compatible_metadata_no_paths_or_upload(self):
         package=self.archive()
         with patch('urllib.request.urlopen',side_effect=AssertionError('Publication is never automatic')):manifest=self.build(package)
@@ -104,6 +135,51 @@ class ManifestBuilderTests(unittest.TestCase):
         manifest=self.build(self.archive(files,legacy=True))
         self.assertEqual(manifest['packages'][0]['role'],'windows_laser_teacher')
         self.assertEqual(manifest['packages'][0]['format'],'laser-code-v1')
+
+    def test_server_only_manifest_can_keep_older_expected_client_release(self):
+        package=self.server_archive('2026.10.19')
+        manifest=self.build(package)
+        self.assertEqual(manifest['version'],'2026.10.20')
+        self.assertEqual(manifest['packages'][0]['role'],'windows_server')
+
+    def test_release_version_order_treats_missing_build_as_zero(self):
+        self.assertEqual(builder._version_key('2026.10.20'),builder._version_key('2026.10.20.0'))
+        self.assertLess(builder._version_key('2026.10.20.2'),builder._version_key('2026.10.20.10'))
+
+    def test_server_only_manifest_rejects_future_or_invalid_client_release(self):
+        for client_release in ('2026.10.21','not-a-version'):
+            with self.subTest(client_release=client_release):
+                with self.assertRaisesRegex(ValueError,'server_candidate_release_mismatch'):
+                    self.build(self.server_archive(client_release))
+                self.assertFalse(self.output.exists())
+
+    def test_server_only_manifest_still_requires_server_release_id_to_match(self):
+        package=self.server_archive('2026.10.19',release_id='2026.10.19')
+        with self.assertRaisesRegex(ValueError,'server_candidate_release_mismatch'):
+            self.build(package)
+        self.assertFalse(self.output.exists())
+
+    def test_direct_server_archive_review_still_requires_aligned_release_versions(self):
+        package=self.server_archive('2026.10.19')
+        with zipfile.ZipFile(package['path']) as archive:
+            files=builder.feed.strict_json(archive.read('update-package.json'))['files']
+            with self.assertRaisesRegex(ValueError,'server_candidate_release_mismatch'):
+                builder.verify_server_inventory(archive,files,'2026.10.20')
+
+    def test_full_system_manifest_still_requires_aligned_server_client_release(self):
+        linux=self.archive();linux_pins=self.binary_pins[:]
+        linux_path=self.root/'linux-package.zip';shutil.copyfile(linux['path'],linux_path);linux['path']=linux_path
+        laser_files={'CREDITS.md':(builder.public_source.AUTHOR_CREDIT+"\n"+builder.public_source.CREDIT).encode(),
+            'app/laser_station.py':b'x=1\n','app/instance.py':b'x=1\n','app/backup_guard.py':b'x=1\n',
+            'web/laserstation.html':b'<html></html>'}
+        laser=self.archive(laser_files,legacy=True)
+        server=self.server_archive('2026.10.19')
+        packages=[linux,laser,server]
+        pins=linux_pins+self.binary_pins[:]
+        with self.assertRaisesRegex(ValueError,'server_candidate_release_mismatch'):
+            builder.build_manifest(self.source,'2026.10.20','Neutral release notes.',packages,
+                                   self.output,approved_binary_sha256=pins)
+        self.assertFalse(self.output.exists())
     def test_package_inventory_can_exceed_feed_metadata_bound(self):
         files={'CREDITS.md':(builder.public_source.AUTHOR_CREDIT+"\n"+builder.public_source.CREDIT).encode(),'app/laser_station.py':b'x=1\n',
             'app/instance.py':b'x=1\n','app/backup_guard.py':b'x=1\n','web/laserstation.html':b'<html></html>'}
@@ -141,6 +217,24 @@ class ManifestBuilderTests(unittest.TestCase):
         data=stream.getvalue()
         with self.assertRaisesRegex(ValueError,'operational_ai_member'):
             builder.review_stream('candidate/hub/runtime/python314.zip',io.BytesIO(data),len(data),{},
+                                  {hashlib.sha256(data).hexdigest()})
+
+    def test_csharp_source_is_privacy_scanned_even_when_its_hash_is_pinned(self):
+        data=b'class Fixture { string '+b'pass'+b'word = "sensitive-fixture-value"; }\n'
+        with self.assertRaisesRegex(ValueError,'package_privacy_preflight_failed'):
+            builder.review_stream('candidate/hub/server/ServerSetup.cs',io.BytesIO(data),len(data),{},
+                                  {hashlib.sha256(data).hexdigest()})
+
+    def test_windows_manifest_is_privacy_scanned_when_pinned(self):
+        data=b'<assembly '+b'pass'+b'word="sensitive-fixture-value"/>'
+        with self.assertRaisesRegex(ValueError,'package_privacy_preflight_failed'):
+            builder.review_stream('candidate/hub/server/setup.manifest',io.BytesIO(data),len(data),{},
+                                  {hashlib.sha256(data).hexdigest()})
+
+    def test_webmanifest_is_privacy_scanned_when_pinned(self):
+        data=b'{"'+b'pass'+b'word":"sensitive-fixture-value"}'
+        with self.assertRaisesRegex(ValueError,'package_privacy_preflight_failed'):
+            builder.review_stream('candidate/hub/web/manifest.webmanifest',io.BytesIO(data),len(data),{},
                                   {hashlib.sha256(data).hexdigest()})
 
     def test_educational_datatraener_models_remain_publishable(self):
