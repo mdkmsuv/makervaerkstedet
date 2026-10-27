@@ -7,6 +7,7 @@ Kreditering: Klostermarksskolen.
 from __future__ import annotations
 import argparse
 from contextlib import ExitStack
+import datetime
 import hashlib
 import importlib.util
 import json
@@ -25,9 +26,14 @@ _spec=importlib.util.spec_from_file_location('publisher_feed_contract',ROOT/'lin
 feed=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(feed)
 MARKER='update-package.json'
 TEXT={'.py','.ps1','.cmd','.bat','.js','.css','.html','.json','.md','.txt','.svg','.xml','.yml','.yaml','.sh','.toml','.ini','.conf','.patch'}
-TEXT.update({'.service','.cfg','.j2','.templates','.dsc','.desktop','.properties','.csv','.mjs','.cjs','.map','.license'})
+TEXT.update({'.service','.cfg','.j2','.templates','.dsc','.desktop','.properties','.csv','.mjs','.cjs','.map','.license',
+             '.cs','.manifest','.pyi','.c','.h','.pxd','.pyx','.pc','.rst','.template','.build','._pth',
+             '.apache','.bsd','.typed','.webmanifest','.f','.f90','.f95','.pyf'})
+TEXT_NAMES=frozenset(('license','copying','metadata','record','wheel','delvewheel','license_geos','license_win32',
+                      'zip-safe','debian-copyright','elevhub-cadoodle','ansible.cfg'))
 MAX_TEXT=32*1024**2
 MAX_INVENTORY=16*1024**2
+VERSION_PATTERN=re.compile(r'\d{4}\.\d{2}\.\d{2}(?:\.\d{1,8})?')
 
 
 # Package review is independent of source export: prebuilt archives must obey
@@ -75,8 +81,7 @@ def review_stream(name,stream,size,policy,binary_pins):
     with ExitStack() as stack:
         reject_operational_feature(name)
         private_name(name)
-        text=(Path(name).suffix.casefold() in TEXT or Path(name).name in
-              {'LICENSE','COPYING','debian-copyright','elevhub-cadoodle','ansible.cfg'})
+        text=(Path(name).suffix.casefold() in TEXT or Path(name).name.casefold() in TEXT_NAMES)
         if text and size>MAX_TEXT:raise ValueError('package_text_member_too_large')
         h=hashlib.sha256();content=bytearray() if text else None;count=0
         nested=stack.enter_context(tempfile.SpooledTemporaryFile(max_size=1024**2)) if Path(name).suffix.casefold() in {'.zip','.whl'} else None
@@ -154,7 +159,15 @@ def member_name(name):
     return name
 
 
-def verify_server_inventory(archive,files,version):
+def _version_key(value):
+    if not isinstance(value,str) or not VERSION_PATTERN.fullmatch(value):return None
+    try:datetime.datetime.strptime(value[:10],'%Y.%m.%d')
+    except ValueError:return None
+    parts=tuple(int(part) for part in value.split('.'))
+    return parts if len(parts)==4 else (*parts,0)
+
+
+def verify_server_inventory(archive,files,version,allow_older_client_release=False):
     name='candidate/candidate.json'
     if name not in files:raise ValueError('server_candidate_missing')
     if archive.getinfo(name).file_size>MAX_INVENTORY:raise ValueError('server_candidate_inventory_too_large')
@@ -182,11 +195,18 @@ def verify_server_inventory(archive,files,version):
     if release_name not in files or archive.getinfo(release_name).file_size>MAX_INVENTORY:
         raise ValueError('server_candidate_release_missing')
     release=feed.strict_json(archive.read(release_name))
-    if release.get('release_id')!=version or release.get('expected_client_release')!=version:
+    if release.get('release_id')!=version:
+        raise ValueError('server_candidate_release_mismatch')
+    client_release=release.get('expected_client_release')
+    if allow_older_client_release:
+        release_key=_version_key(version);client_key=_version_key(client_release)
+        if release_key is None or client_key is None or client_key>release_key:
+            raise ValueError('server_candidate_release_mismatch')
+    elif client_release!=version:
         raise ValueError('server_candidate_release_mismatch')
 
 
-def verify_zip(path,role,format_,version,expected,policy,binary_pins):
+def verify_zip(path,role,format_,version,expected,policy,binary_pins,allow_older_client_release=False):
     path=feed.plain(path)
     if (role not in feed.ROLES or format_!=feed.ROLES[role] or not feed.valid_asset(path.name)
             or not isinstance(expected,str) or not re.fullmatch('[a-f0-9]{64}',expected)
@@ -216,7 +236,9 @@ def verify_zip(path,role,format_,version,expected,policy,binary_pins):
         if set(names)!=set(files)|{marker_name} or 'CREDITS.md' not in files:raise ValueError('package_inventory_mismatch')
         if role=='windows_laser_teacher' and marker_name!='manifest.json':raise ValueError('laser_native_manifest_required')
         if role=='linux_student' and set(files)!={'payload.tar.gz','CREDITS.md'}:raise ValueError('linux_wrapper_incomplete')
-        if role=='windows_server':verify_server_inventory(archive,files,version)
+        if role=='windows_server':
+            verify_server_inventory(archive,files,version,
+                                    allow_older_client_release=allow_older_client_release)
         for name,expected_file in files.items():
             member_name(name)
             if not isinstance(expected_file,str) or not re.fullmatch('[a-f0-9]{64}',expected_file):raise ValueError('invalid_package_manifest')
@@ -235,6 +257,7 @@ def verify_zip(path,role,format_,version,expected,policy,binary_pins):
 
 
 def build_manifest(source_root,version,notes,packages,output,approved_binary_sha256=(),repository='example/project'):
+    packages=list(packages)
     source_root=feed.plain(source_root);output=feed.plain(output)
     policy=public_source._load_policy(source_root)
     public_source.audit(source_root,policy)  # Fail before creating any publication output.
@@ -248,7 +271,11 @@ def build_manifest(source_root,version,notes,packages,output,approved_binary_sha
     binary_pins.update(public_source._public_image_map(policy).values())
     binary_pins.update(public_source._public_font_map(policy).values())
     binary_pins.update(public_source.SOURCE_ARCHIVES.values())
-    package_rows=[verify_zip(p['path'],p['role'],p['format'],version,p['expected_sha256'],policy,binary_pins) for p in packages]
+    # A server-only selected release may advance the server without declaring
+    # unchanged pupil clients stale. Full-system manifests keep aligned versions.
+    server_only_release=(len(packages)==1 and packages[0].get('role')=='windows_server')
+    package_rows=[verify_zip(p['path'],p['role'],p['format'],version,p['expected_sha256'],policy,binary_pins,
+                             allow_older_client_release=server_only_release) for p in packages]
     manifest={'schema':1,'product':'Makervaerkstedet','version':version,'notes':notes,'packages':package_rows}
     if not isinstance(repository,str) or not feed.REPOSITORY.fullmatch(repository):
         raise ValueError('invalid_repository')
