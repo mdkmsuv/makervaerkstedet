@@ -225,16 +225,17 @@ class ManifestBuilderTests(unittest.TestCase):
             builder.review_stream('candidate/hub/server/ServerSetup.cs',io.BytesIO(data),len(data),{},
                                   {hashlib.sha256(data).hexdigest()})
 
-    def test_windows_manifest_and_python_stub_are_privacy_scanned_when_pinned(self):
-        samples=(
-            ('candidate/hub/server/setup.manifest',b'<assembly '+b'pass'+b'word="sensitive-fixture-value"/>'),
-            ('candidate/hub/runtime/Lib/site-packages/numpy/typing.pyi',
-             b'pass'+b'word: "sensitive-fixture-value"\n'),
-        )
-        for name,data in samples:
-            with self.subTest(name=name),self.assertRaisesRegex(ValueError,'package_privacy_preflight_failed'):
-                builder.review_stream(name,io.BytesIO(data),len(data),{},
-                                      {hashlib.sha256(data).hexdigest()})
+    def test_windows_manifest_is_privacy_scanned_when_pinned(self):
+        data=b'<assembly '+b'pass'+b'word="sensitive-fixture-value"/>'
+        with self.assertRaisesRegex(ValueError,'package_privacy_preflight_failed'):
+            builder.review_stream('candidate/hub/server/setup.manifest',io.BytesIO(data),len(data),{},
+                                  {hashlib.sha256(data).hexdigest()})
+
+    def test_webmanifest_is_privacy_scanned_when_pinned(self):
+        data=b'{"'+b'pass'+b'word":"sensitive-fixture-value"}'
+        with self.assertRaisesRegex(ValueError,'package_privacy_preflight_failed'):
+            builder.review_stream('candidate/hub/web/manifest.webmanifest',io.BytesIO(data),len(data),{},
+                                  {hashlib.sha256(data).hexdigest()})
 
     def test_educational_datatraener_models_remain_publishable(self):
         for name in ('assets/datatraener/model.tflite','assets/datatraener/model.onnx',

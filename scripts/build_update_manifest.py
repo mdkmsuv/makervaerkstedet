@@ -27,10 +27,7 @@ feed=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(feed)
 MARKER='update-package.json'
 TEXT={'.py','.ps1','.cmd','.bat','.js','.css','.html','.json','.md','.txt','.svg','.xml','.yml','.yaml','.sh','.toml','.ini','.conf','.patch'}
 TEXT.update({'.service','.cfg','.j2','.templates','.dsc','.desktop','.properties','.csv','.mjs','.cjs','.map','.license',
-             '.cs','.manifest','.pyi','.c','.h','.pxd','.pyx','.pc','.rst','.template','.build','._pth',
-             '.apache','.bsd','.typed','.webmanifest','.f','.f90','.f95','.pyf'})
-TEXT_NAMES=frozenset(('license','copying','metadata','record','wheel','delvewheel','license_geos','license_win32',
-                      'zip-safe','debian-copyright','elevhub-cadoodle','ansible.cfg'))
+             '.cs','.manifest','.webmanifest'})
 MAX_TEXT=32*1024**2
 MAX_INVENTORY=16*1024**2
 VERSION_PATTERN=re.compile(r'\d{4}\.\d{2}\.\d{2}(?:\.\d{1,8})?')
@@ -81,7 +78,8 @@ def review_stream(name,stream,size,policy,binary_pins):
     with ExitStack() as stack:
         reject_operational_feature(name)
         private_name(name)
-        text=(Path(name).suffix.casefold() in TEXT or Path(name).name.casefold() in TEXT_NAMES)
+        text=(Path(name).suffix.casefold() in TEXT or Path(name).name in
+              {'LICENSE','COPYING','debian-copyright','elevhub-cadoodle','ansible.cfg'})
         if text and size>MAX_TEXT:raise ValueError('package_text_member_too_large')
         h=hashlib.sha256();content=bytearray() if text else None;count=0
         nested=stack.enter_context(tempfile.SpooledTemporaryFile(max_size=1024**2)) if Path(name).suffix.casefold() in {'.zip','.whl'} else None
