@@ -41,6 +41,27 @@ PRIVATE_FEATURE_FILES=frozenset(('bed_ai.py','local_ai.py','vision.py','training
 MODEL_SUFFIXES=frozenset(('.onnx','.safetensors','.gguf','.ggml','.tflite','.ckpt','.pt'))
 FEATURE_COMPONENT=re.compile(r'^(?:ai|ollama|torch|torchvision|torchaudio|transformers|diffusers|onnxruntime|rembg|transparent_background|segment_anything|llama_cpp|timm|safetensors|huggingface_hub|accelerate|tokenizers)(?:$|[-_.])',re.I)
 RUNTIME_TEST_DIRECTORIES=frozenset(('tests','testdata'))
+LONG_PATH_ERROR='Windows long-path support is required for the server backup. Enable HKLM\\SYSTEM\\CurrentControlSet\\Control\\FileSystem\\LongPathsEnabled as DWORD 1 (or apply the matching computer policy), then retry. No scheduled tasks or installed files have been changed.'
+
+
+class LongPathPolicyError(ValueError):
+    code='windows_long_paths_disabled'
+
+
+def windows_long_paths_enabled(registry=None, platform=None):
+    if (os.name if platform is None else platform)!='nt': return True
+    try:
+        if registry is None: import winreg as registry
+        key=registry.OpenKey(registry.HKEY_LOCAL_MACHINE,r'SYSTEM\CurrentControlSet\Control\FileSystem')
+        try: value,kind=registry.QueryValueEx(key,'LongPathsEnabled')
+        finally: registry.CloseKey(key)
+        return kind==registry.REG_DWORD and value==1
+    except (ImportError,OSError):
+        return False
+
+
+def require_windows_long_paths():
+    if not windows_long_paths_enabled(): raise LongPathPolicyError(LONG_PATH_ERROR)
 
 
 def private_feature_path(relative, educational=False):
@@ -503,12 +524,13 @@ def finish(candidate,journal,expected):
 
 
 def main():
-    p=argparse.ArgumentParser();p.add_argument('action',choices=['build','verify','trial','migrate-live','apply','idle','startup-check','finish','installed']);p.add_argument('--source',type=Path);p.add_argument('--trusted',type=Path);p.add_argument('--candidate',type=Path);p.add_argument('--output',type=Path);p.add_argument('--snapshot',type=Path);p.add_argument('--journal',type=Path);p.add_argument('--version');p.add_argument('--sha256');a=p.parse_args()
+    p=argparse.ArgumentParser();p.add_argument('action',choices=['build','verify','trial','migrate-live','apply','idle','long-path-preflight','startup-check','finish','installed']);p.add_argument('--source',type=Path);p.add_argument('--trusted',type=Path);p.add_argument('--candidate',type=Path);p.add_argument('--output',type=Path);p.add_argument('--snapshot',type=Path);p.add_argument('--journal',type=Path);p.add_argument('--version');p.add_argument('--sha256');a=p.parse_args()
     if a.action=='build': result=build(a.source,a.trusted,a.output,a.version)
     elif a.action=='verify': result={'verified':True,'version':verify(a.candidate,a.sha256)['version']}
     elif a.action=='trial': result=trial(a.candidate,a.snapshot,a.output)
     elif a.action=='migrate-live': result=migrate(DATA)
     elif a.action=='idle': result=assert_idle()
+    elif a.action=='long-path-preflight': require_windows_long_paths();result={'long_paths_enabled':True}
     elif a.action=='startup-check': result=startup_check(a.candidate)
     elif a.action=='finish': result=finish(a.candidate,a.journal,a.sha256)
     elif a.action=='installed': result=installed(a.candidate,a.sha256)

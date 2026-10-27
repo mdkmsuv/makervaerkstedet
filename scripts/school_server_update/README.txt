@@ -18,6 +18,21 @@ og runtime fra den eksplicit valgte, verificerede grundpakke. Alle runtimefiler 
 mod pakkens integrity.json. Installeret python.exe/python314.dll/python314.zip
 skal have præcis samme hashes; dette forløb udskifter ikke interpreterens ABI.
 
+Windows skal have long-path support aktiveret for Python-runtime, så komplette
+backupstier over MAX_PATH kan kopieres. Før kørslen opretter backup eller
+stopper opgaver, kontrollerer den LongPathsEnabled som REG_DWORD 1 under
+HKLM\SYSTEM\CurrentControlSet\Control\FileSystem. Hvis værdien mangler eller
+er slået fra, blokeres opdateringen uden at ændre opgaver eller installerede
+filer. Aktiver indstillingen gennem skolens Windows-politik:
+Computer Configuration > Administrative Templates > System > Filesystem >
+Enable Win32 long paths. En administrator kan også sætte den lokalt i en
+forhøjet PowerShell:
+  New-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem' `
+    -Name LongPathsEnabled -Value 1 -PropertyType DWORD -Force
+Brug ikke en lokal registreringsændring, hvis Group Policy eller Intune styrer
+denne indstilling. Windows kræver både maskinindstillingen og en longPathAware
+programmanifest; den valgte CPython-runtime har denne markering.
+
 Kør først validering uden -Apply. Den konkrete opdatering køres som SYSTEM
 eller administrator med en ny journalsti, verificeret candidate.json-hash og
 processpecifik ExecutionPolicy Bypass efter behov. Brug aldrig ren installation

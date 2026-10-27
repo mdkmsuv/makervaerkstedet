@@ -6,8 +6,9 @@ import tempfile
 import unittest
 import zipfile
 from datetime import datetime
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from types import SimpleNamespace
+from scripts.github_update_service import server as update_server
 spec=importlib.util.spec_from_file_location('school_update',Path(__file__).with_name('update.py'))
 u=importlib.util.module_from_spec(spec);spec.loader.exec_module(u)
 
@@ -66,6 +67,38 @@ class UpdateTests(unittest.TestCase):
    c=sqlite3.connect(db);c.execute('pragma journal_mode=wal');c.execute('create table jobs(id text)');c.execute("insert into jobs values('durable')");c.commit()
    u.snapshot_data(p/'backup',{'hub':r})
    self.assertEqual(u.database(p/'backup/hub/q.sqlite3')['jobs'],[{'id':'durable'}]);c.close()
+ def test_long_path_preflight_fails_closed_when_policy_is_disabled(self):
+  with patch.object(u,'windows_long_paths_enabled',return_value=False,create=True):
+   with self.assertRaisesRegex(ValueError,'LongPathsEnabled'):
+    u.require_windows_long_paths()
+ def test_long_path_setting_requires_machine_dword_one(self):
+  registry=SimpleNamespace(HKEY_LOCAL_MACHINE=object(),REG_DWORD=4,OpenKey=Mock(return_value='key'),
+                           QueryValueEx=Mock(return_value=(1,4)),CloseKey=Mock())
+  self.assertTrue(u.windows_long_paths_enabled(registry,platform='nt'))
+  registry.QueryValueEx.return_value=(0,4)
+  self.assertFalse(u.windows_long_paths_enabled(registry,platform='nt'))
+  registry.QueryValueEx.return_value=(1,1)
+  self.assertFalse(u.windows_long_paths_enabled(registry,platform='nt'))
+  registry.OpenKey.side_effect=FileNotFoundError
+  self.assertFalse(u.windows_long_paths_enabled(registry,platform='nt'))
+ def test_controller_blocks_before_apply_when_long_path_policy_is_disabled(self):
+  with tempfile.TemporaryDirectory() as d:
+   root=Path(d);installed=root/'installed-hub';installed.mkdir()
+   u.write(installed/'school-update.json',{'version':'2025.01.01'})
+   config={'release_id':'release-1','version':'2026.02.01','candidate':str(root/'candidate'),
+           'candidate_sha256':'a'*64,'package_sha256':'b'*64}
+   profile={'layout':'school-flat-v1','worker_target':'server','baseline_version':'2025.01.01'}
+   admin=SimpleNamespace(worker_allowed=lambda *_:True,worker_job=lambda *_:{'id':'job-1'},report=Mock())
+   updater=Mock()
+   updater.INSTALLS={'hub':installed}
+   updater.verify.return_value={'version':config['version']}
+   updater.require_windows_long_paths.side_effect=u.LongPathPolicyError(u.LONG_PATH_ERROR)
+   invoke=Mock()
+   with patch.object(update_server,'load',return_value=updater):
+    update_server.tick(root,config,profile,admin,root,invoke)
+   invoke.assert_not_called()
+   admin.report.assert_called_once_with('release-1','server','blocked',code='windows_long_paths_disabled')
+   self.assertFalse((root/'operation-job-1/controller.json').exists())
  def test_school_overlay_survives_candidate_asset_update_and_has_timestamp(self):
   with tempfile.TemporaryDirectory() as t:
    inst,data,candidate,journal=self.fixture(t)
