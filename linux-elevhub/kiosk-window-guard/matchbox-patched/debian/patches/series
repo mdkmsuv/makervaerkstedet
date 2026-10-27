@@ -1,0 +1,13 @@
+makefile.patch
+config.patch
+install-themes.patch
+build-themes.patch
+tidy-help-text.patch
+gconf.patch
+fix-build.patch
+xsettings.patch
+spelling.patch
+pkg-config.patch
+
+fix-build3.patch
+fix-build4

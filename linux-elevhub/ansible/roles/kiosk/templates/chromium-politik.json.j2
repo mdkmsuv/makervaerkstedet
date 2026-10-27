@@ -1,0 +1,59 @@
+{
+  "HomepageLocation": "file://{{ kiosk_startside_mappe }}/start.html",
+  "ProxyMode": "fixed_servers",
+  "ProxyServer": "http=127.0.0.1:3128;https=127.0.0.1:3128",
+  "ProxyBypassList": {{ ([kiosk_server, "127.0.0.1", "localhost"] | join(',')) | tojson }},
+  "QuicAllowed": false,
+  "DnsOverHttpsMode": "off",
+  "EncryptedClientHelloEnabled": false,
+  "HomepageIsNewTabPage": false,
+  "ShowHomeButton": false,
+  "NewTabPageLocation": "{{ kiosk_internet_start }}",
+  "DefaultSearchProviderEnabled": true,
+  "DefaultSearchProviderName": "Google",
+  "DefaultSearchProviderSearchURL": "https://www.google.com/search?q={searchTerms}&hl=da&safe=active",
+  "ForceGoogleSafeSearch": true,
+  "ForceYouTubeRestrict": 2,
+  "ExtensionInstallBlocklist": ["*"],
+  "BlockExternalExtensions": true,
+  "PromptForDownloadLocation": false,
+  "DownloadRestrictions": 0,
+  "InsecureContentAllowedForUrls": [
+{% for port in kiosk_app_porte %}
+    "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ port }}"{{ "," if not loop.last else "" }}
+{% endfor %}
+{% if kiosk_lokale_apps_enabled | bool %}
+    ,"http://127.0.0.1:8791/"
+    ,"http://127.0.0.1:8792/"
+    ,"http://127.0.0.1:8793/"
+    ,"http://127.0.0.1:8794/"
+    ,"http://127.0.0.1:8797/"
+{% endif %}
+{% if kiosk_lokal_design_enabled | bool %}
+    ,"http://127.0.0.1:{{ kiosk_lokal_design_laser_port }}/"
+    ,"http://127.0.0.1:{{ kiosk_lokal_design_folie_port }}/"
+{% endif %}
+  ],
+  "AllowFileSelectionDialogs": true,
+  "WebUsbAllowDevicesForUrls": [
+    {
+      "devices": [{"vendor_id": 3368, "product_id": 516}],
+      "urls": ["https://makecode.microbit.org"{% if kiosk_lokale_apps_enabled | bool %}, "http://127.0.0.1:8793", "http://127.0.0.1:8797"{% endif %}]
+    }
+  ],
+  "DeveloperToolsAvailability": 2,
+  "IncognitoModeAvailability": 1,
+  "BrowserGuestModeEnabled": false,
+  "BrowserAddPersonEnabled": false,
+  "BrowserSignin": 0,
+  "SyncDisabled": true,
+  "PasswordManagerEnabled": false,
+  "AutofillAddressEnabled": false,
+  "AutofillCreditCardEnabled": false,
+  "PrintingEnabled": false,
+  "TranslateEnabled": false,
+  "SpellcheckEnabled": false,
+  "BookmarkBarEnabled": false,
+  "DefaultBrowserSettingEnabled": false,
+  "MetricsReportingEnabled": false
+}

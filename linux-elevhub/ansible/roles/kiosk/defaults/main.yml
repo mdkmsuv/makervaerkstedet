@@ -1,0 +1,77 @@
+# Elevens skærm: elevbjælke øverst og browseren under den med elevhubbens startside.
+kiosk_bruger: "{{ elevkonto_navn | default('elev') }}"
+
+# Serveren, hvor elevhubben og værkstederne kører (IP eller navn). Skal sættes i inventory.
+# Brug skolens valgte serveradresse; kildekoden indeholder ingen skoleadresse.
+# kiosk_server:
+
+# Elevhubben (åbne apps og status) og elevindgangene på serveren (server/elevhub/konfiguration.json).
+kiosk_hub_port: 8773
+kiosk_protokol: https
+kiosk_usikker_test: false
+# Neutral elevkatalog-branding. Tilladte værdier er red, yellow og green.
+kiosk_theme: red
+kiosk_school_name: ""
+# Controller paths supplied by provisioning (JSON: computer, token, ui_token; CA.pem).
+# They are intentionally empty here so a secure inventory must set them explicitly.
+kiosk_enhedsfil: ""
+kiosk_ca_fil: ""
+kiosk_app_porte: [8770, 8771, 8772, 8791, 8792, 8793, 8794]  # centrale afleveringer + lokale elevapps
+kiosk_printvaerksted_port: 8770          # lærersiden /laerer spærres her i browseren
+# Serverens andre porte, som eleverne aldrig må nå (værkstederne selv og lærerpanelet).
+kiosk_spaerrede_serverporte: [8765, 8766, 8767, 8780]
+
+# Appen Internet (type "browser" i serverens konfiguration).
+kiosk_internet_app: internet
+kiosk_internet_start: "https://www.google.com/imghp?hl=da&safe=active"
+# Sider, der er spærret, selv når Internet er åbent. Eleverne skal finde billeder, ikke logge ind
+# med private konti på en delt computer.
+kiosk_internet_spaerret: ["accounts.google.com"]
+
+kiosk_startside_mappe: /usr/local/share/elevhub
+kiosk_tastatur: dk
+kiosk_mesa_gl: false                   # Aktiveres kun på afprøvede VM'er med Mesa OpenGL
+kiosk_web_bluetooth: false             # Opt-in til Datatrænerens Bluetooth-forløb på Linux
+
+# Lokale elevapps. De lytter kun på elevcomputeren og bruger aldrig serverens
+# projektlager. Hver kilde er valgfri: en manglende kilde gør kun den lokale
+# app utilgængelig på den pågældende maskine.
+kiosk_lokale_apps_enabled: true
+kiosk_lokale_apps_root: /usr/local/share/elevhub/apps
+kiosk_lokale_projects: "/home/{{ kiosk_bruger }}/Projekter"
+kiosk_lokale_state: "{{ kiosk_lokale_projects }}/.elevhub"
+# The complete package is installed: lokal.py imports the project archive,
+# scanner and HTTP modules and serves the shared project web UI from web/.
+kiosk_lokal_package_src: "{{ playbook_dir }}/../projekter"
+kiosk_lokal_package_dest: /usr/local/lib/elevhub/projekter
+kiosk_lokal_service_dest: "{{ kiosk_lokal_package_dest }}/lokal.py"
+kiosk_lokale_app_kilder:
+  # Ansible is normally run from WSL; override these paths in inventory when
+  # the controller stores the builds elsewhere (Windows equivalent: D:\\Elevhub-VM\\...).
+  scratch: "/mnt/d/Elevhub-VM/scratch/scratch-gui-v15.1.1-local-projects-build"
+  datatraener: "/mnt/d/Elevhub-VM/datatraener/cctd-ml-machine-release-dr-build-adapter-test-20261009e"
+  kredsloeb: "{{ playbook_dir }}/../server/kredsloeb"
+  microbit: "{{ playbook_dir }}/../server/microbit-controller"
+kiosk_lokale_app_urler:
+  projekter: "http://127.0.0.1:8791/"
+  scratch: "http://127.0.0.1:8792/"
+  datatraener: "http://127.0.0.1:8793/"
+  kredsloeb: "http://127.0.0.1:8794/"
+  microbit: "http://127.0.0.1:8797/"
+
+# En opdatering genstarter ikke en elevskærm, der er i brug; ændringen virker
+# fra næste opstart. true genstarter med det samme (kun uden for undervisning).
+kiosk_genstart_nu: false
+
+# Designværkstedet (laser og folie) kører lokalt: tegnefladen og
+# kassegeneratoren på elevcomputeren, kun "Send til læreren" går til serverens
+# laserindgang. Serveren validerer fortsat afleveringen og afviser den, når
+# læreren har lukket Laser. Koden er hovedprojektets app/laser_local.py.
+kiosk_lokal_design_enabled: true
+kiosk_lokal_design_kilde: "{{ playbook_dir }}/../.."
+kiosk_lokal_design_dest: /usr/local/lib/elevhub/designvaerksted
+kiosk_lokal_design_laser_port: 8795
+kiosk_lokal_design_folie_port: 8796
+
+# Filer fra Elevhub-serveren (skrift og fælles katalog-assets), som startsiden bruger.
+kiosk_elevhub_web: "{{ playbook_dir }}/../server/elevhub/web"

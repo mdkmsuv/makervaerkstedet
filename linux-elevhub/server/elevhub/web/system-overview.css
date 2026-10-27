@@ -1,0 +1,50 @@
+/* Serverkontrolpanelet følger Makerværkstedets rene Bauhaus-flader. */
+.system-overblik {
+  margin: 0 0 30px;
+  padding: 24px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--brand);
+}
+.system-overblik-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+.system-overblik h2 { margin-bottom: 6px; }
+.system-intro { margin: 0; color: var(--muted); }
+.system-status { min-height: 1.6em; margin: 18px 0 12px; color: var(--muted); font-size: 13px; }
+.system-status.fejl { color: var(--brand); }
+.system-status.ok { color: var(--success); }
+.system-server { display: flex; flex-wrap: wrap; gap: 12px 28px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.system-server-item { display: grid; gap: 2px; min-width: 180px; }
+.system-server-label, .system-tal dt { color: var(--muted); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
+.system-server-value { color: var(--ink); font-size: 17px; }
+.system-ukendt { color: var(--muted); font-style: italic; }
+.system-tal { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap: 12px; margin: 16px 0 20px; }
+.system-tal-item { margin: 0; padding: 12px 14px; background: var(--section); border-left: 3px solid var(--brand); }
+.system-tal dd { margin: 3px 0 0; color: var(--ink); font-size: 24px; }
+.system-kolonner { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 26px; }
+.system-liste { min-width: 0; }
+.system-liste-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.system-liste h3 { margin: 0; font-size: 20px; font-weight: 500; }
+.system-count { color: var(--muted); font-size: 13px; }
+.system-table-wrap { overflow-x: auto; border: 1px solid var(--line); }
+.system-table { width: 100%; border-collapse: collapse; min-width: 460px; font-size: 13px; }
+.system-table th { padding: 10px 12px; background: var(--section); color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-align: left; text-transform: uppercase; }
+.system-table td { padding: 10px 12px; border-top: 1px solid var(--line); vertical-align: top; }
+.system-table tbody tr:first-child td { border-top: 0; }
+.system-table strong { color: var(--ink); font-weight: 500; }
+.system-secondary { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+.system-badge { display: inline-block; padding: 3px 7px; border: 1px solid #cfcfc9; color: var(--muted); font-size: 11px; line-height: 1.3; white-space: nowrap; }
+.system-badge.online, .system-badge.current, .system-badge.ready { border-color: var(--success); color: var(--success); background: var(--success-pale); }
+.system-badge.offline, .system-badge.different { border-color: #b27a21; color: #76500e; background: #fbf3e2; }
+.system-badge.unknown { color: var(--muted); background: #f7f7f5; }
+.system-empty { margin: 0; padding: 16px; border: 1px dashed #cfcfc9; color: var(--muted); font-size: 13px; }
+@media (max-width: 800px) {
+  .system-kolonner { grid-template-columns: 1fr; gap: 22px; }
+  .system-tal { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .system-overblik { padding: 20px; }
+  .system-overblik-top { display: block; }
+  .system-overblik-top .sekundaer { margin-top: 16px; }
+  .system-tal { grid-template-columns: 1fr; }
+  .system-tal-item { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+}

@@ -1,0 +1,25 @@
+Description: spelling fixes
+Author: Moray Allan <moray@debian.org>
+
+--- a/src/matchbox-remote.c
++++ b/src/matchbox-remote.c
+@@ -212,7 +212,7 @@ usage(char *progname)
+    printf("  -prev                    Page to previous window \n");
+    printf("  -desktop                 Toggle desktop visibility\n");
+    printf("  -menu                    Activate mb-applet-menu-launcher\n");
+-   printf("  -panel-toggle [panel id] Toogle panel visibility\n");
++   printf("  -panel-toggle [panel id] Toggle panel visibility\n");
+    printf("  -input-toggle [1|0]      Toggle Input method ( requires input-manager )\n");
+    printf("  -composite-toggle        Toggle Compositing Engine ( if enabled )\n");
+    printf("  -keys-reload             Reload key shortcut config ( if enabled )\n");
+--- a/src/misc.c
++++ b/src/misc.c
+@@ -82,7 +82,7 @@ handle_xerror(Display *dpy, XErrorEvent
+ 	e->resourceid == RootWindow(dpy, DefaultScreen(dpy)) ) 
+       {
+         fprintf(stderr, 
+-		"root window unavailible (maybe another wm is running?)\n");
++		"root window unavailable (maybe another WM is running?)\n");
+         exit(1);
+       } 
+     else 

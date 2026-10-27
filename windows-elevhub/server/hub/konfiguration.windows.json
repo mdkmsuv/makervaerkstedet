@@ -1,0 +1,22 @@
+{
+  "elev_adresse": "192.0.2.2",
+  "hub_port": 8773,
+  "laerer_adresse": "192.0.2.2",
+  "laerer_port": 8780,
+  "backend_ports": {"print": 8765, "design": 8766, "teacher": 8767},
+  "tls": {"certifikat": "../security/server.crt", "noegle": "../security/server.key", "ca": "../security/ca.crt"},
+  "enhedsregister": "../security/enheder.json",
+  "apps": [
+    {"id":"3dprint","navn":"3D-print","type":"vaerksted","standard_aaben":true,"port":8770,"bagved":"127.0.0.1:8765","regler":"printvaerksted","beskrivelse":"Send din 3D-figur til printeren.","laererside":"http://{vaert}:8765/laerer","laererside_note":"Printværkstedets egen lærerkode.","skjul":["a[href=\"/laerer\"]"],"kategori":"Design og fremstilling"},
+    {"id":"laser","navn":"Laser","type":"vaerksted","standard_aaben":true,"port":8771,"bagved":"127.0.0.1:8766","regler":"laser","beskrivelse":"Tegn noget, laseren kan skære eller gravere.","laererside":"http://localhost:8767/","laererside_note":"Afleveringer. Kun på selve serveren.","skjul":["#workshop-home"],"kategori":"Design og fremstilling"},
+    {"id":"folie","navn":"Folie","type":"vaerksted","standard_aaben":true,"port":8772,"bagved":"127.0.0.1:8766","regler":"folie","beskrivelse":"Lav klistermærker og tøjtryk i folie.","laererside_note":"Folie gemmes på USB-nøgle. Ingen lærerkø.","skjul":["#workshop-home"],"kategori":"Design og fremstilling"},
+    {"id":"microbit","navn":"micro:bit","type":"web","standard_aaben":true,"start_url":"https://makecode.microbit.org/","domaener":["makecode.microbit.org","makecode.com","cdn.makecode.com","trg-microbit.userpxt.io","pxt.microbit.org","www.pxt.io","pxt.azureedge.net","api.github.com","immersivereaderprod.cognitiveservices.azure.com"],"beskrivelse":"Byg kode med blokke, og giv din micro:bit liv.","laererside_note":"MakeCode online. USB og Bluetooth afprøves på elevudstyret.","kategori":"Kode og teknologi"},
+    {"id":"datatraener","navn":"Datatræneren","type":"lokal","standard_aaben":true,"port":8793,"lokal_service":true,"lokal_port":8793,"beskrivelse":"Træn en model til at genkende bevægelser med micro:bit.","laererside_note":"Lokal Datatræner. USB og Bluetooth afprøves på elevudstyret.","kategori":"Kode og teknologi"},
+    {"id":"skolegpt","navn":"SkoleGPT","type":"web","standard_aaben":true,"start_url":"https://chat.skolegpt.dk/","domaener":["chat.skolegpt.dk","glyph-gate.dbc.dk","fastly.jsdelivr.net"],"beskrivelse":"Undersøg idéer og spørgsmål med en AI til skolen.","laererside_note":"CFU SkoleGPT online. Svar kan være forkerte; undlad personlige oplysninger.","kategori":"Idéer og viden"},
+    {"id":"scratch","navn":"Scratch","type":"lokal","standard_aaben":true,"port":8792,"lokal_service":true,"lokal_port":8792,"beskrivelse":"Lav spil, historier og animationer. Gem dit projekt som .sb3.","laererside_note":"Lokal editor. Projekter gemmes som filer på elevcomputeren.","kategori":"Kode og teknologi"},
+    {"id":"kredsloeb","navn":"Kredsløb","type":"lokal","standard_aaben":true,"port":8794,"lokal_service":true,"lokal_port":8794,"beskrivelse":"Undersøg strøm, spænding og komponenter i en sikker simulator.","laererside_note":"Lokal simulator. Eksportér kredsløb som tekst til Projekter.","kategori":"Kode og teknologi"},
+    {"id":"internet","navn":"Internet","type":"browser","standard_aaben":false,"luk_ved_genstart":true,"start_url":"https://www.google.com/imghp?hl=da&safe=active","beskrivelse":"Find billeder til dit projekt, og gem dem.","laererside_note":"Kun browseren på elevcomputerne. Google SafeSearch er altid slået til.","kategori":"Adgang til nettet"},
+    {"id":"cadoodle","navn":"CaDoodle","type":"native","native_app":"cadoodle","standard_aaben":true,"beskrivelse":"Tegn en 3D-model, og send den til 3D-værkstedet.","kategori":"Design og fremstilling"},
+    {"id":"word","navn":"Word","type":"native","native_app":"word","standard_aaben":false,"beskrivelse":"Skriv og gem dokumenter.","kategori":"Dokumenter"}
+  ]
+}

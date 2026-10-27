@@ -1,0 +1,765 @@
+/*
+ * Laser workshop surface
+ *
+ * This file is intentionally scoped to the new workshop structure.  It is
+ * loaded after laser.css, desktop-studio.css and school-theme.css so the
+ * compact studio rules cannot move the canvas or panels underneath it.
+ */
+body.desktop-studio.laser-studio.laser-workshop {
+  --laser-burgundy: #c62b2f;
+  --laser-burgundy-dark: #8c1d24;
+  --laser-cream: #f3f3f0;
+  --laser-panel: #fff;
+  --laser-panel-muted: #f7f7f4;
+  --laser-line: #d7d7d2;
+  --laser-ink: #333;
+  --laser-muted: #6a6a65;
+  --laser-focus: #c62b2f;
+  min-width: 0;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--laser-cream);
+  color: var(--laser-ink);
+  font-size: 14px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop main {
+  width: 100%;
+  max-width: 1920px;
+  min-height: 0;
+  height: 100%;
+  padding: 10px 14px 12px;
+  gap: 10px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .header {
+  flex: 0 0 52px;
+  height: 52px;
+}
+
+/* The new editor is a two-column canvas/inspector surface by default. */
+body.desktop-studio.laser-studio.laser-workshop .editor {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  grid-template-rows: minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  height: auto;
+  max-height: none;
+  flex: 1 1 auto;
+  border: 1px solid var(--laser-line);
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--laser-panel);
+  box-shadow: 0 2px 10px #392b2209;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .latest-receipt {
+  display: flex;
+  flex-shrink: 0;
+  overflow-wrap: anywhere;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+  padding: 7px 10px;
+  border: 1px solid #c9dcca;
+  background: #f4faf4;
+  color: #28532c;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .latest-receipt[hidden] { display: none; }
+body.desktop-studio.laser-studio.laser-workshop .latest-receipt span { flex: 1 1 300px; }
+body.desktop-studio.laser-studio.laser-workshop .latest-receipt small { flex-basis: 100%; color: #547057; }
+
+body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding {
+  grid-template-columns: 270px minmax(0, 1fr) 290px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-panel,
+body.desktop-studio.laser-studio.laser-workshop .drawing-panel,
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector {
+  min-width: 0;
+  min-height: 0;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .drawing-panel {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  background: #e9e9e6;
+  position: relative;
+  overflow: hidden;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding .drawing-panel {
+  grid-column: 2;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  scrollbar-gutter: stable;
+  background: var(--laser-panel);
+  border-left: 1px solid var(--laser-line);
+}
+
+body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding .laser-inspector {
+  grid-column: 3;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector > .tools-panel,
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector > .properties-panel {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 14px 13px;
+  overflow: visible;
+  background: transparent;
+  border: 0;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector > .properties-panel {
+  padding-top: 0;
+}
+
+/* Guide is absent from layout until the controller exposes it. */
+body.desktop-studio.laser-studio.laser-workshop #laser-guide-panel.laser-guide[hidden],
+body.desktop-studio.laser-studio.laser-workshop .laser-guide[hidden] {
+  display: none !important;
+}
+
+body.desktop-studio.laser-studio.laser-workshop #laser-guide-panel.laser-guide:not([hidden]) {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--laser-panel);
+  border-right: 1px solid var(--laser-line);
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 15px 14px 12px;
+  border-bottom: 1px solid var(--laser-line);
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-header h2 {
+  min-width: 0;
+  font-size: 16px;
+  line-height: 1.3;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-header button {
+  flex: 0 0 40px;
+  min-height: 40px;
+  padding: 4px;
+  border: 1px solid var(--laser-line);
+  background: #fff;
+  color: var(--laser-burgundy);
+  font-size: 21px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: 14px;
+  scrollbar-gutter: stable;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-art {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 104px;
+  margin-bottom: 13px;
+  padding: 8px;
+  background: var(--laser-panel-muted);
+  border: 1px solid var(--laser-line);
+  border-radius: 2px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-art svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 190px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-progress {
+  height: 5px;
+  margin-bottom: 15px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e5e5e0;
+}
+
+body.desktop-studio.laser-studio.laser-workshop progress.laser-guide-progress {
+  display: block;
+  width: 100%;
+  height: 6px;
+  border: 0;
+  border-radius: 2px;
+  appearance: none;
+  background: #e5e5e0;
+}
+
+body.desktop-studio.laser-studio.laser-workshop progress.laser-guide-progress::-webkit-progress-bar {
+  background: #e5e5e0;
+  border-radius: 2px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop progress.laser-guide-progress::-webkit-progress-value {
+  background: var(--laser-burgundy);
+  border-radius: 2px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop progress.laser-guide-progress::-moz-progress-bar {
+  background: var(--laser-burgundy);
+  border-radius: 2px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-progress > * {
+  display: block;
+  height: 100%;
+  background: var(--laser-burgundy);
+}
+
+body.desktop-studio.laser-studio.laser-workshop #laser-guide-step-title {
+  margin-bottom: 9px;
+  color: var(--laser-burgundy-dark);
+  font-size: 17px;
+  line-height: 1.35;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-text p,
+body.desktop-studio.laser-studio.laser-workshop #laser-guide-hint,
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-check,
+body.desktop-studio.laser-studio.laser-workshop #laser-guide-reflection {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+body.desktop-studio.laser-studio.laser-workshop #laser-guide-hint {
+  margin-top: 14px;
+  padding: 10px;
+  border-left: 3px solid var(--laser-burgundy);
+  background: #f7f7f4;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-check input {
+  flex: 0 0 auto;
+  margin-top: 3px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop #laser-guide-reflection {
+  display: block;
+  width: 100%;
+  min-height: 76px;
+  margin-top: 7px;
+  padding: 8px;
+  resize: vertical;
+  border: 1px solid var(--laser-line);
+  border-radius: 2px;
+  background: #fff;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-navigation {
+  display: flex;
+  gap: 7px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--laser-line);
+  background: var(--laser-panel);
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-navigation button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 8px 6px;
+  border: 1px solid var(--laser-line);
+  font-size: 13px;
+}
+
+/* Text labels remain visible; the same quiet line icons aid recognition. */
+body.desktop-studio.laser-studio.laser-workshop .laser-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+body.desktop-studio.laser-studio.laser-workshop .laser-action-icon {
+  display: block;
+  flex: 0 0 20px;
+  width: 20px;
+  height: 20px;
+}
+body.desktop-studio.laser-studio.laser-workshop .laser-action-label {
+  display: block;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+}
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-navigation button:last-child {
+  border-color: var(--laser-burgundy);
+  background: var(--laser-burgundy);
+  color: white;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-navigation #laser-guide-next,
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-navigation #laser-guide-finish {
+  border-color: var(--laser-burgundy);
+  background: var(--laser-burgundy);
+  color: #fff;
+}
+
+/* Keep every project action visible, wrapping onto another row when needed. */
+body.desktop-studio.laser-studio.laser-workshop .project-bar {
+  min-height: 50px;
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .project-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .project-actions > button {
+  display: inline-flex;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid var(--laser-line);
+  border-radius: 2px;
+  background: #fff;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .project-actions > #save-project,
+body.desktop-studio.laser-studio.laser-workshop .project-actions > #send-button,
+body.desktop-studio.laser-studio.laser-workshop .project-actions > #laser-projects-button {
+  border-color: var(--laser-burgundy);
+  background: var(--laser-burgundy);
+  color: #fff;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-tabs {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--laser-line);
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-tabs button {
+  flex: 1 1 0;
+  min-height: 42px;
+  padding: 8px 5px;
+  border-bottom: 3px solid transparent;
+  font-size: 12px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-tabs button[aria-selected="true"],
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-tabs button.active {
+  border-bottom-color: var(--laser-burgundy);
+  color: var(--laser-burgundy);
+  font-weight: 600;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .tool-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin: 12px 0 16px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .tool {
+  min-width: 0;
+  min-height: 70px;
+  padding: 7px 4px;
+  border: 1px solid var(--laser-line);
+  border-radius: 2px;
+  background: #fff;
+  font-size: 12px;
+  text-align: center;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .tool.active,
+body.desktop-studio.laser-studio.laser-workshop .tool[aria-pressed="true"] {
+  border-color: var(--laser-burgundy);
+  background: #f7eeee;
+  color: var(--laser-burgundy-dark);
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-group-hidden {
+  display: none !important;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-levels {
+  margin-top: 11px;
+  border-top: 1px solid var(--laser-line);
+  border-bottom: 1px solid var(--laser-line);
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-levels > summary,
+body.desktop-studio.laser-studio.laser-workshop .laser-more-tools > summary,
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector details > summary {
+  min-height: 42px;
+  padding: 10px 0;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-levels .level-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 0 12px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-levels .level-bar > span {
+  display: none;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-levels .level-bar button {
+  max-width: none;
+  min-height: 42px;
+  padding: 7px 9px;
+  text-align: left;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-more-tools {
+  margin-top: 10px;
+  border-top: 1px solid var(--laser-line);
+}
+
+body.desktop-studio.laser-studio.laser-workshop #allTools,
+body.desktop-studio.laser-studio.laser-workshop .all-tools {
+  margin-top: 10px;
+  border-top: 1px solid var(--laser-line);
+}
+
+body.desktop-studio.laser-studio.laser-workshop #allTools:not([open]) > *:not(summary),
+body.desktop-studio.laser-studio.laser-workshop .all-tools:not([open]) > *:not(summary) {
+  display: none;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector .advanced-tools details,
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector #advanced-tools details {
+  margin-top: 8px;
+  border-top: 1px solid var(--laser-line);
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector .advanced-tools details:not([open]) > *:not(summary),
+body.desktop-studio.laser-studio.laser-workshop .laser-inspector #advanced-tools details:not([open]) > *:not(summary) {
+  display: none;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-tool-target {
+  outline: 3px solid var(--laser-burgundy);
+  outline-offset: 3px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .canvas-toolbar {
+  min-height: 44px;
+  height: auto;
+  flex-wrap: wrap;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .canvas-toolbar > div {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .canvas-toolbar .tool[data-tool="select"] {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  min-width: 40px;
+  min-height: 40px;
+  width: auto;
+  gap: 6px;
+  padding: 6px 9px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .canvas-toolbar .tool[data-tool="select"] svg {
+  width: 18px;
+  height: 18px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .workspace {
+  min-height: 0;
+  flex: 1 1 auto;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .canvas-footer {
+  min-height: 30px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-project-dialog {
+  width: min(940px, calc(100vw - 28px));
+  max-width: 940px;
+  max-height: calc(100dvh - 28px);
+  padding: 0;
+  overflow: hidden;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-project-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-project-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--laser-line);
+}
+
+body.desktop-studio.laser-studio.laser-workshop #laser-project-search {
+  margin: 14px 22px 10px;
+  width: calc(100% - 44px);
+}
+
+body.desktop-studio.laser-studio.laser-workshop #laser-project-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-auto-rows: max-content;
+  gap: 12px;
+  min-height: 0;
+  overflow: auto;
+  padding: 8px 22px 22px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop article.laser-project-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--laser-line);
+  border-radius: 2px;
+  overflow: hidden;
+  background: #fff;
+}
+
+body.desktop-studio.laser-studio.laser-workshop article.laser-project-card > svg {
+  width: 100%;
+  height: 118px;
+  min-height: 118px;
+  flex: 0 0 118px;
+  padding: 10px;
+  background: var(--laser-panel-muted);
+}
+
+body.desktop-studio.laser-studio.laser-workshop article.laser-project-card > .laser-project-card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: visible;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-project-card h3 {
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-project-card p,
+body.desktop-studio.laser-studio.laser-workshop .laser-project-card .skill {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--laser-muted);
+}
+
+body.desktop-studio.laser-studio.laser-workshop .laser-project-card button {
+  width: 100%;
+  min-height: 44px;
+  margin-top: auto;
+  padding: 8px 10px;
+  border: 1px solid var(--laser-burgundy);
+  border-radius: 2px;
+  background: var(--laser-burgundy);
+  color: white;
+}
+
+/* Cards must grow with their description.  A fixed row height on compact
+   screens used to place “Vælg projekt” below the next card. */
+body.desktop-studio.laser-studio.laser-workshop article.laser-project-card {
+  height: auto;
+  min-height: 0;
+  align-self: start;
+}
+
+body.desktop-studio.laser-studio.laser-workshop button:focus-visible,
+body.desktop-studio.laser-studio.laser-workshop summary:focus-visible,
+body.desktop-studio.laser-studio.laser-workshop input:focus-visible,
+body.desktop-studio.laser-studio.laser-workshop textarea:focus-visible {
+  outline: 3px solid var(--laser-focus);
+  outline-offset: 3px;
+}
+
+body.desktop-studio.laser-studio.laser-workshop .editor,
+body.desktop-studio.laser-studio.laser-workshop .tool,
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-header button,
+body.desktop-studio.laser-studio.laser-workshop .laser-guide-navigation button,
+body.desktop-studio.laser-studio.laser-workshop .laser-project-card,
+body.desktop-studio.laser-studio.laser-workshop .laser-project-card button,
+body.desktop-studio.laser-studio.laser-workshop .project-actions > button,
+body.desktop-studio.laser-studio.laser-workshop input,
+body.desktop-studio.laser-studio.laser-workshop textarea {
+  border-radius: 2px;
+}
+
+@media (min-width: 1366px) {
+  body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding {
+    grid-template-columns: 270px minmax(0, 1fr) 290px;
+  }
+}
+
+@media (max-width: 1024px) {
+  body.desktop-studio.laser-studio.laser-workshop .editor {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding {
+    grid-template-columns: 250px minmax(0, 1fr) 270px;
+  }
+}
+
+@media (max-width: 850px) {
+  body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding {
+    grid-template-columns: minmax(0, 1fr) 240px;
+    grid-template-rows: minmax(0, 280px) minmax(0, 1fr);
+  }
+  body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding #laser-guide-panel.laser-guide:not([hidden]) {
+    grid-column: 1 / -1;
+    grid-row: 1;
+    flex-direction: column;
+    border-right: 0;
+    border-bottom: 1px solid var(--laser-line);
+  }
+  body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding .drawing-panel {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding .laser-inspector {
+    grid-column: 2;
+    grid-row: 2;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .laser-guide-body {
+    padding: 10px 14px;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .laser-guide-art svg {
+    max-height: 110px;
+  }
+  body.desktop-studio.laser-studio.laser-workshop #laser-project-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 800px) {
+  body.desktop-studio.laser-studio.laser-workshop .laser-inspector .laser-more-tools .board-settings,
+  body.desktop-studio.laser-studio.laser-workshop .laser-inspector .combine-tools {
+    display: block;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .laser-inspector .combine-tools {
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 650px) {
+  body.desktop-studio.laser-studio.laser-workshop {
+    height: auto;
+    min-height: 100dvh;
+    overflow: auto;
+  }
+  body.desktop-studio.laser-studio.laser-workshop main {
+    height: auto;
+    flex: none;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .project-bar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .project-name,
+  body.desktop-studio.laser-studio.laser-workshop .project-actions {
+    width: 100%;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .project-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body.desktop-studio.laser-studio.laser-workshop .editor,
+  body.desktop-studio.laser-studio.laser-workshop .editor.laser-guiding {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+    overflow: visible;
+  }
+  body.desktop-studio.laser-studio.laser-workshop #laser-guide-panel.laser-guide:not([hidden]) {
+    order: 1;
+    min-height: 0;
+    max-height: 280px;
+    border-right: 0;
+    border-bottom: 1px solid var(--laser-line);
+  }
+  body.desktop-studio.laser-studio.laser-workshop .drawing-panel {
+    order: 2;
+    height: 420px;
+    min-height: 420px;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .laser-inspector {
+    order: 3;
+    max-height: none;
+    border-top: 1px solid var(--laser-line);
+    border-left: 0;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .laser-inspector > .properties-panel {
+    padding-top: 14px;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .laser-inspector .laser-more-tools .board-settings,
+  body.desktop-studio.laser-studio.laser-workshop .laser-inspector .combine-tools {
+    display: block;
+  }
+  body.desktop-studio.laser-studio.laser-workshop #laser-project-cards {
+    grid-template-columns: 1fr;
+    padding-inline: 14px;
+  }
+  body.desktop-studio.laser-studio.laser-workshop .laser-project-dialog-header {
+    padding-inline: 14px;
+  }
+  body.desktop-studio.laser-studio.laser-workshop #laser-project-search {
+    width: calc(100% - 28px);
+    margin-inline: 14px;
+  }
+}

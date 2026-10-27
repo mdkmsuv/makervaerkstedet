@@ -1,0 +1,14 @@
+Template: elevhub/computer
+Type: select
+Choices: ${CHOICES}
+Default: -- vælg computer --
+Description: Vælg computerens navn
+ Vælg den computer, som denne installation skal klargøre.
+ Et navn må kun bruges på den fysiske computer, der står foran dig.
+
+Template: elevhub/computer-confirm
+Type: boolean
+Default: false
+Description: Bekræft computerens identitet
+ Bekræfter du, at navnet ${COMPUTER} er korrekt, og at navnet ikke allerede er i brug
+ på en anden computer?

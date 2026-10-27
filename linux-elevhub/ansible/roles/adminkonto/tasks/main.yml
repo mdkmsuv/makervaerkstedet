@@ -1,0 +1,118 @@
+- name: Springer over, hvis den lokale administratorkonto ikke er slået til
+  ansible.builtin.debug:
+    msg: >-
+      adminkonto_aktiveret er false. Der oprettes ingen lokal administratorkonto.
+      Slå den til i inventory, hvis du skal kunne logge ind foran maskinen
+      (Ctrl+Alt+F2).
+  when: not (adminkonto_aktiveret | bool)
+
+# | bool, så rollen også virker, når værdien kommer som tekst fra -e på
+# kommandolinjen og ikke som en boolesk værdi fra inventory.
+- name: Opret lokal administratorkonto
+  when: adminkonto_aktiveret | bool
+  block:
+    - name: Administratoren er en separat lokal konto
+      ansible.builtin.assert:
+        that:
+          - adminkonto_navn is match('^[a-z][a-z0-9_-]{0,31}$')
+          - adminkonto_navn not in ['root', elevkonto_navn | default('elev'), grundsystem_driftskonto | default('elevhub')]
+        fail_msg: Administratorkontoen skal have sit eget navn.
+        quiet: true
+
+    # Uden en rigtig hash ville kontoen blive oprettet låst, og så virker
+    # login foran maskinen ikke. Det er hele formålet, så vi stopper hellere.
+    - name: Der skal være valgt en adgangskode
+      ansible.builtin.assert:
+        that:
+          - adminkonto_adgangskode_hash is defined
+          - adminkonto_adgangskode_hash | string | length > 1
+          - adminkonto_adgangskode_hash != '!'
+          - adminkonto_adgangskode_hash.startswith('$')
+        fail_msg: >-
+          adminkonto_aktiveret er true, men adminkonto_adgangskode_hash er ikke
+          sat til en rigtig hash. Lav en med "openssl passwd -6" og sæt den i
+          inventory. Kontoen ville ellers blive oprettet låst og ubrugelig.
+        quiet: true
+
+    - name: Administratorkontoen findes
+      ansible.builtin.user:
+        name: "{{ adminkonto_navn }}"
+        comment: "{{ adminkonto_fuldt_navn }}"
+        shell: /bin/bash
+        create_home: true
+        groups: "{{ adminkonto_grupper | join(',') }}"
+        append: false
+        password: "{{ adminkonto_adgangskode_hash }}"
+        update_password: always
+      no_log: true
+
+    - name: Mappe til lokalt admin-login
+      ansible.builtin.file:
+        path: /etc/elevhub
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Værktøj til skift mellem elevskærm og lokal loginprompt
+      ansible.builtin.apt:
+        name: kbd
+        state: present
+        install_recommends: false
+        policy_rc_d: 101
+
+    - name: Fast genvej til lokal loginprompt
+      ansible.builtin.copy:
+        src: elevhub-admin-login.py
+        dest: /usr/local/sbin/elevhub-admin-login
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Admin-login viser kun den konfigurerede lokale konto
+      ansible.builtin.copy:
+        dest: /etc/elevhub/admin-login.json
+        content: "{{ {'username': adminkonto_navn} | to_nice_json }}\n"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Eleven kan åbne loginprompten men får ingen admin-shell
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/elevhub-admin-login
+        content: '{{ elevkonto_navn | default("elev") }} ALL=(root) NOPASSWD: /usr/local/sbin/elevhub-admin-login ""'
+        owner: root
+        group: root
+        mode: "0440"
+        validate: /usr/sbin/visudo -cf %s
+
+    - name: Install local administrator update interface
+      ansible.builtin.include_tasks: update-interface.yml
+
+    # I --check findes en ny konto ikke endnu, så kontrollen giver kun mening
+    # ved rigtig kørsel. Samme mønster som elevkonto-rollen bruger omvendt.
+    - name: Kontrollér at administratorkontoen faktisk har administratorret
+      when: not ansible_check_mode
+      block:
+        - name: Læs administratorkontoens grupper
+          ansible.builtin.command: id -nG {{ adminkonto_navn }}
+          register: adminkonto_faktiske_grupper
+          changed_when: false
+
+        - name: Kontoen er i sudo
+          ansible.builtin.assert:
+            that:
+              - "'sudo' in adminkonto_faktiske_grupper.stdout.split()"
+            fail_msg: >-
+              {{ adminkonto_navn }} er ikke i sudo:
+              {{ adminkonto_faktiske_grupper.stdout }}
+            quiet: true
+
+    - name: Administratorkontoen må ikke kunne logge ind som elevkontoen på tty1
+      ansible.builtin.assert:
+        that:
+          - adminkonto_navn != elevkonto_navn | default('elev')
+        fail_msg: >-
+          Administratorkontoen må ikke hedde det samme som elevkontoen; så ville
+          kiosken logge den automatisk ind på tty1.
+        quiet: true

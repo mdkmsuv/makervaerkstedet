@@ -1,0 +1,9 @@
+:root[data-school-theme="red"]{--brand:#c62b2f;--brand-dark:#8c1d24}
+:root[data-school-theme="yellow"]{--brand:#a36a00;--brand-dark:#704600}
+:root[data-school-theme="green"]{--brand:#28734e;--brand-dark:#1a5037}
+:root[data-school-theme="red"] .workshop-choice:hover{border-color:var(--brand)}
+:root[data-school-theme="yellow"] .workshop-choice:hover{border-color:var(--brand)}
+:root[data-school-theme="green"] .workshop-choice:hover{border-color:var(--brand)}
+:root[data-school-theme="red"] .choice-label,:root[data-school-theme="red"] .choice-machine,:root[data-school-theme="red"] .choice-action{color:var(--brand)}
+:root[data-school-theme="yellow"] .choice-label,:root[data-school-theme="yellow"] .choice-machine,:root[data-school-theme="yellow"] .choice-action{color:var(--brand)}
+:root[data-school-theme="green"] .choice-label,:root[data-school-theme="green"] .choice-machine,:root[data-school-theme="green"] .choice-action{color:var(--brand)}

@@ -1,0 +1,48 @@
+name: Kontrollér offentlig kildekode
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Hent kildekode
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Kontrollér eksport, privatdata, kreditering og dokumentationslinks
+        run: python3 -B scripts/public_source.py --check-repository
+      - name: Kontrollér beskyttelsen mod private filer
+        run: python3 -B -m unittest discover -s tests -p 'test_public_source*.py'
+      - name: Kontrollér opdateringspakker med syntetiske testdata
+        run: python3 -B -m unittest scripts.test_build_update_manifest scripts.test_build_github_release
+      - name: Kontrollér fravær af drifts-AI og beskyttelse af pakkeinputs
+        run: python3 -B -m unittest tests.test_public_no_ai tests.test_package_feature_boundary
+      - name: Kontrollér genoptagelse og gendannelse med isolerede Linux-filsystemer
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ansible-core python3-yaml python3-tk
+          sudo python3 -B -m unittest scripts.github_update_service.test_linux_boot
+      - name: Kontrollér elevens opdateringsbesked og beskyttelse af Sluk/Genstart
+        run: |
+          sudo python3 -B -m unittest discover -s linux-elevhub/tests -p test_update_status.py
+          sudo python3 -B -m unittest discover -s linux-elevhub/tests -p test_power_controls.py
+          cd linux-elevhub/tests
+          python3 -B -m unittest test_startup_screen.StartupScreenTests
+      - name: Kontrollér opdateringscontroller og kø med syntetiske data
+        run: |
+          python3 -B -m unittest scripts.github_update_service.test_runtime
+          cd linux-elevhub/server/elevhub
+          python3 -B -m unittest test_update_admin
+      - name: Kontrollér lokal admin og versionsbundne bestillinger uden skoleudstyr
+        run: |
+          sudo python3 -B -m unittest discover -s linux-elevhub/tests -p 'test_local_admin_update*.py'
+          cd linux-elevhub/server/elevhub
+          sudo python3 -B -m unittest test_device_updates test_release_feed

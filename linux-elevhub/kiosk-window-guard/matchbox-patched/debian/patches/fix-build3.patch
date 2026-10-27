@@ -1,0 +1,17 @@
+Index: matchbox-window-manager-1.2.2+git20200512/src/mbtheme.c
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/src/mbtheme.c	2020-06-15 15:42:14.712824255 +0100
++++ matchbox-window-manager-1.2.2+git20200512/src/mbtheme.c	2020-06-15 15:53:57.468893479 +0100
+@@ -123,9 +123,9 @@
+     {
+       data = c->icon_rgba_data;
+ 
+-      img = mb_pixbuf_img_new_from_long_data(t->wm->pb,
+-                                             (data+2),
+-                                             data[0], data[1]);
++      img = mb_pixbuf_img_new_from_int_data(t->wm->pb,
++                                            (data+2),
++                                            data[0], data[1]);
+     }
+   else 
+     {

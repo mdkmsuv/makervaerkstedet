@@ -1,0 +1,11 @@
+# Én delt standardkonto pr. computer. Ingen personlige elevkonti.
+# Kontoen skal senere køre kiosksessionen (elevhubbens egen startside).
+elevkonto_navn: elev
+elevkonto_fuldt_navn: Elev
+
+# "!" betyder låst adgangskode. Sæt en hash i inventory, når det er besluttet,
+# om elevkontoen skal have adgangskode (lav den med: openssl passwd -6).
+elevkonto_adgangskode_hash: "!"
+
+# Ekstra grupper. Tom liste = kun kontoens egen gruppe; aldrig sudo eller adm.
+elevkonto_grupper: []

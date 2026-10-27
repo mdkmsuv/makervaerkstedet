@@ -1,0 +1,153 @@
+# Lokale readiness-kontroller: en slukket skoleserver må aldrig blokere boot.
+- name: Opstartsskærm
+  ansible.builtin.copy:
+    src: startup_screen.py
+    dest: /usr/local/lib/elevhub/startup_screen.py
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Lokale tjenester som skal være klar
+  ansible.builtin.copy:
+    dest: /etc/elevhub/startup.json
+    content: "{{ {'urls': (['http://127.0.0.1:8791/_elevhub/health'] if kiosk_lokale_apps_enabled | bool else []) + (['http://127.0.0.1:' ~ kiosk_lokal_design_laser_port ~ '/api/laser/health', 'http://127.0.0.1:' ~ kiosk_lokal_design_folie_port ~ '/api/laser/health'] if kiosk_lokal_design_enabled | bool else [])} | to_nice_json }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Elevens automatiske login viser ingen terminalhilsen
+  ansible.builtin.copy:
+    dest: "/home/{{ kiosk_bruger }}/.hushlogin"
+    content: ""
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Plymouth skjuler bootbeskeder frem til elevskærmen overtager
+  ansible.builtin.apt:
+    name:
+      - plymouth
+      - plymouth-themes
+    state: present
+    install_recommends: false
+    policy_rc_d: 101
+  register: kiosk_plymouth_packages
+
+- name: ELEVHUBs neutrale Plymouth-tema
+  ansible.builtin.file:
+    path: /usr/share/plymouth/themes/elevhub
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: ELEVHUB Plymouth-temabeskrivelse
+  ansible.builtin.copy:
+    src: elevhub.plymouth
+    dest: /usr/share/plymouth/themes/elevhub/elevhub.plymouth
+    owner: root
+    group: root
+    mode: "0644"
+  register: kiosk_plymouth_theme_file
+
+- name: ELEVHUB Plymouth-script
+  ansible.builtin.copy:
+    src: elevhub.script
+    dest: /usr/share/plymouth/themes/elevhub/elevhub.script
+    owner: root
+    group: root
+    mode: "0644"
+  register: kiosk_plymouth_script_file
+
+- name: Læs aktivt Plymouth-tema
+  ansible.builtin.command: plymouth-set-default-theme
+  register: kiosk_plymouth_active
+  changed_when: false
+  failed_when: false
+  check_mode: false
+  when: not ansible_check_mode
+
+- name: Mappe til Plymouth-initramfs-checkpoint
+  ansible.builtin.file:
+    path: /var/lib/elevhub
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Find initramfs-checkpoint for ELEVHUB-temaet
+  ansible.builtin.stat:
+    path: /var/lib/elevhub/plymouth-initramfs.ok
+  register: kiosk_plymouth_checkpoint
+
+- name: Læs initramfs-checkpointets indhold
+  ansible.builtin.slurp:
+    src: /var/lib/elevhub/plymouth-initramfs.ok
+  register: kiosk_plymouth_checkpoint_content
+  when: kiosk_plymouth_checkpoint.stat.exists
+  failed_when: false
+
+- name: Beregn om Plymouth-initramfs skal bygges
+  ansible.builtin.set_fact:
+    kiosk_plymouth_initramfs_stamp: >-
+      {{ kiosk_plymouth_theme_file.checksum | default('') }}:{{ kiosk_plymouth_script_file.checksum | default('') }}
+    kiosk_plymouth_initramfs_needed: >-
+      {{ kiosk_plymouth_packages.changed or
+         kiosk_plymouth_theme_file.changed or
+         kiosk_plymouth_script_file.changed or
+         ((kiosk_plymouth_active.stdout | default('') | trim) != 'elevhub') or
+         (not kiosk_plymouth_checkpoint.stat.exists) or
+         ((kiosk_plymouth_checkpoint_content.content | default('') | b64decode | trim) !=
+          ((kiosk_plymouth_theme_file.checksum | default('')) ~ ':' ~
+           (kiosk_plymouth_script_file.checksum | default('')))) }}
+
+- name: Vælg ELEVHUB-temaet
+  ansible.builtin.command: plymouth-set-default-theme elevhub
+  register: kiosk_plymouth_theme
+  changed_when: true
+  when:
+    - kiosk_plymouth_initramfs_needed
+    - not ansible_check_mode
+
+- name: Byg initramfs med det valgte Plymouth-tema
+  ansible.builtin.command: update-initramfs -u -k all
+  register: kiosk_initramfs
+  changed_when: kiosk_initramfs.rc == 0
+  when:
+    - kiosk_plymouth_initramfs_needed
+    - not ansible_check_mode
+
+- name: Markér initramfs som opdateret efter succes
+  ansible.builtin.copy:
+    dest: /var/lib/elevhub/plymouth-initramfs.ok
+    content: "{{ kiosk_plymouth_initramfs_stamp }}\n"
+    owner: root
+    group: root
+    mode: "0644"
+  when:
+    - kiosk_plymouth_initramfs_needed
+    - not ansible_check_mode
+
+- name: Find GRUB-indstillingerne
+  ansible.builtin.stat:
+    path: /etc/default/grub
+  register: kiosk_grub
+
+- name: GRUBs mappe til lokale indstillinger
+  ansible.builtin.file:
+    path: /etc/default/grub.d
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when: kiosk_grub.stat.exists
+
+- name: Skjul normal boottekst og nedtælling
+  ansible.builtin.copy:
+    src: elevhub-quiet-boot.cfg
+    dest: /etc/default/grub.d/90-elevhub-quiet.cfg
+    owner: root
+    group: root
+    mode: "0644"
+  when: kiosk_grub.stat.exists
+  notify: Opdater stille opstart

@@ -1,0 +1,132 @@
+name: Byg og kontroller GitHub-opdateringer
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version ÅÅÅÅ.MM.DD eller med fjerde led"
+        required: true
+        type: string
+      notes:
+        description: "Offentlige udgivelsesnoter"
+        required: true
+        type: string
+      scope:
+        description: "system: opdateringer til server, Linux-elever og laser; laser: kun laserstation"
+        required: true
+        default: system
+        type: choice
+        options:
+          - system
+          - laser
+      build_inputs_url:
+        description: "Påkrævet for system: offentlig GitHub-release-URL i dette repository til ZIP med alle eksterne input"
+        required: false
+        type: string
+      build_inputs_sha256:
+        description: "Uafhængigt kontrolleret SHA-256 for input-ZIP; påkrævet sammen med URL"
+        required: false
+        type: string
+      publish_draft:
+        description: "Opret draft med de verificerede assets; gør den ikke offentlig"
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Hent kilde uden lagrede credentials
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Kontroller det offentlige kildetræ
+        run: python3 -B scripts/public_source.py --check-repository
+      - name: Kontroller byggere og fixtures for alle tre roller
+        run: python3 -B -m unittest scripts.test_build_update_manifest scripts.test_build_github_release
+      - name: Byg kontrollerede opdateringspakker
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+          RELEASE_SCOPE: ${{ inputs.scope }}
+          BUILD_INPUTS_URL: ${{ inputs.build_inputs_url }}
+          BUILD_INPUTS_SHA256: ${{ inputs.build_inputs_sha256 }}
+        run: |
+          python3 -B - <<'PY'
+          import json, os, pathlib, subprocess, sys, tempfile
+          with tempfile.TemporaryDirectory() as temporary:
+              temporary = pathlib.Path(temporary)
+              notes = temporary / 'notes.txt'
+              notes.write_text(os.environ['RELEASE_NOTES'], encoding='utf-8')
+              command = [sys.executable, '-B', 'scripts/build_github_release.py',
+                         '--source-root', '.', '--repository', os.environ['GITHUB_REPOSITORY'],
+                         '--version', os.environ['RELEASE_VERSION'], '--notes', str(notes),
+                         '--output-dir', 'publisher']
+              url, sha = os.environ['BUILD_INPUTS_URL'], os.environ['BUILD_INPUTS_SHA256']
+              scope = os.environ['RELEASE_SCOPE']
+              if bool(url) != bool(sha):
+                  raise SystemExit('release_blocked_url_and_hash_required_together')
+              if scope == 'system':
+                  if not url:
+                      raise SystemExit('system_release_requires_reviewed_build_inputs')
+                  command += ['--scope', 'system', '--build-inputs-url', url, '--build-inputs-sha256', sha]
+              elif scope == 'laser':
+                  if url:
+                      raise SystemExit('laser_release_uses_source_only')
+                  manifest = temporary / 'build-input-manifest.json'
+                  manifest.write_text(json.dumps({'schema': 1, 'packages': {'windows_laser_teacher': {}}}), encoding='utf-8')
+                  command += ['--scope', 'selected', '--build-input-manifest', str(manifest)]
+              else:
+                  raise SystemExit('invalid_release_scope')
+              subprocess.run(command, check=True)
+          PY
+      - name: Gem pakker, plan og hashes
+        uses: actions/upload-artifact@50769540e7f4bd5e21e526ee35c689e35e0d6874
+        with:
+          name: release-assets
+          path: publisher/
+          if-no-files-found: error
+          retention-days: 14
+
+  draft:
+    if: inputs.publish_draft
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Hent præcis dette builds verificerede assets
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: release-assets
+          path: publisher
+      - name: Kontroller hashes og opret draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+        run: |
+          cd publisher
+          sha256sum --check --strict SHA256SUMS.txt
+          python3 -B - <<'PY'
+          import json, os, pathlib, subprocess
+          plan = json.loads(pathlib.Path('release-plan.json').read_text(encoding='utf-8'))
+          version = os.environ['RELEASE_VERSION']
+          if plan['version'] != version or plan['repository'] != os.environ['GITHUB_REPOSITORY']:
+              raise SystemExit('release_plan_mismatch')
+          notes = pathlib.Path('release-notes.txt')
+          notes.write_text(os.environ['RELEASE_NOTES'], encoding='utf-8')
+          subprocess.run(['gh', 'release', 'create', 'v'+version, '--repo', os.environ['GITHUB_REPOSITORY'],
+                          '--target', os.environ['GITHUB_SHA'], '--draft', '--title', 'Makerværkstedet '+version,
+                          '--notes-file', str(notes), plan['manifest']['asset'],
+                          *[asset['asset'] for asset in plan['assets']]], check=True)
+          PY

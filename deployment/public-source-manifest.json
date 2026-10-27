@@ -1,0 +1,3086 @@
+{
+  "schemaVersion": 1,
+  "project": "Makerværkstedet",
+  "credit": "Kreditering: Klostermarksskolen.",
+  "sourceRoots": [
+    "app",
+    "web",
+    "linux-elevhub/server",
+    "linux-elevhub/projekter",
+    "linux-elevhub/ansible",
+    "linux-elevhub/cadoodle",
+    "linux-elevhub/tests",
+    "windows-elevhub/server",
+    "tests",
+    "third_party/boxes.py",
+    "linux-elevhub/installation",
+    "linux-elevhub/backup",
+    "linux-elevhub/kiosk-window-guard",
+    "deployment/school-setup",
+    "linux-elevhub/administration"
+  ],
+  "explicitFiles": [
+    "AGENTS.md",
+    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-admin-return.py",
+    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-admin-session.sh",
+    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-admin-xsession.sh",
+    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-local-update.py",
+    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-local-update-gui.py",
+    "linux-elevhub/ansible/roles/adminkonto/tasks/update-interface.yml",
+    "linux-elevhub/ansible/roles/adminkonto/templates/admin-bash-profile.j2",
+    "linux-elevhub/server/elevhub/device_updates.py",
+    "linux-elevhub/server/elevhub/test_device_updates.py",
+    "linux-elevhub/tests/test_local_admin_update_helper.py",
+    ".github/workflows/release.yml",
+    ".github/workflows/source-audit.yml",
+    ".gitignore",
+    "CREDITS.md",
+    "LASER-SERVER-OG-STATION.md",
+    "LICENSE",
+    "LICENSE-SCOPE.md",
+    "README.md",
+    "deployment/DESIGN-CREDITS.md",
+    "deployment/PACKAGE-README.md",
+    "deployment/public-source-manifest.json",
+    "deployment/school-setup/LAES-MIG-FOER-INSTALLATION.txt",
+    "deployment/school-setup/README.md",
+    "docs/AGENTINDGANG.md",
+    "docs/GITHUB-OPDATERINGER.md",
+    "docs/INSTALLATIONSREPARATION.md",
+    "docs/KOM-GODT-IGANG.md",
+    "docs/MAKERSPACE-ARKITEKTUR.md",
+    "docs/MAKERSPACE-BACKUP.md",
+    "docs/MAKERSPACE-OPDATERING.md",
+    "docs/OPDATERINGSKOE.md",
+    "docs/PRINTERFRIGIVELSE.md",
+    "docs/PUBLIC-RELEASE.md",
+    "docs/QUEUE-FILE-LIFECYCLE.md",
+    "docs/RELEASE-LICENSER.md",
+    "docs/SERVERKONTROLPANEL.md",
+    "docs/SKOLETILPASNING.md",
+    "docs/TO-OPSAETNINGER.md",
+    "linux-elevhub/LAERERVEJLEDNING.md",
+    "linux-elevhub/LICENSE",
+    "linux-elevhub/README.md",
+    "linux-elevhub/SIKKERHED.md",
+    "linux-elevhub/THIRD_PARTY.md",
+    "linux-elevhub/administration/README.md",
+    "linux-elevhub/ansible/README.md",
+    "linux-elevhub/ansible/roles/kiosk/files/update_status.py",
+    "linux-elevhub/backup/README.md",
+    "linux-elevhub/cadoodle/README.md",
+    "linux-elevhub/cadoodle/kloster/PRINTGRAENSER.md",
+    "linux-elevhub/cadoodle/kloster/README.md",
+    "linux-elevhub/cadoodle/kloster/assets/Metrophobic-OFL.txt",
+    "linux-elevhub/cadoodle/kloster/assets/metrophobic-latin.ttf",
+    "linux-elevhub/cadoodle/kloster/licenses/BowlerStudio-LGPL.txt",
+    "linux-elevhub/cadoodle/kloster/licenses/CaDoodle-Application-CC0.txt",
+    "linux-elevhub/cadoodle/kloster/licenses/bowler-script-kernel-LGPL.txt",
+    "linux-elevhub/cadoodle/kloster/update/README.md",
+    "linux-elevhub/docs/MICROBIT-USB.md",
+    "linux-elevhub/docs/PROJEKTAABNING.md",
+    "linux-elevhub/docs/SKAERMPAUSE-API.md",
+    "linux-elevhub/installation/README.md",
+    "linux-elevhub/installation/windows/README.md",
+    "linux-elevhub/kiosk-window-guard/README.md",
+    "linux-elevhub/kiosk-window-guard/matchbox-patched/matchbox-window-manager/COPYING",
+    "linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512-2.debian.tar.xz",
+    "linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512-2.dsc",
+    "linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512.orig.tar.xz",
+    "linux-elevhub/projekter/README.md",
+    "linux-elevhub/projekter/web/Metrophobic-OFL.txt",
+    "linux-elevhub/projekter/web/metrophobic.ttf",
+    "linux-elevhub/server/README.md",
+    "linux-elevhub/server/datatraener/README.md",
+    "linux-elevhub/server/elevhub/web/assets/Metrophobic-OFL.txt",
+    "linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md",
+    "linux-elevhub/server/elevhub/web/assets/favicon.svg",
+    "linux-elevhub/server/elevhub/web/assets/hub-bauhaus-v1.png",
+    "linux-elevhub/server/elevhub/web/assets/hub-workbench-v1.webp",
+    "linux-elevhub/server/elevhub/web/assets/maker-rover-v1.webp",
+    "linux-elevhub/server/elevhub/web/assets/metrophobic-latin.ttf",
+    "linux-elevhub/server/elevhub/web/assets/workshop-3d-bauhaus-v1.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-3d-card.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-circuit-bauhaus-v1.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-circuit-v1.webp",
+    "linux-elevhub/server/elevhub/web/assets/workshop-code-bauhaus-v1.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-code-v1.webp",
+    "linux-elevhub/server/elevhub/web/assets/workshop-data-bauhaus-v1.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-data-v1.webp",
+    "linux-elevhub/server/elevhub/web/assets/workshop-ideas-bauhaus-v1.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-ideas-v1.webp",
+    "linux-elevhub/server/elevhub/web/assets/workshop-laser-bauhaus-v1.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-laser-v1.webp",
+    "linux-elevhub/server/elevhub/web/assets/workshop-microbit-bauhaus-v1.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-microbit-v1.webp",
+    "linux-elevhub/server/elevhub/web/assets/workshop-vinyl-bauhaus-v1.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-vinyl-v1.webp",
+    "linux-elevhub/server/kredsloeb/ASSET-SHA256.txt",
+    "linux-elevhub/server/kredsloeb/README.md",
+    "linux-elevhub/server/kredsloeb/assets/Metrophobic-OFL.txt",
+    "linux-elevhub/server/kredsloeb/assets/metrophobic-latin.ttf",
+    "linux-elevhub/server/kredsloeb/assets/workshop-circuit-v1.webp",
+    "linux-elevhub/server/kredsloeb/vendor/circuitjs1/COPYING.txt",
+    "linux-elevhub/server/scratch/CREDITS.txt",
+    "linux-elevhub/server/scratch/README.md",
+    "linux-elevhub/server/sikkerhed/README.md",
+    "linux-elevhub/testmiljoe/README.md",
+    "linux-elevhub/testmiljoe/vaert/byg-usb-iso.sh",
+    "linux-elevhub/testmiljoe/vaert/lav-usb-stik.ps1",
+    "linux-elevhub/testmiljoe/vaert/start-server-test.ps1",
+    "linux-elevhub/testmiljoe/vaert/test-start-server-test.ps1",
+    "linux-elevhub/testmiljoe/vm/preseed-usb.skabelon.cfg",
+    "linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
+    "package-lock.json",
+    "package.json",
+    "requirements-dev.txt",
+    "requirements-windows-runtime.txt",
+    "requirements.txt",
+    "scripts/autostart.ps1",
+    "scripts/build_github_release.py",
+    "scripts/build_school_package.py",
+    "scripts/build_update_manifest.py",
+    "scripts/check_school_control_panel.py",
+    "scripts/extract_beam_presets.mjs",
+    "scripts/github_update_service/Install-Controller.ps1",
+    "scripts/github_update_service/README.md",
+    "scripts/github_update_service/__init__.py",
+    "scripts/github_update_service/common.py",
+    "scripts/github_update_service/linux.py",
+    "scripts/github_update_service/native_probe.py",
+    "scripts/github_update_service/runtime.py",
+    "scripts/github_update_service/server.py",
+    "scripts/github_update_service/templates/linux_install.py",
+    "scripts/github_update_service/templates/linux_remote.py",
+    "scripts/github_update_service/test-native-controller.ps1",
+    "scripts/github_update_service/test_linux_boot.py",
+    "scripts/github_update_service/test_runtime.py",
+    "scripts/install-background.ps1",
+    "scripts/install.ps1",
+    "scripts/lan-access.ps1",
+    "scripts/laser_browser_checks.js",
+    "scripts/make_icons.ps1",
+    "scripts/open-installed.ps1",
+    "scripts/open-laserstation.ps1",
+    "scripts/open-megavaerkstedet.ps1",
+    "scripts/package_documentation.py",
+    "scripts/probe_laser_direct.py",
+    "scripts/public_source.py",
+    "scripts/queued_laser_update/__init__.py",
+    "scripts/queued_laser_update/build.py",
+    "scripts/queued_laser_update/queue_update.py",
+    "scripts/queued_laser_update/remote_runner.py",
+    "scripts/queued_laser_update/test_queued_laser_update.py",
+    "scripts/render_setup_wizard.ps1",
+    "scripts/run_laser_browser_checks.mjs",
+    "scripts/run_student_journeys.py",
+    "scripts/run_tests.py",
+    "scripts/school_server_update/Invoke-SchoolUpdate.ps1",
+    "scripts/school_server_update/README.txt",
+    "scripts/school_server_update/Repair-SchoolRuntimeAccess.ps1",
+    "scripts/school_server_update/test_update.py",
+    "scripts/school_server_update/update.py",
+    "scripts/setup_demo_workshop.py",
+    "scripts/smoke_slice.py",
+    "scripts/smoke_windows_school.py",
+    "scripts/split_release_asset.py",
+    "scripts/start-laser.ps1",
+    "scripts/start-laserstation.ps1",
+    "scripts/start.ps1",
+    "scripts/stop.ps1",
+    "scripts/test_build_github_release.py",
+    "scripts/test_build_update_manifest.py",
+    "scripts/test_preview_svg.mjs",
+    "scripts/test_print_file_selection.cjs",
+    "scripts/test_printer_settings.cjs",
+    "scripts/test_process_supervisor.py",
+    "scripts/test_stl_validation.mjs",
+    "scripts/test_wsl_supervisor.py",
+    "scripts/verify_autostart.py",
+    "scripts/verify_brother_workshop.mjs",
+    "scripts/verify_design_box.mjs",
+    "scripts/verify_design_catalog.mjs",
+    "scripts/verify_design_progression.mjs",
+    "scripts/verify_design_regressions.mjs",
+    "scripts/verify_design_starters.mjs",
+    "scripts/verify_folie_library.mjs",
+    "scripts/verify_installed_demo_workshop.cjs",
+    "scripts/verify_laser_classroom.mjs",
+    "scripts/verify_laser_guides.mjs",
+    "scripts/verify_laser_images.mjs",
+    "scripts/verify_laser_layout.mjs",
+    "scripts/verify_laser_offline.py",
+    "scripts/verify_laser_offset.mjs",
+    "scripts/verify_laser_point_tool.mjs",
+    "scripts/verify_laser_receipt.mjs",
+    "scripts/verify_laser_station_install.py",
+    "scripts/verify_laser_station_launcher.py",
+    "scripts/verify_laser_station_workflow.mjs",
+    "scripts/verify_laser_superuser.mjs",
+    "scripts/verify_laser_teacher_completion.mjs",
+    "scripts/verify_microbit_controller.mjs",
+    "scripts/verify_print_workshop.cjs",
+    "scripts/verify_print_workshop.py",
+    "scripts/verify_project_finish.mjs",
+    "scripts/verify_slices.py",
+    "scripts/verify_studio_laptop.cjs",
+    "scripts/verify_windows_package.py",
+    "scripts/verify_workshop_entry.mjs",
+    "scripts/verify_workshop_projects.mjs",
+    "third_party/BOXES-PY-SOURCE.md",
+    "third_party/boxes.py/.github/ISSUE_TEMPLATE/bug_report.md",
+    "third_party/boxes.py/.github/ISSUE_TEMPLATE/new--box--generator-or-feature.md",
+    "third_party/boxes.py/CODE_OF_CONDUCT.md",
+    "third_party/boxes.py/CONTRIBUTING.rst",
+    "third_party/boxes.py/LICENSE.txt",
+    "third_party/boxes.py/README.rst",
+    "third_party/boxes.py/documentation/src/CONTRIBUTING.rst",
+    "third_party/boxes.py/documentation/src/README.rst",
+    "third_party/boxes.py/documentation/src/api_architecture.rst",
+    "third_party/boxes.py/documentation/src/api_arguments.rst",
+    "third_party/boxes.py/documentation/src/api_burn.rst",
+    "third_party/boxes.py/documentation/src/api_drawing.rst",
+    "third_party/boxes.py/documentation/src/api_edges.rst",
+    "third_party/boxes.py/documentation/src/api_examples.rst",
+    "third_party/boxes.py/documentation/src/api_existing_parts.rst",
+    "third_party/boxes.py/documentation/src/api_generator.rst",
+    "third_party/boxes.py/documentation/src/api_navigation.rst",
+    "third_party/boxes.py/documentation/src/api_parts.rst",
+    "third_party/boxes.py/documentation/src/apidoc.rst",
+    "third_party/boxes.py/documentation/src/boxes.rst",
+    "third_party/boxes.py/documentation/src/faq.rst",
+    "third_party/boxes.py/documentation/src/generators.rst",
+    "third_party/boxes.py/documentation/src/give_back.rst",
+    "third_party/boxes.py/documentation/src/index.rst",
+    "third_party/boxes.py/documentation/src/install.rst",
+    "third_party/boxes.py/documentation/src/install/macos.rst",
+    "third_party/boxes.py/documentation/src/install/windows.rst",
+    "third_party/boxes.py/documentation/src/modules.rst",
+    "third_party/boxes.py/documentation/src/usermanual.rst",
+    "third_party/boxes.py/inkex/inkscape.txt",
+    "third_party/boxes.py/po/readme.txt",
+    "third_party/boxes.py/scripts/boxes_example.ipynb",
+    "web/assets/CC-BY-4.0.txt",
+    "web/assets/Clipper-LICENSE.txt",
+    "web/assets/ImageTracer-UNLICENSE.txt",
+    "web/assets/MAKER-IMAGES.md",
+    "web/assets/Metrophobic-OFL.txt",
+    "web/assets/OpenType-MIT.txt",
+    "web/assets/PUBLIC-ILLUSTRATIONS.md",
+    "web/assets/Paper-MIT.txt",
+    "web/assets/SOURCES.md",
+    "web/assets/Three-MIT.txt",
+    "web/assets/maker-game-piece-v1.webp",
+    "web/assets/maker-hero-v1.webp",
+    "web/assets/maker-pencil-pot-v1.webp",
+    "web/assets/maker-rover-v1.webp",
+    "web/assets/metrophobic-latin.ttf",
+    "web/assets/workshop-3d-bauhaus-v1.png",
+    "web/assets/workshop-laser-v1.webp",
+    "web/assets/workshop-vinyl-v1.webp",
+    "web/favicon.svg",
+    "windows-elevhub/artifact-manifest.example.json",
+    "windows-elevhub/build_packages.py",
+    "windows-elevhub/server/README.md"
+  ],
+  "includeExtensions": [
+    ".py",
+    ".pyi",
+    ".js",
+    ".mjs",
+    ".cjs",
+    ".ts",
+    ".cs",
+    ".java",
+    ".css",
+    ".html",
+    ".json",
+    ".webmanifest",
+    ".md",
+    ".rst",
+    ".txt",
+    ".yml",
+    ".yaml",
+    ".j2",
+    ".ps1",
+    ".cmd",
+    ".bat",
+    ".sh",
+    ".script",
+    ".cfg",
+    ".in",
+    ".toml",
+    ".nix",
+    ".xml",
+    ".manifest",
+    ".patch",
+    ".plymouth",
+    ".svg",
+    ".stl",
+    ".hex",
+    ".sha256",
+    ".1",
+    ".pot",
+    ".po",
+    ".ipynb",
+    ".gitattributes",
+    ".gitignore",
+    ".templates",
+    ".conf",
+    ".service",
+    ".desktop",
+    ".am",
+    ".ac",
+    ".h",
+    ".c",
+    ".cpp",
+    ".hpp",
+    ".inc",
+    ".m4",
+    ".install",
+    ".manpages",
+    ".csproj",
+    ".sln",
+    ".config",
+    ".resx",
+    ".props",
+    ".targets",
+    ".doap",
+    ".xpm",
+    ".schemas",
+    ".xaml"
+  ],
+  "includeNames": [
+    ".gitattributes",
+    ".gitignore",
+    ".gitkeep",
+    "Dockerfile",
+    "Makefile",
+    "boxes_generator",
+    "boxes2inkscape",
+    "boxes2pot",
+    "elevhub-cadoodle",
+    "COPYING",
+    "LICENSE",
+    "NOTICE",
+    "AUTHORS",
+    "ChangeLog",
+    "INSTALL",
+    "NEWS",
+    "COMPLIANCE",
+    "debian-copyright",
+    "changelog",
+    "control",
+    "rules",
+    "series",
+    "copyright",
+    "docs",
+    "postinst",
+    "prerm",
+    "watch",
+    "fix-build4",
+    "format",
+    "README",
+    "LICENSE.txt",
+    "boxes",
+    "boxesserver",
+    "configure",
+    "compile",
+    "depcomp",
+    "install-sh",
+    "missing",
+    "kbdconfig"
+  ],
+  "excludeDirectoryNames": [
+    ".git",
+    ".hg",
+    ".svn",
+    "__pycache__",
+    "node_modules",
+    ".venv",
+    ".runtime",
+    "vendor",
+    "build",
+    "dist",
+    "output",
+    "staging",
+    "cache",
+    "autom4te.cache",
+    ".deps",
+    "research"
+  ],
+  "excludeGlobs": [
+    "**/*-privat*.json",
+    "**/*.a",
+    "**/*.bin",
+    "**/*.db",
+    "**/*.dll",
+    "**/*.dylib",
+    "**/*.exe",
+    "**/*.ggb",
+    "**/*.gif",
+    "**/*.ico",
+    "**/*.ipynb",
+    "**/*.jpeg",
+    "**/*.jpg",
+    "**/*.key",
+    "**/*.lib",
+    "**/*.log",
+    "**/*.map",
+    "**/*.md",
+    "**/*.mesh",
+    "**/*.mo",
+    "**/*.o",
+    "**/*.obj",
+    "**/*.odp",
+    "**/*.p12",
+    "**/*.pem",
+    "**/*.pfx",
+    "**/*.png",
+    "**/*.pyc",
+    "**/*.pyo",
+    "**/*.rst",
+    "**/*.so",
+    "**/*.sqlite",
+    "**/*.sqlite3",
+    "**/*.stl",
+    "**/*.txt",
+    "**/*.user",
+    "**/*.webp",
+    "**/*.woff",
+    "**/*.woff2",
+    "**/*.zip",
+    "**/*logo*.svg",
+    "**/admin-ssh/**",
+    "**/bin/**",
+    "**/brand/**",
+    "**/connection.json",
+    "**/enheder.json",
+    "**/enrollment.json",
+    "**/favicon.svg",
+    "**/installation.json",
+    "**/matchbox-source/**/data/**",
+    "**/private-keys/**",
+    "**/school.json",
+    "**/source-baseline.json",
+    "**/ssh-pins.json",
+    "**/verification-*.json",
+    "app/bed_ai.py",
+    "app/laser_vision.py",
+    "app/laser_vision_client.py",
+    "app/laser_vision_server.py",
+    "app/local_ai.py",
+    "app/plate_camera_client.py",
+    "app/server_ai_artifact.py",
+    "app/training_samples.py",
+    "app/vision.py",
+    "deployment/laser-usb/**",
+    "deployment/public-source-manifest.json",
+    "deployment/quality-update-20261011/**",
+    "docs/CLAUDE-*.md",
+    "docs/LOKAL-PILOT-*.md",
+    "docs/OPRYDNING-*.md",
+    "linux-elevhub/NETVAERK.md",
+    "linux-elevhub/ansible/inventory/pilot-20260919/**",
+    "linux-elevhub/ansible/inventory/skole/group_vars/**",
+    "linux-elevhub/ansible/inventory/skole/hosts.yml",
+    "linux-elevhub/ansible/inventory/testmiljoe/**",
+    "linux-elevhub/kiosk-window-guard/bin/matchbox-window-manager",
+    "linux-elevhub/kiosk-window-guard/matchbox-patched/debian/S64matchbox-window-manager",
+    "linux-elevhub/kiosk-window-guard/matchbox-source/**",
+    "linux-elevhub/laererpanel/README.md",
+    "linux-elevhub/tests/test_black_boot_20261006.py",
+    "linux-elevhub/tests/test_cadoodle_prewarm_update.py",
+    "linux-elevhub/tests/test_cadoodle_queue_flow.py",
+    "linux-elevhub/tests/test_cadoodle_queue_remote.py",
+    "linux-elevhub/tests/test_cadoodle_queue_runner.py",
+    "linux-elevhub/tests/test_cadoodle_start_update.py",
+    "linux-elevhub/tests/test_power_queue.py",
+    "linux-elevhub/tests/test_project_finish_update.py",
+    "linux-elevhub/tests/test_quality_update.py",
+    "linux-elevhub/tests/test_r10_update.py",
+    "linux-elevhub/tests/test_workshop_entry_queue.py",
+    "linux-elevhub/tests/verify_project_finish_package.py",
+    "linux-elevhub/updates/**",
+    "linux-elevhub/updates/cadoodle-queue/**",
+    "linux-elevhub/updates/full-release-20261020/**",
+    "linux-elevhub/updates/power-queue/**",
+    "linux-elevhub/updates/svg-library-queue/**",
+    "linux-elevhub/updates/workshop-entry-queue/**",
+    "pladekamera/**",
+    "scripts/README-VM-MobileSAM.md",
+    "scripts/build_laser_usb.py",
+    "scripts/build_laser_windows.py",
+    "scripts/build_vm_mobile_sam.py",
+    "scripts/build_windows.py",
+    "scripts/bundle_runtime.py",
+    "scripts/canvas_lab/**",
+    "scripts/check_server_ai_cpu.py",
+    "scripts/export_printers.py",
+    "scripts/fetch_package_dependencies.py",
+    "scripts/install-laser.ps1",
+    "scripts/install_vm_mobile_sam.ps1",
+    "scripts/megavaerkstedet_update.py",
+    "scripts/package-dependencies.json",
+    "scripts/prepare_update_readiness_task.ps1",
+    "scripts/prepare_windows_qa_storage.ps1",
+    "scripts/probe_beam_studio.mjs",
+    "scripts/probe_update_readiness.py",
+    "scripts/school_server_update/**",
+    "scripts/setup_laser_vision.py",
+    "scripts/start-local-makerspace.ps1",
+    "scripts/test_probe_update_readiness.py",
+    "scripts/update-ai-cpu.*",
+    "scripts/update-ai-cpu.ps1",
+    "scripts/update-cancelled-print.*",
+    "scripts/update-megavaerkstedet.ps1",
+    "scripts/vm_vision_bootstrap.py",
+    "scripts/windows_qa_first_install.ps1",
+    "scripts/windows_qa_verify_install.ps1",
+    "tests/test_ai_cpu.py",
+    "tests/test_ai_cpu_update.py",
+    "tests/test_ai_trial.py",
+    "tests/test_bed_ai.py",
+    "tests/test_camera.py",
+    "tests/test_camera_batch.py",
+    "tests/test_camera_daylight.py",
+    "tests/test_camera_illumination.py",
+    "tests/test_camera_transfer.py",
+    "tests/test_cancelled_print_update.py",
+    "tests/test_laser_vision.py",
+    "tests/test_laser_vision_client.py",
+    "tests/test_laser_vision_server.py",
+    "tests/test_plate_camera_client.py",
+    "tests/test_plate_camera_integration.py",
+    "tests/test_plate_camera_roundtrip.py",
+    "tests/test_project_library_update.py",
+    "tests/test_server_ai_artifact.py",
+    "tests/test_server_ai_build_boundary.py",
+    "tests/test_training_sample_quota.py",
+    "tests/test_training_samples.py",
+    "tests/test_vision_memory.py",
+    "tests/test_windows_quality_update.py",
+    "third_party/boxes.py/documentation/src/install/log-wsl-win11.txt",
+    "third_party/boxes.py/documentation/src/static",
+    "third_party/boxes.py/examples",
+    "third_party/boxes.py/examples/**",
+    "third_party/boxes.py/scripts/boxes",
+    "third_party/boxes.py/scripts/boxes_proxy.py",
+    "third_party/boxes.py/scripts/boxesserver",
+    "third_party/boxes.py/tests/test_svg.py",
+    "web/camera-batch.js",
+    "web/plate-camera.js",
+    "tests/plate_camera_browser_fixture.py"
+  ],
+  "requiredDocs": [
+    "README.md",
+    "LICENSE",
+    "LICENSE-SCOPE.md",
+    "CREDITS.md",
+    "docs/KOM-GODT-IGANG.md",
+    "docs/GITHUB-OPDATERINGER.md",
+    "docs/AGENTINDGANG.md",
+    "docs/SKOLETILPASNING.md",
+    "docs/MAKERSPACE-ARKITEKTUR.md"
+  ],
+  "limits": {
+    "maxFileBytes": 67108864,
+    "maxTotalBytes": 536870912
+  },
+  "publicImages": [
+    {
+      "path": "web/assets/maker-hero-v1.webp",
+      "sha256": "ceed9777346d1b223060da67db55d65cbabd7492a1ac8f5c72cb4e633a22d585",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "web/assets/maker-game-piece-v1.webp",
+      "sha256": "956a79f281b768d928af28d3b469b8d802f5b2b89d9f8a5ca02ab0665a7bf10c",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "web/assets/maker-pencil-pot-v1.webp",
+      "sha256": "b2b746ebf760cbdb4705a56a08403ed2d64ba7224be46e1d266dff7b91c40259",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "web/assets/maker-rover-v1.webp",
+      "sha256": "1fa21da5a1fe9898113db90aa7c192e42f59e0c2a6ba8d6233e7141c22f3055d",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "web/assets/workshop-laser-v1.webp",
+      "sha256": "03a13d732a03cf01c2196c1a4fa563b1c6e52d6c06d4251bfe01c91708614d5e",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "web/assets/workshop-vinyl-v1.webp",
+      "sha256": "11025226efbea61a26e8c14600b3e40eace8adc8c24f337bf9bcfd3d5e03be0c",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "web/assets/workshop-3d-bauhaus-v1.png",
+      "sha256": "31a12b16cc5576e17e3893bd7430e4d8ef543bd6c96de6e8c254eba31b74d593",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/hub-bauhaus-v1.png",
+      "sha256": "3cfc14e3339400208b25d4d2140b49fb0f0670edc482f808362fb1cc09c54232",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/hub-workbench-v1.webp",
+      "sha256": "803949d4c61c48a15e58df822faa554023aa2c619341a89464c407aa438f4f54",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/maker-rover-v1.webp",
+      "sha256": "1fa21da5a1fe9898113db90aa7c192e42f59e0c2a6ba8d6233e7141c22f3055d",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-3d-bauhaus-v1.png",
+      "sha256": "31a12b16cc5576e17e3893bd7430e4d8ef543bd6c96de6e8c254eba31b74d593",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-3d-card.png",
+      "sha256": "52b728e0b25008f0adefb9e17c9f1431623926a191f11258c0b77dec7df8def7",
+      "provenance": "CC-BY-4.0; afledning af maker-rover-v1.webp til native Tk, uden nyt billedindhold; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-circuit-bauhaus-v1.png",
+      "sha256": "a5c4c7edf2b516cc29dbe101e8e70d296d402e62442086146de529599d10ede5",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-circuit-v1.webp",
+      "sha256": "c348b5ba31f55dd65c755f2e2d07f475f7a12059af0a8bfbf9bf09ca25503a3b",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-code-bauhaus-v1.png",
+      "sha256": "73ec2622051cca64c0d8dfbc8824025308fe9f92d69a790450fea4df1ade27f2",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-code-v1.webp",
+      "sha256": "f07b880c5bed9bd42cc5d563bb01a1526e75de22c9b04fb0701bb0fdb5bcf77f",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-data-bauhaus-v1.png",
+      "sha256": "5d6740443bed699a246ab415a6748e42c79643291a616001b1187fed7e0e6b34",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-data-v1.webp",
+      "sha256": "9c1f9d6187478ab3f57c4d504ccb8abbd9590ead3d69ac0239c825f96984d15d",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-ideas-bauhaus-v1.png",
+      "sha256": "2f14630f2a31defe7f3aabeda5f1bd68e646f64ef49d532e4ee3a062954abc39",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-ideas-v1.webp",
+      "sha256": "ba20f0045e306c12a5596bcd3cad4dab690d7639ec3acd7abeb77ddd3bb0b1fe",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-laser-bauhaus-v1.png",
+      "sha256": "20b581a96850c0fb5f5edfec07b35cd15aa49ff6955fae733f810a980e2dfa8d",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-laser-v1.webp",
+      "sha256": "03a13d732a03cf01c2196c1a4fa563b1c6e52d6c06d4251bfe01c91708614d5e",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-microbit-bauhaus-v1.png",
+      "sha256": "faec910372d8a7ccf930c3b42907983de908f5e20e4bae417059fdd3aac7732b",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-microbit-v1.webp",
+      "sha256": "3fc410867f0df82510b21276e3e91a916c328aa455fc86bbebcd1e36f6e7db0d",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-vinyl-bauhaus-v1.png",
+      "sha256": "cadabcea0277339416748ec53829d08e544de9f242d80c5cf3731bb343e52dd8",
+      "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-vinyl-v1.webp",
+      "sha256": "11025226efbea61a26e8c14600b3e40eace8adc8c24f337bf9bcfd3d5e03be0c",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/kredsloeb/assets/workshop-circuit-v1.webp",
+      "sha256": "c348b5ba31f55dd65c755f2e2d07f475f7a12059af0a8bfbf9bf09ca25503a3b",
+      "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    }
+  ],
+  "privacyRules": {
+    "schemaVersion": 1,
+    "genericHomeUsers": [
+      "elev",
+      "elevhub",
+      "kiosk",
+      "root",
+      "BRUGER",
+      "USER",
+      "USERNAME",
+      "example",
+      "user",
+      "Default",
+      "Public",
+      "All Users"
+    ],
+    "reviewedExceptions": [
+      {
+        "path": "app/discovery.py",
+        "lineSha256": "872da3b536c611c8467debc126f2415761a2c5cedf18aa2aa3640a8fb85715e5",
+        "category": "network.public-ip",
+        "reason": "Standard SSDP multicast protocol constant; not a school endpoint."
+      },
+      {
+        "path": "deployment/school-setup/Setup-School.ps1",
+        "lineSha256": "8ec8f64dab9d1ba51398713b38c5418537d20c10954c57799d1c9e5c8bbead70",
+        "category": "network.private-ip",
+        "reason": "Generic canonical subnet format example in validation help; no installed value."
+      },
+      {
+        "path": "deployment/school-setup/Setup-Wizard.xaml",
+        "lineSha256": "251389f286fba5c27ea6907ac126a1b02c0bae5c50f3eed51b8d92de94db9c96",
+        "category": "network.private-ip",
+        "reason": "Explicit format-only private subnet example in setup help; not a default."
+      },
+      {
+        "path": "deployment/school-setup/setup-wizard-model.ps1",
+        "lineSha256": "2b5dd3ea8d856ac9a9727aa8c998b25e4a41e7f5cc0d640d9c63162b12ba5e08",
+        "category": "network.private-ip",
+        "reason": "Generic private subnet/address examples in validation errors; not installed values."
+      },
+      {
+        "path": "deployment/school-setup/setup-wizard-model.ps1",
+        "lineSha256": "019b67e560f4b8fe3763d3e7dce1dd75953def2e4217dfea19573b2786209e98",
+        "category": "network.private-ip",
+        "reason": "Generic private subnet/address examples in validation errors; not installed values."
+      },
+      {
+        "path": "deployment/school-setup/test_enrollment.py",
+        "lineSha256": "9c2018e5426a4016b3e6ff7c8b1d4cc62d31a4374e2b8ba03b394a54ce4074df",
+        "category": "network.public-ip",
+        "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
+      },
+      {
+        "path": "deployment/school-setup/test_enrollment.py",
+        "lineSha256": "9e4908a19e7d77df7e8a1bf7df1785c5e3e3b866396cdb4e9d01ec0473570963",
+        "category": "network.public-ip",
+        "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-regler.py",
+        "lineSha256": "1d140ea4c93a3f7e0c0c27fc8915e18692803229c7e89cc14e09329ce9f22165",
+        "category": "network.private-ip",
+        "reason": "Standard IANA private/link-local network definitions required by firewall policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-regler.py",
+        "lineSha256": "1d140ea4c93a3f7e0c0c27fc8915e18692803229c7e89cc14e09329ce9f22165",
+        "category": "network.public-ip",
+        "reason": "Standard IANA private/link-local network definitions required by firewall policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-regler.py",
+        "lineSha256": "0becd7287fa8b7a59ec6bc643e8e61af095fb7f7135fcd9a99ab5e02f59adf10",
+        "category": "network.private-ip",
+        "reason": "Standard IANA private/link-local network definitions required by firewall policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "lineSha256": "15d284356228e929cee0143eee89c8ed7d7d176219b677eeefb28223ec5f7317",
+        "category": "network.private-ip",
+        "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "lineSha256": "15d284356228e929cee0143eee89c8ed7d7d176219b677eeefb28223ec5f7317",
+        "category": "network.public-ip",
+        "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "lineSha256": "68df95725a7028bc3c7a8c710441f270c7ba58ab2a771352ddd491380f025d56",
+        "category": "network.private-ip",
+        "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "lineSha256": "39392c73faf3ca7fdc971ab536da2b4f8584636c2d786f4b1d287cc5c6a947db",
+        "category": "network.private-ip",
+        "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "lineSha256": "3236cd9fe0b64f14095db14a661ba1bd113b03b172e004075ab67c991a36aa83",
+        "category": "network.private-ip",
+        "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "lineSha256": "3236cd9fe0b64f14095db14a661ba1bd113b03b172e004075ab67c991a36aa83",
+        "category": "network.public-ip",
+        "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "lineSha256": "188e8e91a2e65b81fbd82b3d59d1ffbbab02797eaf7800a85b26c531699469f8",
+        "category": "network.private-ip",
+        "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "lineSha256": "7f84f525ac255d9d50b7de2fbba67acc25ca773c82e167dd11ddbdfaad30e148",
+        "category": "network.private-ip",
+        "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "lineSha256": "7f84f525ac255d9d50b7de2fbba67acc25ca773c82e167dd11ddbdfaad30e148",
+        "category": "network.public-ip",
+        "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/test_release_version.py",
+        "lineSha256": "b59c3836bca42e25b1f5393c303610a56a6fe875b1eefd6efbd32376cbd879e6",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/files/test_release_version.py",
+        "lineSha256": "b59c3836bca42e25b1f5393c303610a56a6fe875b1eefd6efbd32376cbd879e6",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/tasks/main.yml",
+        "lineSha256": "03a56623876ce0756614f7521915c6a4441de1f93f2a9ba83238c7ffea1e166e",
+        "category": "credential.literal",
+        "reason": "Repeated-character placeholder credentials used only when no device file is configured."
+      },
+      {
+        "path": "linux-elevhub/ansible/roles/kiosk/tasks/main.yml",
+        "lineSha256": "49d2a3de18ed16f45f7eaa948f94ef5951f022102346371bfbb4b99253bf34aa",
+        "category": "credential.literal",
+        "reason": "Repeated-character placeholder credentials used only when no device file is configured."
+      },
+      {
+        "path": "linux-elevhub/kiosk-window-guard/matchbox-patched/matchbox-window-manager/configure",
+        "lineSha256": "c6a277a0ae84c40a414843ce37f5675c84848a3d3ae33895f5ed669641b4a6e8",
+        "category": "network.public-ip",
+        "reason": "Upstream C11 specification section reference, not a network address."
+      },
+      {
+        "path": "linux-elevhub/server/README.md",
+        "lineSha256": "4c71f630b218bdd0000108d51ac5afedf17546bfe097ad60d2f09e1faeaa1940",
+        "category": "network.public-ip",
+        "reason": "Standard SSDP multicast group documented for printer discovery, not school topology."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "lineSha256": "beabef6ef8ba4b9240eb7459afa96a0a9c8657d722ee90aedc6cc495b49809a9",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "lineSha256": "cbdc5568cf4d4cc266b99ffb396dd532abadc3dbc43743571b770c8e1962f822",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "lineSha256": "91de9d979f929a9a7ded1e2ad993c96e99b0fa4933bec8a3243619a655e20c00",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "lineSha256": "6b49fab3d280003c1b0133e4717a1e2de6439b7278f18e1286895d4258b7e68f",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "lineSha256": "c620d53743d999f3b08a14d20fc6943a5bb911464707a98a8d6534a7c3d8d6e8",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "lineSha256": "722bb6ceea158f1bded633db52e33ce6bf663de89ad7a380ee97bfaacf17ce64",
+        "category": "network.public-ip",
+        "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "lineSha256": "49bf8cbdd14d1e92d2d2855edf464d4776a04b2a7a64d553bbbed163f2a3457e",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "lineSha256": "ad7d86ba3ffaff181ce9d1a42efe224a325cfc9a140dbf2c409f2de808816ccf",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "lineSha256": "0f33ebb1c6ba6cfa78de59765bd1e7a40ad38bfec76eb7bb3cc7e2ffb1f028c3",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "lineSha256": "eb95935154451ba67a676d7edee2b20abe0f6865e7f51198f4c6b08f2d597610",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "lineSha256": "0de4222a7f56bec5cdac00f6223ca2c1998fa3aa18ec4f47d0f65b338a8c7e6c",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "lineSha256": "bb9d0ef03b62df9fdbf8e359ab29c3147c2c0256fbd2b417c0d67385adedbee0",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "lineSha256": "68114bdcf0f90a1aa9e2eca6efcebb8e24d1040d14ac26fafdfc23e855084944",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "lineSha256": "43d468416b749a3f9d4d0c3a0b47f676eef9134dd8cd7f8968f3f408c50e9187",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "lineSha256": "d7ef91144b9f044022ec8d39654f8e6f15eb9adbd344ac8d00395678c40a1479",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "lineSha256": "643a2cafb329b45c1c309e26d5d846a1427e9bb48232ac297c1bbb9cfefe9a88",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "lineSha256": "643a2cafb329b45c1c309e26d5d846a1427e9bb48232ac297c1bbb9cfefe9a88",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_makerspace_laser_admin.py",
+        "lineSha256": "39ac2c057fe16170352f23874176023893887c2b2bb46db0682c88615fd7b5d6",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_makerspace_printer_workflows.py",
+        "lineSha256": "5d88be9be246bc288b83d9deb67040997afd5e78f6cc0125a1213ae88bec3a2a",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_makerspace_printer_workflows.py",
+        "lineSha256": "1084761e349c90b4b9d899d13df8f89b031d793777c0271d14284b7852158a1d",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "lineSha256": "6e3d70856cb9a2010618573835f823c8b4be4ec8265dcd6f60ddbcd6fc28fbd8",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "lineSha256": "c4d23eedceec4b59cce897a0938ed2aaf644ce893a824dfef8dbd1eab8378377",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "lineSha256": "6b840e31708233bc03c02729c68e16a369f75751b6c6a4f8c5ca816ad3d3e024",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "lineSha256": "87d0ae4f9c7ea6f9fd26d8ac4331c54f277d58374497d01a527b353abb45d3e4",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "lineSha256": "6ff8365210a3f2f8a336ea8a581e9329a81b21348a00fb407cc18ca35630ce7b",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_opret_sikkerhed.py",
+        "lineSha256": "dcbef01571c4d129ccff719de08b3979b00886e5a48865ac2666b1cfafb0a93f",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_system_overview.py",
+        "lineSha256": "ff037802d68ad8024ebf22286f65ff7261a7f309c447129caae34972558e5eb6",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_system_overview.py",
+        "lineSha256": "cfd9c5795232ff6dc6d8e888edbad3470161e57f3b070ba22f1ff9aacf2980f3",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/test_vaerksteder.py",
+        "lineSha256": "5a2371473f046bd3b063d6bfa2bce8b6c12cdc411d6a045ee62a15e3861c44a0",
+        "category": "network.local-hostname",
+        "reason": "Synthetic host/program-property fixture used to test local host rejection or parsing."
+      },
+      {
+        "path": "linux-elevhub/server/elevhub/web/makerspace.html",
+        "lineSha256": "c6daca9ca3e06c588678ec9ce19a5de018738eed3f3c1b5930788948975a9b73",
+        "category": "network.private-ip",
+        "reason": "Generic printer IPv4 input placeholder; no prefilled or saved school endpoint."
+      },
+      {
+        "path": "linux-elevhub/testmiljoe/vaert/start-server-test.ps1",
+        "lineSha256": "71e0b037b882360f5e3cf0494ccd667f2aa468859d891e8f122fd9097059edfd",
+        "category": "network.private-ip",
+        "reason": "Documentation of unspecified service binds in the isolated test harness."
+      },
+      {
+        "path": "linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
+        "lineSha256": "537b0e1e80c546c79723412e89a128a6d7cbd2224a0c558a5b3d9a11de3afc56",
+        "category": "network.private-ip",
+        "reason": "Generic private IP/netmask and public DNS examples in installation template; not school data."
+      },
+      {
+        "path": "linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
+        "lineSha256": "a89c39136803932ac90d5c192f85aeaa0a7d00848c66215cc6b5260eeaa7f37f",
+        "category": "network.private-ip",
+        "reason": "Generic private IP/netmask and public DNS examples in installation template; not school data."
+      },
+      {
+        "path": "linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
+        "lineSha256": "807e088fcea0734f0d512b2996d2d81d535d2b0c839236e5f020eaa57ca1e4dc",
+        "category": "network.public-ip",
+        "reason": "Generic private IP/netmask and public DNS examples in installation template; not school data."
+      },
+      {
+        "path": "linux-elevhub/tests/controleer_nft_linux.py",
+        "lineSha256": "ae478592dd0d1d427ff878883c640bea2728e9005855f119c0785492dc874c58",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/tests/controleer_nft_linux.py",
+        "lineSha256": "f05b582d1931d1d7a52a068dff055b1569c8573a32e19e5d904e54b3c1643297",
+        "category": "inventory.mac",
+        "reason": "Synthetic locally administered MAC used by isolated Linux network policy test."
+      },
+      {
+        "path": "linux-elevhub/tests/controleer_nft_linux.py",
+        "lineSha256": "7932e234cf34ceb56ef11d43e34211992ab7c6ce3e7208652f26269cb94d43eb",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/tests/test_admin_login.py",
+        "lineSha256": "d5d3359bf4d99153ec27b42d3bb3e46999e509d0bb923c188bafe4872ef23f49",
+        "category": "secret.password-hash",
+        "reason": "Synthetic shadow-format mock or repeated-character test hash; no real password material."
+      },
+      {
+        "path": "linux-elevhub/tests/test_cadoodle_prewarm.py",
+        "lineSha256": "2c9dd8c52dadd9cd324aacc9ad01c2eacb6b4beb5a54c8e38375b5241a14e2e3",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_elevbjaelke_status.py",
+        "lineSha256": "c276d364c8dd3543792d2b9ed7853c4e5975a2dbfea6624a58369d091bb3d6e0",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_elevbjaelke_status.py",
+        "lineSha256": "c276d364c8dd3543792d2b9ed7853c4e5975a2dbfea6624a58369d091bb3d6e0",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_elevbjaelke_status.py",
+        "lineSha256": "c276d364c8dd3543792d2b9ed7853c4e5975a2dbfea6624a58369d091bb3d6e0",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_elevbjaelke_status.py",
+        "lineSha256": "c276d364c8dd3543792d2b9ed7853c4e5975a2dbfea6624a58369d091bb3d6e0",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_full_installation.py",
+        "lineSha256": "8026e96eb4e1e5a8c29d7b10cb985edc15abb1d0f5d28bfc3858706445a94013",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_full_installation.py",
+        "lineSha256": "71aada3f50e390debcf276d7d1446dfe345809dd46a643f117e8c03fd611886e",
+        "category": "secret.password-hash",
+        "reason": "Synthetic shadow-format mock or repeated-character test hash; no real password material."
+      },
+      {
+        "path": "linux-elevhub/tests/test_full_installation.py",
+        "lineSha256": "26f9b78451af8a9d5784f5d8d4a8f26fab08b7e6c5012c6d3840dfd9dbf1c02e",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_full_installation.py",
+        "lineSha256": "27bbbec4e2c0528594a1d0e5d9155690a85db134994b9cb057e80d3700b1fead",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_full_installation.py",
+        "lineSha256": "0af5c867922502d315f5432afcf1be0f96d20cb765dee38458b7ce18d6db955e",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_full_installation.py",
+        "lineSha256": "0753b8b18db0210a04887cae8c0552d7642964850b5ffde3104dabfda69a140f",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_full_installation.py",
+        "lineSha256": "a0975107aea6596b4975066949df40504efe779565144f1f8aa31153a9965ced",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_internetregler.py",
+        "lineSha256": "c3bcd7cfe670ecc4f519ab245ae526f3bc727a69d1d45649015ec99c6f479778",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_inventar_fra_serveren.py",
+        "lineSha256": "8a3bbed220bceca2c353e908e999df1cb8fc14abe0a1e2588cf511ece37f429b",
+        "category": "network.public-ip",
+        "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
+      },
+      {
+        "path": "linux-elevhub/tests/test_inventar_fra_serveren.py",
+        "lineSha256": "3845557ddfa63a051fc0896edc4154059dd841c568eb1661153caec9d2054f31",
+        "category": "personal.local-home",
+        "reason": "Synthetic teacher/account path fixture used to verify relocation or shell quoting."
+      },
+      {
+        "path": "linux-elevhub/tests/test_inventar_fra_serveren.py",
+        "lineSha256": "2a168a826f49fe21afb703719cab63a9f328fea2450e5829fe78b757d7a533c8",
+        "category": "personal.local-home",
+        "reason": "Synthetic teacher/account path fixture used to verify relocation or shell quoting."
+      },
+      {
+        "path": "linux-elevhub/tests/test_inventar_fra_serveren.py",
+        "lineSha256": "2f0c93f2246e1a809eb94133af86b9173035ef246c30588677de18337271d73f",
+        "category": "personal.local-home",
+        "reason": "Synthetic teacher/account path fixture used to verify relocation or shell quoting."
+      },
+      {
+        "path": "linux-elevhub/tests/test_kiosk_offline_reconnect.cjs",
+        "lineSha256": "983a41bda4d8eda1ba83ed0df36e08ffad8e3515b1cbe525d8ca4fb80e0ef0a6",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_kiosk_proxy_policy.py",
+        "lineSha256": "7fc16a6f49d1aae2407fb66bf365c08ca543b80bf9257f0b39921346ce82832c",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_klient_sikkerhed.py",
+        "lineSha256": "fe63ed37e9f1bd63814ae9b190e810bedb2acf7fcb3ee8c179310e47c6867c7a",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_klient_sikkerhed.py",
+        "lineSha256": "ad58d07c1702905bb2de64d3ac5b34d04e058941a82ffb15dc8b3c056d1b33e8",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_klient_sikkerhed.py",
+        "lineSha256": "44ef24583dc9888ae43b9e04ae600a520df29465f4fca1ad09f2658d053210d8",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_makerspace_printers.cjs",
+        "lineSha256": "b5e83cf59c99d0762933610d00af9b9fcdc2a43b3734f88ae3078cb51cd867ff",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/tests/test_makerspace_printers.cjs",
+        "lineSha256": "575871ad931598a663c5728dea494abb90a34b99e65024f680d3ad0a07c664ab",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/tests/test_makerspace_printers.cjs",
+        "lineSha256": "b43dbe805a1af2542cc051b1a6c2c6921dc0bc63db2592496ee3ea097143a1c0",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/tests/test_native_3d_browser.cjs",
+        "lineSha256": "e239b6f28cf40f5400458d89e1d67bde342b14920304ea1732776cadcde6792a",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_startup_screen.py",
+        "lineSha256": "1699d2682549ec35009241ad55e27cbc4060348d00809f31ac388200c3d6ff25",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/tests/test_webproxy.py",
+        "lineSha256": "35b9144d6eaa747ba5f281418e182d9ee00894f83e03634ff05ae4655fe78ac4",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/tests/test_webproxy.py",
+        "lineSha256": "ad32544f0bd68a54972027f88224cda29baedfe130c174fa5b71524cc8499a72",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "linux-elevhub/tests/test_workshop_launcher.py",
+        "lineSha256": "94796f53280938cb94403fa650265571c0d579a9689de96cd4ec53c544b48fd1",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "linux-elevhub/tests/test_workshop_launcher.py",
+        "lineSha256": "94796f53280938cb94403fa650265571c0d579a9689de96cd4ec53c544b48fd1",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "scripts/public_source.py",
+        "lineSha256": "77deaaf4df830154178d077004fa5e05bb748cf9e8299936cbbea3d75542f19a",
+        "category": "network.local-hostname",
+        "reason": "Exact programming property names recognized by this scanner, not hostnames."
+      },
+      {
+        "path": "scripts/public_source.py",
+        "lineSha256": "24dcc749af7652621d8ebedd2eeb9834b3291f0573b9685e4a6cebffb1883e10",
+        "category": "network.local-hostname",
+        "reason": "Exact programming property names recognized by this scanner, not hostnames."
+      },
+      {
+        "path": "scripts/queued_laser_update/test_queued_laser_update.py",
+        "lineSha256": "aab39a7223f190dec01f8147a1f5bb812918e97953065028511bd97f96ab64ae",
+        "category": "personal.local-home",
+        "reason": "Synthetic teacher/account path fixture used to verify relocation or shell quoting."
+      },
+      {
+        "path": "scripts/queued_laser_update/test_queued_laser_update.py",
+        "lineSha256": "a181ccfc0b8ef297d56bc95637df54ed859b81be3b27222402c3b61122d9fbb6",
+        "category": "personal.local-home",
+        "reason": "Synthetic teacher/account path fixture used to verify relocation or shell quoting."
+      },
+      {
+        "path": "scripts/render_setup_wizard.ps1",
+        "lineSha256": "5f5217bb7e918043894ab4b377619c73a8bc795a8e0c525ed551b1ac6643b589",
+        "category": "network.private-ip",
+        "reason": "Static synthetic setup renderer input; no installed school configuration."
+      },
+      {
+        "path": "scripts/render_setup_wizard.ps1",
+        "lineSha256": "da0e62906a0bd77271582c605f659487e3b3d76b594c2d2269bab568b21e50d8",
+        "category": "network.private-ip",
+        "reason": "Static synthetic setup renderer input; no installed school configuration."
+      },
+      {
+        "path": "scripts/test_printer_settings.cjs",
+        "lineSha256": "706a1c64a60e8764026d3b068387077687ac37755b00a91e99796f07780a075b",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "scripts/test_printer_settings.cjs",
+        "lineSha256": "f3fa50312c6abe5ecba3403de9863c6396b23cc12e51539185566c5d1a9be4e4",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "scripts/test_printer_settings.cjs",
+        "lineSha256": "279b39be315a282adad935e7f7ebb5dc2e348bce352e55776c378217301d48e9",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "scripts/test_printer_settings.cjs",
+        "lineSha256": "b6ddabe615bd7f5c923c9e35ae08e3702d0fd032844020089f806ffb62dd5376",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "scripts/test_printer_settings.cjs",
+        "lineSha256": "772125224fa0a5010bfe6e109642f1ea7d54111d39c7cd3bc2cdc0c406d52923",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "scripts/verify_autostart.py",
+        "lineSha256": "d044734ce5870fe0eb32bbbd29ebd5092ae86f147ee782dbb2e2a864ca98bcab",
+        "category": "credential.literal",
+        "reason": "Isolated simulated printer credential in an autostart verification harness."
+      },
+      {
+        "path": "scripts/verify_project_finish.mjs",
+        "lineSha256": "a7f32a43fb353f6612ee6ab04ccde0e0fe764d4cf899d403f071e06689b3b246",
+        "category": "network.local-hostname",
+        "reason": "JavaScript object property for a local test listener used for an ephemeral loopback test port."
+      },
+      {
+        "path": "scripts/verify_workshop_entry.mjs",
+        "lineSha256": "0d007162230ae1a2d0215f15fdf6025a5995395a1a80bd7b02bd975c062c6fb3",
+        "category": "network.local-hostname",
+        "reason": "JavaScript object property for a local test listener used for an ephemeral loopback test port."
+      },
+      {
+        "path": "tests/fixtures/setup_wizard_view_checks.ps1",
+        "lineSha256": "76b0d49c35ec5c635080f02aa102d0ddef2a8f39a16ab49de2f4b00cd91745a9",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/fixtures/setup_wizard_view_checks.ps1",
+        "lineSha256": "359cf03de584dedfc53bf7c29c1bf785cb28319c016ba5e799055ac83df5e16d",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/fixtures/setup_wizard_view_checks.ps1",
+        "lineSha256": "a1ed7a69e5ff7c45db57622903248b8a33e284ff026107d0f88b7b6569d82735",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/fixtures/setup_wizard_view_checks.ps1",
+        "lineSha256": "1bef5aa2fe9759a3e067ad06424b077e1eb8af7b068823c9624ee83cd5057fef",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/fixtures/setup_wizard_view_checks.ps1",
+        "lineSha256": "5eeed0f1fea50de37968baf16529d459bce21a228e655f6f162dc509c7bbba38",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/fixtures/setup_wizard_view_checks.ps1",
+        "lineSha256": "6aa6fa6526cd22e31641cf1f08e6b7a593605260d7d3eb095edef2a55276477d",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/fixtures/setup_wizard_view_checks.ps1",
+        "lineSha256": "1292c302a47c09b31ebe22ab10c2284e6d1d9ef5da6a31864e780b34b142ab61",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/fixtures/setup_wizard_view_checks.ps1",
+        "lineSha256": "36b1b540806d55930c0dd9ef5ca035540c65806cd3231e6977d1efd7407ab02d",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_bambu_cancel_code.py",
+        "lineSha256": "e9577a60017b6ca00aef2ddb59fbde5428d6a62695323fd26ca2c8203a1349a4",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_bambu_certificates.py",
+        "lineSha256": "376f71c1f8cb3a4144fefd5a24634f235ca90dc919a2844aa30a332ce3d01601",
+        "category": "network.local-hostname",
+        "reason": "Synthetic host/program-property fixture used to test local host rejection or parsing."
+      },
+      {
+        "path": "tests/test_bambu_certificates.py",
+        "lineSha256": "ce109d630a303b52135f0ff255a9965f343bf28a1f9f220d416372cc88de21f7",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_bambu_certificates.py",
+        "lineSha256": "fddb7a1d42611cdea1163bce672340e56f434d1b8225e2626f6470c1e6634743",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_bambu_certificates.py",
+        "lineSha256": "0969d915d5c717203645f00fec8e00f230b9c8a0bb634bde3a8b9373349d80f4",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_bambu_certificates.py",
+        "lineSha256": "7915f4b7e13eb2728bc55b545101e7e10cce98bf233ade2c1fcfca419bb8931e",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_bambu_certificates.py",
+        "lineSha256": "7c78194336dcf73bd5665806d8d0cc8570c3e4d410847445e9342983ff0d6c48",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_bambu_certificates.py",
+        "lineSha256": "7c78194336dcf73bd5665806d8d0cc8570c3e4d410847445e9342983ff0d6c48",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_camera_capture.py",
+        "lineSha256": "7ec1969728ea9aff7332c0c42f95f350bc01eb1881513b6e491b510bfe7ab6ef",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_camera_capture.py",
+        "lineSha256": "7ec1969728ea9aff7332c0c42f95f350bc01eb1881513b6e491b510bfe7ab6ef",
+        "category": "network.local-hostname",
+        "reason": "Synthetic host/program-property fixture used to test local host rejection or parsing."
+      },
+      {
+        "path": "tests/test_demo_workshop.py",
+        "lineSha256": "a2592a772c2e56b790b2ada801fc1ddef8c1ecc25e3f514d890695cba16396f1",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_discovery.py",
+        "lineSha256": "08b5067779803c90c6b1c1614f305c48460c7e7abbbdc2295146e5b2f0e7faa2",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_discovery.py",
+        "lineSha256": "4c77797d3e4c4b4e9b5c69823b1610f990d7888900535b7083a50b42d5e9f354",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_discovery.py",
+        "lineSha256": "0c434da6077a85626682885d92d26b7e51fb316204523155118ef822442debee",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_discovery.py",
+        "lineSha256": "0c434da6077a85626682885d92d26b7e51fb316204523155118ef822442debee",
+        "category": "network.public-ip",
+        "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
+      },
+      {
+        "path": "tests/test_firmware.py",
+        "lineSha256": "05c16e37bdac5fa9a070d3ae9c4e79564754c98a8111b427e736beb2540555f9",
+        "category": "network.public-ip",
+        "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
+      },
+      {
+        "path": "tests/test_firmware.py",
+        "lineSha256": "9e93cf3058ed8dd61a3ef3785ceb9aa09c99055ce66578f790db857ca437727f",
+        "category": "network.public-ip",
+        "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
+      },
+      {
+        "path": "tests/test_generation_relocation.py",
+        "lineSha256": "6ec39bf7cb5d7201a271ccab92c1f09c36e3ec901893004f1c371cb06ad8e3b8",
+        "category": "personal.local-home",
+        "reason": "Synthetic teacher/account path fixture used to verify relocation or shell quoting."
+      },
+      {
+        "path": "tests/test_generation_rollback.py",
+        "lineSha256": "af504ca16e6663cf3dc13fe23cdf13d6d27f36ead49fc7406bc3e0af2d246da9",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_generation_rollback.py",
+        "lineSha256": "af504ca16e6663cf3dc13fe23cdf13d6d27f36ead49fc7406bc3e0af2d246da9",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_hardware_workflows.py",
+        "lineSha256": "e96f75609dfc7810408417ab7f60ab49a446341669cba63ae096b11ae15c8b29",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_hardware_workflows.py",
+        "lineSha256": "619dfc2bfe372c86d0140a319d159d11531272d93827c75fdbe8c4a3a886ef7c",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_http.py",
+        "lineSha256": "306293098ebcb6fe8a089f4da35407b8c17212095c21e35afea146b2757f0d69",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_installation.py",
+        "lineSha256": "38a72f1bc77860ab817dda8acd2b1dbc994489f2f2d0bbce663535dcaf9680ee",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_installation.py",
+        "lineSha256": "313972d46ff467f10ca39d04988793ceaeffcc6478a5cbfe928110a6db55330c",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_installation.py",
+        "lineSha256": "065c53fbdc866b86bb851ddcac6bf8aa57120b9d3dcdc642cdadd2168f61a009",
+        "category": "network.public-ip",
+        "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
+      },
+      {
+        "path": "tests/test_installation_backup.py",
+        "lineSha256": "058e04e0fa7f36266859441a0518a30faa6287713bc6da5ccf08b3b96c8dc735",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_laser_service.py",
+        "lineSha256": "16e00d4443b675edc08eb16fa82946e868012438ca5b0cae23ec9dc731bdcb8c",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_laser_service.py",
+        "lineSha256": "6be1758070b3f4b7a3a495698ff992145d3d997f3e5da9996017d770207120ad",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_library_http.py",
+        "lineSha256": "4a331df9375fd00912bee44f361b2170ceb010a53b1362c028c3b329b0935cfc",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_library_http.py",
+        "lineSha256": "71ad34ab541732365acdc8dd4a594b725bb70c94ccd9d47dc4eec042cfbfd876",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_library_http.py",
+        "lineSha256": "e613e279f8d71cb0d07b3b66cbc6478223856d37976a45d028fb012a74a0b825",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_library_http.py",
+        "lineSha256": "3e45ea29b4990f9a3b47f4e697cdf095391f0d48bd97ee9453d1709dbcaf988d",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_library_http.py",
+        "lineSha256": "2941397f35bfedc5ee58ec5df9671c6192820078342f5e070022ae618b14d445",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_makerspace_printer_integration.py",
+        "lineSha256": "0f71d33a32feaad25c0ea7b904203adf746410261c8e69eb37723cb5eeb209dd",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_makerspace_printer_integration.py",
+        "lineSha256": "0f71d33a32feaad25c0ea7b904203adf746410261c8e69eb37723cb5eeb209dd",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_manage_school.py",
+        "lineSha256": "522f1f2bba488228e6f4c81fc63daae9feee3263653a9af2180ed1dedf42fa91",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_nozzle.py",
+        "lineSha256": "468959d4494989022cd1e9fee17c88bf553b6510e272aed44c06784c56bad225",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_print_project_origins.py",
+        "lineSha256": "6d033c62baa887658107174ed6ed78601ea27a0ed668c4df86c87bf8cf4af254",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_bridge.py",
+        "lineSha256": "0f71d33a32feaad25c0ea7b904203adf746410261c8e69eb37723cb5eeb209dd",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_printer_bridge.py",
+        "lineSha256": "0f71d33a32feaad25c0ea7b904203adf746410261c8e69eb37723cb5eeb209dd",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_bridge.py",
+        "lineSha256": "2317ed6b382daf1f08cf948704abc1c25a1805e924f357236c642c7d8aef4c1a",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_bridge.py",
+        "lineSha256": "98a2c2fe25462454f73da98c810dcd63ead896a90ae4036e0de9463adbd8472b",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_printer_bridge.py",
+        "lineSha256": "4f48c75674262ace0991b7d388c45df7578fe79d74a52df493fa3054efe8bead",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_bridge.py",
+        "lineSha256": "13888ff9b286c14b009cd760efe9fbf567a165eb8308c011982df6c72b432618",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_bridge.py",
+        "lineSha256": "0d706cecaa760c66097856198a253a1f654eb5531314632e55e4f64de8ef7162",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_bridge_workflows.py",
+        "lineSha256": "34e8b2d2208dbda20b6e3c8e4050dc2ae30fe4732ae6800977bf0064c91756a1",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_bridge_workflows.py",
+        "lineSha256": "38136c78249a96f6fe8666386e15868c192f76ac9b7a535895f6af7d2af60923",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_printer_certificate_http.py",
+        "lineSha256": "79ef5cc60e4adacaa35f2cbd0cf8af63cccfddcfab85574dadc960fc992eb445",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_printer_certificate_ui.cjs",
+        "lineSha256": "40ea50141eb90d327acb03d00d866b97e7dbd7bb436d8db115faf529938cce6b",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_config.py",
+        "lineSha256": "6b9fd86b2cebf0965802a3398b6e4bb8803c583a995f28f6cb8cf79c31f56105",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_printer_config.py",
+        "lineSha256": "6b9fd86b2cebf0965802a3398b6e4bb8803c583a995f28f6cb8cf79c31f56105",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_config.py",
+        "lineSha256": "0cfaa3cbb4ccef3acaf14e43ff95adb7d1e7519e7b2988f567e4fe24ffcecac3",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_config.py",
+        "lineSha256": "c78d5a0386de3eaf2b535398b175b872190fe8bdd511eda97561a48ff7e43d5a",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_printer_lights.py",
+        "lineSha256": "0b07437dfb6c05dea19063f7b854f4a5cc8e9791b684f0847599e2886a48cca0",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_printer_recovery_transfer.py",
+        "lineSha256": "a0d5d3a1fd20f70fffe41a8e352d52f41d079abe4f03b1a06490f38cbbf766f0",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_printer_recovery_transfer.py",
+        "lineSha256": "a0d5d3a1fd20f70fffe41a8e352d52f41d079abe4f03b1a06490f38cbbf766f0",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_printer_recovery_transfer.py",
+        "lineSha256": "9a1433d8ed629fbcf60697cda8ae1830e7d9ff4a53c93f72be1cd49c0d1b1f6c",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_public_source_export.py",
+        "lineSha256": "78a440e41ef417f418e54118114d36c0fc4ddf14032d2cad2c13bd2cc7c6dec1",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_public_source_privacy.py",
+        "lineSha256": "3305f403c8fbd989847abfd658249470262787d38d7fecb51f397da316273e04",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_public_source_privacy.py",
+        "lineSha256": "1101514593e65fd3d8c034518f3918253ef63e0ad25b00af3657f17a78ad8650",
+        "category": "network.local-hostname",
+        "reason": "Synthetic host/program-property fixture used to test local host rejection or parsing."
+      },
+      {
+        "path": "tests/test_public_source_privacy.py",
+        "lineSha256": "8728771300056fb4c8e0103f5f91acdb79c18e73a3876cf10f9fc7156aa2f0c1",
+        "category": "network.local-hostname",
+        "reason": "Synthetic host/program-property fixture used to test local host rejection or parsing."
+      },
+      {
+        "path": "tests/test_public_source_privacy.py",
+        "lineSha256": "040930f21fb90cd68fea8821499b09a7cd5781c5e649bac7437e2aa0dcab844f",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_public_source_privacy.py",
+        "lineSha256": "df837b233b70e0275b1019d6d79e4283612c491d0620a17d082358e6635bf5e5",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_queue_control.py",
+        "lineSha256": "2260e7bd393e4635668ef68ca6e6a76d0789698e6bd305724f957e6580b05c48",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_school_admin.py",
+        "lineSha256": "b509d9837a22640ba5f6e97442179534fce55a59fcd9a2ffd33e67047a4accac",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_school_admin.py",
+        "lineSha256": "202a764d77b42e6613c17b73b51e8a6c924cefc5cebcbe5fb26493a792635bb9",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_school_admin.py",
+        "lineSha256": "b08a317296fa275596d6798ab714080a73f4685a588333e1fcf975ca220fb48b",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_school_admin.py",
+        "lineSha256": "2b07b4d7b2290f900344deef7e4b73ef40c769e0bf086c38fcdd27aa88d0b3cd",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_setup_wizard_model.py",
+        "lineSha256": "eaf7ebbcb41d98679f4d40135324de31375a95406920317ccfb6f27ef30a37e1",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "tests/test_start_connection.py",
+        "lineSha256": "3cd6e20a317dd07eb864bac6ca6e81d628f2ee1df03759ae83673283d1b98142",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "tests/test_windows_artifact_manifest.py",
+        "lineSha256": "742a79e1b7c5cb277e2fb2f064a80ed6b56f41d56a046069cf19d10f5888083f",
+        "category": "credential.literal",
+        "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
+      },
+      {
+        "path": "third_party/boxes.py/boxes/generators/beequeentransportbox.py",
+        "lineSha256": "0c575159c437985d995fe358866dd6f00ab639724f0305f3537df0d41aec9ad7",
+        "category": "inventory.mac",
+        "reason": "Upstream colon-separated geometric segment dimensions; not a MAC address."
+      },
+      {
+        "path": "third_party/boxes.py/boxes/scripts/boxes_generator.py",
+        "lineSha256": "11de4d3de7125bbd5ad4f61a16a3da6379aff1aa4817f8460279abf4c2a1b294",
+        "category": "network.public-ip",
+        "reason": "Upstream SVG namespace identifier contains a dotted standards version; not an endpoint."
+      },
+      {
+        "path": "third_party/boxes.py/boxes/scripts/boxes_generator.py",
+        "lineSha256": "fc51590cc1cdabebc1995880e2707b35a43c54615d822de18f0b15a526f1de9a",
+        "category": "network.public-ip",
+        "reason": "Upstream SVG namespace identifier contains a dotted standards version; not an endpoint."
+      },
+      {
+        "path": "third_party/boxes.py/boxes/svgmerge.py",
+        "lineSha256": "255c68e259830e8605cb06abc6a75d2494b5260b21bcc7c3e301ffee4865b895",
+        "category": "network.public-ip",
+        "reason": "Upstream SVG namespace identifier contains a dotted standards version; not an endpoint."
+      },
+      {
+        "path": "third_party/boxes.py/boxes/svgmerge.py",
+        "lineSha256": "26228895f2634fe7c209f06e9f507ccb51995c53643ad4159d489f3abe9a7f1b",
+        "category": "network.public-ip",
+        "reason": "Upstream SVG namespace identifier contains a dotted standards version; not an endpoint."
+      },
+      {
+        "path": "third_party/boxes.py/documentation/src/install/macos.rst",
+        "lineSha256": "bc15b0c0c42c3a342b2502760bcbf4042a88dbda75c0752da71ac5f2a81b7fda",
+        "category": "personal.local-home",
+        "reason": "Public upstream macOS installation traceback example; unrelated to school users."
+      },
+      {
+        "path": "third_party/boxes.py/documentation/src/install/macos.rst",
+        "lineSha256": "4266f3504d0504ef58de99e73c125800fde8bf5c1c93e0539c9479de1fb47b46",
+        "category": "personal.local-home",
+        "reason": "Public upstream macOS installation traceback example; unrelated to school users."
+      },
+      {
+        "path": "third_party/boxes.py/documentation/src/install/macos.rst",
+        "lineSha256": "57a692279c84bda9b685a3bb8cc305912b05e9e3cce00457e46439825065253a",
+        "category": "personal.local-home",
+        "reason": "Public upstream macOS installation traceback example; unrelated to school users."
+      },
+      {
+        "path": "web/assets/Clipper-LICENSE.txt",
+        "lineSha256": "66adf47a1fbf48632968cd3cf1ddbf19a7114cb27344bef7fab68adba4fe60c0",
+        "category": "network.public-ip",
+        "reason": "Upstream Javascript Clipper software version retained in licensing notice."
+      },
+      {
+        "path": "web/index.html",
+        "lineSha256": "650ca37436dcd342c6ad4b346ee93a6f48fed07ddb400fce6b0f5a40a38a6706",
+        "category": "network.private-ip",
+        "reason": "Generic printer IPv4 input placeholder; no prefilled or saved school endpoint."
+      },
+      {
+        "path": "web/laser-offset.js",
+        "lineSha256": "66adf47a1fbf48632968cd3cf1ddbf19a7114cb27344bef7fab68adba4fe60c0",
+        "category": "network.public-ip",
+        "reason": "Upstream Javascript Clipper software version retained in licensing notice."
+      },
+      {
+        "path": "windows-elevhub/server/install.ps1",
+        "lineSha256": "393bde32d031890e9353317dee0fa1ed43dc6003b2678b246c1959b13ada9371",
+        "category": "network.private-ip",
+        "reason": "Generic subnet validation example; not a default or saved school endpoint."
+      },
+      {
+        "path": "windows-elevhub/server/setup.manifest",
+        "lineSha256": "4945e838c61df49b9b741c61fe67b312f3b81241dd5734cd7def69779fad7a3a",
+        "category": "network.private-ip",
+        "reason": "Windows assemblyIdentity version metadata; not an IP address."
+      },
+      {
+        "path": "windows-elevhub/server/tests/test_installer_resume_behavior.py",
+        "lineSha256": "5c9d494f7279e7f54a2c4f8c157142a1d6390595dd7e4cfb5e856e9521928a3e",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "windows-elevhub/server/tests/test_installer_resume_behavior.py",
+        "lineSha256": "d6bd3bdd849bdc46382546a57a25c6371f3649872c52dd50d2b7a09478599333",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "windows-elevhub/server/tests/test_installer_resume_behavior.py",
+        "lineSha256": "1e57abfe6e79b1b5395305656e08817e257782a727f799e86edde84ca7d6fe5a",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "windows-elevhub/server/tests/test_installer_tls_provision.py",
+        "lineSha256": "de7801b63bbf59a7a12c6fde81fafcbaedba1805c4bf1c8f31a9af8d780c2739",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "windows-elevhub/server/tests/test_installer_tls_provision.py",
+        "lineSha256": "f0715b2ec0adb8561d8c785ba3cb8b759a695c6acba47b015d5d1aca49da4c9a",
+        "category": "network.private-ip",
+        "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
+      },
+      {
+        "path": "windows-elevhub/server/tests/test_server_role_selection_privacy.py",
+        "lineSha256": "4b786c4387d3746a73f8b4929c05e79031c27a896e7f227913223fd6c558fa60",
+        "category": "network.public-ip",
+        "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
+      },
+      {
+        "path": "scripts/school_server_update/Invoke-SchoolUpdate.ps1",
+        "lineSha256": "43062a84eb064b0a171e5ff8c132bb1ef6bd14a7b224521299ac1c6f8b108af5",
+        "category": "credential.literal",
+        "reason": "Public protocol prefix concatenated with 32 cryptographically random bytes at runtime, not a stored credential."
+      },
+      {
+        "path": "runtime/LICENSE.txt",
+        "lineSha256": "74afb4c1d35aeafd9553353189b0e2189f5dd5f9442a117af0b42f417c85076d",
+        "category": "personal.email",
+        "reason": "Pinned CPython third-party license retains Julian Seward bzip2 authorship contact, confirmed in the official sourceware bzip2 manual author section; not school contact data."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/BlpImagePlugin.py",
+        "lineSha256": "e3361e01826dc0d07d291395632a3f3a466713e97060e1b7a3ad46deea62d137",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/DdsImagePlugin.py",
+        "lineSha256": "e3361e01826dc0d07d291395632a3f3a466713e97060e1b7a3ad46deea62d137",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/FtexImagePlugin.py",
+        "lineSha256": "e3361e01826dc0d07d291395632a3f3a466713e97060e1b7a3ad46deea62d137",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/IcoImagePlugin.py",
+        "lineSha256": "23f83b760e4c86ecd37a4b0fc41a62a7aaca373f2df434fdcf0eb775e069a0a3",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/IcoImagePlugin.py",
+        "lineSha256": "8a789d2dddf373f67f5c507e6b90a24d3d4849ab59ff1f8b32d29c6af8936053",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream Pillow Python array slicing expression; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/IcoImagePlugin.py",
+        "lineSha256": "cb394fec0714a2298b03d4c2a944e3e5135c372176f52ed88a04b15318e2de61",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/ImageCms.py",
+        "lineSha256": "41d8f0f407bd2d312a77866132bb2c114bc670667dca90fcb9edfa31a605c1ab",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/ImageMorph.py",
+        "lineSha256": "5f614671e78107601335d7a972e602c60163b9ef77d4e72f1cb6ae0f4281fa31",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/ImageOps.py",
+        "lineSha256": "ce44ca8bbba5d821de901b998f84d193437c917ef3e229bdc7ef52a741586346",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/ImageQt.py",
+        "lineSha256": "563affac5ee2d1fca9f34424fc994df8256646d1cb56215596c43be341529893",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/PdfParser.py",
+        "lineSha256": "2c1ae38af22f0176acae6f34a257e97442303dd168094ced4227122930711c75",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream Pillow comment cites a PDF specification section number; dotted document reference, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/PixarImagePlugin.py",
+        "lineSha256": "eec3ef2e2335004782e2b7529aacae03a433d927735be391b8f3dba5d7574323",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/TiffImagePlugin.py",
+        "lineSha256": "44e6c6f67a78b834d994211422e7e1c59531097f8a4f4227908b4ef3ae792895",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream Pillow Python array slicing expression; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/TiffImagePlugin.py",
+        "lineSha256": "be5b201857c935545663678a5d43f11f5cc1de7cf5b28a0d51f75793a01e9b71",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/TiffImagePlugin.py",
+        "lineSha256": "c55c1b8001134b1d1782470ed547e11c3eb45c98a266ec4495b20805af79f937",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/PIL/XVThumbImagePlugin.py",
+        "lineSha256": "886071cde33e5766f2647c5cbf900cb26045d836d0409a013ced4456fbb236ea",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow contributor or author credit in source/documentation; retain the original attribution, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cffi/vengine_cpy.py",
+        "lineSha256": "2b187520a1821e9a443590ad90fbe8007ffaa1d627f86e73765fcf485c6aa939",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream CFFI Python array slicing expression for layouts/checksums; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cffi/vengine_cpy.py",
+        "lineSha256": "904e647ded88e251fce662f91cefae7c9993957b3a3ca2a45ccfd3cd51d98b58",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream CFFI Python array slicing expression for layouts/checksums; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cffi/vengine_gen.py",
+        "lineSha256": "2b187520a1821e9a443590ad90fbe8007ffaa1d627f86e73765fcf485c6aa939",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream CFFI Python array slicing expression for layouts/checksums; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cffi/vengine_gen.py",
+        "lineSha256": "904e647ded88e251fce662f91cefae7c9993957b3a3ca2a45ccfd3cd51d98b58",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream CFFI Python array slicing expression for layouts/checksums; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cffi/verifier.py",
+        "lineSha256": "8facb84d0bb2eb0b14ca6f3d497b48b9ca7c1e5cc91852f9608473a0f9a460de",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream CFFI Python array slicing expression for layouts/checksums; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cffi/verifier.py",
+        "lineSha256": "9d6ae2339686c6c86b845b1cc90d00bfb4dc6f4830e25f9eb915e05dacffb9f3",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream CFFI Python array slicing expression for layouts/checksums; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "f3cd4b60f92eac253167b687db310305f4d6700bbe602be39f4295bca174645e",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "18935af5b0d22506b6bb89cea56613934b9acf71bf019545c63144b11258849b",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "76b5c32ef59f618e49bf499befe2dcc33d9e4ca85414a979a0122ca7f1287456",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "7972a6bf497fd7ec9d0e293b4dcc3de00f7bebb009f0019baa5335665754c265",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "e1bb287c7ec7a476f89dc926f5e3dfb923d15569cbee41a0f2e6bde803f37dff",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "1106096812286f9d2f16712dd6ffa03ababe69e0225f3822fc83a47cbc6eb980",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "0caf2cc97393b0be9316dc1a2a0697b2cee476e800cfa437e0ac73a4ab1a4162",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "e98654b2736853daffc1a1ee9a7c77c47681b67560e71d44cf0e889502a54a04",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "8e0a7692216b5e3acaaf2788466d8021dd81651b11b9c2cdd69c4f8e08102a1c",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "8579240bbe46ae64f184ff03e187711933eb767744be02b8429f582be9e45a96",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "54c3d1615b64fc2ae61dd9739aa51e683c36fbdbc44511155e503465638250c3",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "9631d6884e8698ceb35ef128a5274067e81cd75be1c1fb62926da9e1c82b8da3",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "7622e8ccc12d9ed7b57a95455943092f2a6a39b4d01932b68f24b9f346fff233",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "507370ec943b4d55794f9d06eaf30183595a6af0d538e88c23a2ccfeb4b574f5",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography-50.0.1.dist-info/sboms/cryptography-rust.cyclonedx.json",
+        "lineSha256": "1ae101a76f1c985b11f64eb1654c7040283328d8d54d1220c83fc0848c00b51a",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography Rust SBOM author/maintainer attribution for distributed dependencies; public component provenance, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "7c65984d4814cb9306f3c1257175238c6c2ca8869a43da9e9d768bb7c85697c7",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant SUBJECT_DIRECTORY_ATTRIBUTES; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "5740539980b25b3f037c4504e904799ee8451ccf8b70c93fe92721fda2d7c6f1",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant SUBJECT_KEY_IDENTIFIER; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "e379f1a522f5d81fe68da4611b05416ea9ffa957306be19566ba6fb1e38c3cef",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant KEY_USAGE; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "1e331ac42ae7cd641d04c1200051262c39727fdf4aa603d6a5034e11a5dd1d55",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant PRIVATE_KEY_USAGE_PERIOD; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "db627167c48d24875235b0a28220642a6bf63b3cdb854fa437bccc42132a8086",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant SUBJECT_ALTERNATIVE_NAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "ea81ee24db0fc3da44b1c5ec12cdd8ab44aaab2a13ed6fd80117cfc877aa3a46",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant ISSUER_ALTERNATIVE_NAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "1583095258717475e47162f1ed89281f46d5c5dcd6465e145b1cc9565db70b3d",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant BASIC_CONSTRAINTS; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "2efe609c7881cc2459a615c758de9d03609999b04cfb8e12dcf31e0192ef5002",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant NAME_CONSTRAINTS; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "05ac6ec4a70483c5e9e72137984da47762c54070f7bb8aea0684a7aa1e7e3acb",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant CRL_DISTRIBUTION_POINTS; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "4429f383b590670df09d2122fcb72ceb1b655078ad032dd9133d7d4f351bf9ed",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant CERTIFICATE_POLICIES; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "99b19f0016e90529afcb11bfe339e8f12394e3f1229d7cfebba5840d61edfd42",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant POLICY_MAPPINGS; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "7128028086a7c0abc95621ca7469fadc77d221dc0bc60e84e9ed82c67af2d040",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant AUTHORITY_KEY_IDENTIFIER; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "0c2e42e4851b485c9497dc3790a35f7757218f2fb0e2af201f1d0b9dd2d80119",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant POLICY_CONSTRAINTS; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "16e411ee0d389a30fcd6c1ac75bd1040d476eba03310cc2118beb67b7991ed38",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant EXTENDED_KEY_USAGE; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "cb05015c2dcac37e6e16211d9f14f271728683c1037218112916d5b00b3584cd",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant FRESHEST_CRL; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "2da241f5b8b5801919b832a12e4e96cf38dee751a92100dc13a37f312990ec44",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant INHIBIT_ANY_POLICY; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "a6b9f9b2fc964bd65f20de5c25e2f151d313a3e0cdbdd1b9537da9741e71a60c",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant ISSUING_DISTRIBUTION_POINT; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "9f6f706b3f3d2e9edea014cec7841f944ea0e2cb50459a0320345cb56ae8c9cf",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant CRL_NUMBER; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "26baf82e7e299df64d00737bda966bd06d3b7ae5094dd57678ef2f55dbab2cae",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant DELTA_CRL_INDICATOR; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "c143526be5f9c647ace23e80fbb0adb3663b159e85bbaee993485f590ad7c783",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant CERTIFICATE_ISSUER; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "7b4d45e7ce60c908f382b4661fbcab2efbfae073c96df0e432701f6c23a96302",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant CRL_REASON; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "5c5c442db924dfaf55ee1ab6e1026882cf837e20a95d42aa3e12b5a07fcf47b4",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant INVALIDITY_DATE; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "07113abc52d5bb56a5fff0acd00eb772a363ffe7ca72ebf48fc01fccfbe908b5",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant COMMON_NAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "3f0b962fb7e7090cbd03e084c12931242f1b2e67f0f807850437817b7694767f",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant COUNTRY_NAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "3769415c77f9f548a1129beff296aced14b4b92b8380f0d6a61694cb835397bd",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant LOCALITY_NAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "f97b61dcb04549e7aac683a69ef68a1ed515aafc877133fbe4d80458660b7d19",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant STATE_OR_PROVINCE_NAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "82f4c31f7318cde9634a558476efa870105ba9e735631a02a08521c1ef0fc074",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant STREET_ADDRESS; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "8858e649d94a1e94c9e93b18450e019940be16f7c0788c372dbb5998921a5b0b",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant ORGANIZATION_IDENTIFIER; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "2bcf77a99946b542301aab88e21e67bc96e1a31024f43f71105e843a784aabfd",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant ORGANIZATION_NAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "9e1bd43aaaa50a9752eff061b8f5c76531f0ab3da08bea9ae174c414d8e48795",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant ORGANIZATIONAL_UNIT_NAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "18b92a1dc39e86051f3c825dc1f16c647f371b3de9411ce622ce55ac8fec3a99",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant SERIAL_NUMBER; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "9908f833f31267487c68d3dc20e6ea7fb0b029d4670f6108e03c1c20ceb46cc6",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant SURNAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "a0eb77da9004354b80b45261b43d74ffb14eb587b6fc60f73832ef2325804100",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant GIVEN_NAME; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "904e3cefbfa75db2870056ba9e9abf7869e9c36b896c47dc3b03f08b10d6c0c5",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant TITLE; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "f51c256c34f6978f8d7cc9f46ec3d97d6a7ab20966fc904d13e94a04455825dc",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant INITIALS; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "3258bed344132a9774035cd2f38408d62c358b521e8c89865859bedc3a6e0843",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant GENERATION_QUALIFIER; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "221cf8ab0eb51fe1abe08aa401b655bdff7e2f2b630b12573f3dc7d5f6ab0905",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant X500_UNIQUE_IDENTIFIER; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "97356214ecf8ca0483fe2eff4abc8aa360651b1ecfc434fed260a0a775e216b4",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant DN_QUALIFIER; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "f3bc14c590cd5501d9e91e3f38e49da8529e4cadc1f3fb4194344e814156aff3",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant PSEUDONYM; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "2cbc5f9e10752e4d5b3dc7b011a3b30228141c9611f184738bb19757ab9de38f",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant BUSINESS_CATEGORY; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "ef0ddb7ccddd24315a847b2c1b495e728b4934e564bdf9c53f18f4255ccdf0ea",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant POSTAL_ADDRESS; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "007401c1719f18c050c4116c0c4595ddc84ee9abc575308b3695177eee7d8695",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant POSTAL_CODE; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "7416c6ab3ae6c675ecca46eaa9c10dfbceeecc8cf56a032f68c92e8de134f524",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant ED25519; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "91ec4bffa22a9df0cbd936c6614f46078ade09e4fb5c9a051ce7dcaafca3bcdb",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant ED448; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "02c4d4c75963d5076885ae2230f7464a68a95c687681831576338f935628667c",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant X25519; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/_oid.py",
+        "lineSha256": "ca9c0685bc7c89a41565dde01b489bacdc547633c6bdb1b4732f97f041945c3a",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream cryptography ASN.1/X.509 ObjectIdentifier constant X448; dotted protocol identifier, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/primitives/serialization/ssh.py",
+        "lineSha256": "381a16790bd73a36f09d289fcaae42534cbea0633db7ee9cc2ac37f87d857b81",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography OpenSSH protocol algorithm/certificate identifier; the at-sign belongs to a protocol name, not a personal email address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/primitives/serialization/ssh.py",
+        "lineSha256": "d5c79c3b6c2b9f0bd4008f0e2e8c7ffeaf15f80daa8bcabbe306dcdec7a136ff",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography OpenSSH protocol algorithm/certificate identifier; the at-sign belongs to a protocol name, not a personal email address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/primitives/serialization/ssh.py",
+        "lineSha256": "4e104525e0ba13e8e81212ed4f9af4c57d5d0eff764427217138990acd49d6a1",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography OpenSSH protocol algorithm/certificate identifier; the at-sign belongs to a protocol name, not a personal email address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/primitives/serialization/ssh.py",
+        "lineSha256": "9a92e08c3a0abf37378f43f6c42bfd65aed5d3e9a7e10110a6d108fa95d9147d",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography OpenSSH protocol algorithm/certificate identifier; the at-sign belongs to a protocol name, not a personal email address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/primitives/serialization/ssh.py",
+        "lineSha256": "500cf69b99d76d9b6aa6df52d6820f0f13dddce9f858626240ada935a792c725",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography OpenSSH protocol algorithm/certificate identifier; the at-sign belongs to a protocol name, not a personal email address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/primitives/serialization/ssh.py",
+        "lineSha256": "09a78048449858e49953683275e1495bafbbf991ebb457793b2651d4a79b20c1",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography OpenSSH protocol algorithm/certificate identifier; the at-sign belongs to a protocol name, not a personal email address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/primitives/serialization/ssh.py",
+        "lineSha256": "0e42b5c042151cebb29923d35ce998e3ec7a868615a9f1ab91958482c96bbebf",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography OpenSSH protocol algorithm/certificate identifier; the at-sign belongs to a protocol name, not a personal email address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/cryptography/hazmat/primitives/serialization/ssh.py",
+        "lineSha256": "745bb5db8c9971e6efe3579ce788fe665dffe34ba8a06e9552edbef42c77fe8f",
+        "category": "personal.email",
+        "reason": "Pinned upstream cryptography OpenSSH protocol algorithm/certificate identifier; the at-sign belongs to a protocol name, not a personal email address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy-2.5.3.dist-info/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt",
+        "lineSha256": "886d9dffb0c188581d81f6b2a6e097f88fec1b072f37c26899adaa5869b7e362",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy-2.5.3.dist-info/licenses/numpy/_core/include/numpy/libdivide/LICENSE.txt",
+        "lineSha256": "a55c90b33ca1d7cf6fc25745fe856831ebaaff826829b80a0bde7392c3505e8a",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy-2.5.3.dist-info/licenses/numpy/random/LICENSE.md",
+        "lineSha256": "8138e511913a149251278e2fdd79baaf6f7d6da887db7be075330f8e88aebcba",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy-2.5.3.dist-info/licenses/numpy/random/LICENSE.md",
+        "lineSha256": "078e8f5980ed334c8cace8edc56de6c2cc5ad289a04799b2ba06e66340a65ce1",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy-2.5.3.dist-info/licenses/numpy/random/src/mt19937/LICENSE.md",
+        "lineSha256": "35d6dc711160bf88ab3999301bdc531db92c824af078ead92b32dac73f5176ea",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy-2.5.3.dist-info/licenses/numpy/random/src/pcg64/LICENSE.md",
+        "lineSha256": "590319d8d1ebbebcec65ac33684486cb2b9af0dce3efb81557f3cc6d7d6cd828",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy-2.5.3.dist-info/licenses/numpy/random/src/splitmix64/LICENSE.md",
+        "lineSha256": "91c49b06e13246a7c8a7fe7b664453a73b39cff78a97538782b5c84cfa65e936",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/__config__.py",
+        "lineSha256": "3f35070cc91b86b47bbfca4cfa99f4da01cbba8cfe98fc61c3097663224f62c4",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy wheel CI build-runner paths in generated build configuration; not the school developer account or an installed school path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/__config__.py",
+        "lineSha256": "3ebf678cdc4116bb8721c72e001cb0033d7675273dcdf569c8aba59c549e9a65",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy wheel CI build-runner paths in generated build configuration; not the school developer account or an installed school path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/__config__.py",
+        "lineSha256": "38ba25418ec2b708ab642ece43397da71dd73ccba2b9915d77fdb0bdbbb24cd9",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy wheel CI build-runner paths in generated build configuration; not the school developer account or an installed school path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/_add_newdocs.py",
+        "lineSha256": "ec1fa8117287076548550e69ec4859118db43a65a9af143e1066bc2b55c6cc00",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/_add_newdocs.py",
+        "lineSha256": "b3d58310e2224e1ebfa2f5df7837a4a16b58796b4af4fb25f665d76bb25026f6",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/_add_newdocs.py",
+        "lineSha256": "b163ecc1d06c63597c22e1282db0af059e73d40714b5449c66722a5e3c7a79eb",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/_add_newdocs.py",
+        "lineSha256": "99a3d38fe014228aaf58af3ecc27a25aa1f2b6626717028db4b9e035e5840776",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/arrayprint.py",
+        "lineSha256": "9ccc622f77a522b5b5ef7ed075492f656b78b6f606aea7cf83d9c3bea44bd0aa",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy source author credit; public attribution retained, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/arrayprint.py",
+        "lineSha256": "d27ae2eee78877e7e9d7fa62fd286eadb6c20dd03459fe29e14fc78db2d9007e",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/include/numpy/random/LICENSE.txt",
+        "lineSha256": "886d9dffb0c188581d81f6b2a6e097f88fec1b072f37c26899adaa5869b7e362",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/include/numpy/random/LICENSE.txt",
+        "lineSha256": "a55c90b33ca1d7cf6fc25745fe856831ebaaff826829b80a0bde7392c3505e8a",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/multiarray.py",
+        "lineSha256": "a5da0d944738051a4d2e77d2b084cca26a30345f63408a5d794aed5ec2425b06",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/_core/multiarray.py",
+        "lineSha256": "50860f593a8efeac2180538f4e5eb5bdd90ad56cac8357a29463928cca10b551",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/f2py/crackfortran.py",
+        "lineSha256": "40edd212c08c16e29fd8f0c6dae3a3c5ee06d30654606b7d41a6cb746f62786c",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy comment cites numbered Fortran specification sections; dotted document references, not network addresses."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/f2py/crackfortran.py",
+        "lineSha256": "4eff32fb4658e9ab4f242a18229117f285b0a489f646ae786f5ee8bd7773b1ea",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy comment cites numbered Fortran specification sections; dotted document references, not network addresses."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/f2py/crackfortran.py",
+        "lineSha256": "91b4d999d2b2534d0d1031bed72c3d906983b1c3e9bb1e9d3e47266bf1d59a70",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy comment cites numbered Fortran specification sections; dotted document references, not network addresses."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/f2py/rules.py",
+        "lineSha256": "2e7867082d1fd9c990c22c16d9080ab2370adf5d3bf98601467230515fec8573",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy source author credit; public attribution retained, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/f2py/symbolic.py",
+        "lineSha256": "c9240e7d7f0fb38ea951882415cd9bb5e203197d60cf8997ece9064ade2e5398",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "567f08ea912f816655f3771a42e0cd024a3ec0c234c8aa6e2627554660cefec2",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "85bac64599fcb4a934925277e6b18d13a4506dd980230f7a6ad8bb3acac71d69",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "8ad3b5511d0230ccfbc0c6fb994476ca86549c565f40b464e42c4463c5f1ca7a",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "6f68af221ac169299a0d62ce87532048d3992e85bbcbbdb7e9f0bbf6a931ba9b",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "e16c8bc2f9366782fa2042b064174f5620957ce1462f574a44287cd643d547a2",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "11bed948175b1f0e7aa1b877d7c06f663c971e583e40467b1bb962f269aacea6",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "c46d2f055a4b712990e0c672196395fa869d1d67643ab75587aebe6cfb936075",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "b28beaecd54325d97ac9c5d47a9084cf4e03a8e3f9a359648c081432157c7328",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "5fa88c440129dc1d39bcefabd0aa4d629293a422fb5added7ae511b6de6f85f1",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_datasource.py",
+        "lineSha256": "beeaff73d09db35e785be2256654673e12a852138a3e68ef8d6408d3cc3a26f2",
+        "category": "personal.local-home",
+        "reason": "Pinned upstream NumPy DataSource documentation/comment example uses illustrative user-home paths; not an installed school account or data path."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_function_base_impl.py",
+        "lineSha256": "331678f9b9ec71be87defbd0f05bea2f01cf87d3935fd75373df7373bb2fb67c",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_function_base_impl.py",
+        "lineSha256": "7e0b7c533c7a77485ad48dade47da9482a6242eba677e541a11c81ed54cd0966",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_index_tricks_impl.py",
+        "lineSha256": "8b2a24bb883f93fc5ea1db40d4199dd47135f65feb3e0042b51d44cc69507e27",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy source author credit; public attribution retained, not a school contact."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_index_tricks_impl.py",
+        "lineSha256": "bd530c07cdd0b25bacdd7e848001b91b28bb6511838c48cefe78ff4d13819d4d",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_index_tricks_impl.py",
+        "lineSha256": "7340847084dcc2a049ae6ed53cb0357365ccc19991a8ad9bd533c1a222ed7868",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_index_tricks_impl.py",
+        "lineSha256": "5e402b09c379100df0b2174c402632d5a0ca176522befd1ac1a31b6ac7fdef11",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_shape_base_impl.py",
+        "lineSha256": "443f4be98ef1bbf4ff3a35cb5afa221056b791c6d24f791d04069b4999c17558",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy documentation ends prose with a reStructuredText literal-block marker; trailing colons are markup, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_stride_tricks_impl.py",
+        "lineSha256": "264ab91635e703faafbaa5cde42830c4a44d739ddbb823d865f36af819a3fd70",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_stride_tricks_impl.py",
+        "lineSha256": "f1374aa8bdd8510ed711494ed8c29f7e2777e5e0734765ad5e34744538cacf4a",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/lib/_stride_tricks_impl.py",
+        "lineSha256": "83bba522bf474031831e3c23bcfed7f568fc4d3e629087ed6f8556e295be294c",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/ma/extras.py",
+        "lineSha256": "bbe3e93ba4d795b9f06adc7ff0cf134990a5cd3497b62f49c6cd78e3cc31ae8c",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/ma/extras.py",
+        "lineSha256": "b95d6b6d325ad6501045ab6c997ef0d6b619a301503428c4100fa6be5c1ce091",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream NumPy Python slicing expression or slicing example in documentation; colon syntax is code, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/random/LICENSE.md",
+        "lineSha256": "8138e511913a149251278e2fdd79baaf6f7d6da887db7be075330f8e88aebcba",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/numpy/random/LICENSE.md",
+        "lineSha256": "078e8f5980ed334c8cace8edc56de6c2cc5ad289a04799b2ba06e66340a65ce1",
+        "category": "personal.email",
+        "reason": "Pinned upstream NumPy bundled-library license author attribution; required public copyright/contact notice retained without changing the license."
+      },
+      {
+        "path": "runtime/Lib/site-packages/paho/mqtt/client.py",
+        "lineSha256": "6c84609d9ff5959c781b8e41221554ddbd2c8e6e47df13cb22d001ae272134f1",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream Eclipse Paho docstring demonstrates proxy configuration with an illustrative address; not a configured school endpoint."
+      },
+      {
+        "path": "runtime/Lib/site-packages/paho/mqtt/client.py",
+        "lineSha256": "a0356f158ab61c62e14f766bd8b1056f727a3e09e84cf20683f88dab02b5619f",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream Eclipse Paho docstring labels a callback API version followed by a literal-block marker; number/colon syntax is documentation, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/paho/mqtt/client.py",
+        "lineSha256": "8a6ba099c7479f44f027d63c2e01efbfdad7cf418ad945633de9d8b93bb3856c",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream Eclipse Paho docstring labels a callback API version followed by a literal-block marker; number/colon syntax is documentation, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/paho/mqtt/publish.py",
+        "lineSha256": "03d45632ad68cff88b5f20684d359c97e9e05ce248f716f2d2d538a003006968",
+        "category": "personal.email",
+        "reason": "Pinned upstream Eclipse Paho source copyright attribution to Roger Light; retain original license credit, not school contact data."
+      },
+      {
+        "path": "runtime/Lib/site-packages/paho/mqtt/subscribe.py",
+        "lineSha256": "e6f6a521c3c708fd344ccd76db50dcad56a46560b6e3e5d0cf67f71c1a9d0996",
+        "category": "personal.email",
+        "reason": "Pinned upstream Eclipse Paho source copyright attribution to Roger Light; retain original license credit, not school contact data."
+      },
+      {
+        "path": "runtime/Lib/site-packages/pillow-12.3.0.dist-info/licenses/LICENSE",
+        "lineSha256": "eedab4d360043b842827d895df4672e03a1c24ba4b3f91060ca80a60be147907",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow bundled FreeType license lists public project support/development mailing lists; retain license terms, not school contacts."
+      },
+      {
+        "path": "runtime/Lib/site-packages/pillow-12.3.0.dist-info/licenses/LICENSE",
+        "lineSha256": "ab01fb1447274d613e9aeac7ec17e18c43fd3d1c60047a1e3558ceb4fab5d9e4",
+        "category": "personal.email",
+        "reason": "Pinned upstream Pillow bundled FreeType license lists public project support/development mailing lists; retain license terms, not school contacts."
+      },
+      {
+        "path": "runtime/Lib/site-packages/pillow-12.3.0.dist-info/licenses/LICENSE",
+        "lineSha256": "89f9ff203f00af3584b0a9996aa42a1a916fccd8e7ce910f6fdcf89a7ef5aa1d",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream Pillow bundled libjpeg-turbo release version in license/SBOM metadata; dotted software version, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/pillow-12.3.0.dist-info/sboms/pillow-12.3.0.cdx.json",
+        "lineSha256": "cb944960fa98200f513430319ad8698247deaeb84472bef759647b6a94fac601",
+        "category": "network.public-ip",
+        "reason": "Pinned upstream Pillow bundled libjpeg-turbo release version in license/SBOM metadata; dotted software version, not a network address."
+      },
+      {
+        "path": "runtime/Lib/site-packages/psutil/_pslinux.py",
+        "lineSha256": "cdc12363b0b914ff836fe7ab7a4da06a6e2295ad84da72110e33aa6dfb27a803",
+        "category": "network.private-ip",
+        "reason": "Pinned upstream psutil documentation illustrates Linux socket-address decoding with an example address; no school endpoint or runtime configuration."
+      }
+    ],
+    "forbiddenIdentifierSha256": [],
+    "publicAttributionEmailSha256": [
+      {
+        "sha256": "0386d0a988a95ad3de74a32872041ab246d4ecad441d961a837ed5af6ab81c79",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "060c5cf244181ecf6a2ba47c45a3f887b0f2236735dd7cd6a0e4f0cf4546da8b",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "0d2cf28cfc5442bb36d590fdd67cab72c92df9096f2aa1d532683f5ba5a83fe9",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "0fd7128ffd6a7a5359495c1da941ec2f411d526e6fa561d3af9c95b4df0a8703",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "19551be78998de57aa8d5d7276fd77db60d5cddc13af615c5fb2bdf23a55b485",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "1a94e1d0c37a6a4080539856c2b08266796d6a2025c1a921e849b9df839db321",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "1f3f18898963606e02904e42e02e24873b50e98f21753395a17700f756927c96",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "1fa0e2a0fb7420ab5ced8960664dbdc9847fdc34df320f77742a86e867c40261",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "2be06a8343efecd6c18ae2f76d1f1722dad5b23a32274372f897d6ce34ea7108",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "355a3cd710aaebe0380fd1cf9b1c3fafd98abfde1060d5e0e48d6def0cb9801f",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "37ff839c41fe33a2391916522239aff4d8f0b03d912002fa3842d2bd7f1d58ff",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "391db85fc86e6f5cc2513be98a21a2bf3cedaa9ab0a71a43a3360070bbac5812",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "395d9dbe91af0ffaa0a19b9bf13f88a0a9c2fbeaf4bc3ad3763a049d108d4094",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "45dd7cb09a59fcd3aed7ad8cbd566b78500a4b7a8327ebff122e91f604aaade2",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "4a45c7bc749c3044bb5d765c0ef6a637f753635efe0f2892ebf5cb88dfb7df4f",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "4de55a1e77b5165580f6eba1836070750ecc40fa0aeae69b22287ceb2c3740c3",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "590e97470a1bb528f6aeb3ec0122f65abe73b0c068e82c87bb02107e73e87f17",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "6b6db2f71e727681ea168cac659e562cf9916a334b5ab950660f8727c453bed4",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "78ea0fbbe46476ed54abc9d302fa97fee8dc7fc52a74ff1a64456ce229541989",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "806d59c2f4a501041d9debf7f9c1a5aadd0480a7c2853326f6d9ff090945644f",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "82be1c26b6ba668ab59c370748f8443ff8f42b12020f180081ce131f0fb28e59",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "862c98a466e3044dc7702f74a3760228620fa3d9f70a0134eb198428078c3f74",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "8a03a474da33f0c12e987f5c621104c515a8a505655e2731178ec5bec51becf2",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "90ca18f0083d24bbcedb849f607eea892b53a3eb539aef851f12c5c3f66897bf",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "9746e214676e399c4b5134361a6ca5a72383309820316af3430029bbaf347870",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "9dc675a77d9b71de6ec9fafdf88d9acab9c73dd5fc6bab4d6c5a30fbf9626a0c",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "a299c49cf9037419b08f889ee02ff50977eb079fb14c4e84de045429985a670f",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "abd36ca48d705b672dadbeb0e8729048498cba437478b297f641f447cb9d04e8",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "b1765516b6f46bd7da2d000cd9ea56604e1702c7a90ebfb61a17cb90efda96f1",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "b17c6a58ea66886890f221fde6f012e90a8d31039fd8f39e67415507bd4bb0a4",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "c1fafc9ea291f4729a2dbb8a89c1d79532c75d66bc5c7b2488b4b88383b8ff0d",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "c93b5404386c8d774f96d000fa24c41918441533e5d03b01f43fc6256f285336",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "ccc90a50972ed0f6bc62b5a10bea50632cb981a97a753a182cc8f2b8eede0d62",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "cd22a8ab9686bc86d36b0783f0ef5f9f7ec2dc18e981dab754de50b3cf9831c6",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "d45cfa6e6a2c1d7597ee74090c787db14b679c0c5fc6813e4888285b06bf929c",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "d47f381edc63659abf7b1def62e146bd9260c83a4a4d993f4941c37970f7e689",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "dc5b0e3f0b632e1f548f2168be133f78d94857287b9bba30029114b4866d6332",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "eac3fc834b660634cc777e8555ce29624c23765d7c8b3a1c1b9704cdf3e0b18c",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "f096f25b45b2602dadcd12c5079da5d6e2efc5e6fefb30f89c3fe1a9069c5373",
+        "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      }
+    ]
+  },
+  "publicFonts": [
+    {
+      "path": "linux-elevhub/cadoodle/kloster/assets/metrophobic-latin.ttf",
+      "sha256": "545588c2926a7021f750026765e1f6ec99ced69122d98a1284598d4614fd040e",
+      "provenance": "Existing upstream Metrophobic font; SIL Open Font License and required notices retained beside project assets; exact public font bytes pinned."
+    },
+    {
+      "path": "linux-elevhub/projekter/web/metrophobic.ttf",
+      "sha256": "545588c2926a7021f750026765e1f6ec99ced69122d98a1284598d4614fd040e",
+      "provenance": "Existing upstream Metrophobic font; SIL Open Font License and required notices retained beside project assets; exact public font bytes pinned."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/metrophobic-latin.ttf",
+      "sha256": "545588c2926a7021f750026765e1f6ec99ced69122d98a1284598d4614fd040e",
+      "provenance": "Existing upstream Metrophobic font; SIL Open Font License and required notices retained beside project assets; exact public font bytes pinned."
+    },
+    {
+      "path": "linux-elevhub/server/kredsloeb/assets/metrophobic-latin.ttf",
+      "sha256": "545588c2926a7021f750026765e1f6ec99ced69122d98a1284598d4614fd040e",
+      "provenance": "Existing upstream Metrophobic font; SIL Open Font License and required notices retained beside project assets; exact public font bytes pinned."
+    },
+    {
+      "path": "web/assets/metrophobic-latin.ttf",
+      "sha256": "545588c2926a7021f750026765e1f6ec99ced69122d98a1284598d4614fd040e",
+      "provenance": "Existing upstream Metrophobic font; SIL Open Font License and required notices retained beside project assets; exact public font bytes pinned."
+    }
+  ]
+}

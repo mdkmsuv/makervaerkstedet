@@ -1,0 +1,13 @@
+[Unit]
+Description=Versionsbackup af elevens projektmappe efter opstart og under brug
+
+[Timer]
+OnBootSec={{ projektbackup_onbootsec }}
+OnUnitActiveSec={{ projektbackup_interval }}
+OnCalendar={{ projektbackup_oncalendar }}
+RandomizedDelaySec={{ projektbackup_randomized_delay }}
+Persistent=true
+Unit=projektbackup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools >= 77.0.3"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "boxes"
+version = "1.2"
+requires-python = ">=3.10"
+description = "Boxes generator for laser cutters"
+maintainers = [ { name = "Florian Festi", email="florian@festi.info" } ]
+readme = "README.rst"
+keywords = ["boxes", "box", "generator", "svg", "laser cutter"]
+license = "GPL-3.0-or-later"
+classifiers = [ # https://pypi.python.org/pypi?%3Aaction=list_classifiers
+  "Development Status :: 5 - Production/Stable",
+  "Environment :: Console",
+  "Environment :: Web Environment",
+  "Intended Audience :: Manufacturing",
+  "Programming Language :: Python :: 3",
+  "Topic :: Multimedia :: Graphics :: Editors :: Vector-Based",
+  "Topic :: Scientific/Engineering",
+]
+
+dependencies = [
+  "affine>=2.0",
+  "markdown",
+  "numpy",
+  "pillow",
+  "PyYAML",
+  "qrcode>=7.3.1",
+  "rectpack",
+  "shapely>=1.8.2",
+  "svgpathtools",
+  "typing_extensions>=4.5.0",
+]
+
+[dependency-groups]
+dev = [
+  "lxml>=6.0.2",
+  "mypy>=2.1.0",
+  "pre-commit>=4.6.0",
+  "pytest>=9.0.3",
+  "ruff",
+  "types-Markdown"
+]
+doc = ["sphinx>=8.0.2"]
+
+[project.scripts]
+boxes = "boxes.scripts.boxes_main:main"
+boxesserver = "boxes.scripts.boxesserver:main"
+boxes_proxy = "boxes.scripts.boxes_proxy:main"
+
+[project.urls]
+Homepage = "https://hackaday.io/project/10649-boxespy"
+Repository = "https://github.com/florianfesti/boxes"
+Documentation = "https://florianfesti.github.io/boxes/html/index.html"
+
+[tool.codespell]
+ignore-words-list = "ded,te,pathes,reencode,ontop,alledges"
+
+[tool.mypy]
+extra_checks = true
+ignore_missing_imports = true
+strict_equality = true
+warn_redundant_casts = true
+#warn_return_any = true
+warn_no_return = true
+warn_unreachable = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.rstcheck]
+report_level = "ERROR"
+ignore_directives = [
+  "autoclass",
+  "automethod",
+  "automodule",
+]
+ignore_messages = [
+  "File referenced in \"include\" directive not found: '.*generators\\.inc'",
+]
+
+[tool.ruff]
+exclude = [
+  "scripts/*ipynb", # Example
+  "scripts/boxes_proxy.py", # Symlink
+  "setup.py", # Needs refactoring so no fixes yet.
+]
+lint.select = [
+  "UP", # pyupgrade
+  "PTH", # flake8-use-pathlib
+]
+lint.ignore = [
+  # "UP031", # ToDo
+]
+
+[tool.ruff.lint.per-file-ignores]
+"boxes/formats.py" = ["PTH"]
+"boxes/scripts/boxes_generator.py" = ["PTH"]
+"boxes/scripts/boxes_main.py" = ["PTH"]
+"boxes/scripts/boxesserver.py" = ["PTH"]

@@ -1,0 +1,14 @@
+Description: Install all themes
+Index: matchbox-window-manager-1.2.2+git20200512/configure.ac
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/configure.ac	2020-06-15 15:21:26.340629567 +0100
++++ matchbox-window-manager-1.2.2+git20200512/configure.ac	2020-06-15 15:22:03.328603193 +0100
+@@ -496,6 +496,8 @@
+ data/themes/Default/Makefile
+ data/themes/blondie/Makefile
+ data/themes/MBOpus/Makefile
++data/themes/bluebox/Makefile
++data/themes/borillo/Makefile
+ data/schemas/Makefile
+ ])
+ 

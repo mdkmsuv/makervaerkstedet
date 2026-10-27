@@ -1,0 +1,167 @@
+/* Shared workshop, child-first Linux layout: October 2026. */
+.root {
+    -fx-font-family: "Metrophobic";
+    -fx-font-size: 14px;
+    -fx-base: #ffffff;
+    -fx-background: #fafbfc;
+    -fx-control-inner-background: #ffffff;
+    -fx-accent: #c62b2f;
+    -fx-focus-color: #c62b2f;
+    -fx-faint-focus-color: transparent;
+}
+.button, .toggle-button, .menu-button {
+    -fx-background-color: #ffffff;
+    -fx-text-fill: #40566e;
+    -fx-border-color: #dce2e8;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+    -fx-background-insets: 0;
+}
+.button:hover, .toggle-button:hover, .menu-button:hover { -fx-background-color: #e9f3f8; }
+.button:focused, .toggle-button:focused, .menu-button:focused { -fx-border-color: #c62b2f; }
+.button:pressed, .toggle-button:selected { -fx-background-color: #f8ede9; -fx-text-fill: #8c1d24; }
+.kloster-primary { -fx-background-color: #c62b2f; -fx-border-color: #c62b2f; -fx-text-fill: white; -fx-padding: 7 14; }
+.kloster-primary:hover { -fx-background-color: #8c1d24; -fx-border-color: #8c1d24; }
+.kloster-primary:focused { -fx-border-color: #40566e; -fx-border-width: 2; }
+.kloster-workshop, #totalApplicationBackground.kloster-workshop { -fx-background-color: #fafbfc; }
+.kloster-workshop #controlBar, .kloster-workshop #drawerArea { -fx-border-width: 0; -fx-background-color: transparent; }
+.kloster-header { -fx-background-color: #fafbfc; -fx-padding: 5 12; -fx-border-color: #d9e0e7; -fx-border-width: 0 0 1 0; }
+.kloster-brand { -fx-text-fill: #53616c; -fx-font-size: 14px; }
+.kloster-workshop-title { -fx-text-fill: #c62b2f; -fx-font-size: 14px; -fx-padding: 6 12; }
+.kloster-header-button, .kloster-secondary, .kloster-helper { -fx-padding: 7 12; -fx-font-size: 14px; }
+.kloster-about { -fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 16px; -fx-text-fill: #40566e; -fx-padding: 4 8 4 0; }
+.kloster-about .workshop-icon { -fx-stroke: #c62b2f; }
+.kloster-project-title, .kloster-workshop #fileNameBox {
+    -fx-font-size: 15px;
+    -fx-text-fill: #40566e;
+    -fx-background-color: #f6f8fa;
+    -fx-border-color: #dfe5eb;
+    -fx-border-width: 1;
+    -fx-background-radius: 4;
+    -fx-border-radius: 4;
+    -fx-padding: 7 14;
+}
+.kloster-workshop #fileNameBox:focused { -fx-background-color: white; -fx-border-color: #c62b2f; }
+.kloster-actions { -fx-background-color: #f4f6f8; -fx-border-color: #dde3e9; -fx-border-width: 0 0 1 0; -fx-padding: 5 9; }
+.kloster-actions .kloster-tool { -fx-background-color: transparent; -fx-border-color: transparent; -fx-padding: 4 3; -fx-background-insets: 0; -fx-font-size: 13px; -fx-text-fill: #344b63; }
+.kloster-actions .kloster-tool:hover { -fx-background-color: #dde7ef; }
+.kloster-actions .kloster-tool:pressed { -fx-background-color: #d0e3ef; }
+.kloster-actions .kloster-tool:focused { -fx-border-color: #c62b2f; }
+.kloster-tool:disabled { -fx-opacity: 0.48; }
+.kloster-advanced-controls { -fx-spacing: 4; -fx-padding: 2 5; -fx-alignment: center-left; -fx-background-color: #ffffff; }
+.kloster-advanced-controls .button, .kloster-advanced-controls .menu-button { -fx-padding: 6 8; -fx-font-size: 13px; -fx-graphic-text-gap: 6; }
+.kloster-more > .label { -fx-padding: 0 2; }
+.kloster-more .arrow-button { -fx-padding: 0 1; }
+.kloster-more .arrow { -fx-background-color: #53616c; }
+.kloster-shapes-panel { -fx-padding: 10 12; -fx-background-color: #eef0f3; -fx-border-color: #dde3e9; -fx-border-width: 0 0 0 1; }
+.kloster-helper { -fx-background-color: transparent; -fx-border-color: transparent; -fx-font-size: 14px; -fx-padding: 5 4; -fx-graphic-text-gap: 6; }
+.kloster-helper .workshop-icon { -fx-stroke: #c62b2f; -fx-stroke-width: 1.6; }
+.kloster-helper:hover { -fx-background-color: #dfeaf2; }
+.kloster-helper:selected { -fx-background-color: #f8ede9; -fx-border-color: #c62b2f; }
+.kloster-helper:focused { -fx-border-color: #c62b2f; }
+.kloster-category, .kloster-search { -fx-font-size: 14px; -fx-border-color: #dce2e8; -fx-background-color: #fafbfc; -fx-background-radius: 3; -fx-border-radius: 3; }
+.kloster-category .list-cell { -fx-text-fill: #40566e; -fx-padding: 8 9; }
+.kloster-search { -fx-padding: 8 10; }
+.kloster-shape-scroll, .kloster-shape-scroll > .viewport { -fx-background-color: #eef0f3; -fx-border-color: transparent; -fx-background-insets: 0; -fx-padding: 0; }
+.kloster-workshop .kloster-shape-tile {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #d3dbe2;
+    -fx-border-width: 1;
+    -fx-background-insets: 0;
+    -fx-background-radius: 3;
+    -fx-border-radius: 3;
+    -fx-padding: 4 2;
+    -fx-text-fill: #53677b;
+    -fx-font-size: 14px;
+    -fx-text-alignment: center;
+}
+.kloster-workshop .kloster-shape-tile:hover { -fx-background-color: #ffffff; -fx-border-color: #98cde4; }
+.kloster-workshop .kloster-shape-tile:pressed { -fx-background-color: #deeff8; }
+.kloster-workshop .kloster-shape-tile:focused { -fx-border-color: #c62b2f; }
+.kloster-drawing-tile { -fx-background-color: #fafbfc; -fx-border-color: #dce2e8; -fx-font-size: 14px; -fx-padding: 5 7; }
+.kloster-drawing-tile:hover { -fx-background-color: white; -fx-border-color: #98cde4; }
+.kloster-muted { -fx-text-fill: #53616c; -fx-font-size: 14px; }
+.kloster-statusbar { -fx-background-color: #fafbfc; -fx-padding: 3 12; -fx-font-size: 14px; }
+.kloster-plate-status { -fx-text-fill: #53616c; -fx-font-size: 14px; }
+.kloster-grid-settings { -fx-font-size: 14px; }
+.kloster-grid-settings .combo-box { -fx-font-size: 14px; -fx-background-color: white; -fx-border-color: #dce2e8; }
+.kloster-grid-settings .label { -fx-font-size: 14px; -fx-text-fill: #53677b; }
+.kloster-grid-settings .button { -fx-font-size: 14px; -fx-padding: 4 10; }
+.kloster-workshop .kloster-navigation { -fx-background-color: #ffffff; -fx-border-color: #dfe5eb; -fx-background-insets: 0; -fx-border-width: 1.5; -fx-background-radius: 50; -fx-border-radius: 50; -fx-padding: 8; }
+.kloster-workshop .kloster-navigation:hover { -fx-background-color: #eff7fb; -fx-border-color: #8fc4dd; }
+.kloster-workshop .kloster-navigation:focused { -fx-border-color: #c62b2f; }
+.kloster-workshop .kloster-drawer { -fx-background-color: #fafbfc; -fx-border-color: #dce2e8; -fx-padding: 0; }
+.kloster-inspector { -fx-font-size: 14px; -fx-background-color: #ffffff; -fx-border-color: #dce2e8; -fx-border-width: 1; }
+.kloster-inspector .titled-pane > .title { -fx-background-color: #f4f6f8; -fx-text-fill: #40566e; }
+.kloster-inspector .titled-pane > .title { -fx-min-height: 44; -fx-padding: 10 9; }
+.kloster-inspector .text-field, .kloster-inspector .combo-box {
+    -fx-min-height: 44; -fx-pref-height: 44; -fx-font-size: 14px;
+}
+.kloster-inspector .combo-box .text-field { -fx-min-height: 0; -fx-pref-height: -1; }
+.kloster-inspector-scroll, .kloster-inspector-scroll > .viewport {
+    -fx-background-color: white; -fx-border-width: 0; -fx-padding: 0;
+}
+.kloster-inspector-scroll > .scroll-bar:vertical { -fx-pref-width: 20; }
+.kloster-inspector-scroll .scroll-bar .thumb { -fx-min-height: 44; -fx-background-color: #bac3cc; }
+.kloster-workshop .separator { -fx-background-color: transparent; }
+.kloster-workshop .separator .line { -fx-border-color: #dce2e8; -fx-border-width: 0.5; }
+.kloster-shape-scroll .scroll-bar:vertical { -fx-pref-width: 18; -fx-background-color: transparent; }
+.kloster-shape-scroll .scroll-bar .thumb { -fx-background-color: #bac3cc; -fx-background-radius: 5; }
+.kloster-shape-scroll .scroll-bar .track { -fx-background-color: transparent; }
+.kloster-shape-scroll .scroll-bar .increment-button, .kloster-shape-scroll .scroll-bar .decrement-button { -fx-padding: 0; }
+.kloster-shape-scroll .scroll-bar .increment-arrow, .kloster-shape-scroll .scroll-bar .decrement-arrow { -fx-padding: 0; -fx-shape: ""; }
+.grid-key-color { -fx-text-fill: #91c5da; }
+.grid-dark-color { -fx-text-fill: #cee5ef; }
+.grid-light-color { -fx-text-fill: #eff7fb; }
+.nav-cube-surface-color { -fx-text-fill: #ffffff; }
+.nav-cube-edge-color { -fx-text-fill: #c4cdd5; }
+.nav-cube-corner-color { -fx-text-fill: #dfe5eb; }
+.nav-cube-corner-hover { -fx-text-fill: #c62b2f; }
+.kloster-dialog { -fx-background-color: #fafbfc; -fx-font-size: 14px; }
+.kloster-dialog .button, .kloster-dialog .toggle-button { -fx-padding: 8 12; }
+.kloster-heading { -fx-font-size: 24px; -fx-text-fill: #40566e; }
+.kloster-subheading { -fx-font-size: 17px; -fx-text-fill: #40566e; }
+.kloster-toolbar { -fx-background-color: white; -fx-border-color: #dce2e8; -fx-border-width: 1 0 1 0; }
+.kloster-print-overlay { -fx-background-color: rgba(25, 30, 35, 0.32); -fx-padding: 24; }
+.kloster-print-card { -fx-background-color: white; -fx-border-color: #dce2e8; -fx-border-width: 1; -fx-padding: 32; -fx-font-size: 14px; }
+.kloster-print-heading { -fx-text-fill: #c62b2f; -fx-font-size: 24px; }
+.kloster-print-question { -fx-text-fill: #40566e; -fx-font-size: 18px; -fx-line-spacing: 4; }
+.kloster-print-details { -fx-text-fill: #53616c; -fx-font-size: 14px; -fx-line-spacing: 4; }
+.kloster-print-card .button { -fx-padding: 10 15; -fx-font-size: 14px; }
+.kloster-learning-library, .kloster-project-guide { -fx-font-family: 'Metrophobic'; -fx-text-fill: #333333; }
+.kloster-learning-library .scroll-pane, .kloster-learning-library .viewport { -fx-background-color: #fafbfc; }
+.kloster-learning-card { -fx-padding: 12; -fx-background-color: white; -fx-border-color: #dce2e8; -fx-border-width: 1; -fx-background-radius: 3; -fx-border-radius: 3; }
+.kloster-learning-label { -fx-text-fill: #c62b2f; -fx-font-size: 14px; }
+.kloster-learning-note { -fx-text-fill: #53616c; -fx-font-size: 14px; }
+.kloster-project-guide { -fx-font-size: 14px; }
+.kloster-project-guide > .title { -fx-background-color: #ffffff; -fx-padding: 10 6; }
+.kloster-project-guide > .title > .text { -fx-fill: #c62b2f; }
+.kloster-project-guide .scroll-pane, .kloster-project-guide .viewport { -fx-background-color: white; }
+.kloster-project-guide .titled-pane > .title { -fx-padding: 8 5; }
+.kloster-workshop .kloster-learning-highlight { -fx-border-color: #c62b2f; -fx-border-width: 2; -fx-background-color: #f8ede9; }
+.kloster-learning-counter { -fx-text-fill: #53616c; -fx-font-size: 14px; }
+.kloster-learning-instruction { -fx-text-fill: #333333; -fx-font-size: 14px; }
+.kloster-project-guide .button { -fx-padding: 6 7; -fx-font-size: 14px; }
+.kloster-project-guide .combo-box { -fx-font-size: 14px; -fx-background-color: #f1f5f7; }
+.kloster-project-guide .combo-box .list-cell { -fx-text-fill: #40566e; }
+
+/* Clear tap targets and readable help; colour is never the only active cue. */
+.kloster-header-button, .kloster-primary, .kloster-secondary,
+.kloster-drawing-tile, .kloster-dialog .button, .kloster-dialog .toggle-button,
+.kloster-project-guide .button, .kloster-project-guide .combo-box {
+    -fx-min-height: 44;
+}
+.kloster-tool-group { -fx-background-color: white; -fx-background-radius: 4; -fx-padding: 2; }
+.kloster-panel-heading { -fx-font-size: 18px; -fx-text-fill: #333333; }
+.kloster-details > .title { -fx-padding: 12 8; -fx-background-color: #ffffff; }
+.kloster-details > .content { -fx-background-color: #fafbfc; -fx-padding: 8; }
+.kloster-help-content { -fx-padding: 18; -fx-font-size: 15px; }
+.kloster-help-heading { -fx-font-size: 17px; -fx-text-fill: #c62b2f; }
+.kloster-help .scroll-pane, .kloster-help .viewport { -fx-background-color: white; }
+.kloster-more .menu-item { -fx-padding: 13 16; -fx-font-size: 14px; }
+.kloster-helper:selected { -fx-border-width: 2; }
+.kloster-touch-tools { -fx-padding: 5 12; -fx-background-color: white; -fx-border-color: #dce2e8; -fx-border-width: 0 0 1 0; }
+.kloster-touch-mode { -fx-font-size: 14px; -fx-padding: 8 12; }
+.kloster-touch-mode:selected { -fx-background-color: #f8ede9; -fx-border-color: #c62b2f; -fx-border-width: 2; -fx-text-fill: #8c1d24; }
+.kloster-sidebar-scroll, .kloster-sidebar-scroll > .viewport { -fx-background-color: #eef0f3; -fx-border-width: 0; -fx-padding: 0; }
+.kloster-sidebar-scroll > .scroll-bar:vertical { -fx-pref-width: 18; }

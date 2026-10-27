@@ -1,0 +1,23 @@
+[Unit]
+Description=Elevvaerkstedet - foerste skoleopsaetning
+Wants=network-online.target
+After=network-online.target
+Before=elevhub-firstboot.service getty@tty1.service
+ConditionPathExists=!/etc/elevhub-install/settings.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/elevhub-onboarding.py
+StandardInput=tty-force
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

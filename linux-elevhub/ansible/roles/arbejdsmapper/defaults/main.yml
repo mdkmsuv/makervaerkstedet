@@ -1,0 +1,12 @@
+arbejdsmapper_ejer: "{{ elevkonto_navn | default('elev') }}"
+arbejdsmapper_hjem: "/home/{{ arbejdsmapper_ejer }}"
+
+# Synligt navn på mappen, hvor eleverne gemmer projekter.
+arbejdsmapper_rod: Projekter
+
+# Undermapper pr. forløb, fx ["Laser", "3D-print"]. Vælges senere.
+arbejdsmapper_forloeb: []
+
+# Eksempelfiler i projektmappen, fx [{src: /sti/til/fil.stl, navn: fil.stl}].
+# Findes filen allerede, røres den ikke.
+arbejdsmapper_eksempelfiler: []

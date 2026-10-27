@@ -1,0 +1,64 @@
+#!/bin/sh
+# Styres af Ansible (rollen kiosk).
+# Elevens skærm: elevbjælken øverst og browseren som app-vindue under den (uden adresselinje).
+# App-tilstand i stedet for --kiosk, fordi kiosktilstand dækker elevbjælken.
+# Internetvinduer (almindelige browservinduer) lukkes af elevbjælken, når Internet er lukket.
+
+# BEGIN ELEVHUB STARTUP
+xsetroot -solid '#000000'
+# Dæk den første indlæsning, før browser og bjælke vises. Skærmen må aldrig
+# være en forudsætning for at starte programmerne, hvis den selv fejler.
+startup_dir=$(mktemp -d /tmp/elevhub-startup.XXXXXX)
+python3 /usr/local/lib/elevhub/startup_screen.py --mapped-file "$startup_dir/mapped" &
+startup_pid=$!
+startup_wait=0
+while [ ! -f "$startup_dir/mapped" ] && kill -0 "$startup_pid" 2>/dev/null && [ "$startup_wait" -lt 30 ]; do
+    sleep 0.1
+    startup_wait=$((startup_wait + 1))
+done
+rm -f "$startup_dir/mapped"
+rmdir "$startup_dir" 2>/dev/null || true
+# END ELEVHUB STARTUP
+
+# BEGIN ELEVHUB FRESH SESSION
+# Glem kun sidste aktive tegning én gang pr. boot. Gemte projekter bevares.
+# Et genstartet kiosk-vindue må ikke nulstille en elevs igangværende arbejde.
+mkdir -p "$HOME/.local/state/elevhub"
+python3 /usr/local/lib/elevhub/fresh_session.py >>"$HOME/.local/state/elevhub/session.log" 2>&1 || true
+# END ELEVHUB FRESH SESSION
+
+# BEGIN ELEVHUB PROXY CHECK
+# Report configuration errors without making offline workshop access depend
+# on the server. Installation and updates validate this contract beforehand.
+python3 /usr/local/lib/elevhub/proxy_policy.py --policy /etc/chromium/policies/managed/elevhub.json --server {{ kiosk_server | quote }} >>"$HOME/.local/state/elevhub/session.log" 2>&1 || true
+# END ELEVHUB PROXY CHECK
+
+xset s off -dpms s noblank
+{% if kiosk_skaerm_output | default('') and kiosk_skaerm_mode | default('') %}
+xrandr --output {{ kiosk_skaerm_output | quote }} --mode {{ kiosk_skaerm_mode | quote }} || true
+{% endif %}
+# Console-switch/grab-break server actions must not bypass a classroom pause.
+setxkbmap {{ kiosk_tastatur }} -option srvrkeys:none
+# Bevar synlige lukknapper til CaDoodle og andre programvinduer, også med touch.
+# Hovedcontaineren genkendes på begge WM_CLASS-felter, også efter navigation.
+export MB_BLOCK_CLOSE_INSTANCE=usr_local_share_elevhub_start.html
+export MB_BLOCK_CLOSE_CLASS=Chromium
+/usr/local/lib/elevhub/matchbox-window-manager -use_titlebar yes &
+( while true; do python3 /usr/local/lib/elevhub/browser_close_guard.py; sleep 2; done ) &
+
+# USB-nøgler monteres automatisk under /media/{{ kiosk_bruger }}/ og vises i gem-vinduet.
+udiskie --no-tray --no-notify --automount &
+
+# Bjælken genstartes, hvis den stopper.
+( while true; do python3 /usr/local/lib/elevhub/elevbjaelke.py; sleep 2; done ) &
+
+while true; do
+    # --disable-background-networking: ingen baggrundskontakt til Googles tjenester.
+    chromium --app="file://{{ kiosk_startside_mappe }}/start.html" --start-maximized \
+        --no-first-run --noerrdialogs --disable-infobars \
+        --disable-session-crashed-bubble --password-store=basic \
+        --disable-background-networking --disable-quic \
+        --disable-features=EncryptedClientHello{% if kiosk_mesa_gl %} --use-gl=angle --use-angle=gl --ignore-gpu-blocklist{% endif %}{% if kiosk_web_bluetooth %} --enable-features=WebBluetooth{% endif %}
+
+    sleep 1
+done

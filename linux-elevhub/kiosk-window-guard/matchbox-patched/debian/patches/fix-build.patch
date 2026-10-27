@@ -1,0 +1,16 @@
+Description: fix build
+Author: Moray Allan <moray@debian.org>
+
+Index: matchbox-window-manager-1.2.2+git20200512/src/mbtheme.c
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/src/mbtheme.c	2020-06-15 15:33:49.480452483 +0100
++++ matchbox-window-manager-1.2.2+git20200512/src/mbtheme.c	2020-06-15 15:33:49.480452483 +0100
+@@ -2433,7 +2433,7 @@
+ 
+   XMLParser *parser = xml_parser_new();
+ 
+-  char theme_filename[255] = DEFAULTTHEME;
++  char theme_filename[256] = DEFAULTTHEME;
+   char *theme_path = NULL;
+ 
+ #ifndef MAXPATHLEN

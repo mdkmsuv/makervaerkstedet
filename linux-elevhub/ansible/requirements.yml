@@ -1,0 +1,6 @@
+# Ansible-samlinger, som rollerne bruger.
+# Følger med den fulde "ansible"-pakke. Ved kun ansible-core:
+#   ansible-galaxy collection install -r requirements.yml
+collections:
+  - name: community.general
+  - name: ansible.posix

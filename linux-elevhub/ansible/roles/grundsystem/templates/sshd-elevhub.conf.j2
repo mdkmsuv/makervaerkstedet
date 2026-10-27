@@ -1,0 +1,18 @@
+# Styres af Ansible (rollen grundsystem). Ændringer her overskrives.
+# Filen læses før andre indstillinger, så disse regler vinder.
+PermitRootLogin no
+PasswordAuthentication no
+KbdInteractiveAuthentication no
+PubkeyAuthentication yes
+PermitEmptyPasswords no
+AllowAgentForwarding no
+X11Forwarding no
+PermitTunnel no
+MaxAuthTries 3
+LoginGraceTime 30
+{% if grundsystem_admin_kilder | length %}
+AllowUsers{% for kilde in grundsystem_admin_kilder %} {{ grundsystem_driftskonto }}@{{ kilde }}{% endfor %}
+
+{% else %}
+AllowUsers {{ grundsystem_driftskonto }}
+{% endif %}

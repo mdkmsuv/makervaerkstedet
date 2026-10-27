@@ -1,0 +1,130 @@
+{
+  "model": "fhexa1",
+  "source": "Beam Studio 2.5.14, app/constants/presets.ts og lang/da.ts",
+  "units": {
+    "power": "%",
+    "speed": "mm/s"
+  },
+  "presets": {
+    "wood_3mm_cutting": {
+      "name": "Træ - 3 mm Skæring",
+      "power": 40,
+      "speed": 6,
+      "repeat": 1
+    },
+    "wood_5mm_cutting": {
+      "name": "Træ - 5 mm Skæring",
+      "power": 65,
+      "speed": 3,
+      "repeat": 1
+    },
+    "wood_8mm_cutting": {
+      "name": "Træ - 8 mm Skæring",
+      "power": 65,
+      "speed": 3,
+      "repeat": 2
+    },
+    "wood_10mm_cutting": {
+      "name": "Træ - 10 mm Skæring",
+      "power": 65,
+      "speed": 3,
+      "repeat": 3
+    },
+    "wood_engraving": {
+      "name": "Træ - Gravering",
+      "power": 20,
+      "speed": 300,
+      "repeat": 1
+    },
+    "acrylic_3mm_cutting": {
+      "name": "Akryl - 3 mm Skæring",
+      "power": 40,
+      "speed": 6,
+      "repeat": 1
+    },
+    "acrylic_5mm_cutting": {
+      "name": "Akryl - 5 mm Skæring",
+      "power": 55,
+      "speed": 3,
+      "repeat": 1
+    },
+    "acrylic_8mm_cutting": {
+      "name": "Akryl - 8 mm Skæring",
+      "power": 50,
+      "speed": 3,
+      "repeat": 2
+    },
+    "acrylic_10mm_cutting": {
+      "name": "Akryl - 10 mm Skæring",
+      "power": 55,
+      "speed": 3,
+      "repeat": 2
+    },
+    "acrylic_engraving": {
+      "name": "Akryl - Gravering",
+      "power": 15,
+      "speed": 300,
+      "repeat": 1
+    },
+    "leather_3mm_cutting": {
+      "name": "Læder - 3 mm Skæring",
+      "power": 40,
+      "speed": 6,
+      "repeat": 1
+    },
+    "leather_5mm_cutting": {
+      "name": "Læder - 5 mm Skæring",
+      "power": 55,
+      "speed": 3,
+      "repeat": 1
+    },
+    "leather_engraving": {
+      "name": "Læder - Gravering",
+      "power": 20,
+      "speed": 300,
+      "repeat": 1
+    },
+    "fabric_3mm_cutting": {
+      "name": "Stof - 3 mm Skæring",
+      "power": 15,
+      "speed": 25,
+      "repeat": 1
+    },
+    "fabric_5mm_cutting": {
+      "name": "Stof - 5 mm Skæring",
+      "power": 20,
+      "speed": 20,
+      "repeat": 1
+    },
+    "fabric_engraving": {
+      "name": "Stof - Gravering",
+      "power": 15,
+      "speed": 250,
+      "repeat": 1
+    },
+    "slate_engraving": {
+      "name": "Skifer - Gravering",
+      "power": 30,
+      "speed": 500,
+      "repeat": 1
+    },
+    "rubber_bw_engraving": {
+      "name": "Gummi - Gravering",
+      "power": 45,
+      "speed": 300,
+      "repeat": 1
+    },
+    "glass_bw_engraving": {
+      "name": "Glas - Gravering",
+      "power": 35,
+      "speed": 150,
+      "repeat": 1
+    },
+    "steel_engraving_spray_engraving": {
+      "name": "Metal - Gravering",
+      "power": 20,
+      "speed": 150,
+      "repeat": 1
+    }
+  }
+}

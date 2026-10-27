@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Laserstation · Makerværkstedet</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/laser.css">
+  <link rel="stylesheet" href="/laserstation.css">
+  <script src="/laserstation.js" defer></script>
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div><span class="brand-school" data-school-name>Makerværkstedet</span><h1>Laserstation</h1></div>
+    </div>
+    <div class="header-note" id="machine-note">Laserstation</div>
+    <button id="station-help" class="secondary" type="button">Sådan bruger du laseren</button>
+    <button id="logout" class="quiet" type="button" hidden>Log ud</button>
+  </header>
+
+  <main>
+    <p id="loading" class="loading">Indlæser …</p>
+
+    <section id="login-panel" class="login-panel" hidden aria-labelledby="login-title">
+      <p class="eyebrow">FOR LÆRERE</p>
+      <h2 id="login-title">Log ind på laserkøen</h2>
+      <p>Brug Designværkstedets lærerkode. Afleveringerne ligger på serveren <strong id="server-name"></strong>.</p>
+      <form id="login-form">
+        <input class="visually-hidden" type="text" name="username" autocomplete="username" value="Laserlærer" readonly tabindex="-1" aria-hidden="true">
+        <label for="login-code">Lærerkode</label>
+        <input id="login-code" type="password" autocomplete="current-password" required>
+        <button class="primary" type="submit">Log ind</button>
+      </form>
+      <p id="login-error" class="error" role="alert"></p>
+    </section>
+
+    <section id="station" class="station" hidden>
+      <section class="station-overview" aria-labelledby="next-title">
+        <div><p class="eyebrow">FRA AFLEVERING TIL FÆRDIGT PRODUKT</p><h2 id="next-title">Vælg afleveringer</h2><p id="next-detail" role="status"></p></div>
+        <button id="next-action" class="secondary" type="button">Vis næste trin</button>
+        <p id="station-message" role="status" hidden></p>
+      </section>
+      <aside class="queue-panel" aria-labelledby="queue-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">FRA ELEVERNE</p>
+            <h2 id="queue-title">Afleveringer</h2>
+          </div>
+          <button id="refresh" class="secondary small" type="button" title="Hent køen igen">Opdatér ↻</button>
+        </div>
+        <div class="queue-filters">
+          <label for="class-filter" class="visually-hidden">Klasse</label>
+          <select id="class-filter"><option value="all">Alle klasser</option></select>
+          <label for="search" class="visually-hidden">Søg</label>
+          <input id="search" type="search" placeholder="Søg elev eller projekt">
+          <p id="queue-count" class="queue-count" role="status"></p>
+        </div>
+        <p id="queue-error" class="error" role="status" hidden></p>
+        <ul id="job-list" class="job-list"></ul>
+        <p id="queue-empty" class="empty" hidden>Der er ingen afleveringer, der venter.</p>
+      </aside>
+
+      <section class="bed-panel" aria-labelledby="bed-title">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow" id="bed-dimensions">LASERPLADEN</p>
+            <h2 id="bed-title">Laserpladen</h2>
+          </div>
+          <div class="bed-tools" role="toolbar" aria-label="Pladen">
+            <button id="auto-place" class="secondary small" type="button">Placér automatisk</button>
+            <button id="rotate" class="secondary small" type="button" disabled title="Drej det valgte emne (tast R)">Drej 90°</button>
+            <button id="remove" class="secondary small" type="button" disabled title="Tag det valgte emne af pladen (tast Delete)">Tag af pladen</button>
+            <button id="clear" class="quiet small" type="button">Ryd pladen</button>
+          </div>
+        </div>
+        <details id="photo-options" class="material-workflow">
+          <summary><span id="photo-title">Valgfrit: placér på et materialefoto</span><span id="material-mode" class="mode-tag">Manuel plade</span></summary>
+          <p class="material-help">Brug et foto til fx reststykker. Du kan også placere på den almindelige plade og kontrollere materialet og placeringen i Beam Studio.</p>
+          <p class="material-help">Tag et foto ovenfra, der viser hele laserens arbejdsområde. Et ubehandlet kamerabillede kan ikke bruges direkte. Markér arbejdsområdets fire hjørner i rækkefølgen øverst venstre, øverst højre, nederst højre, nederst venstre.</p>
+          <div class="material-controls">
+            <label class="file-label secondary small" for="material-photo">Vælg foto</label><input id="material-photo" type="file" accept="image/png,image/jpeg">
+            <label for="material-height">Materialets højde (mm)</label><input id="material-height" type="number" min="0" max="80" step="0.1" value="3">
+            <label class="height-confirm"><input id="height-confirm" type="checkbox"> Jeg har kontrolleret højden på materialet</label>
+          </div>
+          <div id="calibration" class="calibration" hidden><p id="calibration-step" role="status"></p><svg id="photo-preview" role="application" aria-label="Foto af laserpladen. Klik pladens fire hjørner i angivet rækkefølge."></svg><div class="material-actions"><button id="calibration-reset" class="quiet small" type="button">Start hjørner forfra</button><button id="calibration-cancel" class="quiet small" type="button">Annullér foto</button><button id="photo-submit" class="secondary small" type="button" disabled>Brug foto</button></div></div>
+          <p id="photo-result" class="result" role="status"></p>
+          <div id="region-workflow" hidden>
+            <div class="material-actions"><button id="material-clear" class="quiet small" type="button">Fjern materialefoto</button></div>
+            <p id="material-note" class="material-help"></p>
+            <div class="region-tools" role="toolbar" aria-label="Redigér materialeområder"><button id="region-pick" class="small active" type="button">Flyt emner</button><button id="region-usable" class="secondary small" type="button">Tegn brugbart område</button><button id="region-hole" class="secondary small" type="button">Tegn område, der skal undgås</button><button id="region-finish" class="secondary small" type="button" disabled>Afslut polygon</button><button id="region-undo" class="quiet small" type="button" disabled>Fortryd punkt</button></div>
+            <p id="region-instruction" class="material-help">Tegn materialets brugbare områder. Kontrollér kanter og ting på pladen.</p>
+            <ul id="region-list" class="region-list"></ul>
+            <button id="approve-material" class="secondary" type="button" disabled>Godkend materialeområder</button>
+            <p id="region-result" class="result" role="status"></p>
+          </div>
+        </details>
+        <div class="bed-wrap">
+          <svg id="bed" role="application" aria-label="Laserpladen set ovenfra. Det øverste venstre hjørne er laserens nulpunkt."></svg>
+        </div>
+        <p id="bed-status" class="bed-status" role="status">Vælg afleveringer i listen for at lægge dem på pladen.</p>
+        <ul id="problems" class="problems" tabindex="-1" hidden></ul>
+        <p class="hint">Træk emnerne for at flytte dem. Piletaster flytter 1 mm, med Skift 10 mm. Det øverste venstre hjørne er laserens nulpunkt.</p>
+      </section>
+
+      <aside class="action-panel" aria-labelledby="action-title">
+        <p class="eyebrow">SKÆR OG GRAVÉR</p>
+        <h2 id="action-title">Klargør produktionen</h2>
+
+        <div class="station-step">
+          <label for="material">1. Materiale</label>
+          <select id="material"></select>
+          <p class="explain">Vælg det materiale og den tykkelse, der ligger i laseren. Forudindstillingen er et udgangspunkt: brug værkstedets afprøvede indstilling, eller lav en lille materialeprøve først.</p>
+          <details class="preset-details"><summary>Vis effekt og hastighed</summary><dl id="preset-info" class="preset-info"></dl><p class="source" id="preset-source"></p></details>
+        </div>
+
+        <div class="station-step">
+          <p class="step-title">2. Kontrollér pladen</p>
+          <button id="check" class="secondary" type="button" disabled>Beregn tid</button>
+          <p class="explain">Tiden er et overslag. Beregningen kontrollerer filen; du kontrollerer det fysiske materiale og placeringen.</p>
+          <p id="check-result" class="result" role="status"></p>
+          <button id="approve-placement" class="secondary" type="button" disabled>Godkend placering</button>
+          <p id="approval-result" class="result" role="status"></p>
+        </div>
+
+        <div class="station-step">
+          <p class="step-title">3. Overfør filen</p>
+          <button id="prepare-transfer" class="primary" type="button" disabled>Klargør til laseren</button>
+          <button id="send-transfer" class="primary transfer-send" type="button" disabled>Send til laseren</button>
+          <p id="transfer-gate" class="explain" role="status"></p>
+          <p id="transfer-result" class="result" role="status"></p>
+          <p class="explain">Kontrollér placeringen ved laseren. Overførslen starter ikke skæringen.</p>
+        </div>
+
+        <div class="station-step fallback-step">
+          <p class="step-title">Eller: klargør i Beam Studio</p>
+          <button id="open" class="secondary" type="button" disabled>Åbn i Beam Studio</button>
+          <p class="explain">Åbner pladen med FLUX' materialeindstillinger, hvis den direkte overførsel ikke er tilgængelig.</p>
+          <p id="open-result" class="result" role="status"></p>
+        </div>
+
+        <div id="done-step" class="station-step done-step" hidden>
+          <p class="step-title">4. Når laseren er færdig</p>
+          <ul id="done-list" class="done-list"></ul>
+          <button id="mark-done" class="secondary" type="button">Afslut afleveringer …</button>
+          <p class="explain">Gør dette efter skæring eller gravering. Filerne fjernes fra køen; historikken bevares.</p>
+          <p id="done-result" class="result" role="status"></p>
+        </div>
+
+        <p class="later">Materialefotoet og områderne skal kontrolleres af læreren. Start først skæringen ved laseren, når placeringen er kontrolleret.</p>
+      </aside>
+    </section>
+  </main>
+  <dialog id="station-help-dialog" class="station-dialog" aria-labelledby="station-help-title">
+    <div class="dialog-header"><h2 id="station-help-title">Fra elevtegning til laser</h2><button type="button" class="icon-button" data-station-close="station-help-dialog" aria-label="Luk hjælp">×</button></div>
+    <p>Eleverne designer på deres computer og sender til køen. Her klargør læreren eller en oplært elev produktionen. Elever betjener laseren med en voksen til stede.</p>
+    <ol class="station-help-steps">
+      <li><strong>Vælg afleveringer.</strong> Find klasse, elev eller projekt i køen. Ved billeder vælger du <em>Som foto</em> for gråtoner eller <em>Som streger</em> for konturer. Sæt flueben for at lægge tegningen på pladen.</li>
+      <li><strong>Placér og vælg materiale.</strong> Brug Placér automatisk, eller flyt selv. Røde markeringer viser overlap eller dele uden for pladen. Vælg den rigtige materialetype og tykkelse. Materialefoto er valgfrit.</li>
+      <li><strong>Kontrollér og overfør.</strong> Beregn eventuelt tiden. Godkend placeringen for at klargøre en fil til direkte overførsel. Du kan også bruge Åbn i Beam Studio. Klargøring og overførsel starter ikke laseren.</li>
+      <li><strong>Start ved maskinen.</strong> Følg værkstedets oplæring: kontrollér godkendt materiale, fokus, placering og udsugning. Bliv ved maskinen under kørslen. Følg altid maskinens vejledning og skolens regler.</li>
+      <li><strong>Kontrollér resultatet og afslut.</strong> Er alle produkter færdige? Afslut først derefter afleveringerne. Køens produktionsfiler slettes; historik og den gemte lokale plade bevares.</li>
+    </ol>
+    <details><summary>Hvis noget ikke virker</summary><dl class="station-glossary"><dt>Afleveringen mangler</dt><dd>Opdatér køen, og fjern klasse- eller søgefilter. Bed eleven kontrollere sin afleveringskvittering.</dd><dt>En knap er grå</dt><dd>Læs næste trin øverst. Der kan mangle et emne på pladen, en billedmetode eller en godkendelse. Et ufærdigt materialefoto skal bruges eller annulleres.</dd><dt>Direkte overførsel er ikke tilgængelig</dt><dd>Brug Åbn i Beam Studio, og kontrollér pladen dér.</dd><dt>Laseren skærer ikke helt igennem</dt><dd>Bed værkstedets ansvarlige kontrollere materiale, fokus og en lille materialeprøve. En forudindstilling garanterer ikke et bestemt resultat.</dd></dl></details>
+    <p class="source">Baggrund: <a href="https://support.flux3dp.com/hc/en-us/articles/11289780652303-1-2-Safety-Precautions" target="_blank" rel="noopener noreferrer">FLUX Beambox II: sikkerhed</a> · <a href="https://support.flux3dp.com/hc/en-us/articles/360001651775-Preventing-Back-side-Burning-in-Laser-Cut-Materials" target="_blank" rel="noopener noreferrer">FLUX: materialeprøver</a>. Hjælpen her kan læses uden internet.</p>
+    <div class="dialog-footer"><button type="button" class="primary" data-station-close="station-help-dialog">Tilbage til værkstedet</button></div>
+  </dialog>
+  <dialog id="complete-dialog" class="station-dialog" aria-labelledby="complete-title" aria-describedby="complete-explanation">
+    <div class="dialog-header"><h2 id="complete-title">Er produkterne færdige?</h2><button type="button" class="icon-button" data-station-close="complete-dialog" aria-label="Luk afslutning">×</button></div>
+    <p id="complete-explanation">Afslut kun afleveringer, der er skåret eller graveret færdige. Deres SVG-filer slettes fra køen, og de kan ikke hentes derfra igen. Historik og den gemte lokale plade bevares.</p>
+    <ul id="complete-list" class="done-list"></ul><p id="complete-result" role="status"></p>
+    <div class="dialog-footer"><button type="button" class="secondary" data-station-close="complete-dialog" autofocus>Tilbage</button><button type="button" id="confirm-done" class="primary">Ja, afslut disse afleveringer</button></div>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,93 @@
+- name: Genindlæs systemd
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Opdater stille opstart
+  ansible.builtin.command: update-grub
+  changed_when: true
+
+- name: Opdatér skriftcache
+  ansible.builtin.command: fc-cache -f /usr/local/share/fonts/elevhub
+  changed_when: true
+
+- name: Opdatér systemets CA-cache
+  ansible.builtin.command: update-ca-certificates
+  changed_when: true
+
+- name: Genindlæs micro-bit USB-regler
+  ansible.builtin.command: udevadm control --reload-rules
+  changed_when: true
+  notify: Anvend micro-bit USB-regler på tilsluttede enheder
+
+- name: Anvend micro-bit USB-regler på tilsluttede enheder
+  ansible.builtin.command:
+    argv:
+      - udevadm
+      - trigger
+      - --subsystem-match=usb
+      - --attr-match=idVendor=0d28
+      - --attr-match=idProduct=0204
+      - --action=change
+      - --settle
+  changed_when: true
+
+- name: Stop elevhub-webproxy
+  ansible.builtin.systemd_service:
+    name: elevhub-webproxy
+    state: stopped
+  when: not ansible_check_mode
+
+- name: Genstart elevhub-regler
+  ansible.builtin.systemd_service:
+    name: elevhub-regler
+    state: restarted
+
+- name: Genstart lokal elevapp-service
+  ansible.builtin.systemd_service:
+    name: elevhub-lokal
+    state: restarted
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: Genstart lokal designtjeneste
+  ansible.builtin.systemd_service:
+    name: elevhub-design
+    state: restarted
+    daemon_reload: true
+  when:
+    - not ansible_check_mode
+    - kiosk_lokal_design_enabled | bool
+
+# Genstart af tty1 logger elevkontoen ind igen og starter kiosken forfra, og
+# ugemt elevarbejde går tabt. En opdatering må derfor ikke slå en kørende
+# elevskærm ihjel: ændringen virker fra næste opstart, medmindre
+# administratoren beder om det med -e kiosk_genstart_nu=true (fx før skoletid).
+- name: Er elevskærmen i brug?
+  ansible.builtin.command: pgrep -u {{ kiosk_bruger }} -x Xorg
+  register: kiosk_skaerm_i_brug
+  failed_when: false
+  changed_when: false
+  check_mode: false
+  listen: Genstart kiosk
+  when: not (elevhub_firstboot | default(false) | bool)
+
+- name: Elevskærmen genstartes ikke midt i brugen
+  ansible.builtin.debug:
+    msg: >-
+      Elevskærmen er i brug og genstartes ikke. Ændringen virker fra næste
+      opstart. Kør med -e kiosk_genstart_nu=true for at genstarte med det samme.
+  listen: Genstart kiosk
+  when:
+    - not (elevhub_firstboot | default(false) | bool)
+    - kiosk_skaerm_i_brug.rc | default(1) == 0
+    - not (kiosk_genstart_nu | bool)
+
+- name: Genstart elevskærmen
+  ansible.builtin.systemd_service:
+    name: getty@tty1
+    state: restarted
+  listen: Genstart kiosk
+  # USB-installationen åbner først elevskærmen, når også CaDoodle er klar.
+  when:
+    - not (elevhub_firstboot | default(false) | bool)
+    - kiosk_skaerm_i_brug.rc | default(1) != 0 or (kiosk_genstart_nu | bool)

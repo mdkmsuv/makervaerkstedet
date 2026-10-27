@@ -1,0 +1,19 @@
+{
+  "URLBlocklist": [
+    "file://*",
+    "chrome://*",
+    "chrome-extension://*",
+    "devtools://*",
+    "view-source:*",
+    "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_printvaerksted_port }}/laerer",
+{% for side in kiosk_internet_spaerret %}
+    "{{ side }}",
+{% endfor %}
+{% for port in kiosk_spaerrede_serverporte %}
+    "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ port }}/"{{ "," if not loop.last else "" }}
+{% endfor %}
+  ],
+  "URLAllowlist": [
+    "file://{{ kiosk_startside_mappe }}/"
+  ]
+}

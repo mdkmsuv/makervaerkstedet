@@ -1,0 +1,32 @@
+# Lokal administratorkonto til fejlsøgning FORAN maskinen.
+#
+# Baggrund: kiosken logger kun elevkontoen automatisk ind på tty1. tty2-tty6
+# har helt almindelige Debian-loginprompter. Knappen Admin i elevbjælken
+# åbner tty2 uden at afslutte projekter; Ctrl+Alt+F1 går tilbage. Driftskontoen
+# "elevhub" kan ikke bruges der, fordi den bevidst har låst adgangskode og kun
+# SSH-nøgle. Uden denne rolle findes der derfor ingen måde at få en terminal på
+# maskinen, hvis netværket er nede, eller SSH ikke virker.
+#
+# Rollen gør INGENTING, før den slås til. Det er med vilje: en konto med
+# adgangskode på en maskine, eleverne sidder fysisk ved, er en bevidst
+# beslutning, ikke noget der skal ske ved et uheld.
+adminkonto_aktiveret: false
+
+adminkonto_navn: makeradmin
+adminkonto_fuldt_navn: Lokal administrator
+
+# "!" betyder låst adgangskode; så kan kontoen ikke bruges til at logge ind.
+# Sæt en rigtig hash i inventory. Lav den på Linux/WSL med:
+#   openssl passwd -6
+# Kommandoen spørger om adgangskoden og skriver kun hashen ud. Skriv aldrig
+# selve adgangskoden ind i en fil i projektet.
+adminkonto_adgangskode_hash: "!"
+
+# sudo giver administratorret. adm giver læseadgang til systemlogfiler, hvilket
+# er det, man reelt skal bruge ved fejlsøgning.
+adminkonto_grupper:
+  - sudo
+  - adm
+
+# Åbn den lokale grafiske opdateringsflade efter admin-login på tty2.
+adminkonto_grafisk_opdatering: true

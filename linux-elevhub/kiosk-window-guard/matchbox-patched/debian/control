@@ -1,0 +1,28 @@
+Source: matchbox-window-manager
+Section: embedded
+Priority: optional
+Maintainer: Moray Allan <moray@debian.org>
+Uploaders: Thibaut GIRKA <thib@sitedethib.com>
+Build-Depends: debhelper, debhelper-compat (= 13), pkg-config, libstartup-notification0-dev, libmatchbox-dev (>= 1.9-4), libx11-dev, libxext-dev, libxt-dev, libxft-dev
+Standards-Version: 4.6.2
+Homepage: https://www.yoctoproject.org/software-item/matchbox/
+
+Package: matchbox-window-manager
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Replaces: matchbox (<< 1:0.8.2)
+Provides: x-window-manager
+Description: window manager for resource-limited systems
+ Matchbox is a base environment for the X Window System running on non-desktop
+ embedded platforms such as handhelds, set-top boxes, kiosks and anything else
+ for which screen space, input mechanisms or system resources are limited.
+ .
+ This package contains the Matchbox window manager.
+
+Package: matchbox-window-manager-udeb
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Section: debian-installer
+Package-Type: udeb
+Description: window manager for resource-limited systems
+ This is a udeb, or a microdeb, for the debian-installer.

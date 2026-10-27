@@ -1,0 +1,26 @@
+{
+  "format": 1,
+  "licenses": [
+    {
+      "path": "CaDoodle-Application-CC0.txt",
+      "repository": "CaDoodle-Application",
+      "commit": "f723ccd25dbc2caf6c2818ddaa4c47193d75aa6c",
+      "source": "https://raw.githubusercontent.com/CommonWealthRobotics/CaDoodle-Application/f723ccd25dbc2caf6c2818ddaa4c47193d75aa6c/LICENSE",
+      "sha256": "a2010f343487d3f7618affe54f789f5487602331c0a8d03f49e9a7c547cf0499"
+    },
+    {
+      "path": "BowlerStudio-LGPL.txt",
+      "repository": "BowlerStudio",
+      "commit": "b3db3606c74344d705c9084af8872cbc12f35a0f",
+      "source": "https://raw.githubusercontent.com/CommonWealthRobotics/BowlerStudio/b3db3606c74344d705c9084af8872cbc12f35a0f/LICENSE",
+      "sha256": "faded4a1fe12c4f02137bf7ae0ad87b8388e7201862f41417e907e6199c544e2"
+    },
+    {
+      "path": "bowler-script-kernel-LGPL.txt",
+      "repository": "bowler-script-kernel",
+      "commit": "457a64691504f1231ae5e6d5fd1d99577d96a5b4",
+      "source": "https://raw.githubusercontent.com/CommonWealthRobotics/bowler-script-kernel/457a64691504f1231ae5e6d5fd1d99577d96a5b4/LICENSE",
+      "sha256": "8b0fda3bdf1eb0e6bed38b6743fd7b4e10bb143bb3078b301ab9ca70b1966c7c"
+    }
+  ]
+}

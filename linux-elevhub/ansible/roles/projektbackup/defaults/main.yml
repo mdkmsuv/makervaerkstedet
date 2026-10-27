@@ -1,0 +1,28 @@
+---
+# Backup er bevidst slået fra, indtil et konkret backupmål er valgt og testet.
+projektbackup_aktiveret: false
+
+# Den fælles elevkonto kan overskrives i inventory, men backupkilden skal være
+# elevens projektmappe og læses af root.
+projektbackup_elevkonto_navn: "{{ elevkonto_navn | default('elev') }}"
+projektbackup_kilde: "/home/{{ projektbackup_elevkonto_navn }}/Projekter"
+
+# Tilladte måltyper er "mounted" (anbefalet til en ekstern disk) og "local"
+# (en eksplicit mappe på samme Linux-system). Et monteret mål kontrolleres med
+# mountpoint før der oprettes eller skrives noget.
+projektbackup_maaltype: mounted
+projektbackup_mountpoint: ""
+projektbackup_repository: ""
+
+# Sæt denne via Ansible Vault eller en anden sikker secret-kilde. Den bliver
+# skrevet til en root-only fil og kommer aldrig i restic-kommandolinjen.
+projektbackup_restic_password: ""
+projektbackup_password_file: /etc/projektbackup/restic-password
+# En eksisterende passwordfil overskrives aldrig uden et eksplicit valg.
+projektbackup_password_overwrite: false
+
+# Computere står ofte slukket om natten: backup efter opstart og under brug.
+projektbackup_oncalendar: "*-*-* 02:30:00"
+projektbackup_onbootsec: 5min
+projektbackup_interval: 15min
+projektbackup_randomized_delay: 1min

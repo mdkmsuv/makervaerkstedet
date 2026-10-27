@@ -1,0 +1,30 @@
+Index: matchbox-window-manager-1.2.2+git20200512/src/misc.c
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/src/misc.c	2025-03-12 13:29:30.439850129 +0000
++++ matchbox-window-manager-1.2.2+git20200512/src/misc.c	2025-03-12 13:30:36.676345638 +0000
+@@ -11,6 +11,7 @@
+  */
+ 
+ #include "misc.h"
++#include <sys/wait.h>
+ 
+ static int trapped_error_code = 0;
+ static int (*old_error_handler) (Display *d, XErrorEvent *e);
+Index: matchbox-window-manager-1.2.2+git20200512/src/mbtheme.c
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/src/mbtheme.c	2025-03-12 13:27:44.000000000 +0000
++++ matchbox-window-manager-1.2.2+git20200512/src/mbtheme.c	2025-03-12 14:07:06.340676341 +0000
+@@ -117,11 +117,11 @@
+ 			    int x, int y)
+ {
+   MBPixbufImage *img = NULL;
+-  unsigned long *data = NULL;
++  const int *data = NULL;
+ 
+   if (c->icon_rgba_data != NULL)
+     {
+-      data = c->icon_rgba_data;
++      data = (const int *) c->icon_rgba_data;
+ 
+       img = mb_pixbuf_img_new_from_int_data(t->wm->pb,
+                                             (data+2),

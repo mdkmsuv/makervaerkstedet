@@ -1,0 +1,14 @@
+Description: Build all themes
+Index: matchbox-window-manager-1.2.2+git20200512/data/themes/Makefile.am
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/data/themes/Makefile.am	2020-06-15 15:24:48.136493632 +0100
++++ matchbox-window-manager-1.2.2+git20200512/data/themes/Makefile.am	2020-06-15 15:25:01.068485515 +0100
+@@ -1,5 +1,5 @@
+ if WANT_STANDALONE
+ SUBDIRS =
+ else
+-SUBDIRS = blondie Default MBOpus
+-endif
+\ No newline at end of file
++SUBDIRS = Default blondie bluebox borillo MBOpus
++endif

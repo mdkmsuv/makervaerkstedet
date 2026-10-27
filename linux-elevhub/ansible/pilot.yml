@@ -1,0 +1,6 @@
+# Opdatér kun kiosken på den eksisterende testmaskine.
+# Konti, CaDoodle-installation og projektmapper ændres ikke af andre roller.
+- name: Samlet HTTPS-vaerkstedspilot
+  hosts: elevcomputere
+  roles:
+    - kiosk

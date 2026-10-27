@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="referrer" content="no-referrer">
+<title>Værkstedet starter</title><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/creative-hub.css"></head>
+<body data-theme="{{ kiosk_theme | default('red') }}">
+<a class="skip-link" href="#workshops">Spring til værkstederne</a>
+<header class="hub-header" data-theme="{{ kiosk_theme | default('red') }}"><a class="brand" href="#" aria-label="Værkstedets forside"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-name"><span>{{ kiosk_school_name | default('Makerværkstedet', true) | e }}</span><strong>Værkstedet<span class="brand-dot">.</span></strong></span></a><nav class="header-actions" aria-label="Hovedmenu"><a href="#workshops">Værksteder</a><a href="#opdag">Få en idé</a><a class="project-link" data-project-link href="{{ kiosk_lokale_app_urler.projekter }}">Find mit projekt <span aria-hidden="true">↗</span></a></nav></header>
+<main><div id="hub-home">
+<section class="hub-hero" aria-labelledby="home-title"><div class="hero-copy"><p class="eyebrow">{{ kiosk_school_name | default('Makerværkstedet', true) | e }} · VÆRKSTEDER</p><h1 id="home-title">Hvad vil du<br><em>lave i dag?</em></h1><p>Byg en robot, tegn et mærke, eller lav et spil.</p><a class="primary" href="#workshops">Vælg et værksted <span aria-hidden="true">↓</span></a></div><figure class="hero-photo"><img src="assets/hub-bauhaus-v1.png" alt="En rover, en træraket og en paprobot på et bord fuldt af byggeidéer." width="1536" height="1024" fetchpriority="high"><figcaption><strong>Hvad vil du bygge?</strong></figcaption></figure></section>
+<section id="workshops" class="workshop-section" aria-labelledby="workshops-title"><div class="section-heading"><h2 id="workshops-title">Vælg et værksted</h2><span id="workshop-count" class="workshop-count" role="status"></span></div><div class="workshop-toolbar" role="group" aria-label="Vis værksteder"><button class="filter-button" data-filter="alle" aria-pressed="true">Det hele</button><button class="filter-button" data-filter="byg" aria-pressed="false">Tegn & byg</button><button class="filter-button" data-filter="kode" aria-pressed="false">Spil, kode & strøm</button><button class="filter-button" data-filter="ide" aria-pressed="false">Find på & undersøg</button></div>
+<div id="venter" class="besked" role="status"><h2>Henter værksteder …</h2></div><div id="offline" class="besked" role="status" hidden><h2>Ingen forbindelse</h2><p>Vi prøver igen automatisk. Spørg din lærer, hvis det bliver ved.</p></div><div id="ingen" class="besked" hidden><h2>Værkstederne er ikke klar endnu.</h2><p>Din lærer hjælper med at gøre dem klar.</p></div><div id="apps" class="apps" hidden></div><p id="empty-filter" class="empty-filter" hidden>Prøv en anden gruppe, eller vælg Det hele.</p></section>
+<section id="opdag" class="discovery" aria-labelledby="discovery-title"><div class="discovery-copy"><p class="eyebrow">IDÉER TIL PROJEKTER</p><h2 id="discovery-title">Mangler du en idé?</h2><p>Få et forslag fra værkstederne.</p><button id="shuffle-idea" class="shuffle-button">Vis en anden idé <span aria-hidden="true">↻</span></button></div><div class="idea-ticket"><span class="ticket-label" id="ticket-workshop">ET FORSLAG</span><div id="ticket-content" aria-live="polite" aria-atomic="true"><h3 id="ticket-title">Henter en idé …</h3><p id="ticket-text">Et øjeblik …</p></div><a id="ticket-link" href="#workshops">Se værkstederne <span aria-hidden="true">→</span></a></div></section>
+<section id="gem" class="save-strip"><div class="save-copy"><p class="eyebrow">DINE PROJEKTER</p><h2>Gem dit projekt</h2><p>Brug <strong>Gem projekt</strong> i dit værksted. Find projektet igen på samme computer, eller tag en kopi med på USB.</p></div><a class="primary" data-project-link href="{{ kiosk_lokale_app_urler.projekter }}">Find mit projekt <span aria-hidden="true">↗</span></a><details id="gem-help"><summary>Hvordan gemmer jeg?</summary><p>Når du åbner et værksted, vælger du <strong>Start nyt</strong> med klasse, fornavn og projektnavn eller <strong>Åbn projekt</strong> for at arbejde videre.</p><p><strong>Gem projekt</strong> gemmer på denne computer. Ved <strong>Til start</strong>, skift af værksted og afslutning kan du vælge <strong>Gem og afslut</strong>, <strong>Afslut uden at gemme</strong> eller <strong>Arbejd videre</strong>, hvis du har ændringer, der ikke er gemt.</p><p>Når du afslutter, er arbejdsfladen klar til den næste elev. Dine gemte projekter bliver på projekthylden. Har du en fil på USB, kan du bruge <strong>Gem en fil</strong> under <strong>Find mit projekt</strong>. micro:bit bruger MakeCodes onlineeditor.</p></details></section></div>
+<section id="workshop-detail" hidden aria-labelledby="detail-title"><div class="detail-top"><a href="#workshops" class="back-button">← Alle værksteder</a><span id="detail-name" class="detail-label"></span></div><div class="detail-hero"><div class="detail-copy"><p id="detail-tag" class="eyebrow"></p><h1 id="detail-title" tabindex="-1"></h1><p id="detail-intro"></p><p id="detail-tools" class="detail-tools"></p><button id="detail-start" class="primary detail-start"></button><p id="detail-access" class="detail-action-note" role="status"></p></div><figure class="detail-photo"><img id="detail-image" alt=""></figure></div><div class="detail-body"><section><h2>Kom i gang</h2><ol id="detail-steps" class="detail-steps"></ol></section><section class="challenge-desk"><h2>Idéer til projekter</h2><div id="detail-ideas" class="detail-ideas"></div><p class="detail-tip"><strong>TIP</strong><span id="detail-tip-text"></span></p></section></div></section>
+<p id="fejl" class="status" role="alert"></p></main><footer class="hub-footer"><span>Makerværkstedet</span><span>Udviklet af Mathias Kusk Damgaard · Kreditering: Klostermarksskolen</span></footer>
+<script src="assets/workshops.js"></script><script>
+'use strict';
+const SERVER = {{ kiosk_server | to_json }};
+const PROTOKOL = {{ kiosk_protokol | to_json }};
+const HUB = PROTOKOL + '://' + SERVER + ':{{ kiosk_hub_port }}';
+const COMPUTER = {{ inventory_hostname | to_json }};
+const UI_TOKEN = {{ kiosk_enhed.ui_token | to_json }};
+const LOKALE_APP_URLER = {{ kiosk_lokale_app_urler | tojson }};
+LOKALE_APP_URLER.microbit = 'http://127.0.0.1:8797/';
+let seneste = '', starter = false, offlineMode = false;
+let startupReady = false;
+function markStartupReady() {
+  if (startupReady) return;
+  startupReady = true;
+  // Titlen er det lokale signal til opstartsskærmen. Vent på skrift og to
+  // billedopdateringer efter den første tegnede liste, også uden servernet.
+  const painted = () => {
+    let signalled = false;
+    const signal = () => {
+      if (signalled) return;
+      signalled = true;
+      if (!location.hash.startsWith('#vaerksted/')) document.title = 'Værkstedet · Makerværkstedet';
+    };
+    requestAnimationFrame(() => requestAnimationFrame(signal));
+    // Nogle browsere pauser animationer i et tildækket vindue. Klargøringen
+    // må ikke vente på, at opstartsskærmen selv er blevet fjernet først.
+    setTimeout(signal, 500);
+  };
+  const hero = document.querySelector('.hero-photo img');
+  const assets = Promise.all([document.fonts?.ready, hero?.decode?.().catch(() => {})]);
+  Promise.race([assets, new Promise(resolve => setTimeout(resolve, 1500))]).then(painted, painted);
+}
+const OFFLINE_APPS = [
+  { id: '3dprint', navn: '3D-print', type: 'native', native_app: 'cadoodle', aaben: true, klar: true, offline_unavailable: true },
+  { id: 'laser', navn: 'Laser', type: 'lokal', port: 8795, aaben: true, klar: true },
+  { id: 'folie', navn: 'Folie', type: 'lokal', port: 8796, aaben: true, klar: true },
+  { id: 'microbit', navn: 'micro:bit', type: 'lokal', port: 8797, aaben: true, klar: true, requires_internet: true },
+  { id: 'datatraener', navn: 'Datatræneren', type: 'lokal', port: 8793, aaben: true, klar: true },
+  { id: 'skolegpt', navn: 'SkoleGPT', type: 'web', start_url: 'https://chat.skolegpt.dk/', aaben: true, klar: true, requires_internet: true },
+  { id: 'scratch', navn: 'Scratch', type: 'lokal', port: 8792, aaben: true, klar: true },
+  { id: 'kredsloeb', navn: 'Kredsløb', type: 'lokal', port: 8794, aaben: true, klar: true },
+  { id: 'internet', navn: 'Internet', type: 'browser', start_url: {{ kiosk_internet_start | to_json }}, aaben: true, klar: true }
+];
+function vis(id, forbindelse = id === 'apps', offline = false) {
+  offlineMode = offline;
+  window.CreativeHub?.connection(forbindelse, offline);
+  ['venter', 'offline', 'ingen', 'apps'].forEach(v => { document.getElementById(v).hidden = v !== id; });
+}
+async function meld(visning) {
+  const control = new AbortController(), timeout = setTimeout(() => control.abort(), 5000);
+  try {
+    const r = await fetch(HUB + '/api/status', {
+      method: 'POST', redirect: 'error', cache: 'no-store', signal: control.signal,
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + UI_TOKEN, 'X-Elevhub-Computer': COMPUTER },
+      body: JSON.stringify({ computer: COMPUTER, kilde: 'start', visning })
+    });
+    if (!r.ok) {
+      const fejl = new Error('Forbindelsen kunne ikke bekræftes. Prøv igen om lidt.');
+      fejl.httpStatus = r.status;
+      throw fejl;
+    }
+    const d = await r.json();
+    if (!Array.isArray(d.apps)) throw new Error('Serveren svarede ikke som forventet.');
+    return d;
+  } finally { clearTimeout(timeout); }
+}
+function adresse(app) {
+  if (typeof LOKALE_APP_URLER[app.id] === 'string') {
+    const url = new URL(LOKALE_APP_URLER[app.id]);
+    if (url.hostname !== '127.0.0.1' || url.protocol !== 'http:') throw new Error('Ugyldig lokal værkstedsadresse.');
+    return url.href;
+  }
+  if (app.type === 'browser' || app.type === 'web') {
+    const url = new URL(app.start_url);
+    if (url.protocol !== 'https:' || url.username || url.password) throw new Error('Ugyldig webadresse.');
+    return url.href;
+  }
+  // Kører appen på denne computer (Scratch, Kredsløb, laser og folie), åbnes
+  // den lokale adresse. Serveren bestemmer stadig, om appen er åben.
+  if (!Number.isInteger(app.port) || app.port < 1 || app.port > 65535) throw new Error('Ugyldig værkstedsadresse.');
+  return PROTOKOL + '://' + SERVER + ':' + app.port + '/';
+}
+async function kioskHandling(path) {
+  async function request(route, method) {
+    const control = new AbortController(), timeout = setTimeout(() => control.abort(), 5000);
+    try {
+      const response = await fetch('http://127.0.0.1:8790' + route, {
+        method, cache: 'no-store', redirect: 'error', signal: control.signal,
+        headers: {Authorization: 'Bearer ' + UI_TOKEN, 'X-Elevhub-Computer': COMPUTER}
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Værkstedet kunne ikke afsluttes. Prøv igen.');
+      return result;
+    } finally { clearTimeout(timeout); }
+  }
+  let result = await request(path, 'POST');
+  if (!/^[a-f0-9]{32}$/.test(result.id || '')) throw new Error('Værkstedet svarede ikke som forventet.');
+  const id = result.id;
+  while (result.state === 'pending') {
+    await new Promise(resolve => setTimeout(resolve, 300));
+    result = await request('/finish/status?id=' + id, 'GET');
+    if (result.id !== id) throw new Error('Værkstedet svarede ikke som forventet.');
+  }
+  if (result.state === 'cancelled') return false;
+  if (result.state !== 'completed') throw new Error(result.message || 'Værkstedet kunne ikke afsluttes. Dit arbejde er stadig åbent.');
+  return true;
+}
+document.querySelectorAll('[data-project-link]').forEach(link => link.addEventListener('click', async event => {
+  event.preventDefault();
+  if (starter) return;
+  starter = true;
+  try {
+    if (await kioskHandling('/finish')) location.assign(link.href);
+  } catch (error) {
+    document.getElementById('fejl').textContent = 'Dit arbejde er stadig åbent. ' + error.message;
+  } finally { starter = false; }
+}));
+async function aabn(e, app) {
+  e.preventDefault();
+  if (starter) return;
+  starter = true;
+  document.getElementById('fejl').textContent = '';
+  // A plain browser window is created synchronously to avoid popup blocking.
+  // Remove its opener before any external navigation; no tokens enter its URL.
+  let vindue = null;
+  if (app.type === 'browser') {
+    vindue = window.open('about:blank', '_blank');
+    if (vindue) vindue.opener = null;
+  }
+  try {
+    if (!(await kioskHandling('/finish'))) {
+      if (vindue) vindue.close();
+      return;
+    }
+    if (offlineMode) {
+      if (app.offline_unavailable) throw new Error('CaDoodle åbnes fra elevbjælken, også når serveren er offline.');
+      const url = adresse(app);
+      if (app.type === 'browser') {
+        if (!vindue) throw new Error('Browseren kunne ikke åbne et nyt vindue. Prøv igen.');
+        vindue.location.replace(url);
+      } else { location.assign(url); }
+      return;
+    }
+    const d = await meld(app.id);
+    const aktuel = d.apps.find(a => a.id === app.id);
+    if (d.gaa_hjem || !aktuel || !aktuel.aaben || aktuel.klar === false) {
+      tegn(d.apps);
+      throw new Error('Værkstedet kan ikke åbnes lige nu. Din lærer kan hjælpe.');
+    }
+    const url = adresse(aktuel);
+    if (app.type === 'browser') {
+      if (!vindue) throw new Error('Browseren kunne ikke åbne et nyt vindue. Prøv igen.');
+      vindue.location.replace(url);
+    } else { location.assign(url); }
+  } catch (fejl) {
+    if (vindue) vindue.close();
+    document.getElementById('fejl').textContent = fejl.name === 'AbortError' ? 'Serveren svarer ikke lige nu. Prøv igen.' : fejl.message;
+  } finally { starter = false; }
+}
+async function opdater() {
+  try { if (!starter) { const svar = await meld('start'); offlineMode = false; window.CreativeHub?.connection(true, false); document.getElementById('fejl').textContent = ''; tegn(svar.apps); } }
+  catch (fejl) {
+    if (fejl.name === 'AbortError' || fejl.httpStatus >= 500 || fejl instanceof TypeError || fejl.name === 'TypeError') {
+      seneste = ''; offlineMode = true; window.CreativeHub?.connection(false, true); tegn(OFFLINE_APPS);
+      document.getElementById('fejl').textContent = 'Skoleserveren er ikke tilgængelig. Lokale værksteder er åbne.';
+    } else {
+      offlineMode = false; window.CreativeHub?.connection(false, false); tegn([]);
+      document.getElementById('fejl').textContent = fejl.message;
+    }
+  }
+  finally { markStartupReady(); setTimeout(opdater, 3000); }
+}
+
+</script><script src="assets/native-3d.js"></script><script src="assets/creative-hub.js"></script></body></html>

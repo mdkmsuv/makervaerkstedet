@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=ELEVHUB
+Description=ELEVHUB neutral boot screen
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/elevhub
+ScriptFile=/usr/share/plymouth/themes/elevhub/elevhub.script

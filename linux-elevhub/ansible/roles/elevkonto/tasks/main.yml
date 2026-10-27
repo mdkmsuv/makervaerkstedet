@@ -1,0 +1,27 @@
+- name: Elevkontoen findes som almindelig bruger
+  ansible.builtin.user:
+    name: "{{ elevkonto_navn }}"
+    comment: "{{ elevkonto_fuldt_navn }}"
+    shell: /bin/bash
+    create_home: true
+    groups: "{{ elevkonto_grupper | join(',') }}"
+    append: false
+    password: "{{ elevkonto_adgangskode_hash }}"
+    update_password: always
+
+# I --check findes en ny konto ikke endnu, så kontrollen giver kun mening ved rigtig kørsel.
+- name: Kontrollér at elevkontoen ikke har administratorrettigheder
+  when: not ansible_check_mode
+  block:
+    - name: Læs elevkontoens grupper
+      ansible.builtin.command: id -nG {{ elevkonto_navn }}
+      register: elevkonto_faktiske_grupper
+      changed_when: false
+
+    - name: Elevkontoen er hverken i sudo eller adm
+      ansible.builtin.assert:
+        that:
+          - "'sudo' not in elevkonto_faktiske_grupper.stdout.split()"
+          - "'adm' not in elevkonto_faktiske_grupper.stdout.split()"
+        fail_msg: "{{ elevkonto_navn }} er medlem af sudo eller adm: {{ elevkonto_faktiske_grupper.stdout }}"
+        quiet: true

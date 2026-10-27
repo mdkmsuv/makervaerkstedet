@@ -1,0 +1,48 @@
+__pycache__/
+.venv/
+.runtime/
+data/
+node_modules/
+web/vendor/
+*.log
+dist/
+
+# Lokale bygninger, testkopier og staging. Kilder og tests uden for disse
+# mapper skal fortsat kunne spores i en senere public export.
+output/
+/slet/
+easy/
+fra claude/
+windows-elevhub-test/output/
+windows-elevhub/client/cadoodle/build/
+windows-elevhub/client/native/build/
+windows-maker-20260922/
+megavaerkstedet-backups/
+**/staging/
+**/private-keys/
+**/admin-ssh/
+
+# Private nøglecontainere og lokale datastaging-filer.
+*.p12
+*.pfx
+*.key
+**/*private*.json
+
+# Lokale skoleidentiteter, miljøfiler og inventar må ikke versionsstyres.
+.env
+.env.*
+!.env.example
+**/.ssh/
+**/known_hosts*
+**/id_ed25519*
+**/id_rsa*
+**/enheder.json
+**/enrollment.json
+**/ssh-pins.json
+linux-elevhub/ansible/inventory/skole/hosts.yml
+linux-elevhub/ansible/inventory/skole/group_vars/
+linux-elevhub/ansible/inventory/pilot-*/
+linux-elevhub/ansible/inventory/testmiljoe/hosts.yml
+linux-elevhub/ansible/inventory/testmiljoe/group_vars/
+
+# Dette er kun oprydningsbeskyttelse; .gitignore er ikke en secretscanner.

@@ -1,0 +1,37 @@
+# Styres af Ansible (rollen kiosk). Designværkstedet: laser og folie.
+# Tegnefladen og kassegeneratoren kører her. Kun "Send til læreren" går videre
+# til serverens laserindgang, som validerer afleveringen og afviser den, når
+# læreren har lukket Laser.
+[Unit]
+Description=Elevhub lokalt designværksted (laser og folie)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Egen midlertidig bruger, ikke elevkontoen: tjenesten gemmer intet og skal
+# kunne nå serveren, mens elevkontoens egen trafik er låst af nftables.
+DynamicUser=yes
+WorkingDirectory={{ kiosk_lokal_design_dest }}
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -m app.laser_local --server-url {{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_laservaerksted_port | default(8771) }}{% if not kiosk_usikker_test | bool %} --ca-file /etc/elevhub/ca.pem{% endif %} --laser-port {{ kiosk_lokal_design_laser_port }} --folie-port {{ kiosk_lokal_design_folie_port }}
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# Kun loopback (elevens browser) og serveren. Intet andet på skolens net.
+IPAddressDeny=any
+IPAddressAllow=127.0.0.0/8
+IPAddressAllow=::1/128
+IPAddressAllow={{ kiosk_server }}/32
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

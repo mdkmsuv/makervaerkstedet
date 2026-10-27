@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="da"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Makerværkstedet</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/laser.css"><link rel="stylesheet" href="/laserstation.css">
+  <link rel="stylesheet" href="/megavaerkstedet.css">
+  <script src="/megavaerkstedet.js" defer></script>
+</head><body class="mega-body">
+  <header class="mega-header">
+    <div class="mega-brand"><span class="brand-mark" aria-hidden="true"></span><div><span class="brand-school" data-school-name>Makerværkstedet</span><h1>Makerværkstedet</h1></div></div>
+    <button type="button" id="mega-back" hidden>← Tilbage til forsiden</button>
+  </header>
+  <main id="mega-home" class="mega-home" aria-labelledby="mega-home-title">
+    <p class="mega-eyebrow">FRA IDÉ TIL NOGET, DU KAN HOLDE I HÅNDEN</p>
+    <h2 id="mega-home-title" tabindex="-1">Hvad vil du arbejde med?</h2>
+    <p class="mega-intro">Vælg et værksted. Du kan altid vende tilbage hertil.</p>
+    <div class="mega-cards">
+      <a href="#print" class="mega-card" id="mega-print-card"><span class="mega-number">01 / 3D-PRINT</span><h3>Printerværksted</h3><p>Send en 3D-model til printkøen, og følg dit print.</p><span class="mega-action">Åbn printerværkstedet →</span></a>
+      <a href="#laser" class="mega-card" id="mega-laser-card"><span class="mega-number">02 / LASER</span><h3>Laserværksted</h3><p>Læreren klargør tegninger og placering til laseren.</p><span class="mega-action">Åbn laserværkstedet →</span></a>
+      <a href="#folie" class="mega-card mega-coming" id="mega-foil-card"><span class="mega-number">03 / FOLIE</span><h3>Folieværksted</h3><p>Mærker, motiver og tekst i folie.</p><strong class="mega-badge">Under udvikling</strong><span class="mega-action">Se hvad der kommer →</span></a>
+    </div>
+  </main>
+  <section id="mega-print" class="mega-print" hidden aria-labelledby="mega-print-title">
+    <div class="mega-workshop-heading"><h2 id="mega-print-title" tabindex="-1">Printerværksted</h2><a id="mega-print-direct" target="_blank" rel="noopener" hidden>Åbn i eget vindue ↗</a></div>
+    <p id="mega-print-message" role="status"></p>
+    <iframe id="mega-print-frame" title="Printerværkstedets eksisterende printside" hidden></iframe>
+  </section>
+  <section id="mega-laser" hidden aria-label="Laserværksted"><!--LASER_BODY--></section>
+  <section id="mega-foil" class="mega-placeholder" hidden aria-labelledby="mega-foil-title"><p class="mega-eyebrow">UNDER UDVIKLING</p><h2 id="mega-foil-title" tabindex="-1">Folieværksted</h2><p>Her kommer et værksted til mærker, motiver og tekst i folie.</p><p>Værkstedet er endnu ikke klar til brug.</p></section>
+  <script id="mega-settings" type="application/json"><!--MEGA_SETTINGS--></script>
+</body></html>

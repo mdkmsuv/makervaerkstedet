@@ -1,0 +1,304 @@
+- name: Springer over, hvis CaDoodle ikke er slået til
+  ansible.builtin.debug:
+    msg: >-
+      cadoodle_aktiveret er false. CaDoodle installeres ikke. Slå den til i
+      inventory, når elevcomputerne skal have 3D-værkstedet.
+  when: not (cadoodle_aktiveret | bool)
+
+- name: Undersøg om eleven har CaDoodle åbent
+  ansible.builtin.command:
+    argv: [pgrep, -u, elev, -f, CaDoodle-Application.jar]
+  register: cadoodle_aaben
+  changed_when: false
+  check_mode: false
+  failed_when: cadoodle_aaben.rc not in [0, 1] and not ansible_check_mode
+  when: cadoodle_aktiveret | bool
+
+- name: Vent med CaDoodle-opdateringen mens programmet er åbent
+  ansible.builtin.debug:
+    msg: "CaDoodle er åbent. Program og elevbjælke opdateres ikke af denne rolle; prøv igen efter lukning."
+  when: cadoodle_aktiveret | bool and cadoodle_aaben.rc | default(1) == 0
+
+- name: Afvis åben CaDoodle når spring-over er slået fra
+  ansible.builtin.fail:
+    msg: "Luk CaDoodle før opdatering."
+  when:
+    - cadoodle_aktiveret | bool
+    - cadoodle_aaben.rc | default(1) == 0
+    - not (cadoodle_spring_over_hvis_aaben | bool)
+
+- name: CaDoodle
+  when: cadoodle_aktiveret | bool and cadoodle_aaben.rc | default(1) != 0
+  block:
+    - name: CaDoodle kræver amd64
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['architecture'] == 'x86_64'
+        fail_msg: >-
+          CaDoodle-pakken findes kun til amd64; denne maskine er
+          {{ ansible_facts['architecture'] }}.
+        quiet: true
+
+    - name: Afhængigheder til CaDoodle
+      ansible.builtin.apt:
+        name:
+          - ca-certificates
+          - libgtk-3-0t64
+          - libgl1-mesa-dri
+        state: present
+        install_recommends: false
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Mapper til installationen
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - /usr/share/desktop-directories
+        - /var/cache/elevhub
+        - /usr/local/lib/elevhub/cadoodle-kilde
+
+    - name: Kontrollér lokal CaDoodle-pakke på controlleren
+      ansible.builtin.stat:
+        path: "{{ cadoodle_deb_kilde }}"
+        checksum_algorithm: sha256
+      delegate_to: localhost
+      become: false
+      register: cadoodle_deb_lokal
+      when: cadoodle_deb_kilde | length > 0
+
+    - name: Lokal CaDoodle-pakke findes og har korrekt checksum
+      ansible.builtin.assert:
+        that:
+          - cadoodle_deb_lokal.stat.exists
+          - cadoodle_deb_lokal.stat.isreg
+          - cadoodle_deb_lokal.stat.checksum == cadoodle_deb_sha256
+        fail_msg: "cadoodle_deb_kilde mangler eller har forkert SHA256."
+      when: cadoodle_deb_kilde | length > 0
+
+    - name: Kopiér den officielle CaDoodle-pakke fra controlleren
+      ansible.builtin.copy:
+        src: "{{ cadoodle_deb_kilde }}"
+        dest: "{{ cadoodle_deb_sti }}"
+        owner: root
+        group: root
+        mode: "0644"
+      when: cadoodle_deb_kilde | length > 0
+
+    # get_url med checksum henter kun, hvis filen mangler eller ikke passer.
+    # Samme pinnede sum som installer.sh bruger.
+    - name: Hent den officielle CaDoodle-pakke
+      ansible.builtin.get_url:
+        url: "{{ cadoodle_deb_url }}"
+        dest: "{{ cadoodle_deb_sti }}"
+        checksum: "sha256:{{ cadoodle_deb_sha256 }}"
+        mode: "0644"
+      register: cadoodle_hentet
+      when: cadoodle_deb_kilde | length == 0
+
+    - name: Er pakken allerede hentet?
+      ansible.builtin.stat:
+        path: "{{ cadoodle_deb_sti }}"
+        get_checksum: false
+      register: cadoodle_pakke
+
+    # I en tørkørsel (--check) er pakken ikke blevet hentet endnu, og så kan
+    # apt ikke se filen. Uden dette ville ./koer.sh tjek fejle på en maskine,
+    # hvor CaDoodle ikke er installeret i forvejen.
+    - name: Tørkørsel kan ikke vurdere den første CaDoodle-installation
+      ansible.builtin.debug:
+        msg: >-
+          Pakken {{ cadoodle_deb_sti }} findes ikke på maskinen endnu. I en
+          tørkørsel springes selve installationen over. Kør ./koer.sh koer for
+          at hente og installere den (836 MB).
+      when:
+        - ansible_check_mode
+        - not cadoodle_pakke.stat.exists
+
+    - name: Installér CaDoodle
+      ansible.builtin.apt:
+        deb: "{{ cadoodle_deb_sti }}"
+        state: present
+      when: cadoodle_pakke.stat.exists or not ansible_check_mode
+
+    - name: Opret CaDoodles brugerinstallationsmappe
+      ansible.builtin.file:
+        path: /home/elev/bin/CaDoodle-ApplicationInstall
+        state: directory
+        owner: elev
+        group: elev
+        mode: "0755"
+
+    - name: Læg CaDoodle bootstrapværktøjet ud
+      ansible.builtin.copy:
+        src: "{{ cadoodle_kilde }}/bootstrap.py"
+        dest: /usr/local/lib/elevhub/cadoodle-kilde/bootstrap.py
+        owner: root
+        group: root
+        mode: "0755"
+      when: cadoodle_bootstrap_zip | length > 0
+
+    - name: Kontrollér bootstrap-arkiv på controlleren
+      ansible.builtin.stat:
+        path: "{{ cadoodle_bootstrap_zip }}"
+        checksum_algorithm: sha256
+      delegate_to: localhost
+      become: false
+      register: cadoodle_bootstrap_lokal
+      when: cadoodle_bootstrap_zip | length > 0
+
+    - name: Bootstrap-arkiv findes og har forventet checksum
+      ansible.builtin.assert:
+        that:
+          - cadoodle_bootstrap_zip_sha256 | length > 0
+          - cadoodle_bootstrap_lokal.stat.exists
+          - cadoodle_bootstrap_lokal.stat.isreg
+          - cadoodle_bootstrap_lokal.stat.checksum == cadoodle_bootstrap_zip_sha256
+        fail_msg: "cadoodle_bootstrap_zip mangler eller har forkert SHA256."
+      when: cadoodle_bootstrap_zip | length > 0
+
+    - name: Kontrollér lokalt bundtet CaDoodle-runtime
+      ansible.builtin.stat:
+        path: "{{ cadoodle_runtime_archive }}"
+        follow: false
+      register: cadoodle_runtime_lokal
+      when:
+        - cadoodle_bootstrap_zip | length > 0
+        - cadoodle_runtime_archive | length > 0
+        - not ansible_check_mode
+
+    - name: CaDoodle-runtime findes lokalt på elevcomputeren
+      ansible.builtin.assert:
+        that:
+          - cadoodle_runtime_lokal.stat.exists
+          - cadoodle_runtime_lokal.stat.isreg
+        fail_msg: >-
+          Det bundtede CaDoodle-runtime mangler eller er ikke en almindelig fil:
+          {{ cadoodle_runtime_archive }}
+      when:
+        - cadoodle_bootstrap_zip | length > 0
+        - cadoodle_runtime_archive | length > 0
+        - not ansible_check_mode
+
+    - name: Kopiér CaDoodle bootstrap-arkiv til elevcomputeren
+      ansible.builtin.copy:
+        src: "{{ cadoodle_bootstrap_zip }}"
+        dest: /var/cache/elevhub/CaDoodle-ApplicationInstall.zip
+        owner: root
+        group: root
+        mode: "0644"
+      when: cadoodle_bootstrap_zip | length > 0
+
+    - name: Initialisér CaDoodle uden grafisk opstart
+      ansible.builtin.command:
+        argv:
+          - python3
+          - /usr/local/lib/elevhub/cadoodle-kilde/bootstrap.py
+          - --zip
+          - /var/cache/elevhub/CaDoodle-ApplicationInstall.zip
+          - --home
+          - /home/elev
+          - --jar-sha256
+          - "{{ cadoodle_bootstrap_jar_sha256 }}"
+          - --runtime-archive
+          - "{{ cadoodle_runtime_archive }}"
+      register: cadoodle_bootstrap
+      changed_when: "'extracted' in cadoodle_bootstrap.stdout"
+      when:
+        - cadoodle_bootstrap_zip | length > 0
+        - cadoodle_runtime_archive | length > 0
+        - not ansible_check_mode
+
+    - name: Initialisér CaDoodle uden lokalt runtime (legacy)
+      ansible.builtin.command:
+        argv:
+          - python3
+          - /usr/local/lib/elevhub/cadoodle-kilde/bootstrap.py
+          - --zip
+          - /var/cache/elevhub/CaDoodle-ApplicationInstall.zip
+          - --home
+          - /home/elev
+          - --jar-sha256
+          - "{{ cadoodle_bootstrap_jar_sha256 }}"
+      register: cadoodle_bootstrap_legacy
+      changed_when: "'extracted' in cadoodle_bootstrap_legacy.stdout"
+      when:
+        - cadoodle_bootstrap_zip | length > 0
+        - cadoodle_runtime_archive | length == 0
+        - not ansible_check_mode
+
+    - name: Elevkontoens versionslås
+      ansible.builtin.file:
+        path: /home/elev/bin/CaDoodle-ApplicationInstall/pinVersion
+        state: touch
+        owner: elev
+        group: elev
+        mode: "0644"
+      changed_when: false
+
+    # klargoer.py forventer de tre filer i samme mappe. Den retter desuden
+    # elevbjaelke.py, som kiosk-rollen lægger ud på ny ved hver kørsel — derfor
+    # skal denne rolle køre efter kiosk.
+    - name: Læg klargøringsfilerne ud
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "/usr/local/lib/elevhub/cadoodle-kilde/{{ item.navn }}"
+        mode: "{{ item.mode }}"
+        owner: root
+        group: root
+      loop:
+        - {src: "{{ cadoodle_kilde }}/elevhub-cadoodle", navn: elevhub-cadoodle, mode: "0755"}
+        - {src: "{{ cadoodle_kilde }}/klargoer.py", navn: klargoer.py, mode: "0755"}
+        - {src: "{{ role_path }}/../kiosk/files/cadoodle_vaerksted.py", navn: cadoodle_vaerksted.py, mode: "0644"}
+      register: cadoodle_filer
+
+    # klargoer.py er idempotent: den opdager selv, om elevbjælken allerede er
+    # rettet. Den køres hver gang, fordi kiosk-rollen kan have lagt en frisk
+    # elevbjaelke.py ud, som mangler rettelsen.
+    - name: Klargør CaDoodle-værkstedet i elevbjælken
+      ansible.builtin.command:
+        cmd: python3 /usr/local/lib/elevhub/cadoodle-kilde/klargoer.py /usr/local/lib/elevhub/cadoodle-kilde
+      register: cadoodle_klargoer
+      # Kun en reel ændring må genstarte elevens skærm; "allerede klar" er ingen ændring.
+      changed_when: "'CaDoodle-værksted installeret' in cadoodle_klargoer.stdout"
+      notify: Genstart kiosk
+
+    - name: Den visuelle Kloster-udvidelse
+      when: cadoodle_kloster_jar | length > 0
+      block:
+        - name: Læg den byggede Kloster-JAR og deploy.py ud
+          ansible.builtin.copy:
+            src: "{{ item.src }}"
+            dest: "{{ item.dest }}"
+            mode: "0644"
+            owner: root
+            group: root
+          loop:
+            - {src: "{{ cadoodle_kloster_jar }}", dest: /var/cache/elevhub/CaDoodle-Kloster.jar}
+            - {src: "{{ cadoodle_kilde }}/kloster/deploy.py", dest: /usr/local/lib/elevhub/cadoodle-kilde/deploy.py}
+          register: cadoodle_jar
+
+        # deploy.py afviser at skifte JAR, mens en elev har CaDoodle åben.
+        # Med cadoodle_spring_over_hvis_aaben rapporteres den maskine blot som
+        # sprunget over, så de øvrige 11 stadig bliver opdateret.
+        - name: Installér Kloster-udvidelsen
+          ansible.builtin.command:
+            cmd: >-
+              python3 /usr/local/lib/elevhub/cadoodle-kilde/deploy.py
+              /var/cache/elevhub/CaDoodle-Kloster.jar
+              {% if cadoodle_print_url | length > 0 %}--print-url {{ cadoodle_print_url | quote }}{% endif %}
+              {% if cadoodle_print_ca | length > 0 %}--print-ca {{ cadoodle_print_ca | quote }}{% endif %}
+          register: cadoodle_deploy
+          changed_when: "'Installed Kloster extension' in cadoodle_deploy.stdout"
+          failed_when:
+            - cadoodle_deploy.rc != 0
+            - not (cadoodle_spring_over_hvis_aaben | bool and 'Close CaDoodle' in cadoodle_deploy.stderr)
+
+        - name: Maskinen blev sprunget over, fordi CaDoodle var åben
+          ansible.builtin.debug:
+            msg: >-
+              CaDoodle var åben på denne maskine, så den visuelle udvidelse blev
+              IKKE opdateret. Kør rollen igen, når eleven har lukket programmet.
+          when: cadoodle_deploy.rc != 0

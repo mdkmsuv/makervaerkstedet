@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#c62b2f">
+  <title>Makerværkstedet · Administration</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/makerspace.css">
+  <script src="/makerspace.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand-name"><span class="brand-school" data-school-name>Makerværkstedet</span><strong>Makerværkstedet</strong></div>
+    </div>
+    <a class="sekundaer" href="/kontrolpanel">Kontrolpanel</a>
+  </header>
+  <main>
+    <section class="intro"><p class="eyebrow">ADMINISTRATION</p><h1>Makerværkstedet</h1>
+      <p>Her administrerer læreren værkstedets printere, laserstationer, manuelle stationer, arbejdsgange og opgaver.</p>
+    </section>
+    <p id="status" class="forbindelse" role="status">Henter overblik …</p>
+    <button id="state-refresh" class="sekundaer" type="button">Opdatér overblik</button>
+    <p id="error" class="fejl" role="alert"></p>
+    <button id="retry-command" class="sekundaer" type="button" hidden>Afklar sidste ændring</button>
+
+    <section class="section-band" aria-labelledby="machines-title"><div class="section-heading"><div><p class="eyebrow">UDSTYR</p><h2 id="machines-title">Manuelle stationer</h2></div><button id="machine-reset" class="sekundaer" type="button">Ny station</button></div>
+      <form id="machine-form" class="editor-form"><input id="machine-id" type="hidden"><label>Navn<input id="machine-name" required maxlength="80"></label><label>Placering<input id="machine-location" maxlength="80"></label>
+        <label class="check"><input id="machine-enabled" type="checkbox"> Aktiv station</label><label>Workflow<select id="machine-workflow"><option value="">Ingen workflow</option></select></label>
+        <div class="form-actions"><button class="primaer" type="submit">Gem station</button><button id="machine-cancel" class="sekundaer" type="button">Annuller</button></div>
+      </form><div id="machines" class="list-grid"></div>
+    </section>
+
+    <section class="section-band" aria-labelledby="workflows-title"><div class="section-heading"><div><p class="eyebrow">ARBEJDSGANGE</p><h2 id="workflows-title">Workflows</h2></div><button id="workflow-reset" class="sekundaer" type="button">Nyt workflow</button></div>
+      <p>Opret og aktivér arbejdsgange her. Vælg derefter en bestemt revision til hver printer eller laserstation. Allerede tilknyttede opgaver beholder deres revision.</p>
+      <form id="workflow-form" class="editor-form"><input id="workflow-id" type="hidden"><label>Navn<input id="workflow-name" required maxlength="80"></label><label>Type<select id="workflow-kind"><option value="manual">Manuel</option><option value="3d_print">3D-print</option><option value="laser">Laser</option></select></label>
+        <fieldset><legend>Trin</legend><div id="workflow-steps"></div><button id="add-step" class="sekundaer" type="button">Tilføj trin</button></fieldset>
+        <p>Gem kladden, og vælg Aktivér på workflowkortet, når den skal bruges til nye opgaver. Kontrollér trin uden at gemme med Validér kladde.</p>
+        <p id="workflow-validation" role="status"></p>
+        <div class="form-actions"><button class="primaer" type="submit">Gem workflow</button><button id="workflow-validate" class="sekundaer" type="button">Validér kladde</button><button id="workflow-cancel" class="sekundaer" type="button">Annuller</button></div>
+      </form><div id="workflows" class="list-grid"></div>
+    </section>
+
+    <section class="section-band" aria-labelledby="jobs-title"><div class="section-heading"><div><p class="eyebrow">OPGAVER</p><h2 id="jobs-title">Manuelle opgaver</h2></div></div>
+      <form id="job-form" class="editor-form inline-form"><label>Titel<input id="job-title" required maxlength="80"></label><label>Station<select id="job-machine" required><option value="">Vælg station</option></select></label><button class="primaer" type="submit">Start opgave</button></form><div id="jobs" class="list-grid"></div>
+    </section>
+
+    <section class="section-band" aria-labelledby="observed-title"><div class="section-heading"><div><p class="eyebrow">STATUS</p><h2 id="observed-title">Observerede maskiner</h2></div></div><div id="observed" class="list-grid"></div></section>
+    <section class="section-band" aria-labelledby="printers-title"><div class="section-heading"><div><p class="eyebrow">MASKINER</p><h2 id="printers-title">Printere</h2><p>Registrér værkstedets printere. Nye printere starter deaktiveret i printkøen. Kontrollér forbindelsen og opsætningen, før du aktiverer dem.</p></div><button id="printer-refresh" class="sekundaer" type="button">Opdatér printere</button></div>
+      <p id="printer-status" class="forbindelse" role="status"></p><p id="printer-error" class="fejl" role="alert"></p>
+      <button id="printer-retry" class="sekundaer" type="button" hidden>Afklar sidste printerændring</button>
+      <form id="printer-form" class="editor-form"><input id="printer-id" type="hidden"><label>Navn<input id="printer-name" required maxlength="50"></label><label>Placering<input id="printer-location" maxlength="80"></label><label>Model<select id="printer-model" required></select></label><label>Lokal IPv4-adresse<input id="printer-host" required maxlength="15" placeholder="192.168.1.50"></label><label>Serienummer<input id="printer-serial" required maxlength="30"></label><label>LAN-adgangskode · tom ved uændret kode<input id="printer-access-code" type="password" maxlength="100" autocomplete="new-password"></label><label>Pladetype<select id="printer-bed-type" required></select></label><label class="check"><input id="printer-enabled" type="checkbox"> Aktiv i printkøen</label><div class="form-actions"><button id="printer-save" class="primaer" type="submit" disabled>Gem printer</button><button id="printer-cancel" class="sekundaer" type="button">Annuller</button></div></form><div id="printers" class="list-grid"></div>
+    </section>
+    <section class="section-band" aria-labelledby="print-workflows-title">
+      <div class="section-heading"><div><p class="eyebrow">ARBEJDSGANGE</p><h2 id="print-workflows-title">Printforløb</h2></div><button id="print-workflow-refresh" class="sekundaer" type="button">Opdatér printforløb</button></div>
+      <p>Et valgt workflow gælder, når et nyt job reserverer printeren. Igangværende job beholder deres revision. Læreren bekræfter printstart; printerens kontrol af forbindelse, filament og plade gælder fortsat.</p>
+      <p id="print-workflow-status" class="forbindelse" role="status"></p>
+      <p id="print-workflow-error" class="fejl" role="alert"></p>
+      <button id="print-workflow-retry" class="sekundaer" type="button" hidden>Afklar sidste printændring</button>
+      <h3>Printkø</h3><p>Køpause holder nye print tilbage. Et print, der allerede er sendt til printeren, fortsætter. Genoptagelse bevarer kravene til lærerens godkendelser og en ryddet plade.</p><div id="print-queue-control"></div>
+      <h3>Workflow for hver printer</h3><div id="print-workflow-bindings" class="list-grid"></div>
+      <h3>Printopgaver og bekræftelser</h3><div id="print-workflow-jobs" class="list-grid"></div>
+    </section>
+    <section class="section-band" aria-labelledby="lasers-title">
+      <div class="section-heading"><div><p class="eyebrow">MASKINER OG ARBEJDSGANGE</p><h2 id="lasers-title">Laserstationer</h2></div><button id="laser-refresh" class="sekundaer" type="button">Opdatér laseropgaver</button></div>
+      <p>Registrér en installeret laserstation med dens lokale stations-ID, for eksempel laser-fhexa1. Vælg model og workflow, og aktivér stationen efter kontrol. Nye registreringer starter deaktiveret.</p>
+      <p>Laserkøen gemmer stationernes opsætning og opgavernes forløb. Stationen henter opsætningen ved lærerens næste handling. Fysisk start sker ved laseren; dens aktuelle fysiske status er ikke målt her.</p>
+      <p id="laser-status" class="forbindelse" role="status"></p><p id="laser-error" class="fejl" role="alert"></p>
+      <button id="laser-retry" class="sekundaer" type="button" hidden>Afklar sidste laserændring</button>
+      <form id="laser-form" class="editor-form">
+        <label>Stationens ID<input id="laser-id" required maxlength="40" pattern="[a-z0-9]+(-[a-z0-9]+)*" placeholder="laser-fhexa1"></label>
+        <label>Navn<input id="laser-name" required maxlength="80"></label>
+        <label>Placering<input id="laser-location" maxlength="80"></label>
+        <label>Lasermodel<select id="laser-model"><option value="fbb2">FLUX Beambox II</option><option value="fhexa1">FLUX HEXA</option></select></label>
+        <label class="check"><input id="laser-enabled" type="checkbox"> Aktiv station</label>
+        <div class="form-actions"><button id="laser-save" class="primaer" type="submit" disabled>Gem laserstation</button><button id="laser-cancel" class="sekundaer" type="button">Ny station</button></div>
+      </form>
+      <div id="laser-stations" class="list-grid"></div>
+      <h3>Laseropgaver og bekræftelser</h3><div id="laser-jobs" class="list-grid"></div>
+    </section>
+    <section class="note-band"><strong>Drift:</strong> Maskinopsætning og forløb bruges af de eksisterende køer. Printere uden et valgt workflow og laserstationer, som endnu ikke er registreret her, følger deres hidtidige forløb.<br><span>Udviklet af Mathias Kusk Damgaard · Kreditering: Klostermarksskolen.</span></section>
+  </main>
+  <footer class="sidefod">Udviklet af Mathias Kusk Damgaard · <a href="/om">Om og kreditering</a></footer>
+  <script src="/makerspace-printers.js" defer></script>
+  <script src="/makerspace-print-workflows.js" defer></script>
+  <script src="/makerspace-lasers.js" defer></script>
+</body>
+</html>

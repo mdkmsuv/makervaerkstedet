@@ -1,0 +1,100 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+ci:
+  autofix_prs: true
+  autoupdate_schedule: quarterly
+exclude: '^(documentation/src/static|scripts/(boxes|boxes_generator|boxes_proxy\.py|boxesserver)|.*\.svg)$'
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+      - id: check-case-conflict
+      - id: detect-private-key
+      - id: check-executables-have-shebangs
+      - id: check-shebang-scripts-are-executable
+      - id: check-illegal-windows-names
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.10.0
+    hooks:
+      - id: python-no-eval
+      - id: python-no-log-warn
+      - id: python-use-type-annotations
+      - id: rst-backticks
+      - id: rst-directive-colons
+      - id: rst-inline-touching-normal
+      - id: text-unicode-replacement-char
+
+  - repo: https://github.com/asottile/pyupgrade
+    rev: v3.21.2
+    hooks:
+      - id: pyupgrade
+        args: [ --py310-plus ]
+
+  - repo: https://github.com/PyCQA/autoflake
+    rev: v2.4.0
+    hooks:
+      - id: autoflake
+        args: [ --remove-all-unused-imports, --in-place, --ignore-pass-statements, ]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.6
+    hooks:
+      - id: ruff-check
+        types_or: [ python, pyproject ]
+        args: [ --fix ]
+      #- id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v2.3.1
+    hooks:
+      - id: mypy
+        name: mypy - boxes
+        files: '^boxes/.*\.py$'
+        additional_dependencies: [ "types-PyYAML", "types-markdown" ]
+      - id: mypy
+        name: mypy - documentation
+        files: '^documentation/src/boxes2rst.py$'
+      - id: mypy
+        name: mypy - boxes2inkscape
+        files: '^scripts/boxes2inkscape$'
+      - id: mypy
+        name: mypy - boxes2pot
+        files: '^scripts/boxes2pot$'
+      - id: mypy
+        name: mypy - setup
+        files: '^setup.py$'
+
+  - repo: https://github.com/rstcheck/rstcheck
+    rev: v6.3.0
+    hooks:
+      - id: rstcheck
+        additional_dependencies: [ 'rstcheck[sphinx,toml]' ]
+
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.11.0.1-1
+    hooks:
+      - id: shellcheck
+
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.3
+    hooks:
+      - id: codespell
+        exclude: ^(locale|po|static)/
+        additional_dependencies:
+          - tomli
+
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest
+        language: system
+        types: [ python ]
+        pass_filenames: false
+        always_run: true

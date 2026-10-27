@@ -1,0 +1,55 @@
+// Exercises the point tool in an isolated browser profile. No submissions or machine APIs.
+import {createRequire} from 'node:module';
+import {readFile,writeFile} from 'node:fs/promises';
+const require=createRequire(import.meta.url);
+const {chromium}=require('playwright');
+const browser=await chromium.launch({headless:true,channel:'chrome'});
+const checks=[];
+const assert=(value,message)=>{if(!value)throw Error(message);};
+try{
+  const page=await browser.newPage({viewport:{width:1440,height:940}});page.setDefaultTimeout(15000);
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  const state=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('kloster-laservaerksted-v1')));
+  const position=async(x,y)=>page.evaluate(({x,y})=>{const p=new DOMPoint(x,y).matrixTransform(document.querySelector('#drawing').getScreenCTM());return {x:p.x,y:p.y};},{x,y});
+  const clickPoint=async(x,y)=>{const p=await position(x,y);await page.mouse.click(p.x,p.y);};
+  const start=()=>page.locator('[data-tool="polyline"]').click();
+  await page.goto((process.env.WORKSHOP_BASE||'http://127.0.0.1:8766')+'/laser.html');await page.waitForFunction(()=>document.querySelector('#items').children.length===3);
+  assert(!await page.locator('[data-tool="polyline"]').isVisible(),'tool should be hidden for beginner');
+  await page.locator('[data-level="2"]').click();await start();
+  assert(await page.locator('#point-toolbar').isVisible(),'drawing instructions missing');
+  assert(await page.locator('#point-close').isDisabled(),'closing enabled without points');
+  for(const p of [[20,20],[50,20],[45,40]])await clickPoint(...p);
+  const near=await position(20,20);await page.mouse.move(near.x,near.y);
+  assert(await page.locator('#draft .point-mark.closing').count()===1,'first point is not highlighted for closing');
+  await page.mouse.click(near.x,near.y);
+  let s=await state();assert(s.items.length===4,'closed shape was not added exactly once');assert(s.items.at(-1).d==='M20,20L50,20L45,40Z'&&s.items.at(-1).op==='cut','closed contour or coordinates incorrect');
+  await page.locator('#undo').click();assert((await state()).items.length===3,'undo did not remove whole shape');await page.locator('#redo').click();assert((await state()).items.length===4,'redo did not restore shape');
+  checks.push({name:'close via first point, exact millimetres, whole-shape undo/redo',status:'PASS'});
+  await start();await clickPoint(90,20);await clickPoint(120,30);await clickPoint(110,45);
+  await page.keyboard.press('Backspace');assert(await page.locator('#draft .point-mark').count()===2,'Backspace did not remove last point');
+  await page.keyboard.press('Control+y');assert(await page.locator('#draft .point-mark').count()===3,'redo did not restore point');
+  await page.keyboard.press('Enter');s=await state();assert(s.items.at(-1).d==='M90,20L120,30L110,45'&&s.items.at(-1).op==='engrave-line','open path not completed as line engraving');
+  await page.locator('button[data-op="cut"]').click();assert((await state()).items.at(-1).op==='cut','operation cannot be changed');
+  await page.locator('button[data-op="engrave"]').click();
+  checks.push({name:'open path, point undo/redo, Enter and process choice',status:'PASS'});
+  const downloadPromise=page.waitForEvent('download');await page.locator('#export-button').click();const file=await downloadPromise;await file.saveAs('.runtime/laser-point-test.svg');
+  const svg=await readFile('.runtime/laser-point-test.svg','utf8');assert(svg.includes('width="180mm"')&&svg.includes('M20,20L50,20L45,40Z')&&svg.includes('M90,20L120,30L110,45'),'SVG export lost points');
+  await page.locator('#svg-file').setInputFiles('D:/Bambuslicer made easy/.runtime/laser-point-test.svg');await page.waitForFunction(()=>document.querySelector('#notice').textContent.includes('SVG åbnet'));
+  s=await state();assert(s.items.filter(o=>o.name==='Min punktfigur'&&o.op==='cut').length===1,'closed shape roundtrip');assert(s.items.filter(o=>o.name==='Punktstreg'&&o.op==='engrave-line').length===1,'open shape roundtrip');
+  checks.push({name:'SVG export and reimport retain both process types',status:'PASS'});
+  const count=s.items.length;await start();await clickPoint(30,75);await page.keyboard.press('Escape');assert((await state()).items.length===count,'cancel changed existing work');
+  await start();await clickPoint(30,75);await page.locator('#point-cancel').focus();await page.keyboard.press('Enter');assert((await state()).items.length===count&&!await page.locator('#point-toolbar').isVisible(),'keyboard button activation failed');
+  await start();await clickPoint(30,75);await clickPoint(50,90);await page.locator('[data-add="circle"]').click();s=await state();assert(s.items.length===count+2&&s.items.at(-2).d==='M30,75L50,90','switching tool lost pending points');assert(s.items.at(-1).name==='Cirkel','new shape selection/order');
+  checks.push({name:'cancel preserves design; switching tools keeps completed segments',status:'PASS'});
+  await page.locator('#zoom-in').click();await start();await clickPoint(75,80);await clickPoint(95,80);await clickPoint(85,95);await page.locator('#point-close').click();s=await state();assert(s.items.at(-1).d==='M75,80L95,80L85,95Z','zoom changed point coordinates');
+  checks.push({name:'close button and zoom retain millimetres',status:'PASS'});
+  await page.locator('#zoom-reset').click();await start();await clickPoint(15,55);await clickPoint(30,65);await clickPoint(15,80);
+  if(process.env.CAPTURE_WORKSHOP_SCREENSHOTS==='1')await page.screenshot({path:'.runtime/laser-point-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});await page.locator('#point-toolbar').scrollIntoViewIfNeeded();
+  if(process.env.CAPTURE_WORKSHOP_SCREENSHOTS==='1')await page.screenshot({path:'.runtime/laser-point-mobile.png',fullPage:true});
+  assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1),'mobile horizontal overflow');assert(await page.locator('#point-close').isVisible(),'mobile completion controls hidden');
+  await page.locator('#point-back').click();await page.locator('#point-finish').click();assert((await state()).items.at(-1).d==='M15,55L30,65','mobile controls did not complete expected path');
+  checks.push({name:'mobile buttons, last-point removal and open finish',status:'PASS'});
+  assert(!errors.length,errors.join('\n'));checks.push({name:'no browser errors with production CSP',status:'PASS'});
+}catch(e){checks.push({name:'point tool flow',status:'FAIL',message:e.message});process.exitCode=1;}
+finally{await browser.close();await writeFile('.runtime/laser-point-results.json',JSON.stringify(checks,null,2));checks.forEach(c=>console.log(c.status,c.name,c.message||''));}

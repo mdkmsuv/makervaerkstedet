@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#c62b2f">
+  <title>Lærerpanel · Makerværkstedet</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/laerer.css">
+  <link rel="stylesheet" href="/system-overview.css">
+  <script src="/system-overview.js" defer></script>
+  <script src="/update-admin.js" defer></script>
+  <script src="/laerer.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div class="brand-name"><span class="brand-school" data-school-name>Makerværkstedet</span><strong>Lærerpanel</strong></div>
+    </div>
+    <button id="log-ud" class="sekundaer" type="button" hidden>Log ud</button>
+  </header>
+
+  <main>
+    <p id="indlaeser" class="midt">Indlæser …</p>
+
+    <section id="login" class="lille-kort" hidden aria-labelledby="login-titel">
+      <p class="eyebrow">KUN FOR LÆRERE</p>
+      <h1 id="login-titel">Log ind</h1>
+      <form id="login-form">
+        <input class="skjult" type="text" name="username" autocomplete="username" value="Lærer" readonly tabindex="-1" aria-hidden="true">
+        <label for="login-kode">Lærerkode</label>
+        <input id="login-kode" type="password" autocomplete="current-password" required>
+        <button class="primaer" type="submit">Log ind</button>
+        <p id="login-fejl" class="fejl" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="opsaet" class="lille-kort" hidden aria-labelledby="opsaet-titel">
+      <p class="eyebrow">FØRSTE GANG</p>
+      <h1 id="opsaet-titel">Vælg en lærerkode</h1>
+      <p>Koden bruges til at logge ind på lærerpanelet fra lærerens computer. Den skal have mindst 8 tegn. Kun læreren må kende den.</p>
+      <form id="opsaet-form">
+        <input class="skjult" type="text" name="username" autocomplete="username" value="Lærer" readonly tabindex="-1" aria-hidden="true">
+        <label for="opsaet-kode">Ny lærerkode</label>
+        <input id="opsaet-kode" type="password" autocomplete="new-password" minlength="8" required>
+        <label for="opsaet-kode-igen">Skriv koden igen</label>
+        <input id="opsaet-kode-igen" type="password" autocomplete="new-password" minlength="8" required>
+        <button class="primaer" type="submit">Gem lærerkoden</button>
+        <p id="opsaet-fejl" class="fejl" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="ikke-valgt" class="lille-kort" hidden>
+      <p class="eyebrow">FØRSTE GANG</p>
+      <h1>Lærerkoden er ikke valgt endnu</h1>
+      <p>Koden vælges i en browser på selve serveren. Brug den lokale læreradresse fra serverens opsætning.</p>
+    </section>
+
+    <section id="panel" hidden>
+      <div class="intro">
+        <p class="eyebrow">APPS TIL ELEVERNE</p>
+        <h1>Hvad må eleverne bruge?</h1>
+        <p>Luk et værksted i 2 timer, eller åbn igen før tid. Internet har sin egen kontakt nedenfor.</p>
+      </div>
+      <section id="system-overblik" class="system-overblik" aria-labelledby="system-overblik-titel">
+        <div class="system-overblik-top">
+          <div>
+            <p class="eyebrow">SERVERKONTROLPANEL</p>
+            <h2 id="system-overblik-titel">Server og enheder</h2>
+            <p class="system-intro">Et samlet kig på serverversion, printere og elevcomputere på værkstedets LAN.</p>
+          </div>
+          <button id="system-opdater" class="sekundaer" type="button">Opdatér overblik</button>
+        </div>
+        <div id="system-status" class="system-status" role="status" aria-live="polite">Henter status …</div>
+        <div id="system-server" class="system-server" aria-label="Serverversion"></div>
+        <dl id="system-tal" class="system-tal" aria-label="Tællinger"></dl>
+        <div class="system-kolonner">
+          <section class="system-liste" aria-labelledby="system-printere-titel">
+            <div class="system-liste-heading"><h3 id="system-printere-titel">Printere</h3><span id="system-printer-count" class="system-count"></span></div>
+            <div id="system-printere"></div>
+          </section>
+          <section class="system-liste" aria-labelledby="system-computere-titel">
+            <div class="system-liste-heading"><h3 id="system-computere-titel">Elevcomputere</h3><span id="system-computer-count" class="system-count"></span></div>
+            <div id="system-computere"></div>
+          </section>
+        </div>
+      </section>
+      <section id="update-admin" class="system-overblik" aria-labelledby="updates-title">
+        <div class="system-overblik-top"><div><p class="eyebrow">VEDLIGEHOLDELSE</p><h2 id="updates-title">Opdatér computere</h2></div>
+          <button id="updates-refresh" class="sekundaer" type="button">Hent opdateringsstatus</button></div>
+        <p>Hovedsystemet henter udgivelser fra GitHub og sender computeropdateringer via sin egen SSH-forbindelse. Hovedserveren opdateres lokalt. Ved central server eller VM sker arbejdet dérfra; ved alt på én computer sker det på den Windows-computer.</p>
+        <p>Vælg en kontrolleret udgivelse og computere. Slukkede computere bliver i køen. Elevprojekter og skolens tilmelding skal bevares. En opdatering til Linux-elevcomputere er forskellig fra opdatering af lærerens Windows-lasercomputer.</p>
+        <p>Pause holder kommende forsøg tilbage. Et forsøg, der allerede er i gang, færdiggør sit sikre trin. Afventer genstart betyder, at den nye version endnu ikke er bekræftet i brug.</p>
+        <p>På ældre elevcomputere kan første opstart give kontakt til serveren og klargøre udgivelsen. Næste normale genstart anvender den. Lad eleverne gemme arbejdet først.</p>
+        <section aria-labelledby="feed-title">
+          <h3 id="feed-title" tabindex="-1">Programopdateringer</h3>
+          <p>Hovedserveren søger efter udgivelser på GitHub én gang i døgnet. Det kræver ingen AI, og kontrollen fortsætter, når browseren er lukket. Nye pakker hentes først, når læreren vælger det.</p>
+          <form id="feed-configure" hidden>
+            <label for="feed-repository">GitHub-lager til officielle udgivelser</label>
+            <input id="feed-repository" name="repository" type="text" value="mdkmsuv/makervaerkstedet" placeholder="organisation/projekt" maxlength="140" autocomplete="off" required>
+            <p>Skriv ejer og projektnavn fra projektets GitHub-adresse. Kilden vælges én gang; skolens IT hjælper ved et senere skift. Ingen nøgle eller adgangskode skal indtastes.</p>
+            <button class="sekundaer" type="submit">Gem udgivelseskilde</button>
+          </form>
+          <button id="feed-check" class="sekundaer" type="button" disabled>Søg efter opdateringer</button>
+          <p id="feed-status" role="status" aria-live="polite">Henter udgivelsesstatus …</p>
+          <div id="feed-latest"></div>
+          <button id="feed-retry" class="sekundaer" type="button" hidden>Prøv samme anmodning igen</button>
+        </section>
+        <p id="updates-status" role="status" aria-live="polite">Henter opdateringsstatus …</p>
+        <div id="updates-content"></div>
+        <button id="updates-retry-request" class="sekundaer" type="button" hidden>Prøv samme anmodning igen</button>
+        <details><summary>Opsætning af opdateringsforbindelser</summary><p>Skolens IT klargør gennemgåede udgivelser, computeridentiteter og SSH-nøgler på hovedserveren. Panelet viser kun, om opsætningen er klar. Windows-lasercomputerens rolle kontrolleres på selve computeren før opdatering. Der skal ikke indtastes adgangskoder, serverstier eller kommandoer her.</p><p>Hvis opsætningen mangler: bed IT kontrollere hovedsystemets opdateringskatalog, SSH-nøgle, fastholdte værtsnøgle og den kørende opdateringsopgave. Hvis en værtsnøgle er ændret, skal IT undersøge computerens identitet før en ny nøgle godkendes.</p></details>
+      </section>
+      <p><a class="laererside" href="/makerspace">Makerværkstedet: maskiner, workflows og opgaver →</a></p>
+      <p id="handling-fejl" class="fejl" role="alert"></p>
+      <p id="forbindelse" class="forbindelse" role="status"></p>
+      <section class="pause-afsnit" aria-labelledby="pause-titel">
+        <div class="pause-intro">
+          <p class="eyebrow">ALLE ELEVCOMPUTERE</p>
+          <h2 id="pause-titel">Skærmpause</h2>
+          <p>Skærmen bliver sort med teksten Skærmpause, og mus og tastatur låses. Elevernes arbejde bliver liggende, indtil pausen slutter.</p>
+        </div>
+        <div class="pause-felter">
+          <label for="pause-minutter">Pause i minutter</label>
+          <input id="pause-minutter" type="number" inputmode="numeric" min="1" max="120" value="2">
+          <div class="pause-knapper">
+            <button id="pause-start" class="primaer" type="button">Start skærmpause</button>
+            <button id="pause-resume" class="sekundaer" type="button">Fjern pause</button>
+          </div>
+          <p id="pause-status" class="pause-status" role="status"></p>
+        </div>
+      </section>
+      <div class="alle-knapper">
+        <button id="aabn-alle" class="sekundaer" type="button">Åbn alle værksteder</button>
+        <button id="luk-alle" class="sekundaer" type="button">Luk alle værksteder i 2 timer</button>
+      </div>
+      <div id="apps" class="apps"></div>
+      <section class="internet-afsnit" aria-labelledby="internet-titel">
+        <div><p class="eyebrow">SEPARAT ADGANG</p><h2 id="internet-titel">Almindeligt internet</h2>
+          <p>De åbne webværksteder virker med deres egen adgang. Åbn her, når eleverne også må besøge andre hjemmesider.</p></div>
+        <div id="internet"></div>
+      </section>
+
+      <details class="forklaring">
+        <summary>Hvad sker der, når jeg lukker en app?</summary>
+        <ul>
+          <li>Værkstedet forsvinder fra elevernes startside og vises igen, når du åbner det.</li>
+          <li><strong>Værksteder:</strong> Hvert lukket værksted åbner automatisk igen efter 2 timer. Tidspunktet står ved værkstedet. Du kan åbne før tid; en servergenstart forlænger ikke lukningen.</li>
+          <li>Elever, der er inde i appen, bliver sendt tilbage til start. Nye uploads og afleveringer bliver afvist af serveren.</li>
+          <li>Print og laserjob, som allerede er sendt eller i gang, fortsætter. Dem styrer du på værkstedernes egne lærersider.</li>
+          <li>Bed eleverne gemme først. Scratch-projekter skal gemmes som en fil. Skift til startsiden kan miste arbejde, der kun ligger i en åben fane.</li>
+          <li><strong>Internet:</strong> Når du lukker, lukkes elevernes internetvinduer, og elevcomputeren spærrer selv for internettet. Internet åbner ikke automatisk efter 2 timer. Serveren og de åbne værksteder kan stadig bruges. Google SafeSearch er altid slået til.</li>
+          <li><strong>Filer:</strong> Eleverne gemmer i mappen Projekter på computeren. Sidder der en USB-nøgle i, gemmes filerne på den i stedet. Gendannelse kræver, at backup er sat op og har kørt.</li>
+        </ul>
+      </details>
+
+      <div class="intro">
+        <p class="eyebrow">ELEVCOMPUTERE</p>
+        <h2>Computerne i lokalet</h2>
+      </div>
+      <div id="computere" class="computere"></div>
+    </section>
+  </main>
+  <footer class="sidefod">Udviklet af Mathias Kusk Damgaard · <a href="/om">Open source og kreditering</a></footer>
+  <dialog id="luk-dialog" aria-labelledby="luk-titel" aria-describedby="luk-besked">
+    <h2 id="luk-titel">Er arbejdet gemt?</h2>
+    <p id="luk-besked"></p>
+    <form method="dialog"><button class="sekundaer" value="annuller" autofocus>Vent med at lukke</button>
+      <button class="primaer" value="luk">Luk i 2 timer</button></form>
+  </dialog>
+  <dialog id="update-notice" aria-labelledby="update-notice-title" aria-describedby="update-notice-version update-notice-notes">
+    <h2 id="update-notice-title">Ny programopdatering</h2>
+    <p id="update-notice-version"></p>
+    <p id="update-notice-notes"></p>
+    <p>Se udgivelsen, og vælg selv, hvornår hovedserveren skal opdateres.</p>
+    <form method="dialog"><button class="sekundaer" value="later" autofocus>Senere</button>
+      <button class="primaer" value="view">Se opdateringen</button></form>
+  </dialog>
+</body>
+</html>

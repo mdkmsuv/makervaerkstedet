@@ -1,0 +1,1046 @@
+# Kiosk: automatisk login som elev på tty1 -> X11 -> matchbox -> elevbjælke + Chromium i kiosktilstand.
+# Alle filer, der styrer kiosken, ejes af root. Eleven kan ikke ændre dem.
+
+- name: Validér elevkatalogets tema
+  ansible.builtin.assert:
+    that:
+      - kiosk_theme | string in ['red', 'yellow', 'green']
+    fail_msg: "kiosk_theme skal være red, yellow eller green."
+    quiet: true
+  tags: [kiosk, branding]
+
+- name: Serverens adresse er angivet
+  ansible.builtin.assert:
+    that:
+      - kiosk_server is defined
+      - kiosk_server | string | length > 0
+    fail_msg: "Sæt kiosk_server (serverens IP eller navn) i inventory, fx inventory/skole/group_vars/elevcomputere.yml"
+    quiet: true
+
+- name: Kioskens transport og provisionering er gyldig før ændringer
+  ansible.builtin.assert:
+    that:
+      - kiosk_usikker_test is boolean
+      - kiosk_protokol in ['http', 'https']
+      - kiosk_usikker_test | bool or kiosk_protokol == 'https'
+      - not kiosk_usikker_test | bool or kiosk_protokol == 'http'
+      - kiosk_usikker_test | bool or kiosk_enhedsfil is mapping or (kiosk_enhedsfil | string | length > 0)
+      - kiosk_usikker_test | bool or kiosk_ca_fil | string | length > 0
+    fail_msg: "Sikker kiosk kræver kiosk_protokol=https, kiosk_enhedsfil og kiosk_ca_fil. HTTP kræver eksplicit kiosk_usikker_test=true."
+    quiet: true
+
+- name: Læs enhedens provisionering fra controlleren
+  ansible.builtin.set_fact:
+    kiosk_enhed: >-
+      {{ kiosk_enhedsfil if kiosk_enhedsfil is mapping else
+         (lookup('ansible.builtin.file', kiosk_enhedsfil) | from_json
+          if kiosk_enhedsfil | string | length > 0 else
+          {'computer': inventory_hostname,
+           'token': 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+           'ui_token': 'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB'}) }}
+    kiosk_ca_indhold: >-
+      {{ lookup('ansible.builtin.file', kiosk_ca_fil)
+         if kiosk_ca_fil | string | length > 0 else '' }}
+  no_log: true
+
+- name: Enhedscredentials og CA er gyldige
+  ansible.builtin.assert:
+    that:
+      - kiosk_enhed is mapping
+      - kiosk_enhed.computer is string
+      - kiosk_enhed.computer | length > 0
+      - kiosk_enhed.computer == inventory_hostname
+      - kiosk_enhed.token is string
+      - kiosk_enhed.token is match('^[A-Za-z0-9_-]{43,128}$')
+      - kiosk_enhed.ui_token is string
+      - kiosk_enhed.ui_token is match('^[A-Za-z0-9_-]{43,128}$')
+      - kiosk_enhed.token != kiosk_enhed.ui_token
+      - kiosk_usikker_test | bool or
+        (kiosk_ca_indhold is string and "-----BEGIN CERTIFICATE-----" in kiosk_ca_indhold and
+         "-----END CERTIFICATE-----" in kiosk_ca_indhold)
+    fail_msg: "kiosk_enhedsfil skal matche inventory_hostname og indeholde stærke tokenværdier; kiosk_ca_fil skal være en PEM-CA."
+    quiet: true
+  no_log: true
+
+# Den lokale designtjeneste må kun nå serveren. systemd's IPAddressAllow tager
+# kun adresser, ikke navne, så serveren skal angives som IPv4-adresse.
+- name: Lokalt designværksted kræver serverens IP-adresse
+  ansible.builtin.assert:
+    that:
+      - kiosk_server is match('^(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])){3}$')
+      - kiosk_lokal_design_laser_port | int != kiosk_lokal_design_folie_port | int
+    fail_msg: >-
+      Det lokale designværksted kræver, at kiosk_server er en IPv4-adresse (fx
+      192.0.2.50 som dokumentationseksempel), og at laser og folie har hver sin port. Slå det fra med
+      kiosk_lokal_design_enabled: false, hvis serveren kun kendes ved navn.
+    quiet: true
+  when: kiosk_lokal_design_enabled | bool
+
+# Laser og folie åbnes lokalt på denne computer. Start- og URL-politikken slår
+# lokale adresser op her, så de to apps følger lærerens åbn/luk via
+# elevhub-regler ligesom Scratch.
+- name: Laser og folie som lokale adresser
+  ansible.builtin.set_fact:
+    kiosk_lokale_app_urler: >-
+      {{ kiosk_lokale_app_urler | combine({
+           'laser': 'http://127.0.0.1:' ~ kiosk_lokal_design_laser_port ~ '/',
+           'folie': 'http://127.0.0.1:' ~ kiosk_lokal_design_folie_port ~ '/'}) }}
+  when: kiosk_lokal_design_enabled | bool
+
+- name: Grafisk minimalsystem, browser, elevbjælke og USB-nøgler
+  ansible.builtin.apt:
+    name:
+      - xserver-xorg-core
+      - xserver-xorg-input-libinput
+      - xinit
+      - x11-xserver-utils
+      - x11-xkb-utils
+      - matchbox-window-manager
+      - chromium
+      - chromium-l10n
+      - fonts-dejavu-core
+      - python3-tk
+      - python3-xlib
+      - console-setup        # Dansk tastatur også i den lokale admin-terminal
+      - xdotool
+      - x11-utils
+      - udisks2
+      - ca-certificates
+      - openssl
+      - libnss3-tools
+      - acl                 # Ansible deler midlertidige NSS-opgaver sikkert med elevkontoen
+      - polkitd              # giver eleven lov til at montere og tage en USB-nøgle ud
+      - udiskie
+      - udev
+      - nftables
+      - squid-openssl
+    state: present
+    install_recommends: false
+    policy_rc_d: 101
+
+- name: Elevkontoen kan bruge micro-bit direkte via USB
+  ansible.builtin.template:
+    src: 60-elevhub-microbit.rules.j2
+    dest: /etc/udev/rules.d/60-elevhub-microbit.rules
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genindlæs micro-bit USB-regler
+
+- name: Bluetooth-understøttelse til den tilvalgte Linux-pilot
+  ansible.builtin.apt:
+    name: bluez
+    state: present
+    install_recommends: false
+  when: kiosk_web_bluetooth | bool
+
+- name: Bluetooth-tjenesten er startet når den er tilvalgt
+  ansible.builtin.systemd_service:
+    name: bluetooth
+    enabled: true
+    state: started
+  when: kiosk_web_bluetooth | bool and not ansible_check_mode
+
+- name: Deaktivér Debians eventuelle standard-Squid
+  ansible.builtin.systemd_service:
+    name: squid
+    enabled: false
+    state: stopped
+  when: not ansible_check_mode
+
+- name: Mapper til kiosken
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ kiosk_startside_mappe }}"
+    - "{{ kiosk_startside_mappe }}/assets"
+    - /usr/local/lib/elevhub
+    - "{{ kiosk_lokal_package_dest }}"
+    - /usr/local/share/fonts/elevhub
+    - /etc/elevhub
+    - /etc/chromium/policies/managed
+    - /etc/X11/xorg.conf.d
+    - /etc/systemd/system/getty@tty1.service.d
+  tags: [lokale_apps]
+
+- name: Mapper til lokale elevapps og projekthylde
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: directory
+    owner: "{{ item.owner }}"
+    group: "{{ item.group }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - {path: "{{ kiosk_lokale_apps_root }}", owner: root, group: root, mode: "0755"}
+    - {path: "{{ kiosk_lokale_projects }}", owner: "{{ kiosk_bruger }}", group: "{{ kiosk_bruger }}", mode: "0750"}
+    - {path: "{{ kiosk_lokale_state }}", owner: "{{ kiosk_bruger }}", group: "{{ kiosk_bruger }}", mode: "0700"}
+  when: kiosk_lokale_apps_enabled | bool
+  tags: [lokale_apps]
+
+- name: Mapper til elevkontoens Chromium NSS
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ kiosk_bruger }}"
+    group: "{{ kiosk_bruger }}"
+    mode: "0700"
+  loop:
+    - "/home/{{ kiosk_bruger }}/.pki"
+    - "/home/{{ kiosk_bruger }}/.pki/nssdb"
+  when: not kiosk_usikker_test | bool
+
+- name: Valider Elevhubbens CA på controlleren
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/openssl
+      - x509
+      - -in
+      - "{{ kiosk_ca_fil }}"
+      - -noout
+  delegate_to: localhost
+  become: false
+  changed_when: false
+  no_log: true
+  when: not kiosk_usikker_test | bool
+
+- name: Installer Elevhubbens CA i systemets trust store
+  ansible.builtin.copy:
+    content: "{{ kiosk_ca_indhold }}"
+    dest: /usr/local/share/ca-certificates/elevhub-ca.crt
+    owner: root
+    group: root
+    mode: "0644"
+  register: kiosk_ca_system
+  notify:
+    - Genstart kiosk
+  when: not kiosk_usikker_test | bool
+
+- name: Systemets CA-cache er opdateret også efter en afbrudt installation
+  ansible.builtin.command: update-ca-certificates
+  environment:
+    LC_ALL: C
+  register: kiosk_ca_opdatering
+  changed_when: "'0 added, 0 removed' not in kiosk_ca_opdatering.stdout"
+  when: not ansible_check_mode and not kiosk_usikker_test | bool
+
+- name: Opret Chromium NSS-database for elevkontoen
+  ansible.builtin.command:
+    cmd: "certutil -d sql:/home/{{ kiosk_bruger }}/.pki/nssdb -N --empty-password"
+    creates: "/home/{{ kiosk_bruger }}/.pki/nssdb/cert9.db"
+  become_user: "{{ kiosk_bruger }}"
+  become: true
+  when: not ansible_check_mode and not kiosk_usikker_test | bool
+
+- name: Opdatér Chromium NSS med Elevhubbens CA
+  ansible.builtin.shell: |
+    set -o pipefail
+    gemt=$(certutil -d sql:/home/{{ kiosk_bruger }}/.pki/nssdb -L -n Elevhub-CA -a |
+      openssl x509 -outform DER 2>/dev/null | sha256sum | cut -d ' ' -f1)
+    aktuel=$(openssl x509 -in /usr/local/share/ca-certificates/elevhub-ca.crt -outform DER |
+      sha256sum | cut -d ' ' -f1)
+    test -n "$gemt" && test "$gemt" = "$aktuel"
+  args:
+    executable: /bin/bash
+  register: kiosk_ca_nss
+  changed_when: false
+  failed_when: false
+  become_user: "{{ kiosk_bruger }}"
+  become: true
+  when: not ansible_check_mode and not kiosk_usikker_test | bool
+
+- name: Fjern forældet Elevhub-CA fra Chromium NSS
+  ansible.builtin.command:
+    cmd: "certutil -d sql:/home/{{ kiosk_bruger }}/.pki/nssdb -D -n Elevhub-CA"
+  become_user: "{{ kiosk_bruger }}"
+  become: true
+  register: kiosk_ca_slet
+  changed_when: kiosk_ca_slet.rc == 0
+  failed_when: kiosk_ca_slet.rc not in [0, 255]
+  when:
+    - not ansible_check_mode
+    - not kiosk_usikker_test | bool
+    - kiosk_ca_system.changed or kiosk_ca_nss.rc != 0
+
+- name: Indlæs Elevhubbens CA i Chromium NSS
+  ansible.builtin.command:
+    cmd: >-
+      certutil -d sql:/home/{{ kiosk_bruger }}/.pki/nssdb
+      -A -n Elevhub-CA -t C,, -i /usr/local/share/ca-certificates/elevhub-ca.crt
+  become_user: "{{ kiosk_bruger }}"
+  become: true
+  notify: Genstart kiosk
+  when:
+    - not ansible_check_mode
+    - not kiosk_usikker_test | bool
+    - kiosk_ca_system.changed or kiosk_ca_nss.rc != 0
+
+- name: Fælles katalogskrift og assets til startsiden
+  ansible.builtin.copy:
+    src: "{{ kiosk_elevhub_web }}/assets/{{ item }}"
+    dest: "{{ kiosk_startside_mappe }}/assets/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - metrophobic-latin.ttf
+    - Metrophobic-OFL.txt
+    - favicon.svg
+    - creative-hub.css
+    - creative-hub.js
+    - native-3d.js
+    - workshops.js
+    - hub-bauhaus-v1.png
+    - workshop-3d-bauhaus-v1.png
+    - workshop-laser-bauhaus-v1.png
+    - workshop-vinyl-bauhaus-v1.png
+    - workshop-code-bauhaus-v1.png
+    - workshop-microbit-bauhaus-v1.png
+    - workshop-data-bauhaus-v1.png
+    - workshop-ideas-bauhaus-v1.png
+    - workshop-circuit-bauhaus-v1.png
+
+- name: Skolens skrift til elevbjælken
+  ansible.builtin.copy:
+    src: "{{ kiosk_elevhub_web }}/assets/metrophobic-latin.ttf"
+    dest: /usr/local/share/fonts/elevhub/metrophobic-latin.ttf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Opdatér skriftcache
+
+- name: Find valgfri lokal Scratch-build på controlleren
+  ansible.builtin.stat:
+    path: "{{ kiosk_lokale_app_kilder.scratch }}"
+  delegate_to: localhost
+  become: false
+  register: kiosk_scratch_kilde
+  when:
+    - kiosk_lokale_apps_enabled | bool
+    - kiosk_lokale_app_kilder.scratch | string | length > 0
+  tags: [lokale_apps, lokale_scratch]
+
+- name: Installer lokal Scratch-build på elevcomputeren
+  ansible.builtin.copy:
+    src: "{{ kiosk_lokale_app_kilder.scratch }}/"
+    dest: "{{ kiosk_lokale_apps_root }}/scratch/"
+    remote_src: "{{ elevhub_firstboot | default(false) | bool }}"
+    owner: root
+    group: root
+    mode: "u=rwX,go=rX"
+    directory_mode: "0755"
+  when:
+    - kiosk_lokale_apps_enabled | bool
+    - kiosk_scratch_kilde.stat.exists | default(false)
+    - kiosk_scratch_kilde.stat.isdir | default(false)
+  notify: Genstart lokal elevapp-service
+  tags: [lokale_apps, lokale_scratch]
+
+- name: Find valgfri lokal Datatræner-build på controlleren
+  ansible.builtin.stat:
+    path: "{{ kiosk_lokale_app_kilder.datatraener }}"
+  delegate_to: localhost
+  become: false
+  register: kiosk_datatraener_kilde
+  when:
+    - kiosk_lokale_apps_enabled | bool
+    - kiosk_lokale_app_kilder.datatraener | string | length > 0
+  tags: [lokale_apps]
+
+- name: Installer lokal Datatræner-build på elevcomputeren
+  ansible.builtin.copy:
+    src: "{{ kiosk_lokale_app_kilder.datatraener }}/"
+    dest: "{{ kiosk_lokale_apps_root }}/datatraener/"
+    remote_src: "{{ elevhub_firstboot | default(false) | bool }}"
+    owner: root
+    group: root
+    mode: "u=rwX,go=rX"
+    directory_mode: "0755"
+  when:
+    - kiosk_lokale_apps_enabled | bool
+    - kiosk_datatraener_kilde.stat.exists | default(false)
+    - kiosk_datatraener_kilde.stat.isdir | default(false)
+  notify: Genstart lokal elevapp-service
+  tags: [lokale_apps]
+
+- name: Find valgfri lokal Kredsløb-build på controlleren
+  ansible.builtin.stat:
+    path: "{{ kiosk_lokale_app_kilder.kredsloeb }}"
+  delegate_to: localhost
+  become: false
+  register: kiosk_kredsloeb_kilde
+  when:
+    - kiosk_lokale_apps_enabled | bool
+    - kiosk_lokale_app_kilder.kredsloeb | string | length > 0
+  tags: [lokale_apps]
+
+- name: Installer lokal Kredsløb-build på elevcomputeren
+  ansible.builtin.copy:
+    src: "{{ kiosk_lokale_app_kilder.kredsloeb }}/"
+    dest: "{{ kiosk_lokale_apps_root }}/kredsloeb/"
+    remote_src: "{{ elevhub_firstboot | default(false) | bool }}"
+    owner: root
+    group: root
+    mode: "u=rwX,go=rX"
+    directory_mode: "0755"
+  when:
+    - kiosk_lokale_apps_enabled | bool
+    - kiosk_kredsloeb_kilde.stat.exists | default(false)
+    - kiosk_kredsloeb_kilde.stat.isdir | default(false)
+  notify: Genstart lokal elevapp-service
+  tags: [lokale_apps]
+
+- name: Find lokal MakeCode-controller på controlleren
+  ansible.builtin.stat:
+    path: "{{ kiosk_lokale_app_kilder.microbit }}"
+  delegate_to: localhost
+  become: false
+  register: kiosk_lokal_app_kilder_microbit_stat
+  when:
+    - kiosk_lokale_apps_enabled | bool
+    - kiosk_lokale_app_kilder.microbit | string | length > 0
+  tags: [lokale_apps]
+
+- name: Installer lokal MakeCode-controller på elevcomputeren
+  ansible.builtin.copy:
+    src: "{{ kiosk_lokale_app_kilder.microbit }}/"
+    dest: "{{ kiosk_lokale_apps_root }}/microbit/"
+    remote_src: "{{ elevhub_firstboot | default(false) | bool }}"
+    owner: root
+    group: root
+    mode: "u=rwX,go=rX"
+    directory_mode: "0755"
+  when:
+    - kiosk_lokale_apps_enabled | bool
+    - kiosk_lokal_app_kilder_microbit_stat.stat.exists | default(false)
+    - kiosk_lokal_app_kilder_microbit_stat.stat.isdir | default(false)
+  notify: Genstart lokal elevapp-service
+  tags: [lokale_apps]
+
+- name: Find den komplette lokale projektpakke på controlleren
+  ansible.builtin.stat:
+    path: "{{ kiosk_lokal_package_src }}"
+  delegate_to: localhost
+  become: false
+  register: kiosk_lokal_package
+  when: kiosk_lokale_apps_enabled | bool
+  tags: [lokale_apps]
+
+- name: Den lokale projektpakke findes
+  ansible.builtin.assert:
+    that:
+      - kiosk_lokal_package.stat.exists
+      - kiosk_lokal_package.stat.isdir
+    fail_msg: "Den lokale projektpakke mangler: {{ kiosk_lokal_package_src }}"
+  when: kiosk_lokale_apps_enabled | bool
+  tags: [lokale_apps]
+
+- name: Installer hele den lokale projektpakke
+  ansible.builtin.copy:
+    src: "{{ kiosk_lokal_package_src }}/"
+    dest: "{{ kiosk_lokal_package_dest }}/"
+    remote_src: "{{ elevhub_firstboot | default(false) | bool }}"
+    owner: root
+    group: root
+    mode: "u=rwX,go=rX"
+    directory_mode: "0755"
+  when: kiosk_lokale_apps_enabled | bool
+  notify:
+    - Genindlæs systemd
+    - Genstart lokal elevapp-service
+  tags: [lokale_apps]
+
+- name: Fjern Python-cache fra den installerede lokale projektpakke
+  ansible.builtin.find:
+    paths: "{{ kiosk_lokal_package_dest }}"
+    patterns: __pycache__
+    file_type: directory
+    recurse: true
+  register: kiosk_lokal_pycache
+  when: kiosk_lokale_apps_enabled | bool
+  tags: [lokale_apps]
+
+- name: Ryd Python-cache efter package-installation
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    state: absent
+  loop: "{{ kiosk_lokal_pycache.files | default([]) }}"
+  when: kiosk_lokale_apps_enabled | bool
+  tags: [lokale_apps]
+
+- name: Fjern gammel enkeltfil-installation af lokal service
+  ansible.builtin.file:
+    path: /usr/local/lib/elevhub/lokal.py
+    state: absent
+  when: kiosk_lokale_apps_enabled | bool
+  tags: [lokale_apps]
+
+# Designværkstedet (laser og folie) kører lokalt. Tjenesten er hovedprojektets
+# app/laser_local.py: samme laser_server som på serveren, men afleveringer
+# sendes videre til serverens laserindgang i stedet for at blive gemt her.
+- name: Lokalt designværksted
+  when: kiosk_lokal_design_enabled | bool
+  tags: [lokal_design]
+  vars:
+    kiosk_lokal_design_pakke: /tmp/elevhub-designvaerksted.tar.gz
+    kiosk_lokal_design_filer:
+      - LICENSE
+      - deployment/DESIGN-CREDITS.md
+      - app/__init__.py
+      - app/instance.py
+      - app/laser_server.py
+      - app/laser_local.py
+      - app/laser_images.py
+      - app/project_origins.py
+      - app/demo_workshop.py
+      - app/laser_inbox_lifecycle.py
+      - app/backup_guard.py
+      - app/generation_runtime.py
+      - app/hardware_workflows.py
+      - app/laser_workflows.py
+      - app/printer_config.py
+      - app/profiles.py
+      - app/school_appearance.py
+      - app/boxes_worker.py
+      - app/boxes_generator.py
+      - web/workshop.html
+      - web/workshop.css
+      - web/laser.html
+      - web/vendor/laser.js
+      - web/vendor/laser-trace-worker.js
+      - web/project-import.js
+      - web/laser.css
+      - web/laser-workshop.css
+      - web/vinyl-workshop.css
+      - web/desktop-studio.css
+      - web/school-theme.css
+      - web/school-theme.js
+      - web/favicon.svg
+      - web/assets/workshop-laser-v1.webp
+      - web/assets/workshop-vinyl-v1.webp
+      - web/assets/workshop-3d-bauhaus-v1.png
+      - web/assets/metrophobic-latin.ttf
+      - web/assets/CC-BY-4.0.txt
+      - web/assets/Metrophobic-OFL.txt
+      - web/assets/Paper-MIT.txt
+      - web/assets/OpenType-MIT.txt
+      - web/assets/ImageTracer-UNLICENSE.txt
+      - web/assets/Clipper-LICENSE.txt
+      - third_party/BOXES-PY-SOURCE.md
+      - third_party/boxes.py/LICENSE.txt
+      - third_party/boxes.py/boxes
+  block:
+    # Kun det, kassens importvej faktisk bruger. Boxes.py's rectpack og
+    # svgpathtools hører til svgmerge.py, som kassen aldrig importerer.
+    - name: Afhængigheder til designværkstedet og kassegeneratoren
+      ansible.builtin.apt:
+        name:
+          - python3-affine
+          - python3-pil
+          - python3-qrcode
+          - python3-shapely
+          - python3-typing-extensions
+        state: present
+        install_recommends: false
+
+    # Reproducerbar pakke: samme kode giver samme checksum, så copy-trinnet
+    # kun melder ændring, når hovedprojektets kode faktisk er ændret. Bygges
+    # også i --check, fordi den kun skrives på controlleren.
+    # --mode er nødvendig: filer på et Windows-drev (/mnt/d) ser ud som 777, og
+    # tar gemmer rettighederne. Uden den kunne elevkontoen ændre tjenestens kode.
+    - name: Byg designværkstedets pakke på controlleren
+      ansible.builtin.shell: |
+        set -euo pipefail
+        cd {{ kiosk_lokal_design_kilde | quote }}
+        tar --sort=name --mtime=@0 --owner=0 --group=0 --numeric-owner --mode=u=rwX,go=rX \
+            --transform='s|^deployment/DESIGN-CREDITS[.]md$|CREDITS.md|' \
+            --exclude=__pycache__ --exclude='*.pyc' -cf - \
+            {% for fil in kiosk_lokal_design_filer %}{{ fil | quote }} {% endfor %}\
+            | gzip -n > {{ kiosk_lokal_design_pakke | quote }}
+      args:
+        executable: /bin/bash
+      delegate_to: localhost
+      become: false
+      run_once: true
+      changed_when: false
+      check_mode: false
+
+    - name: Mappe til pakker på elevcomputeren
+      ansible.builtin.file:
+        path: /var/cache/elevhub
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+
+    - name: Kopiér designværkstedets pakke til elevcomputeren
+      ansible.builtin.copy:
+        src: "{{ kiosk_lokal_design_pakke }}"
+        dest: /var/cache/elevhub/designvaerksted.tar.gz
+        owner: root
+        group: root
+        mode: "0644"
+      register: kiosk_design_pakke
+
+    - name: Er designværkstedet pakket ud?
+      ansible.builtin.stat:
+        path: "{{ kiosk_lokal_design_dest }}/app/laser_local.py"
+      register: kiosk_design_udpakket
+
+    # Hele mappen erstattes, så filer, der er fjernet fra pakken, også
+    # forsvinder fra maskinen.
+    - name: Pak ny version af designværkstedet ud
+      when:
+        - not ansible_check_mode
+        - kiosk_design_pakke.changed or not kiosk_design_udpakket.stat.exists
+      block:
+        - name: Fjern forrige version
+          ansible.builtin.file:
+            path: "{{ kiosk_lokal_design_dest }}"
+            state: absent
+
+        - name: Mappe til designværkstedet
+          ansible.builtin.file:
+            path: "{{ kiosk_lokal_design_dest }}"
+            state: directory
+            owner: root
+            group: root
+            mode: "0755"
+
+        - name: Pak designværkstedet ud
+          ansible.builtin.unarchive:
+            src: /var/cache/elevhub/designvaerksted.tar.gz
+            dest: "{{ kiosk_lokal_design_dest }}"
+            remote_src: true
+            owner: root
+            group: root
+            mode: "u=rwX,go=rX"
+          notify: Genstart lokal designtjeneste
+
+    # The archive lists files, not every parent directory. tar creates missing
+    # parents with the current umask, and first boot runs with UMask=0077, so
+    # web/assets, web/vendor and third_party/boxes.py became 0700 and the
+    # service's DynamicUser could not read the editor's JavaScript. Enforce
+    # readable modes on every run, which also repairs installed machines.
+    - name: Designværkstedets filer kan læses af tjenesten
+      ansible.builtin.file:
+        path: "{{ kiosk_lokal_design_dest }}"
+        state: directory
+        recurse: true
+        owner: root
+        group: root
+        mode: "u=rwX,go=rX"
+      notify: Genstart lokal designtjeneste
+
+    - name: Tjeneste til det lokale designværksted
+      ansible.builtin.template:
+        src: elevhub-design.service.j2
+        dest: /etc/systemd/system/elevhub-design.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Genstart lokal designtjeneste
+
+    - name: Start det lokale designværksted
+      ansible.builtin.systemd_service:
+        name: elevhub-design
+        enabled: true
+        state: started
+        daemon_reload: true
+      when: not ansible_check_mode
+
+- name: Det lokale designværksted er slået fra
+  ansible.builtin.systemd_service:
+    name: elevhub-design
+    enabled: false
+    state: stopped
+  when:
+    - not kiosk_lokal_design_enabled | bool
+    - not ansible_check_mode
+  failed_when: false
+
+- name: Værkstedsadresser til projektåbning
+  ansible.builtin.template:
+    src: project-workshops.json.j2
+    dest: /etc/elevhub/project-workshops.json
+    owner: root
+    group: root
+    mode: "0644"
+  when: kiosk_lokale_apps_enabled | bool
+  notify: Genstart lokal elevapp-service
+  tags: [lokale_apps]
+
+- name: Konfiguration til den lokale elevapp-service
+  ansible.builtin.template:
+    src: elevhub-lokal.service.j2
+    dest: /etc/systemd/system/elevhub-lokal.service
+    owner: root
+    group: root
+    mode: "0644"
+  when: kiosk_lokale_apps_enabled | bool
+  notify:
+    - Genindlæs systemd
+    - Genstart lokal elevapp-service
+  tags: [lokale_apps]
+
+- name: Start lokale elevapps
+  ansible.builtin.systemd_service:
+    name: elevhub-lokal
+    enabled: true
+    state: started
+    daemon_reload: true
+  when:
+    - kiosk_lokale_apps_enabled | bool
+    - not ansible_check_mode
+  tags: [lokale_apps]
+
+- name: Stop lokale elevapps når de er fravalgt
+  ansible.builtin.systemd_service:
+    name: elevhub-lokal
+    enabled: false
+    state: stopped
+  when:
+    - not kiosk_lokale_apps_enabled | bool
+    - not ansible_check_mode
+
+- name: Tastaturlayout i X
+  ansible.builtin.copy:
+    dest: /etc/X11/xorg.conf.d/00-tastatur.conf
+    content: |
+      # Styres af Ansible (rollen kiosk).
+      Section "InputClass"
+          Identifier "tastatur"
+          MatchIsKeyboard "on"
+          Option "XkbLayout" "{{ kiosk_tastatur }}"
+      EndSection
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Elevhubbens startside
+  ansible.builtin.template:
+    src: start.html.j2
+    dest: "{{ kiosk_startside_mappe }}/start.html"
+    owner: root
+    group: root
+    mode: "0644"
+  no_log: true
+  notify: Genstart kiosk
+
+- name: Indstillinger til elevbjælken
+  ansible.builtin.copy:
+    dest: /etc/elevhub/kiosk.json
+    content: "{{ {'computer': inventory_hostname,
+                  'computer_visning': inventory_hostname | regex_replace('^vaerksted', 'Værksted'),
+                  'server': kiosk_server,
+                  'hub': kiosk_protokol ~ '://' ~ kiosk_server ~ ':' ~ kiosk_hub_port,
+                  'ca_fil': '/etc/elevhub/ca.pem',
+                  'protokol': kiosk_protokol,
+                  'usikker_test': kiosk_usikker_test | bool,
+                  'ui_token': kiosk_enhed.ui_token,
+                  'elev': kiosk_bruger,
+                  'elev_porte': kiosk_app_porte + [kiosk_hub_port],
+                  'lokale_app_urler': kiosk_lokale_app_urler,
+                  'internet_app': kiosk_internet_app,
+                  'theme': kiosk_theme,
+                  'school_name': kiosk_school_name | default(''),
+                  'webproxy_required': true} | to_nice_json }}"
+    owner: root
+    group: root
+    mode: "0644"
+  no_log: true
+  notify:
+    - Genstart elevhub-regler
+    - Genstart kiosk
+
+- name: Skriv root-enhedens credentials med begrænsede rettigheder
+  ansible.builtin.copy:
+    content: "{{ {'computer': kiosk_enhed.computer, 'token': kiosk_enhed.token} | to_nice_json }}"
+    dest: /etc/elevhub/enhed.json
+    owner: root
+    group: root
+    mode: "0600"
+  no_log: true
+  notify: Genstart elevhub-regler
+
+- name: Skriv klientrelease til autentificeret status
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../server/elevhub/release.json"
+    dest: /etc/elevhub/release.json
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart elevhub-regler
+
+- name: Skriv Elevhubbens offentlige CA
+  ansible.builtin.copy:
+    content: "{{ kiosk_ca_indhold }}"
+    dest: /etc/elevhub/ca.pem
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Genstart elevhub-regler
+    - Genstart kiosk
+  when: not kiosk_usikker_test | bool
+
+- name: URL-politikker til lukket og åbent internet
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "/etc/elevhub/{{ item }}"
+    owner: root
+    group: root
+    mode: "0644"
+  loop: [url-lukket.json, url-aaben.json]
+  notify: Genstart elevhub-regler
+
+- name: Squid-konfiguration til Elevhub (kun loopback)
+  ansible.builtin.template:
+    src: squid.conf.j2
+    dest: /etc/elevhub/squid.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Genindlæs systemd
+    - Stop elevhub-webproxy
+
+- name: Squid-policyfil findes lukket før første autentificerede valg
+  ansible.builtin.copy:
+    content: "# Ingen autentificeret app-politik endnu.\nhttp_access deny all\n"
+    dest: /etc/elevhub/webproxy-policy.conf
+    owner: root
+    group: root
+    mode: "0600"
+    force: false
+
+- name: Elevhub-webproxy systemtjeneste
+  ansible.builtin.template:
+    src: elevhub-webproxy.service.j2
+    dest: /etc/systemd/system/elevhub-webproxy.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Genindlæs systemd
+    - Stop elevhub-webproxy
+
+- name: Installer Elevhub-webproxy klientkode
+  ansible.builtin.copy:
+    src: elevhub-webproxy.py
+    dest: /usr/local/lib/elevhub/elevhub-webproxy.py
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Genstart elevhub-regler
+
+- name: Elevhub-regler (håndhæver lærerens valg for internet)
+  ansible.builtin.copy:
+    src: elevhub-regler.py
+    dest: /usr/local/lib/elevhub/elevhub-regler.py
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Genstart elevhub-regler
+
+- name: Fælles HTTPS-klient til Elevhub
+  ansible.builtin.copy:
+    src: elevhub_klient.py
+    dest: /usr/local/lib/elevhub/elevhub_klient.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Genstart elevhub-regler
+    - Genstart kiosk
+
+- name: Elevhub-regler som systemtjeneste
+  ansible.builtin.template:
+    src: elevhub-regler.service.j2
+    dest: /etc/systemd/system/elevhub-regler.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Genindlæs systemd
+    - Genstart elevhub-regler
+
+- name: Elevhub-regler starter ved opstart
+  ansible.builtin.systemd_service:
+    name: elevhub-regler
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: not ansible_check_mode
+
+- name: Lokal CaDoodle-indgang til elevbjælken
+  ansible.builtin.copy:
+    src: cadoodle_vaerksted.py
+    dest: /usr/local/lib/elevhub/cadoodle_vaerksted.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Lokale sluk- og genstartknapper
+  ansible.builtin.include_tasks: stroem.yml
+
+- name: Lokal start af 3D fra værkstedssiden
+  ansible.builtin.copy:
+    src: workshop_launcher.py
+    dest: /usr/local/lib/elevhub/workshop_launcher.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Elevbjælken
+  ansible.builtin.copy:
+    src: elevbjaelke.py
+    dest: /usr/local/lib/elevhub/elevbjaelke.py
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Genstart kiosk
+
+- name: Lokal elevsynlig opdateringsstatus
+  ansible.builtin.copy:
+    src: update_status.py
+    dest: /usr/local/lib/elevhub/update_status.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Skærmpause-overlay til elevbjælken
+  ansible.builtin.copy:
+    src: pause_overlay.py
+    dest: /usr/local/lib/elevhub/pause_overlay.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Uafhængig sikkerhedsvagt til skærmpause
+  ansible.builtin.copy:
+    src: pause_safety.py
+    dest: /usr/local/lib/elevhub/pause_safety.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Beskyt hovedcontaineren mod browserens egne lukkegenveje
+  ansible.builtin.copy:
+    src: browser_close_guard.py
+    dest: /usr/local/lib/elevhub/browser_close_guard.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Vinduesstyring med beskyttelse af værkstedets hovedvindue
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../kiosk-window-guard/bin/matchbox-window-manager"
+    dest: /usr/local/lib/elevhub/matchbox-window-manager
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Genstart kiosk
+
+- name: Kiosksessionen
+  ansible.builtin.template:
+    src: kiosk-session.j2
+    dest: /usr/local/lib/elevhub/kiosk-session
+    owner: root
+    group: root
+    mode: "0755"
+  notify: Genstart kiosk
+
+- name: Kontrolværktøj til browserens skoleproxy
+  ansible.builtin.copy:
+    src: proxy_policy.py
+    dest: /usr/local/lib/elevhub/proxy_policy.py
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Browserpolitik (tilladte sider, downloads og låste funktioner)
+  ansible.builtin.template:
+    src: chromium-politik.json.j2
+    dest: /etc/chromium/policies/managed/elevhub.json
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Kontrollér browserpolitikkens proxy og skoleundtagelser
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - /usr/local/lib/elevhub/proxy_policy.py
+      - --policy
+      - /etc/chromium/policies/managed/elevhub.json
+      - --server
+      - "{{ kiosk_server }}"
+  changed_when: false
+
+- name: Mappe til elevens GTK-indstillinger
+  ansible.builtin.file:
+    path: "/home/{{ kiosk_bruger }}/{{ item }}"
+    state: directory
+    owner: "{{ kiosk_bruger }}"
+    group: "{{ kiosk_bruger }}"
+    mode: "0755"
+  loop: [.config, .config/gtk-3.0]
+
+- name: Genveje i gem- og åbn-vinduet (Projekter og USB-nøgle)
+  ansible.builtin.copy:
+    dest: "/home/{{ kiosk_bruger }}/.config/gtk-3.0/bookmarks"
+    content: |
+      file:///home/{{ kiosk_bruger }}/Projekter Projekter
+      file:///media/{{ kiosk_bruger }} USB-nøgle
+    owner: "{{ kiosk_bruger }}"
+    group: "{{ kiosk_bruger }}"
+    mode: "0644"
+
+- name: Ingen dvd-drev i gem- og åbn-vinduet (installationen skriver dem i fstab)
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: '^/dev/sr[0-9]'
+    state: absent
+  notify: Genstart kiosk
+
+- name: Kiosken starter, når elevkontoen logger ind på tty1
+  ansible.builtin.template:
+    src: profil-kiosk.sh.j2
+    dest: /etc/profile.d/elevhub-kiosk.sh
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Automatisk login som elev på tty1
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/getty@tty1.service.d/elevhub-autologin.conf
+    content: |
+      # Styres af Ansible (rollen kiosk).
+      [Unit]
+      Requires=elevhub-regler.service
+      After=elevhub-regler.service
+      [Service]
+      ExecStart=
+      ExecStart=-/sbin/agetty --autologin {{ kiosk_bruger }} --noissue --skip-login --nohostname %I $TERM
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Genindlæs systemd
+    - Genstart kiosk
+
+- name: Rolig opstart frem til værkstedet er klar
+  ansible.builtin.include_tasks: opstart.yml

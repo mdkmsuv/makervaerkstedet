@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+
+export DEB_LDFLAGS_MAINT_APPEND = -Wl,--as-needed
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+bindnow,+fortify
+
+
+%:
+	dh $@
+
+override_dh_auto_clean:
+	rm -rf build-main build-udeb
+
+override_dh_auto_build:
+	dh_auto_build -Bbuild-main
+	dh_auto_build -Bbuild-udeb
+
+override_dh_auto_configure:
+	mkdir build-main build-udeb
+	dh_auto_configure -Bbuild-main -- --enable-startup-notification --enable-expat --disable-xsettings
+	dh_auto_configure -Bbuild-udeb -- --disable-startup-notification --disable-expat \
+		--disable-keyboard --disable-xrm --disable-ping-protocol --enable-standalone -- disable-xsettings
+
+override_dh_auto_install:
+	dh_auto_install -Bbuild-main --destdir=debian/matchbox-window-manager
+
+override_dh_installchangelogs:
+	dh_installchangelogs ChangeLog

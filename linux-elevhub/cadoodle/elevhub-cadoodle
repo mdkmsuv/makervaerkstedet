@@ -1,0 +1,8 @@
+#!/bin/sh
+# CaDoodle: Danish UI, pinned bundled release, limited heap in a 4 GB VM.
+set -eu
+mkdir -p "$HOME/.local/state/elevhub"
+exec 9>"$HOME/.local/state/elevhub/cadoodle.lock"
+flock -n 9 || exit 0
+export JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS:-} -Duser.language=da -Duser.country=DK -Dprism.forceGPU=true -Xmx1536m"
+exec /opt/cadoodle/bin/CaDoodle "$@"

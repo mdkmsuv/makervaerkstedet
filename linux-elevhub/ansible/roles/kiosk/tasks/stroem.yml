@@ -1,0 +1,42 @@
+- name: Sluk og genstart gennem værkstedernes afslutningsvalg
+  ansible.builtin.copy:
+    src: power_controls.py
+    dest: /usr/local/lib/elevhub/power_controls.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
+
+- name: Frisk CaDoodle-session ved næste boot uden sletning af projekter
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../cadoodle/fresh_session.py"
+    dest: /usr/local/lib/elevhub/fresh_session.py
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Fast systemgenvej til normal sluk og genstart
+  ansible.builtin.copy:
+    src: elevhub-power.py
+    dest: /usr/local/sbin/elevhub-power
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Browseren gendanner ikke forrige elevs faner
+  ansible.builtin.copy:
+    dest: /etc/chromium/policies/managed/elevhub-startup.json
+    content: '{"RestoreOnStartup": 5}'
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Eleven må kun vælge de to faste strømhandlinger
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/elevhub-power
+    content: |
+      {{ kiosk_bruger }} ALL=(root) NOPASSWD: /usr/local/sbin/elevhub-power poweroff, /usr/local/sbin/elevhub-power reboot
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s

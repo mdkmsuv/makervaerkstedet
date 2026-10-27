@@ -1,0 +1,18 @@
+Template: elevhub/disk-selection-failed
+Type: error
+Description: Installationen kunne ikke vælge en intern disk
+ Der er ikke ændret nogen partitioner. Installationen vender tilbage
+ til hovedmenuen, når du vælger Fortsæt.
+ .
+ Send teksten nedenfor sammen med computerens mærke og model:
+ .
+ ${DETAILS}
+
+Template: elevhub/disk-wipe-confirm
+Type: boolean
+Default: false
+Description: Slet alle filer på den valgte disk?
+ Denne disk bliver fuldstændigt slettet, når installationen fortsætter.
+ Kontroller navn, størrelse og model nedenfor.
+ .
+ ${DISK}

@@ -1,0 +1,20 @@
+{
+  "name": "printvaerksted",
+  "private": true,
+  "scripts": {
+    "build": "esbuild web/viewer.js --bundle --minify --outfile=web/vendor/viewer.js && npm run build:laser",
+    "build:laser": "esbuild web/laser.js --bundle --minify --outfile=web/vendor/laser.js && esbuild web/laser-trace-worker.js --bundle --minify --outfile=web/vendor/laser-trace-worker.js",
+    "test:beam": "node scripts/probe_beam_studio.mjs"
+  },
+  "dependencies": {
+    "clipper-lib": "6.4.2",
+    "imagetracerjs": "1.2.6",
+    "opentype.js": "2.0.0",
+    "paper": "0.12.18",
+    "three": "0.183.2"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.62.1"
+  }
+}

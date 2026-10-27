@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#c62b2f">
+  <meta name="description" content="Print din 3D-model, vælg farve og følg printkøen i Makerværkstedet.">
+  <title>Printværksted · Makerværkstedet</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/icon-192.png">
+  <link rel="preload" href="/assets/metrophobic-latin.ttf" as="font" type="font/ttf" crossorigin>
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/maker.css">
+  <link rel="stylesheet" href="/school-theme.css">
+  <link rel="stylesheet" href="/printer-settings.css">
+  <script src="/vendor/viewer.js" defer></script>
+  <script src="/app.js" defer></script>
+  <script src="/maker.js" defer></script>
+  <script src="/school-theme.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main-content">Gå til indhold</a>
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Printværksted, forsiden"><span class="brand-mark" aria-hidden="true"></span><span class="brand-name"><span class="brand-school" data-school-name>Makerværkstedet</span><strong>Printværksted</strong></span></a>
+    <nav aria-label="Hovedmenu"><a id="student-link" class="nav-link current" href="/#lav-print" aria-current="page">Lav et print</a><a class="nav-link" href="/#ideer">Find en idé</a><a id="teacher-link" class="nav-link" href="/laerer">Til læreren <span aria-hidden="true">↗</span></a></nav>
+  </header>
+  <div id="demo-banner" class="demo-banner" hidden><b>Prøv det af</b><span>Du er i demoen. Printere og farver er eksempler. Der bliver ikke printet fysisk.</span></div>
+  <main id="main-content" tabindex="-1">
+    <div id="connection-error" class="notice error" role="alert" hidden>Forbindelsen til værkstedet er væk. Vi prøver igen om et øjeblik.</div>
+    <section id="student-view">
+      <section class="maker-hero" aria-labelledby="maker-title">
+        <div class="maker-hero-copy">
+          <p class="eyebrow">3D-PRINT</p>
+          <h1 id="maker-title">Print din<span>3D-model</span></h1>
+          <p class="maker-intro">Vælg din model og en farve. Her kan du også følge dit print.</p>
+          <div class="maker-actions"><a class="primary" href="#lav-print">Jeg har en model <span aria-hidden="true">↗</span></a><a class="maker-quiet-link" href="#ideer">Idéer til modeller <span aria-hidden="true">↓</span></a></div>
+        </div>
+        <figure class="maker-hero-picture"><img data-school-hero src="/assets/maker-hero-v1.webp" width="1536" height="1024" fetchpriority="high" alt="En lille 3D-printet model på et værkstedsbord med tegninger og byggedele."></figure>
+      </section>
+      <div id="lav-print" class="maker-workspace-heading" tabindex="-1"><div><p class="eyebrow">FRA SKÆRM TIL PRINT</p><h2>Gør din model klar.</h2></div></div>
+      <div class="workspace">
+        <div class="print-form">
+          <div class="creation-grid">
+            <section class="file-section" aria-labelledby="file-heading">
+              <h2 id="file-heading"><span class="step">1</span> Vælg din model</h2>
+              <input type="file" id="file-input" accept=".stl" class="visually-hidden">
+              <label for="file-input" id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Vælg en STL-fil">
+                <span class="upload-icon" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><path d="m32 7 22 12v26L32 57 10 45V19L32 7Z" fill="#fff" stroke="currentColor" stroke-width="2"/><path d="m10 19 22 12 22-12M32 31v26M21 13l22 12" stroke="currentColor" stroke-width="2"/><path d="M46 4v14m-5-9 5-5 5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span><strong>Vælg en STL-fil</strong><span>Du kan også slippe filen her</span><span class="upload-prompt">Vælg en fil <span aria-hidden="true">↑</span></span><small>STL-fil · Højst 25 MB</small>
+              </label>
+              <div id="file-preview" class="file-preview" hidden>
+                <div id="model-canvas" aria-label="Din 3D-model. Træk for at dreje den." role="img"></div>
+                <span class="preview-hint">Træk for at dreje modellen</span>
+                <div class="file-details"><span class="file-badge">STL</span><div><strong id="file-name"></strong><span id="file-size"></span></div><button id="remove-file" class="icon-button" aria-label="Fjern fil">×</button></div>
+              </div>
+              <p class="small-note">Gem din model som en STL-fil i dit tegneprogram. Så kan du vælge den her.</p>
+              <details class="model-help"><summary>Godt at vide før du printer</summary><p>Vi printer i den størrelse og retning, du har gemt. Modellen får automatisk støtte, hvor den har brug for det. Spørg en voksen, hvis du er i tvivl om størrelsen.</p></details>
+            </section>
+            <div class="options-section">
+              <section aria-labelledby="colour-heading">
+                <h2 id="colour-heading"><span class="step">2</span> Vælg en farve</h2>
+                <div id="colours" class="colours" role="group" aria-label="PLA-farve"></div>
+                <p id="colour-help" class="small-note" hidden></p>
+              </section>
+              <section class="quality-section" aria-labelledby="quality-heading">
+                <h2 id="quality-heading"><span class="step">3</span> Vælg, hvordan vi printer</h2>
+                <div id="qualities" class="qualities" role="group" aria-label="Printkvalitet">
+                  <button class="quality" data-quality="fast" aria-pressed="false"><span class="quality-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m19 3-12 15h9l-3 11 13-17h-9l2-9Z"/></svg></span><strong>Hurtig</strong><small>Grovere lag</small></button>
+                  <button class="quality selected" data-quality="standard" aria-pressed="true"><span class="quality-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m16 3 12 7v13l-12 7-12-7V10l12-7ZM4 10l12 7 12-7M16 17v13"/></svg></span><strong>Standard</strong><small>Til det meste</small></button>
+                  <button class="quality" data-quality="beautiful" aria-pressed="false"><span class="quality-icon" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="m17 5 3 8 8 3-8 3-3 9-3-9-8-3 8-3 3-8ZM6 3v6M3 6h6M27 24v5M24.5 26.5h5"/></svg></span><strong>Smuk</strong><small>Finere detaljer</small></button>
+                </div>
+                <p class="small-note quality-help">I tvivl? Standard er et godt sted at starte.</p>
+              </section>
+            </div>
+          </div>
+          <div class="send-bar"><div><strong id="send-title">Vælg en model</strong><p id="send-help">Vælg en STL-fil for at komme i gang.</p></div><button id="send-button" class="primary" disabled>Send til print <span aria-hidden="true">↗</span></button></div>
+          <div id="upload-error" class="notice error form-notice" role="alert" hidden></div>
+          <div id="receipt" class="receipt" role="status" hidden></div>
+        </div>
+        <aside class="printers-panel" aria-labelledby="printers-heading"><div class="panel-heading"><h2 id="printers-heading">I værkstedet</h2><span id="ready-count" class="count-label">Forbinder…</span></div><div id="printers"></div>
+          <section class="mini-queue" aria-labelledby="mini-queue-heading"><h3 id="mini-queue-heading">Følg printkøen</h3><p id="mini-queue-summary" class="small-note"></p><div id="mini-queue-list"></div><a class="text-link" href="#queue-heading">Se hele køen ↓</a></section>
+        </aside>
+      </div>
+      <section class="queue-section" aria-labelledby="queue-heading"><div class="queue-heading"><div><h2 id="queue-heading">Print i kø</h2><span id="queue-count" class="muted"></span></div></div><div id="queue-list"></div></section>
+      <section id="ideer" class="maker-ideas" aria-labelledby="maker-ideas-title">
+        <div class="maker-ideas-heading"><div><p class="eyebrow">IDÉER TIL MODELLER</p><h2 id="maker-ideas-title">Hvad vil du printe?</h2></div></div>
+        <div class="maker-idea-grid">
+          <article class="maker-card"><div class="maker-card-picture"><img src="/assets/maker-game-piece-v1.webp" width="1536" height="1024" loading="lazy" alt="En lille grøn robotfigur af 3D-printet plastik ved et spillebræt."><span class="maker-card-number" aria-hidden="true">01</span></div><div class="maker-card-copy"><p class="maker-card-kind">Leg med former</p><h3>En spillefigur</h3><p>Lav en robot eller et monster som brik til et brætspil.</p><button type="button" data-maker-idea="pawn" aria-label="Se udfordringen: Din egen spilfigur">Se udfordringen <span aria-hidden="true">↗</span></button></div></article>
+          <article class="maker-card"><div class="maker-card-picture"><img src="/assets/maker-pencil-pot-v1.webp" width="1536" height="1024" loading="lazy" alt="En bordeaux blyantholder med kantede sider og blyanter af træ."><span class="maker-card-number" aria-hidden="true">02</span></div><div class="maker-card-copy"><p class="maker-card-kind">Til skrivebordet</p><h3>En blyantholder</h3><p>Tegn en holder med plads til blyanter og tuscher.</p><button type="button" data-maker-idea="pot" aria-label="Se udfordringen: Din egen blyantholder">Se udfordringen <span aria-hidden="true">↗</span></button></div></article>
+          <article class="maker-card"><div class="maker-card-picture"><img src="/assets/maker-rover-v1.webp" width="1536" height="1024" loading="lazy" alt="En lille bordeaux modelbil med fire grå hjul på et værkstedsbord."><span class="maker-card-number" aria-hidden="true">03</span></div><div class="maker-card-copy"><p class="maker-card-kind">Byg noget, der bevæger sig</p><h3>En bil med hjul</h3><p>Byg en bil, og test den på en rampe.</p><button type="button" data-maker-idea="rover" aria-label="Se udfordringen: Din egen lille bil">Se udfordringen <span aria-hidden="true">↗</span></button></div></article>
+        </div>
+        
+      </section>
+      <dialog id="maker-challenge" class="maker-dialog" aria-labelledby="maker-challenge-title" aria-describedby="maker-challenge-intro">
+        <button id="maker-challenge-close" class="maker-dialog-close" type="button" aria-label="Luk udfordringen" autofocus>×</button>
+        <div class="maker-dialog-content"><div class="maker-dialog-picture"><img id="maker-challenge-image" width="1536" height="1024" alt=""></div><div class="maker-dialog-copy"><p id="maker-challenge-tag" class="eyebrow"></p><h2 id="maker-challenge-title"></h2><p id="maker-challenge-intro"></p><ol id="maker-challenge-steps"></ol><button id="maker-challenge-print" type="button" class="primary">Til mit print <span aria-hidden="true">↗</span></button></div></div>
+      </dialog>
+    </section>
+    <section id="teacher-view" hidden>
+      <div class="page-heading"><div><p class="eyebrow">TIL LÆREREN</p><h1>Hold værkstedet i gang</h1></div><button id="teacher-logout" class="secondary" type="button" hidden>Log ud</button><a class="text-link" href="/">Til elevsiden ↗</a></div>
+      <form id="login-form" class="login-card"><h2>Åbn lærersiden</h2><label for="admin-token">Lærerkode</label><div class="input-action"><input id="admin-token" type="password" autocomplete="current-password" required><button class="primary" type="submit">Åbn</button></div><p class="small-note">Indtast lærerkoden for at åbne indstillinger og frigive printplader.</p><div id="login-error" class="notice error" hidden role="alert"></div></form>
+      <div id="teacher-content" hidden>
+        <div class="teacher-toolbar"><div><strong id="queue-mode">Køen kører</strong><p class="muted">Næste print starter automatisk, når en passende printer har en frigivet plade.</p></div><button id="pause-queue" class="secondary">Sæt køen på pause</button></div>
+        <div id="maintenance-notice" class="notice maintenance-notice" role="status" hidden></div>
+        <div id="print-access-notice" class="notice maintenance-notice" role="status" hidden></div>
+        <div id="firmware-notice" class="notice maintenance-notice" role="status" hidden></div>
+        <div id="teacher-printers" class="teacher-printers"></div>
+        <section id="printer-settings-section" class="admin-section printer-settings-section" aria-labelledby="printer-settings-heading">
+          <div class="panel-heading"><div><p class="eyebrow">SKOLENS OPSÆTNING</p><h2 id="printer-settings-heading">Printere</h2></div><button id="printer-settings-add" class="primary" type="button">Tilføj printer</button></div>
+          <p class="small-note">Tilføj eller redigér en printer med dens lokale netværksoplysninger. Nye printere er slået fra i børnekøen, indtil du selv aktiverer dem.</p>
+          <div id="printer-settings-list" class="printer-settings-list"><p class="muted">Henter printeropsætning…</p></div>
+          <div id="printer-settings-error" class="notice error" role="alert" hidden></div>
+          <p id="printer-settings-status" class="small-note" role="status"></p>
+        </section>
+        <div class="notice">Fjern printet og løse rester. Kontrollér pladen, og vælg <b>“Pladen er ryddet”</b>, før næste print kan starte.</div>
+        <p id="release-sample-status" class="small-note" role="status"></p>
+        <section id="camera-panel" class="admin-section camera-panel" hidden>
+          <div class="panel-heading"><h2 id="camera-title">Kamera</h2><button id="camera-close" class="secondary">Luk kamera</button></div>
+          <p class="small-note">Se et nyt billede fra denne printer. Tryk på Opdatér billede for at se, hvad der sker nu.</p>
+          <div class="camera-toolbar"><button id="camera-capture" class="primary">Opdatér billede</button><span id="camera-updated" class="small-note"></span></div>
+          <p id="camera-state" class="small-note" role="status"></p>
+          <div id="camera-frame" class="camera-frame"><img id="camera-photo" alt="Aktuelt kamerabillede fra den valgte printer" hidden></div>
+          <div id="camera-error" class="notice error" role="alert" hidden></div>
+        </section>
+        <section id="attention-panel" class="admin-section"><h2>Fejlkø</h2><div id="attention-jobs"></div></section>
+        <section id="library-panel" class="admin-section" aria-labelledby="library-heading">
+          <div class="panel-heading"><h2 id="library-heading">Filbibliotek</h2><button id="library-refresh" class="secondary" type="button">Opdatér</button></div>
+          <p class="small-note">Tidligere modeller kan hentes og sendes til køen igen. Modeller slettes kun efter dit valg. Aktive print og uafklarede plader beskytter deres filer.</p>
+          <p id="library-storage" class="small-note" role="status"></p>
+          <div id="library-storage-warning" class="notice maintenance-notice" role="status" hidden></div>
+          <details><summary>Opbevaring og lagerloft</summary>
+            <form id="library-policy-form" class="form-grid">
+              <label>Markér til oprydning efter antal dage uden brug<input id="library-retention-days" type="number" min="1" max="3650" required></label>
+              <label>Bibliotekets lagerloft i MiB<input id="library-quota-mib" type="number" min="25" max="1048576" required></label>
+              <p class="small-note">Grænsen markerer gamle modeller; den sletter ikke automatisk. Lagerloftet gælder nye modeller, mens en allerede gemt model kan genbruges.</p>
+              <button class="primary" type="submit">Gem opbevaring</button>
+            </form>
+          </details>
+          <label for="library-search">Søg i hele biblioteket</label><input id="library-search" type="search" maxlength="120" placeholder="Filnavn…" autocomplete="off">
+          <div id="library-list"><p class="muted">Henter filer…</p></div>
+          <div class="attention-actions"><button id="library-prev" class="secondary" type="button" disabled>Forrige side</button><span id="library-page" class="small-note" role="status"></span><button id="library-next" class="secondary" type="button" disabled>Næste side</button></div>
+          <p id="library-result" class="small-note" role="status"></p>
+          <div id="library-pending" role="status"></div>
+          <div id="library-error" class="notice error" role="alert" hidden></div>
+        </section>
+        <section class="admin-section"><h2>Print i kø</h2><div id="teacher-queue"></div></section>
+        <section id="print-access-section" class="admin-section" aria-labelledby="print-access-heading">
+          <h2 id="print-access-heading">Midlertidigt blokerede computere</h2>
+          <p class="small-note">Mange indsendelser fra samme computer udløser en blokering af nye print i én time. Du kan åbne adgangen tidligere her. Allerede modtagne print fortsætter, og andre computere kan stadig sende.</p>
+          <div id="print-access-list"><p class="muted">Henter adgangsstatus…</p></div>
+          <p id="print-access-result" class="small-note" role="status"></p>
+          <div id="print-access-error" class="notice error" role="alert" hidden></div>
+          <form id="print-guard-form">
+            <div class="print-guard-fields">
+              <label>Blokér ved indsendelse nr. inden for 60 minutter<input id="print-guard-trigger" type="number" min="2" max="100" required></label>
+            </div>
+            <p class="small-note">Fx 10: De første 9 print modtages. Forsøg nr. 10 afvises og blokerer computeren i én time. Nye forsøg forlænger ikke blokeringen. Når adgangen åbner igen, starter optællingen forfra. Reglen gælder samlet for CaDoodle og browseren på hver computer.</p>
+            <button class="primary" type="submit">Gem regel</button>
+          </form>
+        </section>
+        <section class="admin-section"><h2>Børnenes printindstillinger</h2><div class="preset-summary"><div><strong>Hurtig</strong><span>0,28 mm lag · 10 % fyld</span></div><div><strong>Standard</strong><span>0,20 mm lag · 15 % fyld</span></div><div><strong>Smuk</strong><span>0,12 mm lag · 15 % fyld</span></div></div><p class="small-note">Kun PLA. Basic og Matte håndteres automatisk i baggrunden. Printer- og filamentprofil vælges automatisk. Alle tre valg bruger automatisk træstøtte. Andre materialer printes af læreren uden om børnekøen. Denne opsætning bruger 0,4 mm standarddyser.</p></section>
+        <section id="maintenance-section" class="admin-section" aria-labelledby="maintenance-heading">
+          <div class="panel-heading"><h2 id="maintenance-heading">Månedligt printertjek</h2><span class="muted">Én gang om måneden</span></div>
+          <p class="small-note">Når printeren er ledig og pladen ryddet: Tjek firmware, installér en relevant opdatering, og kør fuld maskinkalibrering fra printerens menu. Markér tjekket som udført bagefter.</p>
+          <p class="small-note">I LAN-tilstand kan firmware opdateres via microSD. <a class="text-link" href="https://wiki.bambulab.com/en/a1-mini/manual/a1-mini-firmware-update-from-SD-card" target="_blank" rel="noopener noreferrer">Bambus vejledning ↗</a></p>
+          <div id="maintenance-printers"><p class="muted">Henter datoer…</p></div>
+          <p class="small-note">En ny påmindelse vises en måned efter tjekket. Knappen registrerer kun datoen; opdatering og kalibrering startes på printeren.</p>
+          <p id="maintenance-result" class="small-note" role="status"></p>
+          <div id="maintenance-error" class="notice error" role="alert" hidden></div>
+        </section>
+        <section id="firmware-section" class="admin-section" aria-labelledby="firmware-heading">
+          <div class="panel-heading"><h2 id="firmware-heading">Firmware til A1 mini</h2><span class="muted">Automatisk tjek hver uge</span></div>
+          <p id="firmware-status" role="status">Henter seneste tjek…</p>
+          <p id="firmware-dates" class="small-note"></p>
+          <p class="small-note">Sammenlign med versionen under Firmware i printerens menu Indstillinger. Versionslisten kan være nyere end den firmware, Bambu tilbyder til microSD.</p>
+          <div class="camera-toolbar"><button id="firmware-check" class="secondary">Tjek nu</button><button id="firmware-acknowledge" class="secondary" hidden>Besked set</button><a class="text-link" href="https://bambulab.com/en/support/firmware-download/a1-mini" target="_blank" rel="noopener noreferrer">Åbn Bambus downloads ↗</a><a class="text-link" href="https://wiki.bambulab.com/en/a1-mini/manual/a1-mini-firmware-release-history" target="_blank" rel="noopener noreferrer">Læs om ændringerne ↗</a></div>
+          <p class="small-note">Tjekket kører, når computeren er tændt, også med lærersiden lukket. Installation startes på printerens display. Overførsel af firmware via LAN er endnu ikke afprøvet på skolens printere.</p>
+          <div id="firmware-error" class="notice error" role="alert" hidden></div>
+        </section>
+        <div id="admin-error" class="notice error" role="alert" hidden></div>
+      </div>
+    </section>
+<dialog id="diagnostic-dialog" aria-labelledby="diagnostic-title"><form method="dialog"><h2 id="diagnostic-title">Fejloplysninger</h2><pre id="diagnostic-content" class="diagnostic-content"></pre><button class="primary">Luk</button></form></dialog>
+  </main>
+  <dialog id="print-confirmation" class="print-confirmation" aria-labelledby="print-confirmation-title" aria-describedby="print-confirmation-help">
+    <span class="confirmation-mark" aria-hidden="true">✓</span>
+    <h2 id="print-confirmation-title">Dit print er modtaget!</h2>
+    <p id="print-confirmation-filename" class="confirmation-filename"></p>
+    <p id="print-confirmation-status"></p>
+    <p id="print-confirmation-help">Du skal ikke sende modellen igen. Vi finder en passende ledig printer. Du kan følge dit print i den lille køoversigt.</p>
+    <p id="print-confirmation-demo" class="small-note" hidden>Dette er en demonstration. Der bliver ikke printet fysisk.</p>
+    <button id="print-confirmation-close" class="primary" autofocus>Forstået – vis køen</button>
+  </dialog>
+  <dialog id="printer-settings-dialog" class="printer-settings-dialog" aria-labelledby="printer-settings-dialog-title">
+    <form id="printer-settings-form" class="printer-settings-form">
+      <div class="panel-heading"><div><p class="eyebrow">PRINTEROPSÆTNING</p><h2 id="printer-settings-dialog-title">Tilføj printer</h2></div><button id="printer-settings-cancel" class="secondary" type="button">Annullér</button></div>
+      <p id="printer-settings-dialog-help" class="small-note">Udfyld printerens lokale oplysninger. Adgangskoden gemmes kun på den lokale styreenhed.</p>
+      <input id="printer-settings-id" type="hidden">
+      <div class="printer-settings-grid">
+        <label for="printer-settings-name">Navn<input id="printer-settings-name" name="name" maxlength="50" required autocomplete="off"></label>
+        <label for="printer-settings-model">Model<select id="printer-settings-model" name="model" required></select></label>
+        <label for="printer-settings-host">Lokal IPv4-adresse<input id="printer-settings-host" name="host" inputmode="decimal" maxlength="15" placeholder="192.168.1.40" required autocomplete="off"></label>
+        <label for="printer-settings-serial">Serienummer<input id="printer-settings-serial" name="serial" maxlength="30" required autocomplete="off"></label>
+        <label for="printer-settings-bed">Pladetype<select id="printer-settings-bed" name="bed_type"><option>Textured PEI Plate</option><option>High Temp Plate</option><option>Supertack Plate</option></select></label>
+        <label for="printer-settings-access">LAN-adgangskode<input id="printer-settings-access" name="access_code" type="password" maxlength="100" autocomplete="new-password"><span id="printer-settings-access-help" class="field-help">På en eksisterende printer: lad feltet stå tomt for at beholde koden.</span></label>
+      </div>
+      <label class="printer-settings-enabled"><input id="printer-settings-enabled" name="enabled" type="checkbox"> Medtag printeren i børnekøen</label>
+      <p id="printer-settings-model-help" class="small-note"></p>
+      <div id="printer-settings-form-error" class="notice error" role="alert" hidden></div>
+      <div class="printer-settings-actions"><button id="printer-settings-save" class="primary" type="submit">Gem printer</button><button id="printer-settings-cancel-bottom" class="secondary" type="button">Annullér</button></div>
+    </form>
+  </dialog>
+      <footer><span data-school-footer>Makerværkstedet <span class="footer-divider">/</span> Printværksted · Udviklet af Mathias Kusk Damgaard · Kreditering: Klostermarksskolen</span><a href="/laerer">Til læreren <span aria-hidden="true">↗</span></a></footer>
+  <script src="/camera.js" defer></script>
+  <script src="/maintenance.js" defer></script>
+  <script src="/firmware.js" defer></script>
+  <script src="/print-access.js" defer></script>
+  <script src="/project-import-config.js" defer></script>
+  <script src="/project-import.js" defer></script>
+  <script src="/printer-settings.js" defer></script>
+</body>
+</html>

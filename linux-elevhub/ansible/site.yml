@@ -1,0 +1,19 @@
+# Samlet opsætning af elevcomputerne.
+#
+# Fra Windows (se README.md):
+#   wsl -d Debian -- bash "/mnt/d/Bambuslicer made easy/linux-elevhub/ansible/koer.sh" tjek
+#   wsl -d Debian -- bash "/mnt/d/Bambuslicer made easy/linux-elevhub/ansible/koer.sh" koer
+
+- name: Elevcomputere - grundopsætning og kiosk
+  hosts: elevcomputere
+  roles:
+    - grundsystem
+    - elevkonto
+    - {role: adminkonto, tags: [adminkonto]}
+    - arbejdsmapper
+    - {role: kiosk, tags: [kiosk]}
+    # cadoodle SKAL ligge efter kiosk: klargoer.py retter elevbjaelke.py,
+    # som kiosk-rollen lægger ud på ny ved hver kørsel. Taggen gør det muligt
+    # at skubbe en CaDoodle-opdatering ud alene med --tags cadoodle.
+    - {role: cadoodle, tags: [cadoodle]}
+    - projektbackup

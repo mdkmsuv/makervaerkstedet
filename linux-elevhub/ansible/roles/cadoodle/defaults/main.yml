@@ -1,0 +1,49 @@
+# CaDoodle på elevcomputerne, så opdateringer kan skubbes ud til alle 12
+# maskiner med ./koer.sh koer i stedet for at køre installer.sh i hånden.
+#
+# Rollen gør INGENTING, før den slås til. Grundinstallationen henter en pakke
+# på 836 MB pr. maskine, og det skal være et bevidst valg.
+cadoodle_aktiveret: false
+
+# VIGTIGT: rollen skal køre EFTER kiosk-rollen. klargoer.py retter
+# /usr/local/lib/elevhub/elevbjaelke.py, som kiosk-rollen lægger ud på ny ved
+# hver kørsel. Kører cadoodle før kiosk, bliver rettelsen overskrevet, og
+# CaDoodle-knappen forsvinder fra elevbjælken.
+
+# Den officielle pakke. Værdierne er fra cadoodle/installation.json (kontrolleret
+# 19. september 2026). Peg gerne cadoodle_deb_url på en lokal kopi på serveren,
+# så de 12 maskiner ikke henter 836 MB hver fra GitHub.
+cadoodle_deb_version: "1.9.6"
+cadoodle_deb_url: "https://github.com/CommonWealthRobotics/CaDoodle/releases/download/1.9.6/CaDoodle-Linux-x86_64.deb"
+cadoodle_deb_sha256: "6ee1ed049127a25a07331e8a9f61035e98130310cb7991f48bf9fcfb0880520a"
+cadoodle_deb_sti: "/var/cache/elevhub/CaDoodle-1.9.6-amd64.deb"
+# Optional controller-side payloads for an offline/USB first install. Empty
+# preserves the existing network download behaviour.
+cadoodle_deb_kilde: ""
+cadoodle_bootstrap_zip: ""
+cadoodle_bootstrap_zip_sha256: ""
+cadoodle_bootstrap_jar_sha256: "e51ecdbedc64e98d78c63b05431395a7979d20c76a42b065dede88b3a5918a09"
+# Bundled by the official Debian package. It is copied into the elev cache
+# before BowlerStudioInstall is created, so the first launcher run stays offline.
+cadoodle_runtime_archive: "/opt/cadoodle/lib/app/zulu25.36.15-ca-fx-jdk25.0.4-linux_x64.tar.gz"
+
+# Kilden på administratorcomputeren (projektets cadoodle-mappe).
+cadoodle_kilde: "{{ playbook_dir }}/../cadoodle"
+
+# DEN VISUELLE UDVIDELSE (kloster/)
+# Sti på administratorcomputeren til den byggede CaDoodle-Kloster.jar. Tom
+# betyder, at kun den officielle CaDoodle installeres, og udvidelsen springes
+# over. Byg den med cadoodle/kloster/build.py, og sæt stien her for at skubbe
+# et visuelt løft ud til alle maskiner.
+cadoodle_kloster_jar: ""
+
+# Sendes videre til kloster/deploy.py, så CaDoodle kan nå elevernes
+# Printværksted. Tom betyder, at deploy.py ikke skriver en printkonfiguration.
+# Serverens elevindgang til print er port 8770.
+cadoodle_print_url: ""
+cadoodle_print_ca: ""
+
+# deploy.py nægter at skifte JAR, mens en elev har CaDoodle åben. Med true
+# fejler kørslen ikke på de maskiner; de rapporteres blot som sprunget over,
+# så resten af de 12 stadig bliver opdateret.
+cadoodle_spring_over_hvis_aaben: true

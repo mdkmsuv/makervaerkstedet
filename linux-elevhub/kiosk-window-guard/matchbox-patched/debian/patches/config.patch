@@ -1,0 +1,14 @@
+Description: Fix pkg-config use
+Index: matchbox-window-manager-1.2.2+git20200512/configure.ac
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/configure.ac	2020-06-15 15:17:49.472801775 +0100
++++ matchbox-window-manager-1.2.2+git20200512/configure.ac	2020-06-15 15:19:50.728701486 +0100
+@@ -415,7 +415,7 @@
+ if test x$enable_standalone != xyes && test x$enable_standalone_xft != xyes; then
+   AC_MSG_CHECKING([for libmb xsettings support])
+ 
+-  if $PKG_CONFIG --libs libmb | grep -i xsettings ; then
++  if $PKG_CONFIG --static --libs libmb | grep -i xsettings ; then
+      mb_have_xsettings="yes"
+      AC_DEFINE(USE_XSETTINGS, [1], [Use XSettings])
+      AC_MSG_RESULT([yes])
