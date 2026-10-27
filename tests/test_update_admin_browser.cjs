@@ -67,6 +67,10 @@ const script = fs.readFileSync(path.join(root, 'linux-elevhub/server/elevhub/web
     await page.locator('#updates-refresh').click();
     await page.waitForFunction(()=>document.querySelector('#updates-content').textContent.includes('IT skal kontrollere den eksisterende installation'));
     assert.equal(commands.length,1,'Refreshing a blocked version must not retry installation');
+    state.targets[0].job={status:'blocked',code:'windows_long_paths_disabled',attempt:1,paused:false,version:2};
+    await page.locator('#updates-refresh').click();
+    await page.waitForFunction(()=>document.querySelector('#updates-content').textContent.includes('LongPathsEnabled'));
+    assert.match(await page.locator('#updates-content').innerText(),/Opgaver og installerede filer blev ikke ændret/);
     state.targets[0].job={status:'applying',code:'applying',attempt:1,paused:false,version:2};
     await page.locator('#updates-refresh').click();
     await page.waitForFunction(()=>document.querySelector('#updates-content').textContent.includes('Lad computeren være tændt. Genstart ikke.'));

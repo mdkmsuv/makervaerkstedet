@@ -12,7 +12,8 @@
     profile_missing:'Den eksisterende skoleopsætning kunne ikke bekræftes. Bed IT kontrollere skoleprofil og opdateringsforudsætninger; elevcomputeren skal ikke geninstalleres.',
     version_unknown:'Den installerede version kunne ikke bestemmes. IT skal kontrollere den eksisterende installation, før opdateringen kan fortsætte.',
     version_not_older:'Computeren har allerede denne eller en nyere version. En almindelig opdatering må ikke nedgradere den.',
-    local_admin_required:'Vælg Opdatér i denne elevcomputers lokale admin-tilstand for at godkende pakken.'
+    local_admin_required:'Vælg Opdatér i denne elevcomputers lokale admin-tilstand for at godkende pakken.',
+    windows_long_paths_disabled:'Windows understøtter ikke lange filstier på denne computer. Bed IT aktivere LongPathsEnabled gennem skolens Windows-politik, og prøv igen. Opgaver og installerede filer blev ikke ændret.'
   };
   const versionKey = value => /^\d{4}\.\d{2}\.\d{2}(?:\.\d{1,8})?$/.test(value||'') ? value.split('.').map(Number).concat([0]).slice(0,4) : null;
   const newer = (candidate,current) => {

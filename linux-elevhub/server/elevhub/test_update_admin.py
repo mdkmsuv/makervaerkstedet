@@ -203,9 +203,9 @@ class QueueTests(unittest.TestCase):
 
     def test_version_preflight_blocks_keep_public_reason_without_installation_evidence(self):
         self.add()
-        for index,code in enumerate(('version_unknown','version_not_older')):
+        for index,code in enumerate(('version_unknown','version_not_older','windows_long_paths_disabled')):
             if index:
-                self.s.execute('teacher',self.cmd('retry',{'target_id':'pc1','version':self.job()['version']},'2'*32))
+                self.s.execute('teacher',self.cmd('retry',{'target_id':'pc1','version':self.job()['version']},str(index+1)*32))
             self.assertTrue(self.s.worker_allowed(self.r['id'],'pc1'))
             self.s.report(self.r['id'],'pc1','blocked',code=code)
             self.assertEqual(self.job()['code'],code)

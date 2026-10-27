@@ -68,6 +68,13 @@ def tick(root, config, profile, admin, code_root, invoke=subprocess.run):
                     admin.report(release, name, "blocked", code=code)
                     return
             try:
+                updater.require_windows_long_paths()
+            except ValueError as error:
+                if getattr(error, "code", None) != "windows_long_paths_disabled":
+                    raise
+                admin.report(release, name, "blocked", code="windows_long_paths_disabled")
+                return
+            try:
                 updater.assert_idle()
             except ValueError:
                 admin.report(release, name, "waiting_for_idle")

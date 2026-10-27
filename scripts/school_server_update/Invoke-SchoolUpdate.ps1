@@ -27,6 +27,9 @@ function Invoke-CheckedPython([string[]]$Arguments) {
 }
 Invoke-CheckedPython -Arguments @('verify','--candidate',$Candidate,'--sha256',$Sha256)
 if (-not $Apply) { Write-Output 'Verified candidate only. Add -Apply for the authorized existing installation update.'; return }
+# The native Python runtime is longPathAware, but Windows also requires the
+# machine LongPathsEnabled DWORD. Check it before task snapshots or service stops.
+Invoke-CheckedPython -Arguments @('long-path-preflight')
 if (Test-Path -LiteralPath $Journal) { throw 'Journal already exists; inspect the previous operation. This command is not a resume/restore entry.' }
 $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
 $principal=New-Object Security.Principal.WindowsPrincipal($identity)
