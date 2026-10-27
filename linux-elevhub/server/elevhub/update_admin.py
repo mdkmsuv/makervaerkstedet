@@ -350,7 +350,7 @@ class UpdateAdministration:
         claim = self.claims.get((release_id,worker_target))
         if not claim: return
         job_id, token = claim
-        if code not in (None,'station_installation_missing','runner_hash_mismatch','station_update_failed','recovery_required','transfer_failed','remote_result_unconfirmed','version_unknown','version_not_older','local_admin_required'):
+        if code not in (None,'station_installation_missing','runner_hash_mismatch','station_update_failed','recovery_required','transfer_failed','remote_result_unconfirmed','version_unknown','version_not_older','local_admin_required','windows_long_paths_disabled'):
             code = None
         current = STATUS[status]
         final = current not in ACTIVE
