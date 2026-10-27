@@ -409,6 +409,7 @@ def restore_program(journal):
     record['state']='program_rolled_back';write(journal/'journal.json',record)
 
 def apply(candidate,journal,expected):
+    require_windows_long_paths()
     manifest=verify(candidate,expected);journal=plain(journal)
     if journal.exists(): raise ValueError('Update journal already exists; inspect previous transaction')
     journal.mkdir(parents=True)
