@@ -74,10 +74,56 @@ switch($Scenario){
  'task-trigger' {$restartTask.Xml=$restartTask.Xml.Replace('<Triggers />','<Triggers><BootTrigger /></Triggers>')}
  'task-retry' {$restartTask.Xml=$restartTask.Xml.Replace('</Settings>','<RestartOnFailure><Interval>PT1M</Interval><Count>3</Count></RestartOnFailure></Settings>')}
  'disabled' {$restartTask.Xml=$restartTask.Xml.Replace('<Enabled>true</Enabled>','<Enabled>false</Enabled>')}
+ 'demand-disabled' {$restartTask.Xml=$restartTask.Xml.Replace('<AllowStartOnDemand>true</AllowStartOnDemand>','<AllowStartOnDemand>false</AllowStartOnDemand>')}
+ 'native-omitted-defaults' {$restartTask.Xml=$restartTask.Xml.Replace('<Enabled>true</Enabled>','').Replace('<AllowStartOnDemand>true</AllowStartOnDemand>','');$restartTask.Sddl='O:BAG:BAD:PAI(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x1200a9;;;LS)'}
  'foreign-acl' {$restartTask.Sddl='O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FA;;;LS)'}
  'acl-reordered-task' {$restartTask.Sddl='O:BAG:BAD:P(A;;FRFX;;;LS)(A;;FA;;;BA)(A;;FA;;;SY)'}
 }
 $global:restartMissing=$Scenario -in @('missing-task','not-installed')
+if($Scenario -eq 'native-export'){
+    # Independent observed Windows export from a never-started, harmless probe.
+    # No private owner, path or probe identity is retained. Only those fields
+    # and the harmless probe action are replaced with this synthetic fixture's
+    # expected fixed helper action; all native omissions/order/defaults remain.
+    $nativeXml=@'
+<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo>
+    <SecurityDescriptor>O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FRFX;;;LS)</SecurityDescriptor>
+    <Description>Makervaerkstedet server restart; owner=FIXTURE_OWNER</Description>
+    <URI>\Makervaerkstedet-GenstartServer</URI>
+  </RegistrationInfo>
+  <Principals>
+    <Principal id="System">
+      <UserId>S-1-5-18</UserId>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <AllowHardTerminate>false</AllowHardTerminate>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <ExecutionTimeLimit>PT1M</ExecutionTimeLimit>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <IdleSettings>
+      <StopOnIdleEnd>true</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+  </Settings>
+  <Triggers />
+  <Actions Context="System">
+    <Exec>
+      <Command>FIXTURE_COMMAND</Command>
+      <Arguments>FIXTURE_ARGUMENTS</Arguments>
+      <WorkingDirectory>FIXTURE_DIRECTORY</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+'@
+    $fixedArguments='-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$restartPaths.Helper+'" -Mode Execute'
+    $restartTask.Xml=$nativeXml.Replace('FIXTURE_OWNER',$restartOwnerId).Replace('FIXTURE_COMMAND',[Security.SecurityElement]::Escape($restartPaths.PowerShell)).Replace('FIXTURE_ARGUMENTS',[Security.SecurityElement]::Escape($fixedArguments)).Replace('FIXTURE_DIRECTORY',[Security.SecurityElement]::Escape((Split-Path $restartPaths.Helper -Parent)))
+    $restartTask.Sddl='O:BAG:BAD:PAI(A;;FA;;;SY)(A;;FA;;;BA)(A;;0x1200a9;;;LS)'
+}
 if($Scenario -like 'logon-*'){
     $restartTask.Xml=[regex]::Replace($restartTask.Xml,'<LogonType>[^<]*</LogonType>','')
     $restartTask.Xml=$restartTask.Xml.Replace('<RunLevel>','<LogonType>'+$Scenario.Substring(6)+'</LogonType><RunLevel>')
@@ -95,7 +141,8 @@ $restartFolder|Add-Member ScriptMethod RegisterTask {
     [xml]$definition=$xml
     if($definition.SelectNodes('//*[local-name()="LogonType"]').Count){throw 'SYSTEM task XML must omit LogonType'}
     if($logon -ne 5 -or $user -cne 'S-1-5-18'){throw 'SYSTEM registration must use TASK_LOGON_SERVICE_ACCOUNT'}
-    $global:restartEvents.Add('register');$global:restartTask.Xml=$xml;$global:restartTask.Sddl=$sddl;$global:restartMissing=$false;return $global:restartTask
+    # Windows' native XML export omits these two default-true settings.
+    $global:restartEvents.Add('register');$global:restartTask.Xml=$xml.Replace('<Enabled>true</Enabled>','').Replace('<AllowStartOnDemand>true</AllowStartOnDemand>','');$global:restartTask.Sddl=$sddl;$global:restartMissing=$false;return $global:restartTask
 }
 $restartFolder|Add-Member ScriptMethod DeleteTask {param($name,$flags);$global:restartEvents.Add('remove')}
 function Connect-RestartScheduler {return $global:restartFolder}

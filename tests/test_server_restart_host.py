@@ -84,6 +84,27 @@ try {$lock=Open-RestartGenerationLock ([pscustomobject]@{Root=$env:RESTART_TEST_
         self.assertIsNone(result['error'])
         self.assertTrue(result['result']['available'])
 
+    def test_native_omitted_true_defaults_are_accepted(self):
+        result = self.invoke('Request', 'native-omitted-defaults')
+        self.assertIsNone(result['error'])
+        self.assertTrue(result['result']['accepted'])
+        self.assertEqual(result['events'], ['request'])
+
+    def test_independent_native_export_validates_without_creating_a_task(self):
+        for mode, expected_events in (('Status', []), ('Request', ['request'])):
+            with self.subTest(mode=mode):
+                result = self.invoke(mode, 'native-export')
+                self.assertIsNone(result['error'])
+                self.assertTrue(result['result']['available' if mode == 'Status' else 'accepted'])
+                self.assertEqual(result['events'], expected_events)
+
+    def test_explicit_false_defaults_are_rejected_with_field_name(self):
+        for scenario, field in (('disabled', 'Settings/Enabled'), ('demand-disabled', 'Settings/AllowStartOnDemand')):
+            with self.subTest(scenario=scenario):
+                result = self.invoke('Request', scenario)
+                self.assertIn(field, result['error'])
+                self.assertNotIn('request', result['events'])
+
     def test_execute_uses_immediate_unforced_reboot_after_delay(self):
         result = self.invoke('Execute')
         self.assertEqual(result['events'], ['delay', 'shutdown'])

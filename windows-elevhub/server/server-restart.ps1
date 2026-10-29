@@ -197,10 +197,13 @@ function Assert-RestartTask($Task,$Paths,[string]$OwnerId) {
     }
     foreach($key in $expected.Keys){
         $nodes=$xml.SelectNodes('/t:Task/t:'+($key -replace '/','/t:'),$ns)
-        if($nodes.Count -ne 1){throw 'Genstartsopgavens definition er aendret.'}
+        # Native Windows export omits only these default-true values.
+        # Explicit false/empty values and duplicate elements still fail closed.
+        if($nodes.Count -eq 0 -and $key -in @('Settings/Enabled','Settings/AllowStartOnDemand')){continue}
+        if($nodes.Count -ne 1){throw ('Genstartsopgavens definition er aendret: '+$key)}
         $actual=[string]$nodes[0].InnerText
         if($key -eq 'Principals/Principal/UserId'){$actual=Get-RestartSid $actual}
-        if($actual -cne $expected[$key]){throw 'Genstartsopgavens definition er aendret.'}
+        if($actual -cne $expected[$key]){throw ('Genstartsopgavens definition er aendret: '+$key)}
     }
     foreach($path in @('/t:Task/t:Triggers/*','/t:Task/t:Settings/t:RestartOnFailure')){if($xml.SelectNodes($path,$ns).Count){throw 'Genstartsopgaven maa kun koere efter en udtrykkelig bestilling.'}}
     # ServiceAccount is a COM enum value (5), not a valid XML LogonType.
