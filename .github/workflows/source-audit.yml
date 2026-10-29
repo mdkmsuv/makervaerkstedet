@@ -21,6 +21,10 @@ jobs:
         run: python3 -B scripts/public_source.py --check-repository
       - name: Kontrollér beskyttelsen mod private filer
         run: python3 -B -m unittest discover -s tests -p 'test_public_source*.py'
+      - name: Kontrollér serveropstart med forsinket netværk
+        run: |
+          python3 -B -m unittest tests.test_server_network_startup tests.test_generation_bootstrap
+          python3 -B -m unittest discover -s windows-elevhub/server/tests -p test_server_package.py
       - name: Kontrollér opdateringspakker med syntetiske testdata
         run: python3 -B -m unittest scripts.test_build_update_manifest scripts.test_build_github_release
       - name: Kontrollér fravær af drifts-AI og beskyttelse af pakkeinputs
