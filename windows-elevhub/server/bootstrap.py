@@ -6,10 +6,12 @@ members of Windows job objects so a stopped scheduled task cannot leave children
 from __future__ import annotations
 
 import argparse
+import errno
 import ipaddress
 import json
 import os
 import signal
+import socket
 import subprocess
 from app.backup_guard import assert_not_restored, write_protocol
 from app.instance import InstanceLock
@@ -25,6 +27,7 @@ sys.dont_write_bytecode = True
 ROLE_IP = "192.0.2.2"
 PORTS = (8765, 8766, 8767, 8770, 8771, 8772, 8773, 8780)
 EXTERNAL_BACKENDS = frozenset(("print", "design"))
+ROLE_IP_RETRY_SECONDS = 5.0
 
 
 class BoundedChildLog:
@@ -119,6 +122,45 @@ def validate_role_ip(value: str) -> str:
     if address.is_unspecified or address.is_multicast or address.is_loopback:
         raise ValueError("Serverrollen skal bruge en aktiv, ikke-lokal IPv4-adresse")
     return str(address)
+
+
+def _role_ip_unavailable(error: OSError) -> bool:
+    """Only a not-yet-assigned address is a startup condition to retry."""
+    return (getattr(error, 'winerror', None) == 10049
+            or error.errno in (errno.EADDRNOTAVAIL, 10049))
+
+
+def wait_for_role_ip(role_ip: str, stopping: threading.Event,
+                     retry_interval: float = ROLE_IP_RETRY_SECONDS) -> bool:
+    """Wait until Windows can bind the configured IPv4, or stop was requested.
+
+    Binding an ephemeral port checks local address assignment without opening a
+    listener or depending on DNS, remote connectivity, or firewall policy.
+    """
+    role_ip = validate_role_ip(role_ip)
+    started = time.monotonic()
+    waiting_logged = False
+    while not stopping.is_set():
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+                probe.bind((role_ip, 0))
+        except OSError as error:
+            if not _role_ip_unavailable(error):
+                raise
+            if not waiting_logged:
+                print(f'Server IPv4 readiness: waiting for {role_ip}; elapsed=0s', flush=True)
+                waiting_logged = True
+            if stopping.wait(retry_interval):
+                break
+            continue
+        if stopping.is_set():
+            break
+        elapsed = time.monotonic() - started
+        print(f'Server IPv4 readiness: ready for {role_ip}; elapsed={elapsed:.1f}s', flush=True)
+        return True
+    elapsed = time.monotonic() - started
+    print(f'Server IPv4 readiness: cancelled for {role_ip}; elapsed={elapsed:.1f}s', flush=True)
+    return False
 
 
 def _load(path: Path) -> dict:
@@ -338,14 +380,15 @@ def run(package_root: Path, data_root: Path, role_ip: str | None = None,
             os.environ['ELEVHUB_SCHOOL_MODE'] = '1'
         from app.process_tree import ProcessTree  # imported only for runtime; check remains pure
 
-        stopping = False
+        stopping = threading.Event()
 
         def request_stop(_signum=None, _frame=None):
-            nonlocal stopping
-            stopping = True
+            stopping.set()
 
         signal.signal(signal.SIGTERM, request_stop)
         signal.signal(signal.SIGINT, request_stop)
+        if not wait_for_role_ip(config['elev_adresse'], stopping):
+            return 0
         log_dir = data_root / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         commands = (_commands(package_root, data_root, config, runtime_root, manifest_sha256)
@@ -381,7 +424,7 @@ def run(package_root: Path, data_root: Path, role_ip: str | None = None,
                         process.stdout.close()
                 raise
             children.append((name, process, tree, stream))
-        while not stopping:
+        while not stopping.is_set():
             for name, process, _tree, log in children:
                 if log.error is not None:
                     raise RuntimeError(f'Elevhub-tjenesten {name} kunne ikke skrive sin log') from log.error
@@ -389,7 +432,7 @@ def run(package_root: Path, data_root: Path, role_ip: str | None = None,
                 if code is not None:
                     print(f"Elevhub-tjenesten {name} stoppede med kode {code}", file=sys.stderr)
                     return code if code else 1
-            time.sleep(0.5)
+            stopping.wait(0.5)
         return 0
     finally:
         # Closing each kill-on-close job terminates that complete process tree.

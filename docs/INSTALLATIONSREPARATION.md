@@ -124,3 +124,19 @@ Nøglen kan ikke genskabes ud fra `ca.crt`. En udløbet CA kan heller ikke
 reddes ved at forny dens leaf; den situation kræver en særskilt plan for
 ændring af skolens tillid på enhederne. Menuen erstatter ikke CA'en
 automatisk. 
+
+## Serveren starter, før netværksadressen er klar
+
+Windows kan starte serverens opgave, før den valgte IPv4-adresse er bundet
+til et netkort. Hvis loggen viser WinError 10049, kontrolleres den valgte
+adresse mod installationens `installation-owner.json` og
+`konfiguration.json`; ret ikke adressen ud fra en midlertidig DHCP-værdi.
+Serveren venter nu, indtil netop den konfigurerede adresse kan bindes lokalt,
+før den starter sine tjenester. En stopanmodning afbryder ventetiden. Andre
+socketfejl bliver rapporteret med det samme og behandles ikke som opstartsventen.
+
+Denne kontrol bekræfter kun, at adressen findes lokalt. Den kontrollerer ikke
+DNS, internetadgang, Windows IP Helper, portproxy eller klientadgang. Hvis
+serverens lokale tjenester svarer, men andre computere ikke kan forbinde,
+undersøges de relevante netværkstjenester og den snævre forwarding-regel
+særskilt; åbn ikke en bred firewallregel som genvej.
