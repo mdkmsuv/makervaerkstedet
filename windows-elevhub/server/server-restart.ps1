@@ -168,7 +168,7 @@ function Get-RestartTaskXml($Paths,[string]$OwnerId) {
     return @"
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
 <RegistrationInfo><Description>$description</Description></RegistrationInfo><Triggers />
-<Principals><Principal id="System"><UserId>S-1-5-18</UserId><LogonType>ServiceAccount</LogonType><RunLevel>HighestAvailable</RunLevel></Principal></Principals>
+<Principals><Principal id="System"><UserId>S-1-5-18</UserId><RunLevel>HighestAvailable</RunLevel></Principal></Principals>
 <Settings><MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy><DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries><StopIfGoingOnBatteries>false</StopIfGoingOnBatteries><AllowHardTerminate>false</AllowHardTerminate><StartWhenAvailable>false</StartWhenAvailable><AllowStartOnDemand>true</AllowStartOnDemand><Enabled>true</Enabled><ExecutionTimeLimit>PT1M</ExecutionTimeLimit></Settings>
 <Actions Context="System"><Exec><Command>$command</Command><Arguments>$arguments</Arguments><WorkingDirectory>$directory</WorkingDirectory></Exec></Actions></Task>
 "@
@@ -191,7 +191,7 @@ function Assert-RestartTask($Task,$Paths,[string]$OwnerId) {
     $ns=[Xml.XmlNamespaceManager]::new($xml.NameTable);$ns.AddNamespace('t','http://schemas.microsoft.com/windows/2004/02/mit/task')
     $expected=@{
         'RegistrationInfo/Description'=(Get-RestartDescription $OwnerId);
-        'Principals/Principal/UserId'='S-1-5-18';'Principals/Principal/LogonType'='ServiceAccount';'Principals/Principal/RunLevel'='HighestAvailable';
+        'Principals/Principal/UserId'='S-1-5-18';'Principals/Principal/RunLevel'='HighestAvailable';
         'Actions/Exec/Command'=$Paths.PowerShell;'Actions/Exec/Arguments'=(Get-RestartArguments $Paths);'Actions/Exec/WorkingDirectory'=(Split-Path $Paths.Helper -Parent);
         'Settings/MultipleInstancesPolicy'='IgnoreNew';'Settings/Enabled'='true';'Settings/AllowStartOnDemand'='true';'Settings/ExecutionTimeLimit'='PT1M'
     }
@@ -203,6 +203,9 @@ function Assert-RestartTask($Task,$Paths,[string]$OwnerId) {
         if($actual -cne $expected[$key]){throw 'Genstartsopgavens definition er aendret.'}
     }
     foreach($path in @('/t:Task/t:Triggers/*','/t:Task/t:Settings/t:RestartOnFailure')){if($xml.SelectNodes($path,$ns).Count){throw 'Genstartsopgaven maa kun koere efter en udtrykkelig bestilling.'}}
+    # ServiceAccount is a COM enum value (5), not a valid XML LogonType.
+    # SYSTEM tasks omit the XML element; an explicit logon mode is a change.
+    if($xml.SelectNodes('/t:Task/t:Principals/t:Principal/t:LogonType',$ns).Count){throw 'SYSTEM-opgavens logontype er aendret.'}
     if($xml.SelectNodes('/t:Task/t:Actions/*',$ns).Count -ne 1 -or $xml.SelectNodes('/t:Task/t:Principals/*',$ns).Count -ne 1){throw 'Genstartsopgaven har fremmede handlinger.'}
     $security=[Security.AccessControl.RawSecurityDescriptor]::new([string]$Task.GetSecurityDescriptor(7))
     $expectedSecurity=[Security.AccessControl.RawSecurityDescriptor]::new((Get-RestartSddl))

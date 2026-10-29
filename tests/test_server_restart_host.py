@@ -121,6 +121,13 @@ try {$lock=Open-RestartGenerationLock ([pscustomobject]@{Root=$env:RESTART_TEST_
         self.assertTrue(result['error'])
         self.assertNotIn('remove', result['events'])
 
+    def test_system_task_rejects_every_explicit_xml_logon_type(self):
+        for logon in ('ServiceAccount', 'S4U', 'Password', 'InteractiveToken', 'InteractiveTokenOrPassword'):
+            with self.subTest(logon=logon):
+                result = self.invoke('Request', 'logon-' + logon)
+                self.assertTrue(result['error'])
+                self.assertNotIn('request', result['events'])
+
     def test_missing_task_is_unavailable_and_never_created_by_request(self):
         result = self.invoke('Request', 'missing-task')
         self.assertTrue(result['error'])

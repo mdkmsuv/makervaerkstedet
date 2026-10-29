@@ -78,13 +78,25 @@ switch($Scenario){
  'acl-reordered-task' {$restartTask.Sddl='O:BAG:BAD:P(A;;FRFX;;;LS)(A;;FA;;;BA)(A;;FA;;;SY)'}
 }
 $global:restartMissing=$Scenario -in @('missing-task','not-installed')
+if($Scenario -like 'logon-*'){
+    $restartTask.Xml=[regex]::Replace($restartTask.Xml,'<LogonType>[^<]*</LogonType>','')
+    $restartTask.Xml=$restartTask.Xml.Replace('<RunLevel>','<LogonType>'+$Scenario.Substring(6)+'</LogonType><RunLevel>')
+}
 if($Scenario -eq 'not-installed'){
     Remove-Item -LiteralPath $restartPaths.Anchor
     Remove-Item -LiteralPath $restartPaths.Store
 }
 $global:restartFolder=[pscustomobject]@{}
 $restartFolder|Add-Member ScriptMethod GetTask {param($name);if($global:restartMissing){return $null};return $global:restartTask}
-$restartFolder|Add-Member ScriptMethod RegisterTask {param($name,$xml,$flags,$user,$password,$logon,$sddl);$global:restartEvents.Add('register');$global:restartTask.Xml=$xml;$global:restartTask.Sddl=$sddl;$global:restartMissing=$false;return $global:restartTask}
+$restartFolder|Add-Member ScriptMethod RegisterTask {
+    param($name,$xml,$flags,$user,$password,$logon,$sddl)
+    # Native Task Scheduler rejects ServiceAccount in XML; the service-account
+    # type belongs only to RegisterTask's separate TASK_LOGON_TYPE argument.
+    [xml]$definition=$xml
+    if($definition.SelectNodes('//*[local-name()="LogonType"]').Count){throw 'SYSTEM task XML must omit LogonType'}
+    if($logon -ne 5 -or $user -cne 'S-1-5-18'){throw 'SYSTEM registration must use TASK_LOGON_SERVICE_ACCOUNT'}
+    $global:restartEvents.Add('register');$global:restartTask.Xml=$xml;$global:restartTask.Sddl=$sddl;$global:restartMissing=$false;return $global:restartTask
+}
 $restartFolder|Add-Member ScriptMethod DeleteTask {param($name,$flags);$global:restartEvents.Add('remove')}
 function Connect-RestartScheduler {return $global:restartFolder}
 $result=$null;$failure=$null
