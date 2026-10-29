@@ -168,3 +168,12 @@ try {
  $lease.Dispose()
 }
 
+# The helper acquires the same update mutex, so run it only after releasing our
+# completed transaction. Failure leaves the healthy update and its data intact.
+try {
+ $restartSetup='C:\Program Files\ElevhubServer\server\configure-restart.ps1'
+ if(Test-Path -LiteralPath $restartSetup -PathType Leaf){& $restartSetup -Mode Enable}
+} catch {
+ Write-Warning ('Serveren er opdateret, men genstartsvalget kræver eftersyn. Brug skoleadministrationens menu 13. '+$_.Exception.Message)
+}
+

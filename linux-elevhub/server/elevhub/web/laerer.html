@@ -74,6 +74,22 @@
         </div>
         <div id="system-status" class="system-status" role="status" aria-live="polite">Henter status …</div>
         <div id="system-server" class="system-server" aria-label="Serverversion"></div>
+        <section class="system-restart" aria-labelledby="system-restart-title">
+          <h3 id="system-restart-title">Genstart hele serveren</h3>
+          <p>Genstarter hele Windows-computeren eller serverens VM. Alle tjenester stopper kortvarigt. Gem igangværende arbejde, og sørg for, at maskinerne kan undvære serveren under genstarten.</p>
+          <button id="system-restart" type="button" class="sekundaer" disabled>Genstart server</button>
+          <form id="system-restart-confirmation" hidden>
+            <p>Du er ved at genstarte hele Windows-serveren eller VM'en. Gem arbejde først. Printværkstedet, Designværkstedet og lærerfladen bliver utilgængelige under genstarten.</p>
+            <label for="system-restart-confirm-text">Skriv <strong>GENSTART HELE SERVEREN</strong> for at bekræfte</label>
+            <input id="system-restart-confirm-text" type="text" autocomplete="off" spellcheck="false" maxlength="22">
+            <div class="system-restart-actions">
+              <button id="system-restart-submit" type="submit">Bekræft genstart af hele serveren</button>
+              <button id="system-restart-cancel" type="button" class="sekundaer">Annullér</button>
+            </div>
+          </form>
+          <p id="system-restart-status" role="status" aria-live="polite">Kontrollerer, om genstart er tilgængelig …</p>
+          <p class="system-secondary">Hvis websiden ikke svarer: Åbn <strong>Genstart Makerværkstedets server</strong> på selve Windows-serverens skrivebord. På en VM skal genvejen åbnes inde i VM'en.</p>
+        </section>
         <dl id="system-tal" class="system-tal" aria-label="Tællinger"></dl>
         <div class="system-kolonner">
           <section class="system-liste" aria-labelledby="system-printere-titel">

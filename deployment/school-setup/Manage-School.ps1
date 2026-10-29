@@ -216,6 +216,7 @@ Write-Host '9. Opret og kontrollér offline backup'
 Write-Host '10. Kontrollér en eksisterende backup'
 Write-Host '11. Gendan backup til en isoleret prøve'
 Write-Host '12. Forny servercertifikat (stop serveren midlertidigt)'
+Write-Host '13. Genstart hele Windows-serveren (kræver bekræftelse)'
 Write-Host '0. Afslut'
 $choice = Read-Host 'Vælg'
 try {
@@ -279,6 +280,13 @@ switch ($choice) {
   '10' { Invoke-BackupMenu $choice }
   '11' { Invoke-BackupMenu $choice }
   '12' { Invoke-TlsRenewal }
+  '13' {
+    $restartSetup=Join-Path $PackageRoot 'server\configure-restart.ps1'
+    $restartHelper=Join-Path $PackageRoot 'server\server-restart.ps1'
+    if(-not(Test-Path -LiteralPath $restartSetup -PathType Leaf) -or -not(Test-Path -LiteralPath $restartHelper -PathType Leaf)){throw 'Denne installation mangler genstartsværktøjet. Opdatér serverprogrammet først.'}
+    & $restartSetup -Mode Enable
+    & $restartHelper -Mode Local
+  }
   default { throw 'Ugyldigt valg.' }
 }
 if ($LASTEXITCODE -ne 0) { throw "Skolehandlingen fejlede med kode $LASTEXITCODE." }

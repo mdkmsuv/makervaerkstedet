@@ -16,6 +16,13 @@
 .system-server-item { display: grid; gap: 2px; min-width: 180px; }
 .system-server-label, .system-tal dt { color: var(--muted); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; }
 .system-server-value { color: var(--ink); font-size: 17px; }
+.system-restart { padding: 16px 0; border-bottom: 1px solid var(--line); }
+.system-restart h3 { margin: 0; }
+.system-restart p { max-width: 78ch; }
+.system-restart form { margin-top: 16px; padding: 16px; border: 2px solid var(--brand); background: var(--section); }
+.system-restart label { display: block; margin-bottom: 8px; }
+.system-restart input { width: min(100%, 28em); box-sizing: border-box; padding: 10px 12px; border: 1px solid var(--line); background: #fff; }
+.system-restart-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
 .system-ukendt { color: var(--muted); font-style: italic; }
 .system-tal { display: grid; grid-template-columns: repeat(3, minmax(120px, 1fr)); gap: 12px; margin: 16px 0 20px; }
 .system-tal-item { margin: 0; padding: 12px 14px; background: var(--section); border-left: 3px solid var(--brand); }

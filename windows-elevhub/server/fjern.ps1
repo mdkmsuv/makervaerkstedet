@@ -244,6 +244,11 @@ if (Test-Path -LiteralPath $schoolPath -PathType Leaf) {
     }
 }
 if (-not $PSCmdlet.ShouldProcess('ElevhubServer-programmer, opgave, firewallregler og den importerede lokale CA','Fjern')) { return }
+
+# Remove the demand-only restart task before taking the offline removal locks;
+# its own validator holds the same maintenance locks and refuses foreign state.
+$restartSetup=Join-Path $InstallRoot 'server\configure-restart.ps1'
+if(Test-Path -LiteralPath $restartSetup -PathType Leaf){& $restartSetup -Mode Remove}
 if ($school -and $school.role -eq 'makerspace') {
     $stationConfig=Join-Path $DataRoot 'laserstation\laser-installation.json'
     $stationPython=Join-Path $InstallRoot 'runtime\python.exe'
