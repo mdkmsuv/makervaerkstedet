@@ -12,6 +12,101 @@ let systemAuthFailure = null;
 let systemController = null;
 let systemAbortTimer = null;
 let systemLastServer = null;
+let restartAvailable = false;
+let restartAttempted = false;
+let restartStatusRequest = null;
+let restartStatusController = null;
+let restartController = null;
+
+function restartMessage(text) {
+  systemEl('system-restart-status').textContent = text;
+}
+function resetRestart() {
+  restartAvailable = false;
+  restartAttempted = false;
+  restartStatusController?.abort();
+  restartController?.abort();
+  restartStatusController = null;
+  restartController = null;
+  restartStatusRequest = null;
+  systemEl('system-restart').disabled = true;
+  systemEl('system-restart-submit').disabled = false;
+  systemEl('system-restart-confirmation').hidden = true;
+  systemEl('system-restart-confirm-text').value = '';
+  restartMessage('Kontrollerer, om genstart er tilgængelig …');
+}
+async function fetchRestartStatus() {
+  if (!systemAktiv || restartAttempted || restartStatusRequest) return restartStatusRequest;
+  const generation = systemGeneration;
+  const controller = new AbortController();
+  restartStatusController = controller;
+  const timer = setTimeout(() => controller.abort(), 10000);
+  restartStatusRequest = (async () => {
+    try {
+      const response = await fetch('/api/laerer/server-restart', {cache:'no-store', redirect:'error', signal:controller.signal});
+      if (!systemAktiv || generation !== systemGeneration || restartAttempted) return;
+      if (response.status === 401) { stopSystem(); systemAuthFailure?.(); return; }
+      const data = await response.json();
+      if (!systemAktiv || generation !== systemGeneration || restartAttempted) return;
+      restartAvailable = response.ok && data.available === true;
+      systemEl('system-restart').disabled = !restartAvailable;
+      restartMessage(restartAvailable ? 'Genstart af hele Windows-serveren er tilgængelig.' : 'Genstart fra websiden er ikke tilgængelig. Brug den lokale genvej på serveren.');
+    } catch {
+      if (!systemAktiv || generation !== systemGeneration || restartAttempted) return;
+      restartAvailable = false;
+      systemEl('system-restart').disabled = true;
+      restartMessage('Genstart fra websiden er ikke tilgængelig. Status kunne ikke hentes. Brug den lokale genvej på serveren.');
+    } finally {
+      clearTimeout(timer);
+      if (restartStatusController === controller) {
+        restartStatusController = null;
+        restartStatusRequest = null;
+      }
+    }
+  })();
+  return restartStatusRequest;
+}
+async function requestRestart(event) {
+  event.preventDefault();
+  if (!systemAktiv || !restartAvailable || restartAttempted) return;
+  if (systemEl('system-restart-confirm-text').value !== 'GENSTART HELE SERVEREN') {
+    restartMessage('Skriv GENSTART HELE SERVEREN præcist for at bekræfte.');
+    systemEl('system-restart-confirm-text').focus();
+    return;
+  }
+  const generation = systemGeneration;
+  restartAttempted = true;
+  systemEl('system-restart').disabled = true;
+  systemEl('system-restart-submit').disabled = true;
+  systemEl('system-restart-confirmation').hidden = true;
+  systemEl('system-restart-confirm-text').value = '';
+  restartMessage('Sender bestilling om genstart af hele Windows-serveren …');
+  const controller = new AbortController();
+  restartController = controller;
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const response = await fetch('/api/laerer/server-restart', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({confirmation:'GENSTART HELE SERVEREN'}),
+      cache:'no-store', redirect:'error', signal:controller.signal
+    });
+    if (!systemAktiv || generation !== systemGeneration) return;
+    if (response.status === 401) { stopSystem(); systemAuthFailure?.(); return; }
+    const data = await response.json();
+    if (!systemAktiv || generation !== systemGeneration) return;
+    if (response.status === 202 && data.accepted === true) {
+      restartMessage('Bestillingen er modtaget. Hele Windows-serveren genstarter snart. Vent, og åbn kontrolpanelet igen, når serveren svarer. Genstarten er endnu ikke bekræftet gennemført.');
+    } else {
+      restartMessage('Resultatet er ukendt: Serveren bekræftede ikke bestillingen. Kontrollér serveren lokalt, før du bestiller igen. Der sendes ingen automatisk gentagelse.');
+    }
+  } catch {
+    if (!systemAktiv || generation !== systemGeneration) return;
+    restartMessage('Forbindelsen blev afbrudt eller svarede ikke i tide. Resultatet er ukendt: Genstarten kan være bestilt. Vent, og kontrollér serveren lokalt. Der sendes ingen automatisk gentagelse.');
+  } finally {
+    clearTimeout(timer);
+    if (restartController === controller) restartController = null;
+  }
+}
 
 function node(tag, text, className) {
   const value = document.createElement(tag);
@@ -257,8 +352,8 @@ async function fetchSystem() {
 function startSystem(generation) {
   stopSystem();
   systemAktiv = true;
-  if (systemRequest) return systemRequest.then(() => fetchSystem(), () => fetchSystem());
-  return fetchSystem();
+  const current = systemRequest ? systemRequest.then(() => fetchSystem(), () => fetchSystem()) : fetchSystem();
+  return Promise.all([current, fetchRestartStatus()]);
 }
 function stopSystem() {
   systemAktiv = false;
@@ -268,13 +363,25 @@ function stopSystem() {
   clearTimeout(systemAbortTimer);
   systemAbortTimer = null;
   if (systemController) systemController.abort();
+  resetRestart();
   /* A late fetch may finish, but its generation check discards the result. */
 }
 function refreshSystem() {
   if (!systemAktiv || systemRequest) return systemRequest;
   clearTimeout(systemTimer);
-  return fetchSystem();
+  return Promise.all([fetchSystem(), fetchRestartStatus()]);
 }
+systemEl('system-restart').addEventListener('click', () => {
+  if (!systemAktiv || !restartAvailable || restartAttempted) return;
+  systemEl('system-restart-confirmation').hidden = false;
+  systemEl('system-restart-confirm-text').focus();
+});
+systemEl('system-restart-cancel').addEventListener('click', () => {
+  systemEl('system-restart-confirmation').hidden = true;
+  systemEl('system-restart-confirm-text').value = '';
+  systemEl('system-restart').focus();
+});
+systemEl('system-restart-confirmation').addEventListener('submit', requestRestart);
 systemEl('system-opdater').addEventListener('click', () => { void refreshSystem(); });
 window.SystemOverview = {
   start: startSystem,

@@ -25,6 +25,11 @@ jobs:
         run: |
           python3 -B -m unittest tests.test_server_network_startup tests.test_generation_bootstrap
           python3 -B -m unittest discover -s windows-elevhub/server/tests -p test_server_package.py
+      - name: Kontrollér lærerens servergenstart uden at genstarte værten
+        run: |
+          (cd linux-elevhub/server/elevhub && python3 -B -m unittest test_server_restart test_system_overview test_http_robusthed test_sikkerhed test_update_admin)
+          node linux-elevhub/tests/test_server_restart.cjs
+          node linux-elevhub/tests/test_system_overview.cjs
       - name: Kontrollér opdateringspakker med syntetiske testdata
         run: python3 -B -m unittest scripts.test_build_update_manifest scripts.test_build_github_release
       - name: Kontrollér fravær af drifts-AI og beskyttelse af pakkeinputs
@@ -50,3 +55,13 @@ jobs:
           sudo python3 -B -m unittest discover -s linux-elevhub/tests -p 'test_local_admin_update*.py'
           cd linux-elevhub/server/elevhub
           sudo python3 -B -m unittest test_device_updates test_release_feed
+  windows-restart-contract:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Hent kildekode
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Afprøv genstartsrettigheder og vedligeholdelseslåse med testværter
+        run: python -B -m unittest tests.test_server_restart_host

@@ -21,6 +21,10 @@ class Document {
       'system-computer-count', 'system-printer-count', 'system-computere', 'system-printere']) {
       this.elements.set(id, new Element('div', id));
     }
+    for (const id of ['system-restart', 'system-restart-submit', 'system-restart-confirmation',
+      'system-restart-confirm-text', 'system-restart-status', 'system-restart-cancel']) {
+      this.elements.set(id, new Element('div', id));
+    }
     this.elements.get('system-opdater').tagName = 'BUTTON';
   }
   getElementById(id) { return this.elements.get(id); }
@@ -55,7 +59,10 @@ let nextFetch = () => Promise.resolve(response({
 }));
 const context = {
   console, document, AbortController, Date, Intl, setTimeout, clearTimeout,
-  fetch: (...args) => { calls += 1; return nextFetch(...args); },
+  fetch: (...args) => {
+    if (args[0] === '/api/laerer/server-restart') return Promise.resolve(response({available:false}));
+    calls += 1; return nextFetch(...args);
+  },
   window: {}
 };
 const teacherSiden = () => 'teacher-panel-helper';

@@ -691,3 +691,11 @@ try {
     }
     throw $failure
 }
+
+# The server is installed and healthy before the optional administrator action
+# is enabled. A failure here must not roll back a working installation or data.
+try {
+    & (Join-Path $InstallRoot 'server\configure-restart.ps1') -Mode Enable
+} catch {
+    Write-Warning ('Serveren er installeret, men genstartsvalget kunne ikke aktiveres. Vælg skoleadministrationens menu 13 for at prøve igen. ' + $_.Exception.Message)
+}

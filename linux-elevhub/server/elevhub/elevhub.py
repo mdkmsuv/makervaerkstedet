@@ -56,6 +56,7 @@ from data_lock import InstanceLock
 from update_admin import UpdateAdministration, handle as updates_request
 from release_feed import ReleaseFeed, ReleaseFeedRunner, handle as release_feed_request
 from device_updates import DeviceUpdates
+from server_restart import status as server_restart_status, request as server_restart_request
 
 MAPPE = Path(__file__).resolve().parent
 WEB = MAPPE / 'web'
@@ -796,6 +797,10 @@ class Laerer(Grund):
             if not self.logget_ind():
                 return self.svar(401, {'error': 'Log ind igen.'})
             return self.svar(200, system_snapshot(self.server))
+        if sti == '/api/laerer/server-restart':
+            if not self.logget_ind():
+                return self.svar(401, {'error': 'Log ind igen.'})
+            return self.svar(200, server_restart_status())
         self.svar(404, {'error': 'Findes ikke.'})
 
     do_HEAD = do_GET
@@ -852,6 +857,13 @@ class Laerer(Grund):
                     'Set-Cookie': 'elevhub_laerer=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0' + self.sikker_kage()})
             if not self.logget_ind():
                 return self.svar(401, {'error': 'Log ind igen.'})
+            if sti == '/api/laerer/server-restart':
+                if d != {'confirmation': 'GENSTART HELE SERVEREN'}:
+                    raise ValueError('Bekræft genstart af hele Windows-serveren med GENSTART HELE SERVEREN.')
+                result = server_restart_request()
+                log.warning('Genstart af Windows-server bestilt fra %s: accepted=%s',
+                            self.client_address[0], result['accepted'])
+                return self.svar(202 if result['accepted'] else 503, result)
             if sti == '/api/laerer/pause':
                 if getattr(self.server, 'pause', None) is None:
                     return self.svar(503, {'error': 'Skærmpause er ikke konfigureret.'})
