@@ -1,0 +1,273 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Installer Makerværkstedet" Width="1040" Height="780" MinWidth="760" MinHeight="600"
+        WindowStartupLocation="CenterScreen" Background="White" FontFamily="Arial" FontSize="15"
+        Foreground="#333333" Language="da-DK">
+  <Window.Resources>
+    <SolidColorBrush x:Key="Accent" Color="#b4121a"/>
+    <Style TargetType="TextBlock">
+      <Setter Property="TextWrapping" Value="Wrap"/>
+      <Setter Property="LineHeight" Value="23"/>
+    </Style>
+    <Style TargetType="Label">
+      <Setter Property="Padding" Value="0,0,0,6"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style TargetType="TextBox">
+      <Setter Property="Padding" Value="10,9"/>
+      <Setter Property="MinHeight" Value="42"/>
+      <Setter Property="BorderBrush" Value="#aaaaaa"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style TargetType="ComboBox">
+      <Setter Property="Padding" Value="10,9"/>
+      <Setter Property="MinHeight" Value="42"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+    </Style>
+    <Style TargetType="Button">
+      <Setter Property="Padding" Value="18,10"/>
+      <Setter Property="MinHeight" Value="42"/>
+      <Setter Property="MinWidth" Value="100"/>
+      <Setter Property="Background" Value="White"/>
+      <Setter Property="Foreground" Value="#333333"/>
+      <Setter Property="BorderBrush" Value="#aaaaaa"/>
+      <Setter Property="BorderThickness" Value="1"/>
+      <Setter Property="Cursor" Value="Hand"/>
+    </Style>
+    <Style x:Key="PrimaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Background" Value="{StaticResource Accent}"/>
+      <Setter Property="Foreground" Value="White"/>
+      <Setter Property="BorderBrush" Value="{StaticResource Accent}"/>
+      <Setter Property="FontWeight" Value="Bold"/>
+    </Style>
+    <Style x:Key="Choice" TargetType="RadioButton">
+      <Setter Property="Margin" Value="0,0,0,12"/>
+      <Setter Property="Padding" Value="18"/>
+      <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Border x:Name="ChoiceBorder" BorderBrush="#cccccc" BorderThickness="1" Background="White" Padding="{TemplateBinding Padding}">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="28"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Border x:Name="ChoiceCircle" Width="18" Height="18" BorderBrush="#888888" BorderThickness="1" CornerRadius="9" VerticalAlignment="Top" Margin="0,3,0,0">
+                  <Ellipse x:Name="ChoiceDot" Width="10" Height="10" Fill="{StaticResource Accent}" Visibility="Hidden"/>
+                </Border>
+                <ContentPresenter Grid.Column="1" RecognizesAccessKey="True"/>
+              </Grid>
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsChecked" Value="True">
+                <Setter TargetName="ChoiceBorder" Property="BorderBrush" Value="{StaticResource Accent}"/>
+                <Setter TargetName="ChoiceBorder" Property="Background" Value="#fff7f7"/>
+                <Setter TargetName="ChoiceDot" Property="Visibility" Value="Visible"/>
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="ChoiceBorder" Property="BorderThickness" Value="2"/></Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="Heading" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+      <Setter Property="FontSize" Value="25"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="LineHeight" Value="32"/><Setter Property="Margin" Value="0,0,0,10"/>
+    </Style>
+    <Style x:Key="Help" TargetType="TextBlock" BasedOn="{StaticResource {x:Type TextBlock}}">
+      <Setter Property="Foreground" Value="#555555"/><Setter Property="FontSize" Value="14"/><Setter Property="Margin" Value="0,7,0,18"/>
+    </Style>
+  </Window.Resources>
+  <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <Border BorderBrush="#e1e1e1" BorderThickness="0,0,0,1" Padding="28,22">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Text="Makerværkstedet" FontSize="25" FontWeight="Bold" LineHeight="31"/>
+          <TextBlock Text="Installation på Windows · én skole, ét hovedsystem" Foreground="#666666" FontSize="14"/>
+        </StackPanel>
+        <TextBlock Grid.Column="1" Text="Ren installation" Foreground="#b4121a" VerticalAlignment="Center" Margin="20,0,0,0"/>
+      </Grid>
+    </Border>
+    <Border Grid.Row="1" Background="#f2f2f2" Padding="28,15">
+      <UniformGrid Columns="5">
+        <TextBlock x:Name="StepLabel1" Text="1  Opsætning" FontWeight="Bold" Foreground="#b4121a"/>
+        <TextBlock x:Name="StepLabel2" Text="2  Skolen" Foreground="#666666"/>
+        <TextBlock x:Name="StepLabel3" Text="3  Netværk" Foreground="#666666"/>
+        <TextBlock x:Name="StepLabel4" Text="4  Gennemgå" Foreground="#666666"/>
+        <TextBlock x:Name="StepLabel5" Text="5  Installation" Foreground="#666666"/>
+      </UniformGrid>
+    </Border>
+    <ScrollViewer x:Name="PageScroll" Grid.Row="2" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="28,23" Focusable="False">
+      <Grid MaxWidth="900" HorizontalAlignment="Stretch">
+        <StackPanel x:Name="Step1">
+          <TextBlock Text="Hvordan skal skolen bruge systemet?" Style="{StaticResource Heading}"/>
+          <TextBlock Text="Vælg den løsning, I vil installere. Begge har samme lærerpanel, værksteder og fælles kø." Margin="0,0,0,20"/>
+          <RadioButton x:Name="SingleComputer" GroupName="Deployment" IsChecked="True" Style="{StaticResource Choice}" AutomationProperties.Name="Alt på én Windows-computer">
+            <StackPanel><TextBlock Text="Alt på én Windows-computer" FontSize="18" FontWeight="Bold"/><TextBlock Text="Denne computer er server og lærercomputer og styrer laseren. Der er ikke brug for en VM." Margin="0,5,0,0"/></StackPanel>
+          </RadioButton>
+          <RadioButton x:Name="SeparateComputers" GroupName="Deployment" Style="{StaticResource Choice}" AutomationProperties.Name="Server og separat lasercomputer">
+            <StackPanel><TextBlock Text="Server og separat lasercomputer" FontSize="18" FontWeight="Bold"/><TextBlock Text="Hovedsystemet kører på en Windows-server eller VM. En anden Windows-computer ved laseren bruger serverens kø." Margin="0,5,0,0"/></StackPanel>
+          </RadioButton>
+          <Border x:Name="SeparateComponentPanel" Visibility="Collapsed" Background="#f2f2f2" Padding="18" Margin="0,0,0,14">
+            <StackPanel>
+              <TextBlock Text="Hvilken computer installerer du på nu?" FontWeight="Bold" Margin="0,0,0,12"/>
+              <RadioButton x:Name="ServerComponent" GroupName="Component" IsChecked="True" Margin="0,0,0,12" Content="Den centrale Windows-server eller VM" AutomationProperties.Name="Central Windows-server eller VM"/>
+              <RadioButton x:Name="StationComponent" GroupName="Component" Content="Lasercomputeren — serveren er allerede installeret" AutomationProperties.Name="Separat lasercomputer"/>
+            </StackPanel>
+          </Border>
+          <Expander x:Name="TopologyHelp" Header="Hvad skal jeg vælge?" IsExpanded="False" Margin="0,2,0,10" Foreground="#b4121a">
+            <Border Background="#f2f2f2" Padding="16" Margin="0,8,0,0">
+              <StackPanel>
+                <TextBlock Text="Vælg én computer, hvis den Windows-computer, du sidder ved, både skal holde systemet kørende og bruges ved laseren. Den skal være tændt, når værkstedet bruges." Foreground="#333333" Margin="0,0,0,10"/>
+                <TextBlock Text="Vælg server og separat lasercomputer, hvis skolen har en central Windows-server eller VM, som skal køre hovedsystemet. Installer serveren først. Kør derefter guiden på lasercomputeren og vælg forbindelsesfilen fra serveren." Foreground="#333333" Margin="0,0,0,10"/>
+                <TextBlock Text="En VM er en virtuel computer. Du skal kun vælge server/VM, når guiden kører inde på den Windows-maskine, der skal være server. En Linux-elev-VM er en elevcomputer og sættes op med elevsystemets installationsvej." Foreground="#333333"/>
+              </StackPanel>
+            </Border>
+          </Expander>
+          <TextBlock Text="Har skolen allerede en installation? Brug den relevante opdateringsvej. Denne guide opretter et nyt system; den er ikke en opdatering eller en gendannelse." Style="{StaticResource Help}"/>
+        </StackPanel>
+        <StackPanel x:Name="Step2" Visibility="Collapsed">
+          <TextBlock x:Name="SchoolHeading" Text="Skolens oplysninger" Style="{StaticResource Heading}"/>
+          <StackPanel x:Name="ServerSchoolPanel">
+            <Label Content="_Skolens navn" Target="{Binding ElementName=SchoolName}"/>
+            <TextBox x:Name="SchoolName" MaxLength="80" AutomationProperties.Name="Skolens navn"/>
+            <TextBlock Text="Det navn lærere og elever skal se, fx Søndervang Skole. Klostermarksskolens kreditering bevares separat." Style="{StaticResource Help}"/>
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+              <StackPanel>
+                <Label Content="_Laserens model" Target="{Binding ElementName=Machine}"/>
+                <ComboBox x:Name="Machine" SelectedIndex="0" AutomationProperties.Name="Laserens model">
+                  <ComboBoxItem Tag="fbb2" Content="FLUX Beambox II"/>
+                  <ComboBoxItem Tag="fhexa1" Content="FLUX HEXA"/>
+                </ComboBox>
+                <TextBlock Text="Se modelnavnet på laserens mærkat eller i Beam Studio. Det vælges til den medfølgende laserstation." Style="{StaticResource Help}"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <Label Content="_Udseende" Target="{Binding ElementName=Theme}"/>
+                <ComboBox x:Name="Theme" SelectedIndex="0" AutomationProperties.Name="Skolens udseende">
+                  <ComboBoxItem Tag="red" Content="Rød"/>
+                  <ComboBoxItem Tag="yellow" Content="Gul"/>
+                  <ComboBoxItem Tag="green" Content="Grøn"/>
+                </ComboBox>
+                <TextBlock Text="Vælg skolens udtryk. Indstillinger og maskiner kan senere administreres i lærerens kontrolpanel." Style="{StaticResource Help}"/>
+              </StackPanel>
+            </Grid>
+            <Border Background="#f2f2f2" Padding="16"><TextBlock Text="Der skal ikke skrives adgangskoder i denne guide. Lærerkoder oprettes i serverens normale opsætning. Tilslutning og test af fysisk udstyr sker bagefter."/></Border>
+          </StackPanel>
+          <StackPanel x:Name="StationSchoolPanel" Visibility="Collapsed">
+            <TextBlock Text="Hent forbindelsesfilen fra den centrale server. Filen indeholder serveradressen og det offentlige certifikat, så oplysningerne ikke skal tastes ind igen." Margin="0,0,0,18"/>
+            <Label Content="_Forbindelsesfil fra serveren" Target="{Binding ElementName=ConnectionFile}"/>
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <TextBox x:Name="ConnectionFile" AutomationProperties.Name="Forbindelsesfil fra serveren"/>
+              <Button x:Name="BrowseConnection" Grid.Column="1" Content="Vælg _fil…" Margin="10,0,0,0"/>
+            </Grid>
+            <TextBlock Text="Vælg laser-station-connection.json. Filen til Linux-elevcomputere hedder school-connection.json og bruges ikke her." Style="{StaticResource Help}"/>
+            <Border Background="#f2f2f2" Padding="18">
+              <StackPanel>
+                <TextBlock Text="Sådan finder du filen" FontWeight="Bold" Margin="0,0,0,8"/>
+                <TextBlock Text="1. Fuldfør installationen på den centrale Windows-server eller VM.&#10;2. Åbn Stifinder på serveren og gå til Offentlige dokumenter → Elevvaerkstedet.&#10;3. Kopiér laser-station-connection.json til denne computer, fx via USB. Vælg den nyeste fil, hvis navnet også indeholder et tidspunkt."/>
+                <TextBlock Text="Typisk mappe: C:\Users\Public\Documents\Elevvaerkstedet" FontFamily="Consolas" FontSize="13" Margin="0,10,0,0"/>
+              </StackPanel>
+            </Border>
+            <TextBlock Text="Laserstationen bruger den centrale kø. Den opretter ikke et ekstra hovedsystem. Serveren og lasercomputeren skal være på skolens tilladte værkstedsnet." Style="{StaticResource Help}"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel x:Name="Step3" Visibility="Collapsed">
+          <TextBlock Text="Gør serveren let at finde på netværket" Style="{StaticResource Heading}"/>
+          <TextBlock Text="Vælg værkstedsnettets netværkskort. Guiden foreslår en adresse fra denne computer; forslaget betyder ikke, at adressen er fast eller reserveret. Få det bekræftet af skolens IT." Margin="0,0,0,18"/>
+          <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <Label Content="_Netværkskort på denne computer" Target="{Binding ElementName=NetworkCandidate}" VerticalAlignment="Center"/>
+            <Button x:Name="CopyChecklist" Grid.Column="1" Content="_Kopiér tjekliste til IT" ToolTip="Kopiér oplysningerne og spørgsmål om fast adresse og værkstedsnet til skolens IT."/>
+          </Grid>
+          <TextBlock x:Name="ChecklistStatus" Foreground="#555555" FontSize="13"/>
+          <ComboBox x:Name="NetworkCandidate" DisplayMemberPath="display" AutomationProperties.Name="Netværkskort på denne computer"/>
+          <TextBlock x:Name="NetworkHint" Text="Vælg det netværkskort, som er forbundet til værkstedsnettet. Ingen netværksindstillinger ændres her." Style="{StaticResource Help}"/>
+          <Expander x:Name="NetworkHelp" Header="Hvor finder jeg oplysningerne?" IsExpanded="False" Margin="0,0,0,16" Foreground="#b4121a">
+            <Border Background="#f2f2f2" Padding="16" Margin="0,8,0,0">
+              <StackPanel>
+                <TextBlock Text="Flere netværkskort? Vælg forbindelsen til elevernes og lasercomputerens værkstedsnet — ofte Ethernet. Wi-Fi, VPN og virtuelle netværk kan have andre adresser. Er du i tvivl, så kopiér tjeklisten ovenfor og send den til IT." Foreground="#333333" Margin="0,0,0,10"/>
+                <TextBlock Text="Kører serveren i en VM? Brug Windows-VM'ens egen adresse, vist inde i VM'en. Brug ikke adressen på den fysiske computer, som kører VM'en. IT skal sikre, at VM'en kan nås fra værkstedsnettet." Foreground="#333333" Margin="0,0,0,10"/>
+                <TextBlock Text="Fast adresse eller reservation: IT kan enten give serveren en fast adresse eller reservere den samme adresse i netværkets DHCP-opsætning. Guiden ændrer ikke dette. En fundet adresse — også når DHCP står til Ja — er ikke i sig selv en bekræftet reservation." Foreground="#333333" Margin="0,0,0,10"/>
+                <TextBlock Text="Netværksområdet (CIDR) angiver, hvilke computere serveren må tage imod. Brug det område, IT bekræfter til server, elever og lasercomputer. Eksemplerne nedenfor viser kun formatet; de skal ikke kopieres som skolens værdier." Foreground="#333333"/>
+              </StackPanel>
+            </Border>
+          </Expander>
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="24"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <StackPanel>
+              <Label Content="Serverens _IPv4-adresse" Target="{Binding ElementName=RoleIp}"/>
+              <TextBox x:Name="RoleIp" AutomationProperties.Name="Serverens IPv4-adresse"/>
+              <TextBlock Text="Adressen på denne Windows-computer. Kun et formateksempel: 192.168.10.20. Brug den adresse, IT bekræfter — ikke eksemplet eller routerens adresse." Style="{StaticResource Help}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2">
+              <Label Content="Værkstedsnettets _område (CIDR)" Target="{Binding ElementName=StudentSubnet}"/>
+              <TextBox x:Name="StudentSubnet" AutomationProperties.Name="Værkstedsnettets område i CIDR-format"/>
+              <TextBlock Text="Området med server, elever og lasercomputer. Kun et formateksempel: 192.168.10.0/24. Få skolens værdi fra IT; det er ikke skolens internetadresse." Style="{StaticResource Help}"/>
+            </StackPanel>
+          </Grid>
+          <CheckBox x:Name="AddressConfirmed" Margin="0,2,0,18" AutomationProperties.Name="IT har bekræftet fast adresse eller reservation">
+            <TextBlock Text="IT har bekræftet fast adresse eller reservation og det korrekte værkstedsnet."/>
+          </CheckBox>
+          <Border Background="#f2f2f2" Padding="18">
+            <StackPanel>
+              <TextBlock Text="I tvivl? Send en kort tjekliste til skolens IT" FontWeight="Bold" Margin="0,0,0,8"/>
+              <TextBlock Text="Bed IT bekræfte serverens faste IPv4-adresse, netværksområdet og at maskinerne kan tale sammen på værkstedsnettet. En VM skal have adgang til samme netværk. En automatisk fundet adresse er kun et forslag."/>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+        <StackPanel x:Name="Step4" Visibility="Collapsed">
+          <TextBlock Text="Gennemgå før du installerer" Style="{StaticResource Heading}"/>
+          <TextBlock Text="Kontrollér oplysningerne nedenfor. Du kan gå tilbage og rette dem. Intet er installeret endnu." Margin="0,0,0,18"/>
+          <Border Background="#f2f2f2" Padding="20"><TextBlock x:Name="ReviewSummary" LineHeight="28"/></Border>
+          <Border BorderBrush="#b4121a" BorderThickness="3,0,0,0" Padding="16,3" Margin="0,20,0,0">
+            <TextBlock x:Name="InstallExplanation" Text="Når du vælger Start installation, beder Windows om administratorgodkendelse til serverens installation. Hold computeren tændt, og vent på slutresultatet."/>
+          </Border>
+          <TextBlock Text="En eksisterende installation overskrives ikke via denne vej. Hvis der allerede er et system, skal den relevante opdaterings- eller genoptagelsesvej bruges." Style="{StaticResource Help}"/>
+        </StackPanel>
+        <StackPanel x:Name="Step5" Visibility="Collapsed">
+          <TextBlock x:Name="StatusHeading" Text="Installationen kører" Style="{StaticResource Heading}"/>
+          <TextBlock x:Name="StatusMessage" Text="Starter installationen. Vent på resultatet her i guiden." Margin="0,0,0,16"/>
+          <ProgressBar x:Name="InstallProgress" IsIndeterminate="True" Height="6" Foreground="#b4121a" Margin="0,0,0,18"/>
+          <Border x:Name="GuidancePanel" Background="#f2f2f2" BorderBrush="#b4121a" BorderThickness="3,0,0,0" Padding="16" Margin="0,0,0,16">
+            <StackPanel>
+              <TextBlock x:Name="GuidanceHeading" Text="Mens du venter" FontSize="17" FontWeight="Bold" Margin="0,0,0,7"/>
+              <TextBlock x:Name="GuidanceText" Text="Hold computeren tændt, og vent på resultatet her. Hvis Windows beder om administratorgodkendelse, skal en person med de nødvendige rettigheder godkende den."/>
+              <Button x:Name="CopyHelp" Content="Kopiér _hjælp til IT" HorizontalAlignment="Left" Margin="0,12,0,0"/>
+              <TextBlock x:Name="HelpCopyStatus" Foreground="#555555" FontSize="13" Margin="0,7,0,0"/>
+            </StackPanel>
+          </Border>
+          <Expander x:Name="TechnicalHelpExpander" Header="Tekniske oplysninger til IT" IsExpanded="False" Visibility="Collapsed" Foreground="#b4121a" Margin="0,0,0,16">
+            <TextBox x:Name="TechnicalHelp" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="220" FontFamily="Consolas" FontSize="13" VerticalContentAlignment="Top" Margin="0,8,0,0" AutomationProperties.Name="Tekniske oplysninger til IT"/>
+          </Expander>
+          <Border x:Name="NextStepsPanel" Background="#f2f2f2" Padding="16" Visibility="Collapsed" Margin="0,0,0,16"><TextBlock x:Name="NextSteps"/></Border>
+          <Grid Margin="0,0,0,8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <Label Content="_Installationslog" Target="{Binding ElementName=InstallLog}" VerticalAlignment="Center"/>
+            <Button x:Name="CopyLog" Grid.Column="1" Content="Kopiér _log"/>
+          </Grid>
+          <TextBlock x:Name="LogCopyStatus" Foreground="#555555" FontSize="13" Margin="0,0,0,8"/>
+          <TextBox x:Name="InstallLog" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Height="210" FontFamily="Consolas" FontSize="13" VerticalContentAlignment="Top" AutomationProperties.Name="Installationslog"/>
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+    <Border x:Name="ErrorPanel" Grid.Row="3" Visibility="Collapsed" Background="#fff3f3" BorderBrush="#b4121a" BorderThickness="3,0,0,0" Padding="16,10" Margin="28,0,28,12">
+      <TextBlock x:Name="ErrorText" Foreground="#920008" AutomationProperties.LiveSetting="Assertive"/>
+    </Border>
+    <Border Grid.Row="4" BorderBrush="#e1e1e1" BorderThickness="0,1,0,0" Padding="28,16">
+      <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center"><TextBlock Text="Udviklet med Klostermarksskolen" Foreground="#666666" FontSize="12"/><TextBlock x:Name="StepCaption" Text="Trin 1 af 5" Foreground="#666666" FontSize="12"/></StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal">
+          <Button x:Name="CancelButton" Content="_Luk" Margin="0,0,10,0"/>
+          <Button x:Name="BackButton" Content="_Tilbage" IsEnabled="False" Margin="0,0,10,0"/>
+          <Button x:Name="NextButton" Content="_Næste" Style="{StaticResource PrimaryButton}" IsDefault="True" MinWidth="148"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+  </Grid>
+</Window>

@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "notes": "Outside each approved polygon replaced with uniform neutral grey; no machine identity retained.",
+  "entries": [
+    {
+      "name": "E1",
+      "reference": "e1-empty-reference.jpg",
+      "current": "e1-empty-latest.jpg",
+      "source": "autoclear dataset verified empty pair"
+    },
+    {
+      "name": "E2",
+      "reference": "e2-empty-reference.jpg",
+      "current": "e2-empty-latest.jpg",
+      "source": "autoclear dataset verified empty pair"
+    },
+    {
+      "name": "E3",
+      "reference": "e3-empty-reference.jpg",
+      "current": "e3-empty-latest.jpg",
+      "source": "autoclear dataset verified empty pair"
+    },
+    {
+      "name": "E4",
+      "reference": "e4-empty-reference.jpg",
+      "current": "e4-empty-latest.jpg",
+      "source": "autoclear dataset verified empty pair"
+    },
+    {
+      "name": "Banan",
+      "reference": "banan-empty-reference.jpg",
+      "current": "banan-empty-latest.jpg",
+      "source": "autoclear dataset verified empty pair"
+    },
+    {
+      "name": "E1",
+      "occupied": "occupied-1-e1.jpg",
+      "source": "autoclear dataset verified occupied example (observation-occupied.jpg)"
+    },
+    {
+      "name": "E2",
+      "occupied": "occupied-2-e2.jpg",
+      "source": "autoclear dataset verified occupied example (observation-occupied.jpg)"
+    },
+    {
+      "name": "E2",
+      "occupied": "occupied-3-e2.jpg",
+      "source": "autoclear dataset verified occupied example (occupied-validation.jpg)"
+    },
+    {
+      "name": "E4",
+      "occupied": "occupied-4-e4.jpg",
+      "source": "autoclear dataset verified occupied example (occupied-validation.jpg)"
+    },
+    {
+      "name": "E1",
+      "reference": "e1-empty-reference.jpg",
+      "current": "e1-empty-live-reflection.jpg",
+      "source": "autoclear live daylight empty frame with strong lower reflection"
+    }
+  ]
+}

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="da"><head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Makerværkstedet</title>
+  <link rel="icon" href="/favicon.svg">
+  <link rel="stylesheet" href="/laser.css"><link rel="stylesheet" href="/laserstation.css">
+  <link rel="stylesheet" href="/makervaerkstedet.css">
+  <script src="/makervaerkstedet.js" defer></script>
+</head><body class="maker-body">
+  <header class="maker-header">
+    <div class="maker-brand"><span class="brand-mark" aria-hidden="true"></span><div><span class="brand-school" data-school-name>Makerværkstedet</span><h1>Makerværkstedet</h1></div></div>
+    <button type="button" id="maker-back" hidden>← Tilbage til forsiden</button>
+  </header>
+  <main id="maker-home" class="maker-home" aria-labelledby="maker-home-title">
+    <p class="maker-eyebrow">LASERCOMPUTEREN</p>
+    <h2 id="maker-home-title" tabindex="-1">Hvad vil du åbne?</h2>
+    <p class="maker-intro">Vælg det, du vil arbejde med. Knappen "Tilbage til forsiden" øverst fører dig tilbage hertil.</p>
+    <div class="maker-cards">
+      <a href="#laser" class="maker-card" id="maker-laser-card"><span class="maker-number">01 / LASER</span><h3>Laserstation</h3><p>Læg elevernes afleveringer på pladen, og send dem til laseren.</p><span class="maker-action">Åbn laserstationen →</span></a>
+      <a class="maker-card" id="maker-print-card"><span class="maker-number">02 / 3D-PRINT</span><h3>3D-printere og printkø</h3><p>Se printerstatus, printkø og printopgaver, og administrér printerne.</p><strong class="maker-badge" id="maker-print-status" role="status" hidden></strong><span class="maker-action">Åbn printere og printkø →</span></a>
+      <a class="maker-card" id="maker-admin-card"><span class="maker-number">03 / ADMINISTRATION</span><h3>Administration</h3><p>Kontrolpanelet for værkstedet: computere, maskiner, opdateringer og opsætning.</p><strong class="maker-badge" id="maker-admin-status" role="status" hidden></strong><span class="maker-action">Åbn kontrolpanelet →</span></a>
+    </div>
+  </main>
+  <section id="maker-laser" hidden aria-label="Laserstation"><!--LASER_BODY--></section>
+  <script id="maker-settings" type="application/json"><!--MAKER_SETTINGS--></script>
+</body></html>

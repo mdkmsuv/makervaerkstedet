@@ -1,0 +1,97 @@
+--- a/src/client_common.c
++++ b/src/client_common.c
+@@ -214,10 +214,49 @@
+   return True;
+ }
+ 
++Bool
++client_close_blocked(Client *c)
++{
++  Wm *w = c->wm;
++  XClassHint hint;
++  Bool blocked = False;
++
++  if (c->type != MBCLIENT_TYPE_APP || c->trans != NULL
++      || !w->config->block_close_instance
++      || !w->config->block_close_class
++      || !*w->config->block_close_instance
++      || !*w->config->block_close_class)
++    return False;
++
++  memset(&hint, 0, sizeof(hint));
++  if (XGetClassHint(w->dpy, c->window, &hint))
++    {
++      blocked = hint.res_name && hint.res_class
++        && !strcmp(hint.res_name, w->config->block_close_instance)
++        && !strcmp(hint.res_class, w->config->block_close_class);
++      if (hint.res_name) XFree(hint.res_name);
++      if (hint.res_class) XFree(hint.res_class);
++    }
++
++  return blocked;
++}
++
+ void
+ client_deliver_delete(Client *c)
+ {
+   Wm *w = c->wm;
++
++  if (client_close_blocked(c))
++    {
++      Atom request = XInternAtom(w->dpy, "_ELEVHUB_FINISH_REQUEST", False);
++      Atom cardinal = XInternAtom(w->dpy, "CARDINAL", False);
++      unsigned long target = c->window;
++      XChangeProperty(w->dpy, w->root, request, cardinal, 32,
++                      PropModeReplace, (unsigned char *)&target, 1);
++      XFlush(w->dpy);
++      dbg("%s() finish requested for protected WM_CLASS\n", __func__);
++      return;
++    }
+ 
+   int   i, n, found = 0;
+   Atom *protocols;
+--- a/src/client_common.h
++++ b/src/client_common.h
+@@ -52,6 +52,10 @@
+ 
+ void 
+ client_deliver_delete (Client *c);
++
++/* True only for a matching ordinary app client, never for a transient. */
++Bool
++client_close_blocked (Client *c);
+ 
+ int 
+ client_want_focus (Client *c);
+--- a/src/structs.h
++++ b/src/structs.h
+@@ -511,6 +511,9 @@
+   char        *kbd_conf_file;
+ 
+   char        *force_dialogs;
++  /* Exact WM_CLASS instance/class pair whose WM close action is suppressed. */
++  char        *block_close_instance;
++  char        *block_close_class;
+   char        *sm_client_id;
+ } Wm_config;
+ 
+--- a/src/wm.c
++++ b/src/wm.c
+@@ -314,6 +314,8 @@
+    w->config->dialog_stratergy = WM_DIALOGS_STRATERGY_CONSTRAINED;
+    w->config->ping_handler     = getenv("MB_HUNG_APP_HANDLER");
+    w->config->ping_aggressive = getenv("MB_AGGRESSIVE_PING") ? True : False;
++   w->config->block_close_instance = getenv("MB_BLOCK_CLOSE_INSTANCE");
++   w->config->block_close_class = getenv("MB_BLOCK_CLOSE_CLASS");
+ 
+ #ifdef USE_COMPOSITE
+    w->config->dialog_shade = True;
+@@ -502,6 +504,8 @@
+    w->config->dialog_stratergy = WM_DIALOGS_STRATERGY_CONSTRAINED;
+    w->config->ping_handler     = getenv("MB_HUNG_APP_HANDLER");
+    w->config->ping_aggressive  = getenv("MB_AGGRESSIVE_PING") ? True : False;
++   w->config->block_close_instance = getenv("MB_BLOCK_CLOSE_INSTANCE");
++   w->config->block_close_class = getenv("MB_BLOCK_CLOSE_CLASS");
+ 
+    if (XrmGetResource(rDB, "matchbox.display",
+ 		      "Matchbox.Display",

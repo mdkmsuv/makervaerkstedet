@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "product": "Makervaerkstedet",
+  "created_utc": "2026-11-04T19:53:15.321780+00:00",
+  "minisign_public_key": "RWSQY/AmP4l+UEfOaUyois4oJcf8wgj3XpLwpvUWEmrzPn02LJ7+ODDa",
+  "minisign_public_file_sha256": "44de94f24b5a84e5dd35d81d7a90052e45a9950c51f93584ad79c4e4019f4aa5",
+  "apt_fingerprint": "E848EE99A4AAA6F272669B37EC9621E2E28EBCDA",
+  "apt_public_keyring_sha256": "5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f",
+  "apt_algorithm": "RSA3072 sign, expiry 2 years",
+  "private_storage": "separate Windows DPAPI CurrentUser secret blobs; no portable backup yet",
+  "minisign_tool_sha256": "5535be9e4e123831ebe6ef324aafe9dde507015c176191f9e20c3ad60567f9e1",
+  "gpg_tool_sha256": "a5140c85353e8399da8d6bd7e3741524cd76a4e69be88af12042b1c9ef022984",
+  "installed_or_published": false
+}

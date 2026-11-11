@@ -1,0 +1,10 @@
+{
+  "3dprint": "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_printvaerksted_port }}/",
+{% if kiosk_lokal_design_enabled | bool %}
+  "laser": "http://127.0.0.1:{{ kiosk_lokal_design_laser_port }}/laser.html",
+  "folie": "http://127.0.0.1:{{ kiosk_lokal_design_folie_port }}/folie.html"
+{% else %}
+  "laser": "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_laservaerksted_port | default(8771) }}/laser.html",
+  "folie": "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_folievaerksted_port | default(8772) }}/folie.html"
+{% endif %}
+}

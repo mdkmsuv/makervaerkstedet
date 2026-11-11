@@ -1,0 +1,346 @@
+---
+- name: Projektbackup er slået fra som standard
+  ansible.builtin.debug:
+    msg: >-
+      projektbackup er ikke aktiveret. Vælg og dokumentér et backupmål,
+      sæt projektbackup_aktiveret=true, og kør derefter rollen igen.
+  when: not (projektbackup_aktiveret | bool)
+
+- name: Kontrollér og installer projektbackup
+  when: projektbackup_aktiveret | bool
+  block:
+    - name: Backupvariablerne er eksplicitte og sikre
+      ansible.builtin.assert:
+        that:
+          - projektbackup_maaltype in ['mounted', 'local']
+          - projektbackup_repository | length > 0
+          - projektbackup_repository is match('^/')
+          - projektbackup_kilde | length > 0
+          - projektbackup_kilde is match('^/')
+          - projektbackup_password_file is match('^/etc/projektbackup/')
+          - "'..' not in projektbackup_password_file"
+          - projektbackup_restic_password | length > 0
+          - "'\n' not in projektbackup_restic_password"
+          - "'\r' not in projektbackup_restic_password"
+          - "' ' not in projektbackup_repository"
+          - "'\t' not in projektbackup_repository"
+          - "'\n' not in projektbackup_repository"
+          - "' ' not in projektbackup_kilde"
+          - "'\t' not in projektbackup_kilde"
+          - projektbackup_repository.rstrip('/') != projektbackup_kilde.rstrip('/')
+          - not projektbackup_repository.rstrip('/').startswith(projektbackup_kilde.rstrip('/') + '/')
+          - not projektbackup_kilde.rstrip('/').startswith(projektbackup_repository.rstrip('/') + '/')
+        fail_msg: >-
+          Ugyldig projektbackup-konfiguration. Brug absolutte stier uden
+          mellemrum, en ikke-tom vaulted password, og et repository uden for
+          projektmappen.
+      no_log: true
+
+    - name: Monteret mål kræver et eksplicit mountpoint
+      ansible.builtin.assert:
+        that:
+          - projektbackup_mountpoint | length > 0
+          - projektbackup_mountpoint is match('^/')
+          - "' ' not in projektbackup_mountpoint"
+          - "'\t' not in projektbackup_mountpoint"
+          - projektbackup_mountpoint.rstrip('/') != '/'
+          - projektbackup_repository.rstrip('/').startswith(projektbackup_mountpoint.rstrip('/') + '/')
+          - not projektbackup_repository.rstrip('/').startswith('/home/')
+        fail_msg: >-
+          Et mounted projektbackup-mål skal være en absolut repository-sti
+          under et eksplicit mountpoint uden for /home.
+      when: projektbackup_maaltype == 'mounted'
+
+    - name: Lokalt mål må ikke ligge i elevens hjem
+      ansible.builtin.assert:
+        that:
+          - projektbackup_mountpoint | length == 0
+          - not projektbackup_repository.rstrip('/').startswith('/home/')
+        fail_msg: >-
+          Et local projektbackup-mål skal være en eksplicit systemsti uden for
+          /home; brug mounted og mountpoint til en ekstern disk.
+      when: projektbackup_maaltype == 'local'
+
+    - name: Kontrollér projektmappen uden at følge en symlink
+      ansible.builtin.stat:
+        path: "{{ projektbackup_kilde }}"
+        follow: false
+      register: projektbackup_kilde_stat
+
+    - name: Projektmappen er en reel mappe uden usikker skrivbarhed
+      ansible.builtin.assert:
+        that:
+          - projektbackup_kilde_stat.stat.exists
+          - projektbackup_kilde_stat.stat.isdir
+          - not projektbackup_kilde_stat.stat.islnk
+          - projektbackup_kilde_stat.stat.mode[-2] not in ['2', '3', '6', '7']
+          - projektbackup_kilde_stat.stat.mode[-1] not in ['2', '3', '6', '7']
+        fail_msg: "Projektbackup-kilden skal være en ikke-symlink mappe uden group/other-write"
+
+    - name: Kildens canonical sti er den konfigurerede sti
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/realpath
+          - -e
+          - --
+          - "{{ projektbackup_kilde }}"
+      register: projektbackup_kilde_realpath
+      changed_when: false
+      check_mode: false
+
+    - name: Afvis symlinkede projektmapper
+      ansible.builtin.assert:
+        that:
+          - projektbackup_kilde_realpath.stdout.rstrip('/') == projektbackup_kilde.rstrip('/')
+        fail_msg: "Projektbackup-kilden må ikke være en symlink"
+
+    - name: Kildens parent-kæde kan ikke ændres af andre end ejeren
+      ansible.builtin.shell:
+        cmd: |
+          set -eu
+          /usr/bin/namei -om -- {{ (projektbackup_kilde | dirname) | quote }} |
+            /usr/bin/awk 'NR > 1 && NF >= 4 { if (substr($1, 6, 1) == "w" || substr($1, 9, 1) == "w") exit 1 }'
+        executable: /bin/sh
+      register: projektbackup_kilde_parent_check
+      changed_when: false
+      check_mode: false
+
+    - name: Afvis skrivbar kilde-parent
+      ansible.builtin.assert:
+        that: projektbackup_kilde_parent_check.rc == 0
+        fail_msg: "En parent til projektbackup-kilden er group/other-writable"
+
+    - name: Kontrollér at ekstern disk rent faktisk er monteret
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/mountpoint
+          - -q
+          - --
+          - "{{ projektbackup_mountpoint }}"
+      register: projektbackup_mountpoint_check
+      changed_when: false
+      check_mode: false
+      when: projektbackup_maaltype == 'mounted'
+
+    - name: Afvis et mounted mål når disken mangler
+      ansible.builtin.assert:
+        that: projektbackup_mountpoint_check.rc == 0
+        fail_msg: >-
+          Backupdisken er ikke monteret på {{ projektbackup_mountpoint }};
+          der skrives ikke til en lokal mappe.
+      when: projektbackup_maaltype == 'mounted'
+
+    - name: Mounted mountpoint er root-ejet og ikke symlinket
+      ansible.builtin.shell:
+        cmd: |
+          set -eu
+          /usr/bin/namei -om -- {{ projektbackup_mountpoint | quote }} |
+            /usr/bin/awk 'NR > 1 && NF >= 4 { if ($2 != "root" || substr($1, 6, 1) == "w" || substr($1, 9, 1) == "w") exit 1 }'
+        executable: /bin/sh
+      register: projektbackup_mountpoint_owner_check
+      changed_when: false
+      check_mode: false
+      when: projektbackup_maaltype == 'mounted'
+
+    - name: Mounted mountpointets parentkæde er sikker
+      ansible.builtin.assert:
+        that: projektbackup_mountpoint_owner_check.rc == 0
+        fail_msg: "Mountpointet eller en parent er ikke root-ejet uden group/other-write"
+      when: projektbackup_maaltype == 'mounted'
+
+    - name: Repositoryets parentkæde er root-ejet uden group/other-write
+      ansible.builtin.shell:
+        cmd: |
+          set -eu
+          /usr/bin/namei -om -- {{ (projektbackup_repository | dirname) | quote }} |
+            /usr/bin/awk 'NR > 1 && NF >= 4 { if ($2 != "root" || substr($1, 6, 1) == "w" || substr($1, 9, 1) == "w") exit 1 }'
+        executable: /bin/sh
+      register: projektbackup_repository_parent_check
+      changed_when: false
+      check_mode: false
+
+    - name: Afvis usikker repository-parent
+      ansible.builtin.assert:
+        that: projektbackup_repository_parent_check.rc == 0
+        fail_msg: "Repositoryets parent-kæde kan ændres af elevkontoen"
+
+    - name: Mounted repository ligger canonicalt under mountpointet
+      block:
+        - name: Beregn canonical repository-sti
+          ansible.builtin.command:
+            argv: [/usr/bin/realpath, -m, --, "{{ projektbackup_repository }}"]
+          register: projektbackup_repository_realpath
+          changed_when: false
+          check_mode: false
+
+        - name: Beregn canonical mountpoint-sti
+          ansible.builtin.command:
+            argv: [/usr/bin/realpath, -e, --, "{{ projektbackup_mountpoint }}"]
+          register: projektbackup_mountpoint_realpath
+          changed_when: false
+          check_mode: false
+
+        - name: Afvis repository uden for mountpointet
+          ansible.builtin.assert:
+            that:
+              - projektbackup_repository_realpath.stdout.rstrip('/').startswith(projektbackup_mountpoint_realpath.stdout.rstrip('/') + '/')
+            fail_msg: "Repositoryets canonical sti ligger ikke på den monterede disk"
+      when: projektbackup_maaltype == 'mounted'
+
+    - name: Læs repository og config uden at følge symlinks
+      ansible.builtin.stat:
+        path: "{{ item }}"
+        follow: false
+      loop:
+        - "{{ projektbackup_repository }}"
+        - "{{ projektbackup_repository }}/config"
+      register: projektbackup_repository_stats
+
+    - name: Afvis repository der er symlink eller ikke er mappe
+      ansible.builtin.assert:
+        that:
+          - not projektbackup_repository_stats.results[0].stat.exists
+            or (projektbackup_repository_stats.results[0].stat.isdir and not projektbackup_repository_stats.results[0].stat.islnk)
+        fail_msg: "Repository skal være en ny mappe eller et eksisterende restic-repository"
+
+    - name: Se om en eksisterende repository-mappe er tom
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/find
+          - "{{ projektbackup_repository }}"
+          - -mindepth
+          - '1'
+          - -maxdepth
+          - '1'
+          - -print
+          - -quit
+      register: projektbackup_repository_contents
+      changed_when: false
+      failed_when: false
+      check_mode: false
+      when:
+        - projektbackup_repository_stats.results[0].stat.exists
+        - projektbackup_repository_stats.results[0].stat.isdir
+        - not projektbackup_repository_stats.results[0].stat.islnk
+
+    - name: En eksisterende mappe må kun overtages som ny root-owned mappe eller valideret repository
+      ansible.builtin.assert:
+        that:
+          - not projektbackup_repository_stats.results[0].stat.exists
+            or projektbackup_repository_stats.results[0].stat.pw_name == 'root'
+          - not projektbackup_repository_stats.results[0].stat.exists
+            or projektbackup_repository_stats.results[0].stat.mode[-2] not in ['2', '3', '6', '7']
+          - not projektbackup_repository_stats.results[0].stat.exists
+            or projektbackup_repository_stats.results[0].stat.mode[-1] not in ['2', '3', '6', '7']
+          - not projektbackup_repository_stats.results[0].stat.exists
+            or projektbackup_repository_stats.results[1].stat.exists
+            or (projektbackup_repository_contents.stdout | trim) == ''
+        fail_msg: >-
+          En eksisterende ikke-tom mappe uden restic config overtages ikke;
+          vælg et nyt mål eller et allerede valideret repository.
+
+    - name: Eksisterende restic repository er root-only og ikke symlinket
+      ansible.builtin.assert:
+        that:
+          - projektbackup_repository_stats.results[1].stat.isreg
+          - not projektbackup_repository_stats.results[1].stat.islnk
+          - projektbackup_repository_stats.results[0].stat.pw_name == 'root'
+          - projektbackup_repository_stats.results[1].stat.pw_name == 'root'
+          - projektbackup_repository_stats.results[0].stat.mode[-2:] == '00'
+          - projektbackup_repository_stats.results[1].stat.mode[-2:] == '00'
+        fail_msg: "Et eksisterende restic repository skal være root-owned og utilgængeligt for elevkontoen"
+      when: projektbackup_repository_stats.results[1].stat.exists
+
+    - name: Læs eksisterende passwordfil uden at følge symlink
+      ansible.builtin.stat:
+        path: "{{ projektbackup_password_file }}"
+        follow: false
+      register: projektbackup_password_stat
+
+    - name: Eksisterende passwordfil er root-only
+      ansible.builtin.assert:
+        that:
+          - projektbackup_password_stat.stat.isreg
+          - not projektbackup_password_stat.stat.islnk
+          - projektbackup_password_stat.stat.pw_name == 'root'
+          - projektbackup_password_stat.stat.mode[-2:] == '00'
+        fail_msg: "Eksisterende restic passwordfil er ikke root-only"
+      when: projektbackup_password_stat.stat.exists
+
+    - name: Installer open source restic
+      ansible.builtin.apt:
+        name: restic
+        state: present
+        update_cache: false
+
+    - name: Opret root-only konfigurationsmappe
+      ansible.builtin.file:
+        path: /etc/projektbackup
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Skriv restic password uden at overskrive eksisterende fil implicit
+      ansible.builtin.copy:
+        content: "{{ projektbackup_restic_password }}"
+        dest: "{{ projektbackup_password_file }}"
+        owner: root
+        group: root
+        mode: "0600"
+        force: "{{ projektbackup_password_overwrite | bool }}"
+      no_log: true
+
+    - name: Opret repository-mappen efter alle mål- og ejerskabskontroller
+      ansible.builtin.file:
+        path: "{{ projektbackup_repository }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
+
+    - name: Initialiser restic repository hvis det mangler
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/restic
+          - --repo
+          - "{{ projektbackup_repository }}"
+          - --password-file
+          - "{{ projektbackup_password_file }}"
+          - init
+        creates: "{{ projektbackup_repository }}/config"
+      no_log: true
+
+    - name: Installer root-ejet backupscript
+      ansible.builtin.template:
+        src: projektbackup-backup.sh.j2
+        dest: /usr/local/sbin/projektbackup-backup
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Installer systemd service
+      ansible.builtin.template:
+        src: projektbackup.service.j2
+        dest: /etc/systemd/system/projektbackup.service
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Genindlæs systemd efter projektbackup
+
+    - name: Installer systemd timer
+      ansible.builtin.template:
+        src: projektbackup.timer.j2
+        dest: /etc/systemd/system/projektbackup.timer
+        owner: root
+        group: root
+        mode: "0644"
+      notify: Genindlæs systemd efter projektbackup
+
+    - name: Aktivér kun timeren, aldrig et vedvarende backupservice
+      ansible.builtin.systemd_service:
+        name: projektbackup.timer
+        enabled: true
+        state: started
+        daemon_reload: true
+      when: not ansible_check_mode

@@ -1,0 +1,7 @@
+# Styres af Ansible (rollen kiosk).
+# Når elevkontoen logger ind på tty1, erstattes login-skallen af kiosken.
+if [ "$(id -un)" = "{{ kiosk_bruger }}" ] && [ "$(tty)" = /dev/tty1 ] && [ -z "${DISPLAY:-}" ]; then
+    # Skjul markøren og ryd evt. opstartstekst inden den grafiske klargøring.
+    printf '\033[?25l\033[2J\033[H'
+    exec startx /usr/local/lib/elevhub/kiosk-session -- -nolisten tcp >/dev/null 2>&1
+fi

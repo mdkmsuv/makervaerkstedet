@@ -1,0 +1,50 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+
+const SCRIPT = fs.readFileSync(path.join(__dirname, '..', 'server', 'elevhub', 'web', 'makerspace-printers.js'), 'utf8');
+const IDS = ['printer-status','printer-error','printers','printer-form','printer-refresh','printer-retry','printer-cancel','printer-save','printer-id','printer-name','printer-location','printer-model','printer-host','printer-serial','printer-access-code','printer-bed-type','printer-enabled'];
+class E { constructor(tag='div'){this.tagName=tag.toUpperCase();this.children=[];this.listeners={};this.value='';this.checked=false;this.disabled=false;this.hidden=false;this.textContent='';this.className='';this.type='';} append(...x){this.children.push(...x)} replaceChildren(...x){this.children=x} addEventListener(n,f){(this.listeners[n]??=[]).push(f)} dispatch(n){for(const f of this.listeners[n]??[])f({preventDefault(){}})} focus(){} }
+class D { constructor(){this.m=new Map()} getElementById(id){if(!this.m.has(id))this.m.set(id,new E());return this.m.get(id)} createElement(t){return new E(t)} }
+const BASE={id:'p1',version:4,name:'P1',location:'Rum',model:'P1S',host:'10.0.0.7',serial:'s1',enabled:false,bed_type:'Textured PEI Plate'};
+const state=()=>({printer_administration:{status:'ok',models:['A1 mini','P1S','H2D'],bed_types:['Textured PEI Plate','High Temp Plate'],printers:[{...BASE}]}});
+const create=action=>({ok:true,action,result:{id:'new-printer',version:1}}), tick=()=>new Promise(r=>setImmediate(r));
+async function wait(p){let timer;try{return await Promise.race([p,new Promise((_,j)=>{timer=setTimeout(()=>j(new Error('fixture timeout')),1000)})])}finally{clearTimeout(timer)}}
+function res(status,body,ok=status>=200&&status<300){return{status,ok,json:async()=>body}}
+function fixture(fetch){const document=new D();IDS.forEach(id=>document.getElementById(id));const windows={};let uuid=0;
+ const location={href:''};const context={document,console,location,window:{location,addEventListener(n,f){(windows[n]??=[]).push(f)},reload(){}},Option:class extends E{constructor(t,v){super('option');this.textContent=t;this.value=v}},crypto:{randomUUID:()=>`aaaaaaaa-aaaa-4aaa-8aaa-${String(++uuid).padStart(12,'0')}`},AbortController:class{constructor(){this.signal={}}abort(){}},setTimeout,clearTimeout,fetch};vm.runInNewContext(SCRIPT,context);return{context,document,windows}}
+const form=f=>f.document.getElementById('printer-form');
+function fill(f,o={}){const v={name:'Ny',location:'Rum',model:'P1S',host:'10.0.0.8',serial:'s2',bed:'Textured PEI Plate',code:'secret',...o};for(const [id,x] of [['printer-name',v.name],['printer-location',v.location],['printer-model',v.model],['printer-host',v.host],['printer-serial',v.serial],['printer-bed-type',v.bed],['printer-access-code',v.code]])f.document.getElementById(id).value=x}
+function bodies(log){return log.filter(x=>x.path.endsWith('/commands')).map(x=>JSON.parse(x.options.body))}
+async function loaded(f){await tick();await tick();return f}
+async function success(){const log=[];const f=await loaded(fixture(async(path,options)=>{log.push({path,options});return path.endsWith('/state')?res(200,state()):res(200,create('printer.create'))}));fill(f);form(f).dispatch('submit');await tick();await tick();const b=bodies(log)[0];assert.equal(b.params.enabled,false);assert.match(b.request_id,/^[a-f0-9]{32}$/);assert.equal(f.document.getElementById('printer-access-code').value,'')}
+async function retry(){const log=[];let posts=0;const two=()=>({...state(),printer_administration:{...state().printer_administration,printers:[{...BASE},{...BASE,id:'p2',name:'P2',serial:'s3',host:'10.0.0.9'}]}});const f=await loaded(fixture(async(path,options)=>{log.push({path,options});if(path.endsWith('/state'))return res(200,two());return ++posts===1?res(503,{error:'temporary'},false):res(200,create('printer.update'))}));f.document.getElementById('printers').children[0].children[2].dispatch('click');fill(f);f.document.getElementById('printer-enabled').checked=true;form(f).dispatch('submit');await tick();assert.equal(f.document.getElementById('printer-retry').hidden,false);f.document.getElementById('printer-id').value='p2';f.document.getElementById('printer-name').value='Different printer';form(f).dispatch('submit');f.document.getElementById('printer-retry').dispatch('click');await tick();await tick();assert.deepEqual(bodies(log)[0],bodies(log)[1]);assert.equal(bodies(log).length,2);assert.equal(bodies(log)[0].params.id,'p1')}
+async function conflict(){const log=[];let reads=0;const f=await loaded(fixture(async(path,options)=>{log.push({path,options});if(path.endsWith('/state')){const value=state();if(++reads>1)value.printer_administration.printers[0].version=5;return res(200,value)}return res(409,{error:'changed'},false)}));f.document.getElementById('printers').children[0].children[2].dispatch('click');fill(f,{name:'Edited',model:'H2D',bed:'High Temp Plate',code:''});f.document.getElementById('printer-enabled').checked=true;form(f).dispatch('submit');await tick();await tick();assert.equal(f.document.getElementById('printer-name').value,'Edited');assert.equal(f.document.getElementById('printer-model').value,'H2D');assert.equal(f.document.getElementById('printer-bed-type').value,'High Temp Plate');form(f).dispatch('submit');await tick();assert.equal(bodies(log)[0].expected_version,4);assert.equal(bodies(log)[1].expected_version,4);f.document.getElementById('printers').children[0].children[2].dispatch('click');form(f).dispatch('submit');await tick();assert.equal(bodies(log)[2].expected_version,5)}
+async function invalid(){const log=[];const f=await loaded(fixture(async(path,options)=>{log.push({path,options});return path.endsWith('/state')?res(200,state()):res(200,{ok:true,action:'printer.create',result:{}})}));fill(f);form(f).dispatch('submit');await tick();assert.equal(f.document.getElementById('printer-retry').hidden,false);form(f).dispatch('submit');await tick();assert.equal(bodies(log).length,1)}
+async function confirmed(){const log=[];let n=0;const f=await loaded(fixture(async(path,options)=>{log.push({path,options});if(path.endsWith('/state'))return ++n===1?res(200,state()):res(503,{},false);return res(200,create('printer.create'))}));fill(f);form(f).dispatch('submit');await tick();await tick();assert.equal(f.document.getElementById('printer-retry').hidden,true);assert.equal(bodies(log).length,1)}
+async function late(){let resolve;const log=[];const f=await loaded(fixture((path,options)=>{log.push({path,options});return path.endsWith('/state')?Promise.resolve(res(200,state())):new Promise(r=>resolve=r)}));f.document.getElementById('printers').children[0].children[2].dispatch('click');fill(f,{name:'Inflight'});form(f).dispatch('submit');await tick();f.document.getElementById('printer-location').value='Changed while POST';f.document.getElementById('printers').children[0].children[2].dispatch('click');assert.equal(f.document.getElementById('printer-name').value,'Inflight');assert.equal(f.document.getElementById('printer-location').value,'Changed while POST');for(const fn of f.windows.pagehide??[])fn({});assert.equal(f.document.getElementById('printer-access-code').value,'');resolve({status:200,ok:true,json:async()=>{await tick();return create('printer.update')}});await tick();await tick();assert.equal(bodies(log).length,1);assert.equal(f.document.getElementById('printer-retry').hidden,true);assert.equal(f.document.getElementById('printer-save').disabled,true)}
+async function authAndUnconfigured(){const u=await loaded(fixture(async()=>({status:401,ok:false,json:async()=>{throw Error('bad json')}})));await tick();assert.equal(u.context.location.href,'/kontrolpanel');const log=[];const f=await loaded(fixture(async(path,options)=>{log.push({path,options});return res(200,{printer_administration:{status:'not_configured',printers:[],models:[],bed_types:[]}})}));fill(f);form(f).dispatch('submit');await tick();assert.equal(bodies(log).length,0)}
+async function busy(){let resolve;const log=[];const f=fixture((path,options)=>{log.push({path,options});return new Promise(r=>resolve=r)});fill(f);form(f).dispatch('submit');await tick();assert.equal(bodies(log).length,0);resolve(res(200,state()));await tick();assert.equal(f.document.getElementById('printer-save').disabled,false);f.document.getElementById('printer-refresh').dispatch('click');await tick();fill(f);form(f).dispatch('submit');assert.equal(bodies(log).length,0);resolve(res(200,state()));await tick()}
+async function editDuringSave(){
+ let resolve;
+ const f=await loaded(fixture((path)=>path.endsWith('/state')?Promise.resolve(res(200,state())):new Promise(r=>resolve=r)));
+ fill(f);form(f).dispatch('submit');await tick();
+ f.document.getElementById('printer-location').value='Ny placering under gemning';
+ resolve(res(200,create('printer.create')));await tick();await tick();
+ assert.equal(f.document.getElementById('printer-location').value,'Ny placering under gemning');
+ assert.equal(f.document.getElementById('printer-name').value,'Ny');
+}
+async function lateAbort(){
+ let reject;const log=[];
+ const f=await loaded(fixture((path,options)=>{log.push({path,options});return path.endsWith('/state')?Promise.resolve(res(200,state())):new Promise((_,r)=>reject=r)}));
+ fill(f);form(f).dispatch('submit');await tick();
+ for(const fn of f.windows.pagehide??[])fn({});
+ reject(Object.assign(new Error('aborted'),{name:'AbortError'}));await tick();await tick();
+ f.document.getElementById('printer-retry').dispatch('click');form(f).dispatch('submit');await tick();
+ assert.equal(bodies(log).length,1);
+ assert.equal(f.document.getElementById('printer-retry').hidden,true);
+ assert.equal(f.document.getElementById('printer-access-code').value,'');
+ assert.equal(f.document.getElementById('printer-save').disabled,true);
+}
+(async()=>{for(const t of [editDuringSave,lateAbort,success,retry,conflict,invalid,confirmed,late,authAndUnconfigured,busy])await wait(t());console.log('makerspace printers fixture: ok')})().catch(e=>{console.error(e);process.exitCode=1});

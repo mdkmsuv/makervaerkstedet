@@ -1,0 +1,9 @@
+# Additional tested server/geometry runtime versions. Build artifacts contain
+# these Windows wheels plus requirements.txt, verified as one manifest input.
+cryptography==50.0.1
+cffi==2.1.1
+pycparser==3.0
+psutil==7.2.2
+numpy==2.5.3
+attrs==26.1.0
+colorama==0.4.6

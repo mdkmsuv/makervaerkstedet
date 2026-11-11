@@ -1,0 +1,15 @@
+# This file is sourced by login shells. Keep it harmless for every other user.
+case "${BASH_VERSION:-}" in '') return 0 2>/dev/null || exit 0 ;; esac
+case "$-" in *i*) ;; *) return 0 2>/dev/null || exit 0 ;; esac
+[ "$(id -un 2>/dev/null)" = "{{ adminkonto_ui_bruger | default(adminkonto_navn) }}" ] || return 0
+[ -t 0 ] || return 0
+[ "$(tty 2>/dev/null)" = /dev/tty2 ] || return 0
+[ -z "${SSH_CONNECTION:-}" ] || return 0
+[ -z "${DISPLAY:-}" ] || return 0
+[ "${ELEVHUB_ADMIN_SESSION_STARTED:-}" != 1 ] || return 0
+export ELEVHUB_ADMIN_SESSION_STARTED=1
+/usr/local/bin/elevhub-admin-session
+admin_session_status=$?
+if [ "$admin_session_status" -eq 0 ]; then
+    exit 0
+fi

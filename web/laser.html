@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#c62b2f">
+  <meta name="description" content="Tegn figurer og vælg, hvad der skal skæres og graveres. Gem din tegning som SVG.">
+  <title>Laserværksted · Makerværkstedet</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/laser.css">
+  <link rel="stylesheet" href="/desktop-studio.css">
+  <link rel="stylesheet" href="/school-theme.css">
+  <link rel="stylesheet" href="/laser-workshop.css">
+  <link rel="stylesheet" href="/vinyl-workshop.css">
+  <script src="/vendor/laser.js" defer></script>
+  <script src="/school-theme.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#workspace">Gå til tegningen</a>
+  <header class="header">
+      <div class="brand"><span class="brand-mark" aria-hidden="true"></span><div><span class="brand-school" data-school-name>Makerværkstedet</span><h1>Laserværksted</h1></div></div>
+    <div class="header-note"><span class="status-dot"></span> Tegn din idé <span class="prototype">Prototype</span></div>
+    <div class="header-actions"><a id="workshop-home" href="/" class="home-link">← Vælg værksted</a><button id="help-button" class="quiet">Sådan gør du <span aria-hidden="true">?</span></button></div>
+  </header>
+  <main>
+    <nav class="level-bar" aria-label="Vælg dit niveau">
+      <span>HVOR STARTER DU?</span>
+      <button data-level="0" class="active" aria-pressed="true"><strong>Gør den til din</strong><small>Undersøg og tilpas</small></button>
+      <button data-level="1" aria-pressed="false"><strong>Byg med former</strong><small>Placér og gentag</small></button>
+      <button data-level="2" aria-pressed="false"><strong>Tegn og kombinér</strong><small>Skab egne konturer</small></button>
+      <button data-level="3" aria-pressed="false"><strong>Design og afprøv</strong><small>Undersøg og forbedr</small></button>
+    </nav>
+    <div class="project-bar">
+      <div class="project-name"><label for="project-name">DIN TEGNING</label><input id="project-name" maxlength="60" value="Min nøglering" aria-label="Tegningens navn"><span id="save-status">Kladde på denne computer</span></div>
+      <div class="project-actions"><button id="new-button" class="quiet">Ny tegning</button><button id="library-button" class="secondary" hidden>SVG-bibliotek</button><button id="import-button" class="secondary" title="Åbn en projektfil eller SVG (Ctrl+O)">Åbn projekt <span aria-hidden="true">↑</span></button><button id="save-project" class="primary" title="Gem projekt med lag og redigerbare dele (Ctrl+S)">Gem projekt <span aria-hidden="true">↓</span></button><button id="preview-button" class="secondary">Se resultat</button><button id="export-button" class="secondary">SVG til laser <span aria-hidden="true">↓</span></button><button id="send-button" class="secondary" disabled>Send til læreren <span aria-hidden="true">→</span></button></div>
+      <input id="svg-file" type="file" accept=".svg,image/svg+xml" hidden>
+    </div>
+    <div id="notice" class="notice" role="status" hidden></div>
+    <div class="editor">
+      <aside class="tools-panel" aria-label="Tegneværktøjer">
+        <h2><span class="step">1</span> Lav din figur</h2>
+        <div class="tool-grid">
+          <button class="tool active" data-tool="select" aria-pressed="true"><svg viewBox="0 0 32 32"><path d="m8 4 18 15-9 1-4 8z"/></svg><span>Vælg / flyt</span></button>
+          <button class="tool" data-tool="freehand" aria-pressed="false"><svg viewBox="0 0 32 32"><path d="m7 25 2-7L23 4l5 5-14 14-7 2Zm12-17 5 5M4 29h24"/></svg><span>Tegn frit</span></button>
+          <button class="tool" data-add="rect"><svg viewBox="0 0 32 32"><rect x="5" y="7" width="22" height="18" rx="3"/></svg><span>Firkant</span></button>
+          <button class="tool" data-add="circle"><svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="11"/></svg><span>Cirkel</span></button>
+          <button class="tool" data-add="heart"><svg viewBox="0 0 32 32"><path d="M16 27 5 16C-2 6 10 0 16 9c6-9 18-3 11 7Z"/></svg><span>Hjerte</span></button>
+          <button class="tool" data-add="star"><svg viewBox="0 0 32 32"><path d="m16 3 4 9 10 1-8 7 2 10-8-5-8 5 2-10-8-7 10-1Z"/></svg><span>Stjerne</span></button>
+          <button class="tool" data-tool="line" aria-pressed="false"><svg viewBox="0 0 32 32"><path d="m6 26 20-20"/><circle cx="6" cy="26" r="2"/><circle cx="26" cy="6" r="2"/></svg><span>Streg</span></button>
+          <button class="tool" data-tool="polyline" data-min-level="2" aria-pressed="false"><svg viewBox="0 0 32 32"><path d="m5 24 8-16 8 13 6-14"/><circle cx="5" cy="24" r="2"/><circle cx="13" cy="8" r="2"/><circle cx="21" cy="21" r="2"/><circle cx="27" cy="7" r="2"/></svg><span>Punkt til punkt</span></button>
+          <button class="tool" id="add-image" data-min-level="2"><svg viewBox="0 0 32 32"><rect x="4" y="5" width="24" height="22" rx="2"/><circle cx="11" cy="12" r="3"/><path d="m5 25 8-8 5 5 5-7 5 10"/></svg><span>Billede / trace</span></button><input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
+          <button class="tool" id="add-text"><svg viewBox="0 0 32 32"><path d="M5 9V5h22v4M16 5v22M10 27h12"/></svg><span>Tekst</span></button>
+          <button class="tool" id="add-gear"><svg viewBox="0 0 32 32"><path d="m13 3 6 0 1 4 3 2 4-1 3 5-3 3v3l3 3-3 5-4-1-3 2-1 3h-6l-1-3-3-2-4 1-3-5 3-3v-3l-3-3 3-5 4 1 3-2z" transform="translate(0 -2) scale(.95)"/><circle cx="15" cy="14" r="4"/></svg><span>Tandhjul</span></button>
+          <button class="tool" data-tool="nodes" data-min-level="2" aria-pressed="false"><svg viewBox="0 0 32 32"><path d="M5 23C9 4 23 28 27 9"/><rect x="2" y="20" width="6" height="6"/><rect x="24" y="6" width="6" height="6"/></svg><span>Punkter / kurver</span></button>
+        </div>
+        <section class="starter" aria-labelledby="starter-title"><h3 id="starter-title">Gør den til din</h3><p id="starter-intro" class="muted">Vælg en starttegning, og giv den dit eget udtryk.</p><div id="starter-projects" class="studio-starter-list"></div><button id="starter-library" class="text-button">Se projekterne på dette niveau</button></section>
+        <div class="box-generator" data-min-level="3"><h3>Design og afprøv · Kasse</h3><p class="muted">Generér fingersamlinger fra Boxes.py og redigér dem videre i tegningen.</p><button id="box-button" class="secondary">Åbn kassegenerator</button></div>
+        <div class="combine-tools" data-min-level="2"><h3>Sæt figurer sammen</h3><button id="unite" class="secondary" disabled>Saml til én figur</button><button id="subtract" class="secondary" disabled>Lav hul med øverste figur</button><button id="intersect" class="secondary" data-min-level="3" disabled>Behold overlap</button><button id="exclude" class="secondary" data-min-level="3" disabled>Fjern overlap</button><p class="muted">Vælg to lukkede figurer med Shift.</p></div>
+        <p class="tool-tip" id="tool-tip">Klik på en figur. Træk for at flytte den.</p>
+        <div class="board-settings"><h3>Papirets størrelse</h3><div class="paired"><label>Bredde <span class="unit-input"><input id="board-width" type="number" min="30" max="600" value="180"><span>mm</span></span></label><label>Højde <span class="unit-input"><input id="board-height" type="number" min="30" max="600" value="120"><span>mm</span></span></label></div><label class="check"><input id="snap" type="checkbox" checked> Følg gitteret (1 mm)</label></div>
+      </aside>
+      <section class="drawing-panel" aria-label="Tegneområde">
+        <div class="canvas-toolbar"><div><button id="undo" class="icon-button" aria-label="Fortryd" title="Fortryd (Ctrl+Z)">↶</button><button id="redo" class="icon-button" aria-label="Gendan" title="Gendan (Ctrl+Y)">↷</button><span class="toolbar-divider"></span><button id="duplicate" class="small-button" disabled>Kopiér</button><button id="delete" class="small-button" disabled>Slet</button></div><div><button id="zoom-out" class="icon-button" aria-label="Zoom ud">−</button><button id="zoom-reset" class="small-button" title="Vis hele papiret">100 %</button><button id="zoom-in" class="icon-button" aria-label="Zoom ind">+</button></div></div>
+        <div id="point-toolbar" class="point-toolbar" hidden><p><strong>Punkt til punkt</strong><span id="point-hint">Klik på papiret for at sætte det første punkt.</span></p><div><button id="point-finish" class="secondary" disabled title="Afslut med Enter">Afslut streg</button><button id="point-close" class="secondary" disabled>Luk figur</button><button id="point-back" class="quiet" disabled title="Fjern seneste punkt med Backspace eller Ctrl+Z">Fjern punkt</button><button id="point-cancel" class="quiet" title="Annullér med Escape">Annullér</button></div></div>
+        <div id="node-toolbar" class="node-toolbar" hidden><p id="node-hint">Træk i stregen for at bøje den. Dobbeltklik på stregen for at tilføje et punkt.</p><div><button id="node-add" class="secondary" aria-pressed="false">Tilføj punkt</button><button id="node-smooth" class="secondary" disabled>Gør blødt</button><button id="node-corner" class="secondary" disabled>Lav hjørne</button><button id="node-delete" class="quiet" disabled>Slet punkt</button><button id="curve-straight" class="secondary" disabled>Gør streg lige</button><button id="contour-close" class="quiet" disabled>Luk kontur</button><button id="contour-open" class="quiet" disabled>Åbn kontur</button><button id="nodes-done" class="quiet">Færdig</button></div><label class="check"><input id="handle-link" type="checkbox" checked> Følg begge håndtag · hold Alt for at flytte ét</label></div>
+        <div id="workspace" class="workspace" tabindex="0" aria-label="Din tegning. Vælg figurer med musen eller listen. Brug piletaster til at flytte og Delete til at slette.">
+          <svg id="drawing" xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 196 136" role="img" aria-label="Tegning i millimeter">
+            <defs><pattern id="grid-small" width="1" height="1" patternUnits="userSpaceOnUse"><path d="M1 0H0V1" fill="none" stroke="#ececea" stroke-width="0.07"/></pattern><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="url(#grid-small)"/><path d="M10 0H0V10" fill="none" stroke="#d8d8d4" stroke-width="0.16"/></pattern></defs>
+            <rect id="paper-shadow" x="1" y="1.5" width="180" height="120" fill="#0000000a"/>
+            <rect id="paper" width="180" height="120" fill="white" stroke="#d5d5d0" stroke-width="0.2"/>
+            <rect id="paper-grid" width="180" height="120" fill="url(#grid)" pointer-events="none"/>
+            <g id="items"></g><g id="selection" aria-hidden="true"></g><g id="draft" pointer-events="none"></g>
+          </svg>
+          <div id="empty-state" class="empty-state" hidden><strong>Hvad vil du lave?</strong><span>Vælg en figur eller tegn frit.</span></div>
+        </div>
+        <div class="canvas-footer"><span id="board-label">180 × 120 mm</span><span id="selection-status">Vælg en figur for at begynde</span><span class="legend"><i class="cut-dot"></i> Skær <i class="engrave-dot"></i> Gravér</span></div>
+      </section>
+      <aside class="properties-panel" aria-label="Figurens indstillinger">
+        <h2><span class="step">2</span> Vælg, hvad der sker</h2>
+        <p class="muted" id="operation-help">Vælg en figur på tegningen.</p>
+        <div class="operation-options" id="operation-options">
+          <button class="operation cut" data-op="cut" disabled aria-pressed="false"><span class="operation-symbol">✂</span><span><strong>Skær</strong><small>Hele vejen igennem</small></span><span class="radio-dot"></span></button>
+          <button class="operation engrave" data-op="engrave" disabled aria-pressed="false"><span class="operation-symbol">▧</span><span><strong>Gravér</strong><small>En tegning på overfladen</small></span><span class="radio-dot"></span></button>
+        </div>
+        <div id="engrave-options" class="engrave-options" hidden><label for="engrave-mode">Hvordan skal vi gravere?</label><select id="engrave-mode"><option value="engrave-line">Følg stregerne</option><option value="engrave-fill">Udfyld figuren</option></select></div>
+        <button id="offset-button" class="secondary offset-button" data-min-level="2" hidden disabled>Skærelinje rundt om …</button>
+        <section id="object-properties" class="object-properties" hidden>
+          <label for="object-name">Figurens navn</label><input id="object-name" maxlength="60">
+          <div id="image-properties" hidden><p class="muted">Figurens konturer følger med til læreren.</p><button id="edit-image-trace" class="secondary">Trace / justér billede</button><button id="image-to-path" class="text-button" data-min-level="2">Lav redigerbare vektorstreger</button><p class="muted" data-min-level="3">Ved konvertering bruges kun konturerne. Fortryd gendanner billedet.</p><p id="image-resolution" class="muted"></p></div>
+          <div id="text-properties" hidden><label for="text-value">Din tekst</label><input id="text-value" maxlength="80"><label for="text-size">Bogstavstørrelse (mm)</label><input id="text-size" type="number" min="2" max="60" step="1"></div>
+          <div id="gear-properties" hidden><label for="gear-teeth">Antal tænder</label><input id="gear-teeth" type="number" min="17" max="48" step="1" value="20"><label for="gear-hole">Hul i midten (mm)</label><input id="gear-hole" type="number" min="0" max="12" step="0.5" value="4"><p class="muted">Tandhjul fra generatoren har samme tandstørrelse. Ændr antal tænder for at lave et større hjul.</p></div>
+          <div class="paired"><label>Bredde <span class="unit-input"><input id="object-width" type="number" min="0.5" max="600" step="0.5"><span>mm</span></span></label><label>Højde <span class="unit-input"><input id="object-height" type="number" min="0.5" max="600" step="0.5"><span>mm</span></span></label></div>
+          <label class="check"><input id="lock-ratio" type="checkbox" checked> Behold figurens form</label>
+          <div class="paired position"><label>X (mm)<input id="object-x" type="number" step="1"></label><label>Y (mm)<input id="object-y" type="number" step="1"></label></div>
+          <button id="center-on-page" class="secondary">Centrér på arbejdsområdet</button><div class="rotate-row"><button id="rotate-left" class="secondary" title="Drej 15° til venstre">↶ Drej</button><button id="rotate-right" class="secondary" title="Drej 15° til højre">Drej ↷</button></div>
+          <button id="svg-source-button" class="text-button" data-min-level="3">Vis SVG-koden</button>
+        </section>
+        <section id="advanced-tools" class="advanced-tools" data-min-level="1">
+          <details open><summary>Placering og størrelse</summary><div class="compact-grid"><button id="flip-x" class="secondary">Spejl ↔</button><button id="flip-y" class="secondary">Spejl ↕</button></div><div class="angle-row" data-min-level="3"><label>Drej (grader)<input id="rotation-angle" type="number" min="-360" max="360" value="15"></label><button id="rotate-exact" class="secondary">Drej</button></div><label>Justér i forhold til<select id="align-reference"><option value="selection">Valgte figurer</option><option value="page">Papiret</option></select></label><div class="compact-grid three"><button data-align="left" class="secondary">Venstre</button><button data-align="cx" class="secondary">Midt ↔</button><button data-align="right" class="secondary">Højre</button><button data-align="top" class="secondary">Top</button><button data-align="cy" class="secondary">Midt ↕</button><button data-align="bottom" class="secondary">Bund</button></div><div class="compact-grid"><button data-distribute="x" class="secondary">Fordel ↔</button><button data-distribute="y" class="secondary">Fordel ↕</button></div></details>
+          <details open><summary>Grupper og rækkefølge</summary><div class="compact-grid"><button id="group-objects" class="secondary">Gruppér</button><button id="ungroup-objects" class="secondary">Ophæv gruppe</button><button id="bring-front" class="secondary">Vis forrest</button><button id="send-back" class="secondary">Vis bagerst</button><button id="copy-objects" class="secondary">Kopiér</button><button id="paste-objects" class="secondary">Sæt ind</button></div><p class="muted">Træk en ramme for at vælge flere. Ctrl+C / Ctrl+V kopierer i værkstedet.</p></details>
+        </section>
+        <details id="drawing-check" class="drawing-check" hidden open><summary>Ret inden aflevering</summary><div id="drawing-issues"></div></details><section class="objects-section"><div class="section-heading"><h3>Dine dele</h3><span id="object-count">0</span></div><div id="layer-summary" class="layer-summary" aria-label="Lag i projektet"></div><div id="object-list" class="object-list"></div></section>
+      </aside>
+    </div>
+    <div class="bottom-strip"><span><strong id="readiness">Alle dele har et valg</strong><span id="readiness-detail"> · Gem tegningen, når du er tilfreds.</span></span><span class="muted">Gem projekt, eller send den færdige tegning til læreren.</span></div>
+  <section id="latest-receipt" class="latest-receipt" hidden aria-live="polite" aria-labelledby="latest-receipt-title"><strong id="latest-receipt-title">Seneste aflevering</strong><span id="latest-receipt-text"></span><small id="latest-receipt-note">Kvitteringen gælder den kopi, der blev sendt. Ændringer i tegningen kræver en ny aflevering.</small></section>
+  <div id="connection-state" class="connection-state" role="status"><span id="connection-message"></span><button id="retry-connection" class="text-button" type="button">Prøv forbindelsen igen</button></div></main>
+  <dialog id="library-dialog" class="library-dialog" aria-labelledby="library-title">
+    <div class="dialog-header"><h2 id="library-title">SVG-bibliotek</h2><button class="icon-button" data-close="library-dialog" aria-label="Luk bibliotek">×</button></div>
+    <p id="library-intro">Vælg figurer fra Skoleværkstedet. Din tegning bliver bevaret.</p>
+    <div class="library-filters"><label>Søg efter en figur<input id="library-search" type="search" maxlength="100"></label><label>Kategori<select id="library-category"><option value="">Alle kategorier</option></select></label></div>
+    <p id="library-status" role="status"></p><div id="library-grid" class="library-grid" tabindex="0" role="region" aria-label="Figurer i SVG-biblioteket"></div>
+    <div class="dialog-footer"><button id="library-prev" class="secondary">Forrige side</button><span id="library-page" aria-live="polite"></span><button id="library-next" class="secondary">Næste side</button><button class="primary" data-close="library-dialog">Tegn videre</button></div>
+  </dialog>
+  <dialog id="preview-dialog" class="preview-dialog"><div class="dialog-header"><div><p class="eyebrow">DIN FÆRDIGE TEGNING</p><h2>Forhåndsvisning</h2></div><button class="icon-button" data-close="preview-dialog" aria-label="Luk forhåndsvisning">×</button></div><div class="preview-tabs" role="group" aria-label="Vis dele af tegningen"><button data-preview="all" class="active" aria-pressed="true">Alt</button><button data-preview="cut" aria-pressed="false">Kun skæring</button><button data-preview="engrave" aria-pressed="false">Kun gravering</button></div><div id="preview-area"></div><p class="preview-note">Rød: skær igennem. Blå: gravér på overfladen. Det endelige udseende afhænger af materialet.</p><div id="preview-issues"></div><div class="dialog-footer"><button class="secondary" data-close="preview-dialog">Tegn videre</button><button id="preview-export" class="primary">SVG til laser ↓</button></div></dialog>
+  <dialog id="help-dialog"><div class="dialog-header"><h2>Hjælp til tegneværkstedet</h2><button class="icon-button" data-close="help-dialog" aria-label="Luk hjælp">×</button></div><ol class="help-steps"><li><strong>Tegn.</strong> Brug former, tekst eller frihånd. Træk i hjørnerne for at ændre størrelse.</li><li><strong>Skær eller Gravér.</strong> Vælg en del, og vælg derefter, hvad laseren skal gøre.</li><li><strong>Gem.</strong> Gem projekt bevarer redigerbar tekst, billeder og lag. SVG til laser er filen til maskinen.</li></ol><p>Hold Shift nede for at vælge flere dele. Piletaster flytter 1 mm. Ctrl+Z fortryder.</p><p data-min-level="2"><strong>Punkt til punkt:</strong> Klik for at lave et hjørne. Hold musen nede og træk ved et nyt punkt for at lave en kurve. Enter afslutter stregen; klik på første punkt for at lukke figuren.</p><p data-min-level="2"><strong>Punkter / kurver:</strong> Træk i stregen for at bøje den. Klik på et punkt for at se håndtagene, der styrer buen. Dobbeltklik på stregen for at tilføje et punkt. Alt flytter ét håndtag; Shift låser retningen.</p><p class="muted">Tegningen gemmes automatisk i browseren. Brug Gem projekt (Ctrl+S), hvis du vil have en kopi som fil.</p><div class="dialog-footer"><button class="primary" data-close="help-dialog">Luk</button></div></dialog>
+  <dialog id="image-dialog" class="image-dialog"><div class="dialog-header"><div><p class="eyebrow">FRA BILLEDE TIL FIGUR</p><h2>Billede / trace</h2></div><button class="icon-button" data-close="image-dialog" aria-label="Luk billedværktøj">×</button></div><p>Tracing finder kanterne i de mørke dele. Tegninger og silhuetter med tydelige kanter er nemmest.</p><div class="trace-previews"><figure><figcaption>Din figur · røde streger viser skærekonturerne</figcaption><div id="image-trace-preview"></div></figure></div><div class="trace-controls"><label for="trace-threshold">Hvor meget skal med? <output id="trace-threshold-value">150</output><input id="trace-threshold" type="range" min="1" max="254" value="150"><span class="muted">Træk mod højre for at få lysere områder med.</span></label><label for="trace-smoothing">Udglatning<select id="trace-smoothing"><option value="0.5">Mange detaljer</option><option value="1" selected>Normal</option><option value="2">Bløde kurver</option><option value="4">Færre små detaljer</option></select></label></div><p id="trace-status" role="status"></p><p class="muted">En tyk streg får to konturer. Nye figurer starter som Skær. Du kan vælge Gravér bagefter.</p><div class="dialog-footer"><button class="secondary" data-close="image-dialog">Annullér</button><button id="insert-trace" class="primary" disabled>Indsæt figur</button></div></dialog>
+  <dialog id="new-dialog"><h2>Begynd på en ny tegning?</h2><p>Gem projekt først, hvis du vil beholde tegningen.</p><div class="dialog-footer"><button class="secondary" data-close="new-dialog">Tilbage</button><button id="save-and-new" class="secondary">Gem projekt og start nyt</button><button id="confirm-new" class="primary">Ny, tom tegning</button></div></dialog>
+  <dialog id="starter-dialog" aria-labelledby="starter-dialog-title"><h2 id="starter-dialog-title">Åbn <span id="starter-name"></span>?</h2><p>Det valgte projekt erstatter din nuværende tegning. Du kan gemme en kopi af din tegning på computeren, før du åbner projektet.</p><p class="muted">Du kan fortryde projektskiftet, mens siden er åben.</p><div class="dialog-footer"><button class="secondary" data-close="starter-dialog">Behold min tegning</button><button id="save-and-starter" class="primary">Gem min tegning og åbn projektet</button><button id="confirm-starter" class="secondary">Åbn projektet</button></div></dialog><dialog id="source-dialog"><div class="dialog-header"><h2>SVG for den valgte figur</h2><button class="icon-button" data-close="source-dialog" aria-label="Luk SVG-kode">×</button></div><textarea id="svg-source" readonly rows="12" aria-label="SVG-kode"></textarea><p class="muted">Markér og kopiér koden, hvis du vil bruge den et andet sted.</p></dialog>
+  <dialog id="offset-dialog" class="offset-dialog">
+    <div class="dialog-header"><div><p class="eyebrow">OFFSET · EN KANT OM DIN FIGUR</p><h2>Skærelinje rundt om</h2></div><button class="icon-button" data-close="offset-dialog" aria-label="Luk offset">×</button></div>
+    <p>Vælg afstanden fra din figur til den nye skærelinje. Grå viser din figur, og rød viser den nye linje.</p>
+    <div id="offset-preview" aria-label="Forhåndsvisning af offset"></div>
+    <div class="offset-controls"><label for="offset-distance">Afstand fra figuren <span class="unit-input"><input id="offset-distance" type="number" min="0.1" max="30" step="0.1" value="2"><span>mm</span></span></label><label for="offset-corners">Hjørner<select id="offset-corners"><option value="round">Runde</option><option value="miter">Skarpe</option></select></label></div>
+    <label class="check"><input id="offset-holes" type="checkbox"> Medtag indvendige huller</label>
+    <p class="muted">Din figur bliver i tegningen, og skærelinjen kan flyttes for sig. Slet figuren bagefter, hvis du kun vil bruge den nye skærelinje.</p>
+    <p id="offset-status" role="status"></p>
+    <div class="dialog-footer"><button class="secondary" data-close="offset-dialog">Annullér</button><button id="insert-offset" class="primary" disabled>Tilføj skærelinje</button></div>
+  </dialog>
+  <dialog id="box-dialog" class="box-dialog">
+    <div class="dialog-header"><div><p class="eyebrow">DESIGN OG AFPRØV · BOXES.PY</p><h2>Lav en kasse</h2></div><button class="icon-button" data-close="box-dialog" aria-label="Luk kassegenerator">×</button></div>
+    <p>Vælg kassens indvendige mål. Resultatet kommer ind som redigerbare skærelinjer i din nuværende tegning.</p>
+    <div class="box-controls">
+      <label for="box-width">Bredde <span class="unit-input"><input id="box-width" type="number" min="20" max="300" step="1" value="80"><span>mm</span></span></label>
+      <label for="box-depth">Dybde <span class="unit-input"><input id="box-depth" type="number" min="20" max="300" step="1" value="60"><span>mm</span></span></label>
+      <label for="box-height">Højde <span class="unit-input"><input id="box-height" type="number" min="20" max="300" step="1" value="40"><span>mm</span></span></label>
+      <label for="box-thickness">Materiale <span class="unit-input"><input id="box-thickness" type="number" min="1.5" max="10" step="0.1" value="3"><span>mm</span></span></label>
+      <label for="box-burn">Brændingskorrektion (½ kerf) <span class="unit-input"><input id="box-burn" type="number" min="0" max="1" step="0.05" value="0.1"><span>mm</span></span></label>
+    </div>
+    <p class="muted">Boxes.py bruger halvdelen af den målte kerfbredde. Ved 0,2 mm målt kerf skriver du cirka 0,1 mm. Brug skolens afprøvede materialeindstilling.</p>
+    <div id="box-preview" class="box-preview" role="img" aria-label="Forhåndsvisning af kassen"></div>
+    <p id="box-status" role="status"></p>
+    <div class="dialog-footer"><button class="secondary" data-close="box-dialog">Annullér</button><button id="box-generate" class="secondary">Opdatér forhåndsvisning</button><button id="box-insert" class="primary" disabled>Indsæt i tegningen</button></div>
+  </dialog>
+  <div id="toast" class="toast" role="status" hidden></div>
+  <dialog id="send-dialog" aria-labelledby="send-title" aria-describedby="send-question">
+    <div class="dialog-header"><h2 id="send-title">Send til læreren</h2><button class="icon-button" data-close="send-dialog" aria-label="Luk aflevering">×</button></div>
+    <p id="send-question"><strong>Er der kun det, du vil skære eller gravere, i din tegning?</strong><br>Se tegningen igennem. Gå tilbage og slet de dele, du ikke vil have med.</p>
+    <form id="send-form">
+      <div class="send-review-grid">
+        <div><div id="send-preview" role="img" aria-label="Din tegning til læreren"></div><p class="preview-note">Rød = skæring · Blå = gravering</p></div>
+        <div class="send-details"><label for="student-name">Dit navn</label><input id="student-name" maxlength="60" required autocomplete="off"><label for="student-class">Din klasse</label><input id="student-class" maxlength="40" placeholder="Fx 3.A" required autocomplete="off"><label for="student-project">Projekt</label><input id="student-project" maxlength="60" required></div>
+      </div>
+      <p id="send-note" class="muted">Læreren ser den sendte kopi igennem, før den skal laves. Gem projektet separat, hvis du vil kunne arbejde videre; ændringer bagefter kræver en ny aflevering.</p>
+      <h3 id="send-success-title" hidden>Din tegning er sendt!</h3>
+      <p id="send-status" role="status"></p>
+      <div class="dialog-footer"><button type="button" class="secondary" data-close="send-dialog">Tilbage til tegningen</button><button id="confirm-send" type="submit" class="primary">Ja, send til læreren</button></div>
+    </form>
+  </dialog>
+  <script src="/project-import-config.js" defer></script>
+  <script src="/project-import.js" defer></script>
+</body>
+</html>

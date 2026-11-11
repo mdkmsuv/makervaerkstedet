@@ -1,0 +1,12 @@
+[Unit]
+Description=Poll Makervaerkstedet desired packages
+
+[Timer]
+OnBootSec=90s
+OnUnitInactiveSec=60s
+RandomizedDelaySec=10s
+Persistent=true
+Unit=makervaerkstedet-apt-update.service
+
+[Install]
+WantedBy=timers.target

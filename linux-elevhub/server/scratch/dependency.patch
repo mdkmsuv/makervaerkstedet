@@ -1,0 +1,51 @@
+diff --git a/package-lock.json b/package-lock.json
+index 4bf47f0..58053a3 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -18470,7 +18470,9 @@
+       }
+     },
+     "node_modules/hull.js": {
+-      "version": "0.2.10",
++      "version": "1.0.10",
++      "resolved": "git+https://github.com/AndriiHeonia/hull.git#9de6f9549b74fbb68bf4d5a449147b4c1d7cda0a",
++      "integrity": "sha512-piawhEbiBAC1ucPW7vybwvoOr8c5UspFtiz3jVyN8P7PHR0u/EiLdfHMqGqrI7Ar8U76HvaBFOV1SNMccJ+tEg==",
+       "license": "BSD"
+     },
+     "node_modules/human-signals": {
+@@ -40873,7 +40875,7 @@
+       "dependencies": {
+         "@scratch/scratch-svg-renderer": "15.1.1",
+         "grapheme-breaker": "0.3.2",
+-        "hull.js": "0.2.10",
++        "hull.js": "git+https://github.com/AndriiHeonia/hull.git#9de6f9549b74fbb68bf4d5a449147b4c1d7cda0a",
+         "ify-loader": "1.1.0",
+         "linebreak": "0.3.0",
+         "raw-loader": "0.5.1",
+diff --git a/packages/scratch-render/package.json b/packages/scratch-render/package.json
+index 4702c89..fd6e68c 100644
+--- a/packages/scratch-render/package.json
++++ b/packages/scratch-render/package.json
+@@ -56,7 +56,7 @@
+   "dependencies": {
+     "@scratch/scratch-svg-renderer": "15.1.1",
+     "grapheme-breaker": "0.3.2",
+-    "hull.js": "0.2.10",
++    "hull.js": "git+https://github.com/AndriiHeonia/hull.git#9de6f9549b74fbb68bf4d5a449147b4c1d7cda0a",
+     "ify-loader": "1.1.0",
+     "linebreak": "0.3.0",
+     "raw-loader": "0.5.1",
+diff --git a/packages/scratch-render/src/RenderWebGL.js b/packages/scratch-render/src/RenderWebGL.js
+index 54a06cd..d479f5a 100644
+--- a/packages/scratch-render/src/RenderWebGL.js
++++ b/packages/scratch-render/src/RenderWebGL.js
+@@ -1992,6 +1992,9 @@ class RenderWebGL extends EventEmitter {
+ 
+         // Simplify boundary points using hull.js.
+         // TODO: Remove this; this algorithm already generates convex hulls.
++        // Preserve small/empty costume hulls when using the patched hull.js.
++        // In particular, transparent costumes must not produce undefined points.
++        if (hullPoints.length < 4) return hullPoints.slice();
+         return hull(hullPoints, Infinity);
+     }
+ 

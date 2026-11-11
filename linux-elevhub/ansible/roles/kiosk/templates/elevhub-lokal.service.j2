@@ -1,0 +1,29 @@
+# Styres af Ansible (rollen kiosk). Lokale elevapps må kun lytte på loopback.
+[Unit]
+Description=Elevhub lokale elevapps
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User={{ kiosk_bruger }}
+Group={{ kiosk_bruger }}
+ExecStart=/usr/bin/python3 {{ kiosk_lokal_service_dest }} --apps-root {{ kiosk_lokale_apps_root }} --projects {{ kiosk_lokale_projects }} --state {{ kiosk_lokale_state }} --workshop-config /etc/elevhub/project-workshops.json
+WorkingDirectory={{ kiosk_lokal_package_dest }}
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths={{ kiosk_lokale_projects }} {{ kiosk_lokale_state }}
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+# The app server is for this computer only.  The explicit allow-list keeps a
+# compromised asset from opening a LAN connection while preserving loopback.
+IPAddressDeny=any
+IPAddressAllow=127.0.0.0/8
+IPAddressAllow=::1/128
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

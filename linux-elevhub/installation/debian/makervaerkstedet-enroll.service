@@ -1,0 +1,20 @@
+[Unit]
+Description=Optional existing school USB enrollment
+After=local-fs.target
+Before=makervaerkstedet-firstboot.service getty@tty1.service
+ConditionPathExists=!/etc/elevhub/enhed.json
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 -B /usr/lib/makervaerkstedet/enrollment/enroll_device.py
+StandardInput=tty-force
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

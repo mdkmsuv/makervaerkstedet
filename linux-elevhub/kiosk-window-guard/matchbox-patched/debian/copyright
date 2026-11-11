@@ -1,0 +1,24 @@
+This package was debianised by Moray Allan <moray@debian.org> on
+Mon, 12 Jul 2004 20:39:00 +0100.
+
+It was downloaded from http://repository.maemo.org/pool/fremantle/free/m/matchbox-window-manager/
+
+Upstream author: Matthew Allum <mallum@o-hand.com>
+
+Copyright:
+
+   Copyright (C) 2004 Matthew Allum <mallum@o-hand.com>
+   Copyright (c) 2002, 2004 OpenedHand Ltd - http://o-hand.com
+   Copyright (C) 2005 Matthew Allum, OpenedHand Ltd.
+
+   This package is free software; you can redistribute it and/or modify
+   it under the terms of the GNU General Public License as published by
+   the Free Software Foundation; version 2 dated June, 1991.
+
+   This package is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+On Debian GNU/Linux systems, the complete text of the GNU General
+Public License can be found in '/usr/share/common-licenses/GPL-2'.

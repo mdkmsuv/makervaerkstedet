@@ -1,0 +1,58 @@
+From: Jeremy Bicha <jbicha@ubuntu.com>
+Date: Mon, 30 Apr 2018 17:48:12 -0400
+Subject: build: fix configure without gconf
+
+Forwarded: no
+---
+ matchbox-window-manager/configure.ac             | 8 +++++---
+ matchbox-window-manager/data/Makefile.am         | 2 +-
+ matchbox-window-manager/data/schemas/Makefile.am | 4 ----
+ 3 files changed, 6 insertions(+), 8 deletions(-)
+
+Index: matchbox-window-manager-1.2.2+git20200512/configure.ac
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/configure.ac	2020-06-15 15:29:00.224345039 +0100
++++ matchbox-window-manager-1.2.2+git20200512/configure.ac	2020-06-15 15:29:00.220345041 +0100
+@@ -386,11 +386,13 @@
+ 
+   AC_DEFINE(USE_GCONF, [1], [Has GConf Support])	
+ 
+-fi
++  m4_ifdef([AM_GCONF_SOURCE_2], [AM_GCONF_SOURCE_2])
++
++else
+ 
+-AM_GCONF_SOURCE_2
++  AM_CONDITIONAL([GCONF_SCHEMAS_INSTALL], [false])
+ 
+-AM_CONDITIONAL(ENABLE_SCHEMAS, test x$enable_gconf != xno)
++fi
+ 
+ dnl ----- Session Manager ---------------------------------------------------
+ 
+Index: matchbox-window-manager-1.2.2+git20200512/data/Makefile.am
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/data/Makefile.am	2020-06-15 15:29:00.224345039 +0100
++++ matchbox-window-manager-1.2.2+git20200512/data/Makefile.am	2020-06-15 15:29:00.220345041 +0100
+@@ -1,4 +1,4 @@
+-if ENABLE_SCHEMAS
++if GCONF_SCHEMAS_INSTALL
+   SUBDIRS = themes schemas
+ else
+   SUBDIRS = themes
+Index: matchbox-window-manager-1.2.2+git20200512/data/schemas/Makefile.am
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/data/schemas/Makefile.am	2020-06-15 15:29:00.224345039 +0100
++++ matchbox-window-manager-1.2.2+git20200512/data/schemas/Makefile.am	2020-06-15 15:29:00.220345041 +0100
+@@ -1,11 +1,7 @@
+ EXTRA_DIST = matchbox.schemas
+ 
+-if GCONF_SCHEMAS_INSTALL
+-
+ schemadir   = @GCONF_SCHEMA_FILE_DIR@
+ schema_DATA = matchbox.schemas
+ 
+ install-data-local:
+ 	GCONF_CONFIG_SOURCE=$(GCONF_SCHEMA_CONFIG_SOURCE) $(GCONFTOOL) --makefile-install-rule $(srcdir)/$(schema_DATA)
+-
+-endif

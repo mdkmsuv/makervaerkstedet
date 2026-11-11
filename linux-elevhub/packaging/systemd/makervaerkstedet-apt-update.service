@@ -1,0 +1,16 @@
+[Unit]
+Description=Makervaerkstedet authenticated apt update
+After=network-online.target makervaerkstedet-firstboot.service
+Wants=network-online.target
+ConditionPathExists=/etc/makervaerkstedet/apt-client.json
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+ExecStart=/usr/bin/python3 -B /usr/lib/makervaerkstedet/updater/apt_client.py
+# Self replacement must not interrupt dpkg. There are no maintainer restart hooks.
+TimeoutStartSec=infinity
+KillMode=process
+NoNewPrivileges=true
+PrivateTmp=true

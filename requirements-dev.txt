@@ -1,0 +1,5 @@
+# Hardware-free test/template dependencies; runtime dependencies are separate.
+-r requirements-windows-runtime.txt
+Jinja2==3.1.6
+MarkupSafe==3.0.4
+PyYAML==6.0.3

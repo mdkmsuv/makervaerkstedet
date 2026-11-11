@@ -1,0 +1,8 @@
+paho-mqtt==2.1.0
+Pillow==12.3.0
+# Boxes.py dependencies for the Laser Superbruger box addition.  The actual
+# Boxes.py source is vendored at third_party/boxes.py and pinned in its source note.
+affine==3.0.1
+qrcode==8.2
+shapely==2.1.2
+typing_extensions==4.16.0

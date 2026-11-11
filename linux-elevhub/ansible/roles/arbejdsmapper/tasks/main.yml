@@ -1,0 +1,29 @@
+# Lokale arbejdsmapper. Det er organisering, ikke beskyttelse: alle, der bruger
+# den delte elevkonto, kan ændre og slette filerne. Backup kommer i en senere rolle.
+
+- name: Projektmappen findes
+  ansible.builtin.file:
+    path: "{{ arbejdsmapper_hjem }}/{{ arbejdsmapper_rod }}"
+    state: directory
+    owner: "{{ arbejdsmapper_ejer }}"
+    group: "{{ arbejdsmapper_ejer }}"
+    mode: "0755"
+
+- name: Mapper pr. forløb findes
+  ansible.builtin.file:
+    path: "{{ arbejdsmapper_hjem }}/{{ arbejdsmapper_rod }}/{{ item }}"
+    state: directory
+    owner: "{{ arbejdsmapper_ejer }}"
+    group: "{{ arbejdsmapper_ejer }}"
+    mode: "0755"
+  loop: "{{ arbejdsmapper_forloeb }}"
+
+- name: Eksempelfiler i projektmappen
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ arbejdsmapper_hjem }}/{{ arbejdsmapper_rod }}/{{ item.navn }}"
+    owner: "{{ arbejdsmapper_ejer }}"
+    group: "{{ arbejdsmapper_ejer }}"
+    mode: "0644"
+    force: false
+  loop: "{{ arbejdsmapper_eksempelfiler }}"

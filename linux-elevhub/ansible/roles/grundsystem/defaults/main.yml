@@ -1,0 +1,11 @@
+grundsystem_tidszone: Europe/Copenhagen
+
+# Driftskontoen oprettes første gang af den automatiske installation (testmiljoe/vm/preseed.skabelon.cfg).
+# Rollen holder derefter nøgle, sudo-ret og SSH-regler ens på alle computere.
+grundsystem_driftskonto: elevhub
+grundsystem_driftsnoegle: "{{ lookup('ansible.builtin.file', lookup('ansible.builtin.env', 'HOME') + '/.ssh/elevhub_ed25519.pub') }}"
+
+# Udfyld med lærerens adresser eller administrationsnettets CIDR ved udrulning.
+# Tom liste bevarer nøglebaseret adgang uden adressebegrænsning i testmiljøet.
+grundsystem_admin_kilder: []
+grundsystem_sikkerhedsopdateringer: true

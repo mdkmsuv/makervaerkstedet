@@ -1,0 +1,2 @@
+build-udeb/src/matchbox-window-manager /usr/bin/
+debian/S64matchbox-window-manager /lib/debian-installer.d/

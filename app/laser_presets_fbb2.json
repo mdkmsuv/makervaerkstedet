@@ -1,0 +1,130 @@
+{
+  "model": "fbb2",
+  "source": "Beam Studio 2.5.14, app/constants/presets.ts og lang/da.ts",
+  "units": {
+    "power": "%",
+    "speed": "mm/s"
+  },
+  "presets": {
+    "wood_3mm_cutting": {
+      "name": "Træ - 3 mm Skæring",
+      "power": 15,
+      "speed": 15,
+      "repeat": 1
+    },
+    "wood_5mm_cutting": {
+      "name": "Træ - 5 mm Skæring",
+      "power": 45,
+      "speed": 10,
+      "repeat": 1
+    },
+    "wood_7mm_cutting": {
+      "name": "Træ - 7 mm Skæring",
+      "power": 45,
+      "speed": 5,
+      "repeat": 1
+    },
+    "wood_engraving": {
+      "name": "Træ - Gravering",
+      "power": 20,
+      "speed": 500,
+      "repeat": 1
+    },
+    "acrylic_3mm_cutting": {
+      "name": "Akryl - 3 mm Skæring",
+      "power": 55,
+      "speed": 10,
+      "repeat": 1
+    },
+    "acrylic_5mm_cutting": {
+      "name": "Akryl - 5 mm Skæring",
+      "power": 59,
+      "speed": 3,
+      "repeat": 1
+    },
+    "acrylic_8mm_cutting": {
+      "name": "Akryl - 8 mm Skæring",
+      "power": 65,
+      "speed": 3,
+      "repeat": 1
+    },
+    "acrylic_engraving": {
+      "name": "Akryl - Gravering",
+      "power": 13,
+      "speed": 500,
+      "repeat": 1
+    },
+    "mdf_3mm_cutting": {
+      "name": "New Zealand MDF - 3 mm Skæring",
+      "power": 30,
+      "speed": 15,
+      "repeat": 1
+    },
+    "mdf_5mm_cutting": {
+      "name": "New Zealand MDF - 5 mm Skæring",
+      "power": 30,
+      "speed": 10,
+      "repeat": 1
+    },
+    "mdf_engraving": {
+      "name": "New Zealand MDF - Gravering",
+      "power": 30,
+      "speed": 500,
+      "repeat": 1
+    },
+    "leather_3mm_cutting": {
+      "name": "Læder - 3 mm Skæring",
+      "power": 35,
+      "speed": 10,
+      "repeat": 1
+    },
+    "leather_5mm_cutting": {
+      "name": "Læder - 5 mm Skæring",
+      "power": 40,
+      "speed": 10,
+      "repeat": 1
+    },
+    "leather_engraving": {
+      "name": "Læder - Gravering",
+      "power": 30,
+      "speed": 300,
+      "repeat": 1
+    },
+    "fabric_3mm_cutting": {
+      "name": "Stof - 3 mm Skæring",
+      "power": 30,
+      "speed": 20,
+      "repeat": 1
+    },
+    "fabric_5mm_cutting": {
+      "name": "Stof - 5 mm Skæring",
+      "power": 40,
+      "speed": 20,
+      "repeat": 1
+    },
+    "fabric_engraving": {
+      "name": "Stof - Gravering",
+      "power": 15,
+      "speed": 250,
+      "repeat": 1
+    },
+    "slate_engraving": {
+      "name": "Skifer - Gravering",
+      "power": 45,
+      "speed": 500,
+      "repeat": 1
+    },
+    "rubber_bw_engraving": {
+      "name": "Gummi - Gravering",
+      "power": 50,
+      "speed": 200,
+      "repeat": 1
+    },
+    "glass_bw_engraving": {
+      "name": "Glas - Gravering",
+      "power": 30,
+      "speed": 150,
+      "repeat": 1
+    }
+  }
+}

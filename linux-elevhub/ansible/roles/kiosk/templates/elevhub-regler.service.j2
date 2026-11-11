@@ -1,0 +1,26 @@
+# Styres af Ansible (rollen kiosk).
+[Unit]
+Description=Elevhub: lærerens valg for internet på elevcomputeren
+After=network-online.target
+Wants=network-online.target
+# Online lærerregler eller åben offlinetilstand sættes før elevens login.
+Before=getty@tty1.service
+
+[Service]
+User=root
+UMask=0077
+# A pupil must not be able to starve the policy check (and thereby fake
+# "server unreachable") by loading the CPU from the kiosk.
+Nice=-10
+CPUWeight=1000
+IOWeight=1000
+ExecStartPre=/usr/bin/python3 /usr/local/lib/elevhub/elevhub-regler.py --sikker-start
+ExecStart=/usr/bin/python3 /usr/local/lib/elevhub/elevhub-regler.py
+Restart=always
+RestartSec=2
+RuntimeDirectory=elevhub
+RuntimeDirectoryMode=0755
+RuntimeDirectoryPreserve=yes
+
+[Install]
+WantedBy=multi-user.target

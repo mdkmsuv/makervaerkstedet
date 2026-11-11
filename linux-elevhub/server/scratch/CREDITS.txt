@@ -1,0 +1,19 @@
+Scratch editor integration credits
+
+The Scratch editor is developed by the Scratch Foundation and its partners and
+affiliates. See https://scratch.org/.
+
+Upstream source: https://github.com/scratchfoundation/scratch-editor
+Pinned source: v15.1.1 / 99bcc17e0580588f181f8a87577a2f676537a487
+Terms and attribution: https://mitscratch.freshdesk.com/en/support/solutions/articles/4000219182-scratch-terms-of-service
+
+The standard costumes, backdrops and sounds are downloaded from the Scratch
+asset service listed in library-assets-manifest.json. The md5ext names identify
+the downloaded content; this manifest does not assert one common license for
+all media. Media licenses and credits follow the original Scratch metadata and
+the upstream source package. Do not remove the upstream license/trademark
+files or the source.zip link when redistributing this local build.
+
+Local ElevHub integration and offline asset-pack scripts: Mathias Kusk Damgaard.
+This local deployment is an independent school integration and is not an
+official Scratch Foundation endorsement.

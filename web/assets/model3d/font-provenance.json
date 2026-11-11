@@ -1,0 +1,13 @@
+{
+  "font": "Metrophobic Regular",
+  "font_key": "mkv-sans",
+  "format": "TrueType",
+  "source_commit": "d4da54632ddd53631332a5a469183c887b4ea3e1",
+  "source_url": "https://raw.githubusercontent.com/googlefonts/MetrophobicFont/d4da54632ddd53631332a5a469183c887b4ea3e1/fonts/ttf/Metrophobic-Regular.ttf",
+  "font_sha256": "34e4ac3257307c28e6dd14f5d77bb296211f0ddd217607228a5375416ed8ac58",
+  "license": "SIL Open Font License 1.1",
+  "license_sha256": "4eaa1fae0ddbce35cfbc42ec1079f7fd78e4146b1d322630600af07a1e3212a9",
+  "opentype_version": "2.0.0",
+  "opentype_esm_sha256": "e139522ac432bb38fb4878d772012f0ad351993c36d7815d65a9890fb3fe68fb",
+  "runtime_network": "same-origin local font only"
+}

@@ -1,0 +1,143 @@
+/* Klostermarksskolen expression: white/grey surfaces, square controls and
+   restrained bordeaux emphasis, scoped to the foil workshop only. */
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+  border-bottom: 1px solid #d9d9d9;
+  padding-bottom: 6px;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-tabs button {
+  border: 1px solid #d9d9d9;
+  border-radius: 2px;
+  background: #fff;
+  color: #444;
+  padding: 7px 10px;
+  font: inherit;
+  font-size: 12px;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-tabs button.active {
+  border-color: #c62b2f;
+  background: #c62b2f;
+  color: #fff;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-levels {
+  margin-top: 8px;
+  border-top: 1px solid #e1e1e1;
+  padding-top: 7px;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-levels .level-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 5px;
+  min-width: 0;
+  padding: 0 0 12px;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-levels .level-bar > span {
+  display: none;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-levels .level-bar button {
+  max-width: none;
+  min-width: 0;
+  min-height: 42px;
+  padding: 7px 9px;
+  text-align: left;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-levels summary {
+  cursor: pointer;
+  color: #444;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-group-hidden,
+body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-group-hidden[hidden] {
+  display: none !important;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .laser-action-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .laser-action-icon {
+  flex: 0 0 20px;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .laser-action-label {
+  display: inline;
+}
+
+/* Keep the two text actions readable at school laptop widths.  The shared
+   compact studio rules hide or squeeze quiet actions below 1150px; in Folie
+   they are still primary orientation actions and need room for their label. */
+body.desktop-studio.vinyl-studio.vinyl-workshop .project-actions > #help-button,
+body.desktop-studio.vinyl-studio.vinyl-workshop .project-actions > #new-button {
+  display: inline-flex;
+  flex: 0 1 auto;
+  width: auto;
+  min-width: max-content;
+  min-height: 42px;
+  padding-inline: 10px;
+  white-space: nowrap;
+}
+
+/* The inspiration cards use inline SVG previews.  Give them a stable box so
+   a flex/grid row cannot collapse the drawing to a white sliver. */
+body.desktop-studio.vinyl-studio.vinyl-workshop .studio-project-card > svg,
+body.desktop-studio.vinyl-studio.vinyl-workshop .studio-starter-card > svg {
+  display: block;
+  flex: 0 0 auto;
+  min-width: 0;
+  min-height: 44px;
+  overflow: visible;
+  background: #fff;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .canvas-toolbar > div {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .canvas-toolbar .tool[data-tool="select"] {
+  display: inline-flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  min-width: 40px;
+  min-height: 40px;
+  width: auto;
+  gap: 6px;
+  padding: 6px 9px;
+}
+
+body.desktop-studio.vinyl-studio.vinyl-workshop .canvas-toolbar .tool[data-tool="select"] svg {
+  width: 18px;
+  height: 18px;
+}
+
+@media (max-width: 800px) {
+  body.desktop-studio.vinyl-studio.vinyl-workshop .combine-tools {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+}
+
+@media (max-width: 650px) {
+  body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-tabs {
+    margin-bottom: 7px;
+  }
+  body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-tabs button {
+    flex: 1 1 30%;
+  }
+}

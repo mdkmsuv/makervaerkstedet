@@ -1,0 +1,113 @@
+- name: Administrationsadresser har et sikkert format
+  ansible.builtin.assert:
+    that:
+      - grundsystem_admin_kilder is sequence and grundsystem_admin_kilder is not string
+      - grundsystem_admin_kilder | reject('match', '^[0-9a-fA-F:.]+(/[0-9]{1,3})?$') | list | length == 0
+    fail_msg: "grundsystem_admin_kilder skal være en liste af IP-adresser eller CIDR-net."
+    quiet: true
+
+- name: Computernavn svarer til inventory
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Computernavnet kan slås op lokalt
+  ansible.builtin.lineinfile:
+    path: /etc/hosts
+    regexp: '^127\.0\.1\.1\s'
+    line: "127.0.1.1\t{{ inventory_hostname }}"
+
+- name: Tidszone
+  community.general.timezone:
+    name: "{{ grundsystem_tidszone }}"
+
+- name: Tastatur til konsol og grafisk opstart
+  ansible.builtin.include_tasks: tastatur.yml
+
+# Minimalinstallationen har ingen NTP-klient. I Hyper-V passer uret alligevel,
+# men skolens computere skal synkronisere uret over nettet.
+- name: Uret synkroniseres over nettet
+  ansible.builtin.apt:
+    name: systemd-timesyncd
+    state: present
+  register: grundsystem_timesyncd
+
+- name: Tidssynkronisering kører
+  ansible.builtin.systemd_service:
+    name: systemd-timesyncd
+    enabled: true
+    state: started
+  # I --check er pakken ikke installeret endnu, så tjenesten findes ikke.
+  when: not (ansible_check_mode and grundsystem_timesyncd is changed)
+
+- name: SSH-server er installeret
+  ansible.builtin.apt:
+    name: openssh-server
+    state: present
+  register: grundsystem_ssh
+
+- name: Driftskontoen har præcis den godkendte nøgle
+  ansible.posix.authorized_key:
+    user: "{{ grundsystem_driftskonto }}"
+    key: "{{ grundsystem_driftsnoegle }}"
+    exclusive: true
+
+- name: Driftskontoen må bruge sudo uden adgangskode
+  ansible.builtin.copy:
+    dest: "/etc/sudoers.d/{{ grundsystem_driftskonto }}"
+    content: "{{ grundsystem_driftskonto }} ALL=(ALL) NOPASSWD: ALL\n"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+
+- name: SSH kun for driftskontoen og kun med nøgle
+  ansible.builtin.template:
+    src: sshd-elevhub.conf.j2
+    dest: /etc/ssh/sshd_config.d/10-elevhub.conf
+    owner: root
+    group: root
+    mode: "0644"
+    validate: /usr/sbin/sshd -t -f %s
+  notify: Genstart SSH
+
+- name: SSH starter nu og automatisk efter genstart
+  ansible.builtin.systemd_service:
+    name: ssh
+    enabled: true
+    state: started
+  when: not (ansible_check_mode and grundsystem_ssh is changed)
+
+- name: Automatiske sikkerhedsopdateringer
+  when: grundsystem_sikkerhedsopdateringer | bool
+  block:
+    - name: Installer Debians opdateringsværktøj
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: present
+
+    - name: Kun sikkerhedsopdateringer og ingen automatisk genstart
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/99elevhub-security
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          // Styres af Elevhub. En genstart må ikke afbryde en elevs arbejde.
+          #clear Unattended-Upgrade::Origins-Pattern;
+          #clear Unattended-Upgrade::Allowed-Origins;
+          Unattended-Upgrade::Origins-Pattern {
+            "origin=Debian,codename=${distro_codename}-security,label=Debian-Security";
+          };
+          Unattended-Upgrade::Automatic-Reboot "false";
+          Unattended-Upgrade::Remove-Unused-Dependencies "false";
+          APT::Periodic::Update-Package-Lists "1";
+          APT::Periodic::Unattended-Upgrade "1";
+
+    - name: APTs opdateringstimere er aktiveret
+      ansible.builtin.systemd_service:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - apt-daily.timer
+        - apt-daily-upgrade.timer

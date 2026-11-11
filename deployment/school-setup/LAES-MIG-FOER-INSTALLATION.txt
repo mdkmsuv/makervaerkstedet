@@ -1,0 +1,124 @@
+MAKERVÆRKSTEDET — LÆS MIG FØR INSTALLATION
+
+Kreditering: Klostermarksskolen.
+Se docs/TO-OPSAETNINGER.md for den grafiske guide og hjælp til hvert felt.
+
+Dette er en delbar prøveudgave med en Windows x64-styreenhed på skolens eget
+LAN og en elev-ISO til gamle Intel/AMD-PC'er. Rodtræet er ikke uploadklart som
+en generisk offentlig release. Brug én testcomputer og én printer først.
+
+1. WINDOWS-STYREENHED
+
+Udpak hele Windows-pakken på en Windows x64-PC eller Windows-VM. Den skal have
+en fast IPv4-adresse eller DHCP-reservation på det relevante LAN. Skolens IT
+kan frivilligt køre en skrivefri forhåndskontrol fra pakkens rod:
+
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\deployment\school-setup\Setup-School.ps1 -CheckOnly
+
+Dobbeltklik på START.cmd som almindelig bruger. Guiden åbner i et
+Windows-vindue med forklaringer og Næste/Tilbage-knapper. Vælg:
+
+  1. Alt på én Windows-computer.
+  2. Server og separat lasercomputer.
+
+Ved valg 2 installeres serverdelen først. Kopiér dens offentlige
+laser-station-connection.json til lasercomputeren, og vælg derefter
+lasercomputerdelen der. Den opretter ingen ekstra kø eller skole.
+Guiden viser netværksforslag og har en "Kopiér tjekliste til IT"-knap.
+På lasercomputeren vælger du forbindelsesfilen med "Vælg fil…".
+Kontrollér gennemgangen. Kun serverdelen kræver administratoradgang;
+Windows spørger først, når du trykker "Start installation".
+Vent på resultatet af installationen og den lokale efterkontrol.
+En VM er valgfri. Vælg skolens navn, styreenhedens adresse, elevnet i
+CIDR-format, tema og lasermodel. Styreenhedens adresse skal forblive den samme; brug IT's
+IP-reservation eller en fast adresse. En eksisterende installation overskrives
+ikke automatisk. START.cmd er ren installation; -Resume genoptager kun det
+samme afbrudte installationsforsøg, ikke en ny programversion.
+
+Den separate laserstation opdateres med Update-LaserStation.cmd som samme
+Windows-bruger, efter stationen er lukket. Den bevarer forbindelse, identitet,
+plader og driverindstillinger. Stationsopdatering opdaterer ikke serveren.
+Brug genvejen "Stop laserstation" før opdatering; browserlukning stopper ikke
+baggrundsprogrammet. Stop-LaserStation.cmd fra pakken udfører samme handling.
+Lasercomputer, server og elever skal være på det tilladte værkstedsnet.
+
+Der skal være fire adskilte produktveje: ren installation og opdatering for
+Linux-elevcomputere, og ren installation og opdatering for Windows-serveren.
+En VM følger sin rolle og sit operativsystem. Linux-opdatering har en separat
+SSH-/Ansible-administration; ISO'en er til ren installation. Standardpakken
+fra 13. oktober bruger fladt Windows-layout og mangler endnu en færdig
+understøttet serveropdatering. Maintain-School.cmd kræver generation-v1.
+Se docs/KOM-GODT-IGANG.md for aktuel status og krav til databevaring.
+
+2. SKOLEPROFIL PÅ USB
+
+Opsætningen opretter `school-connection.json` under
+`C:\Users\Public\Documents\Elevvaerkstedet`. Filen indeholder offentlige
+forbindelsesoplysninger, ikke private nøgler. I `Manage-School.cmd` bruges
+menupunkt 4 til at kopiere den til en valgt, almindelig USB-mappe.
+
+Del kun skolefilen fra den aktuelle styreenhed. Den afgør, hvilken skole
+elevcomputeren stoler på. Del selve ISO'en og Windows-pakken med andre skoler;
+de opretter deres egen skolefil og egne nøgler.
+
+3. INSTALLÉR ELEVCOMPUTEREN
+
+Skriv ISO'en som et diskbillede til en installations-USB; kopiering af ISO-
+filen alene er ikke nok. ISO'en er Debian amd64 til Intel/AMD-PC'er. Den kan
+muligvis starte på enkelte kompatible x86_64-Chromebooks med passende
+firmware, men model, firmware, administreret status og USB-boot skal valideres
+konkret, før understøttelse loves. ARM-enheder kan ikke bruge ISO'en.
+
+ISO-installationen sletter den valgte interne disk efter en ekstra bekræftelse.
+Kontrollér diskmodel og størrelse, og tag kopi af filer først. Den stopper ved
+flere interne diske i stedet for at gætte. Debian netinst-systempakker kræver
+internet under installationen; værksteder og CaDoodle følger med ISO'en.
+
+4. FØRSTE TILMELDING
+
+På styreenheden åbnes Elevhub skoleadmin. Opret en engangskode og et unikt
+computernavn, for eksempel `vaerksted-01`. Koden gælder i 30 minutter.
+
+På elevcomputeren sættes USB'en med `school-connection.json` i. Vælg skolefilen
+og indtast samme computernavn og engangskode. Styreenheden skal være tilgængelig
+ved denne første tilmelding. Vent mens elevsystemet installerer værkstederne.
+
+En færdig elevcomputer åbner værksteder og Internet, når styreenheden ikke kan
+nås, også efter genstart. Når forbindelsen vender tilbage, gælder lærerens
+aktuelle valg igen. Ved geninstallation af samme computernavn skal den gamle
+tilmelding først afmeldes i skoleadmin; afmelding sletter ikke elevprojekter
+eller køhistorik.
+
+5. PRINT OG LASER
+
+Printer-UI'et kan tilføje og redigere lokale printere. Det indsamler model,
+navn, privat IPv4, serienummer, LAN-kode og pladetype. Ny printer er som
+standard deaktiveret, men læreren kan aktivere den efter kontrol. Tomt LAN-
+felt ved redigering bevarer den eksisterende kode. Læreren kontrollerer og
+frigiver pladen manuelt. Kameravisning giver ingen automatisk vurdering
+eller temperaturgaranti.
+
+Den fysiske laserstation er til Beambox II eller HEXA. Beam Studio installeres
+separat på makerspace-computeren til FLUX-forløb. Forbind skolens egen laser
+og klargør kamera/materialer efter den almindelige laseropsætning. Denne
+udgave starter ikke et fysisk laserjob automatisk. En VM kan drive køerne;
+fysisk laserbetjening sker ved maskinen.
+
+6. SENERE ADMINISTRATION OG STATUS
+
+Genvejen "Makerværkstedet" på serverens skrivebord viser printere,
+elevcomputere, seneste kontakt og versioner. Skoleadmin, menupunkt 8, åbner
+samme panel. Log ind med Elevhub-lærerkoden. Ældre elevinstallationer, der
+endnu ikke melder en softwareversion, vises med ukendt versionsstatus.
+
+`Manage-School.cmd` kan oprette koder, åbne SSH til tilmeldte elevcomputere,
+kontrollere opsætning, vise lokale lærer-/printkoder og åbne paneler. Privat
+SSH-nøgle og serverdata ligger i den beskyttede ProgramData-mappe.
+Sikkerhedskopiér serverdata og elevprojekter efter skolens egen praksis.
+
+Softwarekontroller dækker TLS-tilmelding, forkerte/udløbne koder,
+SSH-identitet, netværksbegrænsning, offline/genforbindelse, diskvalg og
+afvisning af sletning. Fuld målhardwaretest af Windows UAC/firewall/tjenester,
+ISO-forløbet, Chromebook-modeller og fysisk printer/laser er ikke afsluttet.
+Backup/restore, generisk deltaopdatering og samlet produktafinstallation er
+også resterende arbejde.

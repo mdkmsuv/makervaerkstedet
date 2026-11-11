@@ -1,0 +1,18 @@
+[Unit]
+Description=Install CaDoodle and the Elevhub student system
+Wants=network-online.target
+After=network-online.target ssh.service
+ConditionPathExists=!/var/lib/elevhub/installation-complete.json
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /usr/local/lib/elevhub-firstboot.py
+TimeoutStartSec=0
+Restart=on-failure
+RestartSec=60
+StandardOutput=journal+console
+StandardError=journal+console
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

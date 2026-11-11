@@ -1,0 +1,14 @@
+{
+  "component": "updater",
+  "package": "makervaerkstedet-updater",
+  "architecture": "amd64",
+  "minisign_version": "0.12",
+  "minisign_sha256": "2c74dffcc1c9a5ee55957c60971998ace2b89f22585631594ec2152c588af8db",
+  "shared_verifier_sha256": "b03803d7bcf443ff7b0d54314df9b78030bf9ee9ed3f510106559b7aeb8258dc",
+  "minisign_license_sha256": "01aa50818d6609e85a9610b7d04da037e8b28bcf3bb5b5b4963c0c3f7abdabbd",
+  "upstream": "https://github.com/jedisct1/minisign/releases/tag/0.12",
+  "trust": "Publisher public key and apt trust configuration are provisioned separately; no production signing key is packaged.",
+  "minisign_public_key_sha256": "44de94f24b5a84e5dd35d81d7a90052e45a9950c51f93584ad79c4e4019f4aa5",
+  "apt_public_keyring_sha256": "5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f",
+  "apt_fingerprint": "E848EE99A4AAA6F272669B37EC9621E2E28EBCDA"
+}

@@ -1,0 +1,53 @@
+Description: fix build without xsettings
+Author: Moray Allan <moray@debian.org>
+Last-Update: 2018-10-26
+
+Index: matchbox-window-manager-1.2.2+git20200512/configure.ac
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/configure.ac	2020-06-15 15:33:55.032459505 +0100
++++ matchbox-window-manager-1.2.2+git20200512/configure.ac	2020-06-15 15:33:55.012459479 +0100
+@@ -421,11 +421,15 @@
+      mb_have_xsettings="yes"
+      AC_DEFINE(USE_XSETTINGS, [1], [Use XSettings])
+      AC_MSG_RESULT([yes])
++
++     XSETTINGS_CFLAGS=""
++     XSETTINGS_LIBS="-lXsettings-client"
+   else
+      mb_have_xsettings="no"	
+      AC_MSG_RESULT([no])
+   fi
+-
++else
++  mb_have_xsettings="no"
+ fi
+ 
+ dnl ------ GCC flags --------------------------------------------------------
+@@ -474,6 +478,9 @@
+ AC_SUBST(GCONF_CFLAGS)
+ AC_SUBST(GCONF_SCHEMA_SUBDIRS)
+ 
++AC_SUBST(XSETTINGS_CFLAGS)
++AC_SUBST(XSETTINGS_LIBS)
++
+ AC_SUBST(XFIXES_CFLAGS)
+ AC_SUBST(XFIXES_LIBS)
+ 
+Index: matchbox-window-manager-1.2.2+git20200512/src/Makefile.am
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/src/Makefile.am	2020-06-15 15:33:55.032459505 +0100
++++ matchbox-window-manager-1.2.2+git20200512/src/Makefile.am	2020-06-15 15:33:55.028459499 +0100
+@@ -16,11 +16,11 @@
+ 
+ INCLUDES = -DDATADIR=\"$(DATADIR)\" -DCONFDIR=\"$(CONFDIR)\" -DPKGDATADIR=\"$(PKGDATADIR)\" -DPREFIX=\"$(PREFIXDIR)\" $(LIBMB_CFLAGS) $(COMPO_CFLAGS) $(EXPAT_CFLAGS) $(SN_CFLAGS) $(GCONF_CFLAGS) $(XFIXES_CFLAGS) $(XCURSOR_CFLAGS)
+ 
+-matchbox_remote_LDADD = $(LIBMB_LIBS) -lX11 -lXext -lXsettings-client
++matchbox_remote_LDADD = $(LIBMB_LIBS) -lX11 -lXext $(XSETTINGS_LIBS)
+ 
+ matchbox_remote_SOURCES = matchbox-remote.c 
+ 
+-matchbox_window_manager_LDADD = $(LIBMB_LIBS) $(COMPO_LIBS) $(EXPAT_LIBS) $(SN_LIBS) $(GCONF_LIBS) $(XFIXES_LIBS) $(XCURSOR_LIBS) -lX11 -lXext -lXsettings-client
++matchbox_window_manager_LDADD = $(LIBMB_LIBS) $(COMPO_LIBS) $(EXPAT_LIBS) $(SN_LIBS) $(GCONF_LIBS) $(XFIXES_LIBS) $(XCURSOR_LIBS) -lX11 -lXext $(XSETTINGS_LIBS)
+ 
+ matchbox_window_manager_SOURCES =                        \
+ 		   main.c structs.h wm.c wm.h            \

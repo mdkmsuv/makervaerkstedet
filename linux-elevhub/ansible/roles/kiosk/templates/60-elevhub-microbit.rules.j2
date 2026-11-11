@@ -1,0 +1,4 @@
+# Styres af Ansible. micro:bit V1/V2: VID 0d28, PID 0204.
+# Kun den delte elevkonto får rå USB-adgang; ingen nye systemgrupper/sudo-ret.
+# Browserens særskilte WebUSB-politik forhåndsgodkender kun MakeCode.
+ACTION=="add|change", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="0d28", ATTR{idProduct}=="0204", OWNER="{{ kiosk_bruger }}", GROUP="root", MODE="0600"

@@ -1,0 +1,19 @@
+# Styres af Ansible (rollen kiosk).  This is a separate config from Debian's
+# package default, which is disabled by the role.  The listener is loopback
+# only; the per-policy include is rewritten atomically by elevhub-regler.
+http_port 127.0.0.1:3128 ssl-bump generate-host-certificates=off
+visible_hostname elevhub-webproxy
+pid_filename /run/elevhub-webproxy.pid
+cache deny all
+cache_log /dev/null
+access_log none
+cache_store_log none
+unlinkd_program /bin/true
+icon_directory /usr/share/squid/icons
+forwarded_for delete
+via off
+request_header_access Proxy-Authorization deny all
+acl elevhub_client src 127.0.0.1/32
+http_access deny !elevhub_client
+include /etc/elevhub/webproxy-policy.conf
+http_access deny all

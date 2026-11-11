@@ -1,0 +1,114 @@
+# Update-only entry point: it reads the existing account and never changes its
+# password, groups, shell, home, or membership in the pupil kiosk.
+- name: Find the configured local administrator for the update interface
+  ansible.builtin.slurp:
+    src: /etc/elevhub/admin-login.json
+  register: adminkonto_ui_config
+
+- name: Select the existing administrator without changing account credentials
+  ansible.builtin.set_fact:
+    adminkonto_ui_bruger: "{{ (adminkonto_ui_config.content | b64decode | from_json).username }}"
+
+- name: Verify the existing administrator name
+  ansible.builtin.assert:
+    that:
+      - adminkonto_ui_bruger is match('^[a-z][a-z0-9_-]{0,31}$')
+      - adminkonto_ui_bruger not in ['root', elevkonto_navn | default('elev'), grundsystem_driftskonto | default('elevhub')]
+    fail_msg: The configured local administrator name is missing or unsafe.
+    quiet: true
+
+- name: Install the graphical session dependencies for the existing admin
+  ansible.builtin.apt:
+    name:
+      - python3-tk
+      - xinit
+      - matchbox-window-manager
+    state: present
+    install_recommends: false
+    policy_rc_d: 101
+  when: adminkonto_grafisk_opdatering | default(true) | bool
+
+- name: Install the root-protected local update helper
+  ansible.builtin.copy:
+    src: elevhub-local-update.py
+    dest: /usr/local/sbin/elevhub-local-update
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the unprivileged graphical update interface
+  ansible.builtin.copy:
+    src: elevhub-local-update-gui.py
+    dest: /usr/local/bin/elevhub-local-update-gui
+    owner: root
+    group: root
+    mode: "0755"
+  when: adminkonto_grafisk_opdatering | default(true) | bool
+
+- name: Install the local admin X session wrapper
+  ansible.builtin.copy:
+    src: elevhub-admin-xsession.sh
+    dest: /usr/local/bin/elevhub-admin-xsession
+    owner: root
+    group: root
+    mode: "0755"
+  when: adminkonto_grafisk_opdatering | default(true) | bool
+
+- name: Install the tty2 session starter
+  ansible.builtin.copy:
+    src: elevhub-admin-session.sh
+    dest: /usr/local/bin/elevhub-admin-session
+    owner: root
+    group: root
+    mode: "0755"
+  when: adminkonto_grafisk_opdatering | default(true) | bool
+
+- name: Install the fixed return-to-pupil-screen helper
+  ansible.builtin.copy:
+    src: elevhub-admin-return.py
+    dest: /usr/local/sbin/elevhub-admin-return
+    owner: root
+    group: root
+    mode: "0755"
+  when: adminkonto_grafisk_opdatering | default(true) | bool
+
+- name: Install the tty2-only login guard
+  ansible.builtin.template:
+    src: admin-bash-profile.j2
+    dest: /etc/profile.d/elevhub-admin-session.sh
+    owner: root
+    group: root
+    mode: "0644"
+  when: adminkonto_grafisk_opdatering | default(true) | bool
+
+- name: Allow only fixed local update actions for the existing administrator
+  ansible.builtin.copy:
+    dest: /etc/sudoers.d/elevhub-local-update
+    content: >-
+      {{ adminkonto_ui_bruger }} ALL=(root) NOPASSWD:
+      /usr/local/sbin/elevhub-local-update state,
+      /usr/local/sbin/elevhub-local-update check,
+      /usr/local/sbin/elevhub-local-update update,
+      /usr/local/sbin/elevhub-local-update restart,
+      /usr/local/sbin/elevhub-local-update retry,
+      /usr/local/sbin/elevhub-admin-return ""
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Publish the installed files used for package hash verification
+  ansible.builtin.set_fact:
+    adminkonto_update_interface_paths: >-
+      {{
+        ['/usr/local/sbin/elevhub-local-update'] +
+        (
+          [
+            '/usr/local/bin/elevhub-local-update-gui',
+            '/usr/local/bin/elevhub-admin-xsession',
+            '/usr/local/bin/elevhub-admin-session',
+            '/usr/local/sbin/elevhub-admin-return',
+            '/etc/profile.d/elevhub-admin-session.sh'
+          ] if (adminkonto_grafisk_opdatering | default(true) | bool) else []
+        )
+      }}

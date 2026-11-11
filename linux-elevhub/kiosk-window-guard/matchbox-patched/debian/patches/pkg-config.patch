@@ -1,0 +1,17 @@
+Description: fix pkg-config use for cross-compilation
+Author: Moray Allan <moray@debian.org>
+Last-Update: 2018-10-28
+
+Index: matchbox-window-manager-1.2.2+git20200512/configure.ac
+===================================================================
+--- matchbox-window-manager-1.2.2+git20200512.orig/configure.ac	2020-06-15 15:39:13.028740914 +0100
++++ matchbox-window-manager-1.2.2+git20200512/configure.ac	2020-06-15 15:39:13.028740914 +0100
+@@ -129,7 +129,7 @@
+ 
+ else
+    # we need to get PKG_CONFIG set anyway
+-   AC_PATH_PROG(PKG_CONFIG, pkg-config, no)
++   AC_PATH_TOOL(PKG_CONFIG, pkg-config, no)
+ 
+ fi
+ 
