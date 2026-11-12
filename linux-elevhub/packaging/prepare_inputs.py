@@ -7,7 +7,7 @@ from pathlib import Path
 import re
 from build_debian import sha, DEBIAN_COMPONENTS
 
-CORE_VERSION = "2.0.0~20261112.6"
+CORE_VERSION = "2.0.0~20261112.7"
 UPDATER_VERSION = "1.0.0~20261112.5"
 SCRATCH_RECEIPT_SHA256 = "e6526962d7114eb8547b527c41cbed348f1cc8fb8c4d44c635dfb8cb0aa00677"
 
