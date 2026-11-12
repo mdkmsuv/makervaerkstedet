@@ -267,7 +267,9 @@ class HttpTests(unittest.TestCase):
         data=json.loads(body)
         self.assertFalse(data['demo']);self.assertEqual(data['printers'],[])
         status,body=self.request('/api/jobs',cube(),{'X-Filename':'cube.stl','X-Request-ID':'test-request-123456','X-Colour':'any'})
-        self.assertEqual(status,400)
+        # No printers yet is a temporary state: 429, so a device outbox waits instead of rejecting.
+        self.assertEqual(status,429)
+        self.assertIn('tilføje skolens printere',json.loads(body)['error'])
 
     def test_root_and_viewer_are_served_locally(self):
         self.assertEqual(self.request('/')[0],200)

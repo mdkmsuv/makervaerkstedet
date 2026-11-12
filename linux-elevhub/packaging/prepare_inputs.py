@@ -26,6 +26,52 @@ SPECS["core"] = (SPECS["core"][0], CORE_VERSION, SPECS["core"][2],
 # bindings and icon. Keep launching the patched path, not the distro binary.
 SPECS["core"][3].append("matchbox-window-manager (>= 1.2.2+git20200512-2)")
 
+def text_sha(path):
+    """Hash of a text file as committed in Git (LF), whatever the checkout uses."""
+    return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+
+MODEL3D_OUTPUTS = {"model3d-app.js", "model3d-app.js.LEGAL.txt", "model3d-geometry-worker.js", "model3d-manifold.wasm"}
+
+def validate_model3d_bundle(root, built_from=None):
+    """The built 3D editor must be the build of these exact sources.
+
+    web/vendor is not in Git. Without this check an editor change without a
+    rebuild would ship the old bundle with every gate green. Outputs must match
+    byte for byte. The manifest's source hashes must match the folder the
+    bundle was built in (built_from, usually the working copy), and those
+    sources must equal the packaged sources (root) apart from line endings.
+    """
+    root = Path(root)
+    built_from = Path(built_from) if built_from is not None else root
+    manifest = root / "web/vendor/model3d-vendor-manifest.json"
+    if not manifest.is_file():
+        raise ValueError("model3d_build_receipt_required")
+    value = json.loads(manifest.read_text(encoding="utf-8"))
+    outputs = value.get("outputs", {})
+    if value.get("schema") != 1 or set(outputs) != MODEL3D_OUTPUTS:
+        raise ValueError("model3d_complete_bundle_required")
+    for name, record in outputs.items():
+        path = root / "web/vendor" / name
+        if not path.is_file() or sha(path) != record.get("sha256") or path.stat().st_size != record.get("size"):
+            raise ValueError("model3d_bundle_hash_mismatch:" + name)
+    sources = value.get("source_sha256", {})
+    local_js = {p.relative_to(root).as_posix() for p in (root / "web/model3d").rglob("*.js")}
+    if not local_js <= set(sources):
+        raise ValueError("model3d_source_receipt_incomplete")
+    for name, want in sorted(sources.items()):
+        if Path(name).is_absolute() or ".." in Path(name).parts:
+            raise ValueError("model3d_invalid_source_path")
+        if name in ("package.json", "package-lock.json"):
+            # The build script itself refuses dependency versions other than its
+            # pinned manifold/three/opentype/esbuild, so unrelated npm changes
+            # (other tools in package.json) must not block a package build.
+            continue
+        source, built = root / name, built_from / name
+        if not source.is_file() or not built.is_file():
+            raise ValueError("model3d_source_missing:" + name)
+        if want not in (sha(built), text_sha(built)) or text_sha(built) != text_sha(source):
+            raise ValueError("model3d_source_hash_mismatch:" + name + " (byg 3D-editoren igen: node scripts/build_model3d_vendor.mjs, og commit)")
+
 def runtime_descriptor(directory,version):
     descriptor=directory/"runtime-release-student.json"
     data=json.dumps({"schema":1,"release_id":version,"role":"student"},sort_keys=True).encode()+b"\n"
@@ -73,6 +119,8 @@ def main():
     parser.add_argument("--minisign-license", type=Path)
     parser.add_argument("--minisign-provenance", type=Path)
     parser.add_argument("--public-trust-dir", type=Path)
+    parser.add_argument("--vendor-built-from", type=Path,
+                        help="Folder the git-ignored web/vendor bundle was built in (default: --source-root).")
     parser.add_argument("--components", nargs="+", choices=sorted(SPECS), default=list(SPECS))
     args = parser.parse_args()
     old = json.loads(args.legacy_manifest.read_text(encoding="utf-8"))["files"]
@@ -80,9 +128,9 @@ def main():
     for kind in args.components:
         package, version, arch, dependencies = SPECS[kind]
         files = {}
-        def add(source, target, expected=None, mode=0o644):
+        def add(source, target, expected=None, mode=0o644, text=False):
             actual = sha(source)
-            if expected is not None and actual != expected:
+            if expected is not None and (text_sha(source) if text else actual) != expected:
                 raise ValueError("historical_input_hash_mismatch:" + target)
             if target in files:
                 raise ValueError("duplicate_destination:" + target)
@@ -121,7 +169,7 @@ def main():
         elif kind == "updater":
             if any(v is None for v in (args.updater_source,args.shared_verifier,args.minisign,args.minisign_license,args.minisign_provenance,args.public_trust_dir)):
                 raise ValueError("explicit_updater_inputs_required")
-            add(args.shared_verifier,"usr/lib/makervaerkstedet/updater/simple_release.py","b03803d7bcf443ff7b0d54314df9b78030bf9ee9ed3f510106559b7aeb8258dc")
+            add(args.shared_verifier,"usr/lib/makervaerkstedet/updater/simple_release.py","cb3b2c64bdb278e794f2e8c464531f88d4bf9eca3afd9996d70b8baf352a4a86",text=True)
             add(args.minisign,"usr/lib/makervaerkstedet/updater/minisign","2c74dffcc1c9a5ee55957c60971998ace2b89f22585631594ec2152c588af8db",0o755)
             add(args.minisign_license,"usr/share/doc/"+package+"/minisign-LICENSE","01aa50818d6609e85a9610b7d04da037e8b28bcf3bb5b5b4963c0c3f7abdabbd")
             add(args.minisign_provenance,"usr/share/doc/"+package+"/minisign-provenance.json")
@@ -143,7 +191,8 @@ def main():
                 add(args.source_root / "linux-elevhub/kiosk-window-guard" / name, "usr/share/doc/" + package + "/" + name)
         else:
             root = args.source_root
-            add(root/"app/runtime_health.py","usr/lib/makervaerkstedet/runtime_health.py","7aee4e3bbb9fd6da8cf56894f6ef2ce2d44c9f20dc85e55f83b39a18b7c8d64c")
+            add(root/"app/runtime_health.py","usr/lib/makervaerkstedet/runtime_health.py","54c6b4451edce5e451703b661693632c620b0ae284ee795a90161bef7e4b2fe4",text=True)
+            validate_model3d_bundle(root, args.vendor_built_from)
             descriptor=runtime_descriptor(args.output_dir,version)
             add(descriptor,"usr/share/makervaerkstedet/runtime-release.json")
             tree(root / "linux-elevhub/projekter", "usr/local/lib/elevhub/projekter")

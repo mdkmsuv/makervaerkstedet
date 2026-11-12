@@ -235,6 +235,8 @@
     "scripts/verify_microbit_controller.mjs",
     "scripts/verify_print_workshop.cjs",
     "scripts/verify_print_workshop.py",
+    "scripts/verify_laser_projects.mjs",
+    "scripts/verify_model3d_projects.mjs",
     "scripts/verify_project_finish.mjs",
     "scripts/verify_slices.py",
     "scripts/verify_studio_laptop.cjs",
@@ -1387,6 +1389,12 @@
         "lineSha256": "d044734ce5870fe0eb32bbbd29ebd5092ae86f147ee782dbb2e2a864ca98bcab",
         "category": "credential.literal",
         "reason": "Isolated simulated printer credential in an autostart verification harness."
+      },
+      {
+        "path": "scripts/verify_laser_projects.mjs",
+        "lineSha256": "4d4f7d18a268325f842ef0cfcdf1bf44c4b86291bd8a6dc7cb1e78c3d42683e7",
+        "category": "network.local-hostname",
+        "reason": "JavaScript object property for a local test listener used for an ephemeral loopback test port."
       },
       {
         "path": "scripts/verify_project_finish.mjs",

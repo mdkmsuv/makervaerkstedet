@@ -191,8 +191,10 @@ class Outbox:
                 continue
             except (Offline, Closed):
                 return sent
-            except InboxBusy:
-                continue  # Køen eller elevens kvote er fuld lige nu.
+            except InboxBusy as busy:
+                if getattr(busy, 'retry_after', None):
+                    return sent  # Køen tager ikke imod lige nu; prøv hele udbakken senere.
+                continue  # Kun denne elevs kvote er fuld.
             except ValueError as error:
                 self._set_aside(path, f'afvist af serveren: {error}')
                 continue
@@ -339,7 +341,11 @@ class ForwardingInbox:
             if message is not None and error.code == 423:
                 raise Closed(message) from None
             if message is not None and error.code == 429:
-                raise InboxBusy(message) from None
+                busy = InboxBusy(message)
+                # A Retry-After means the whole queue (or this device) is
+                # paused; one without it is a per-pupil quota.
+                busy.retry_after = error.headers.get('Retry-After') if error.headers else None
+                raise busy from None
             raise Unexpected(OFFLINE) from None
         except (URLError, socket.timeout, ssl.SSLError, OSError):
             raise Offline(OFFLINE) from None

@@ -5,6 +5,7 @@ from pathlib import Path
 import tempfile
 import threading
 import unittest
+from unittest.mock import patch
 
 from app import laser_local as local
 from app.server import Application, Handler, Server
@@ -116,6 +117,17 @@ class LocalPrintTests(unittest.TestCase):
         self.assertEqual(self.server.inbox.outbox.waiting()[0].read_bytes(), before)
         self.assertEqual(self.server.inbox.outbox.flush(self.server.inbox.send), 1)
         self.assertEqual(self.request(body=cube())[0], 201)
+        self.assertEqual(queue.db.execute('SELECT count(*) FROM jobs').fetchone()[0], 1)
+
+    def test_full_central_queue_keeps_the_waiting_model_until_there_is_room(self):
+        self.assertEqual(self.request(body=cube())[0], 202)
+        queue = self.central()
+        outbox = self.server.inbox.outbox
+        with patch.object(queue, '_upload_bytes', return_value=1024 ** 3):
+            self.assertEqual(outbox.flush(self.server.inbox.send), 0)
+        self.assertEqual(len(outbox.waiting()), 1, 'a full queue must not reject the pupil\'s model')
+        self.assertFalse(list((outbox.directory / 'afvist').glob('*.json')))
+        self.assertEqual(outbox.flush(self.server.inbox.send), 1)
         self.assertEqual(queue.db.execute('SELECT count(*) FROM jobs').fetchone()[0], 1)
 
     def test_retry_response_rules_preserve_or_set_aside_the_model(self):

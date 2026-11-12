@@ -167,8 +167,12 @@ const addressContext = {URL, adresse: app => app.address};
 vm.runInNewContext(addressFunction, addressContext);
 assert.equal(addressContext.model3dAdresse({address: 'http://example.test/proxy/'}), 'http://example.test/proxy/model3d.html');
 assert.equal(addressContext.model3dAdresse({address: 'http://example.test/'}), 'http://example.test/model3d.html');
-const offlineBlock = template.match(/const OFFLINE_APPS = \[([\s\S]*?)\];/)[1];
-const offlineIds = [...offlineBlock.matchAll(/id: '([^']+)'/g)].map(match => match[1]);
-assert.deepEqual(offlineIds.sort(), [...retained].sort(), 'offline fallback contains exactly the retained workshops');
+// The offline list now comes from the installed app manifests, which the core
+// package writes from APP_MANIFESTS. Every retained local workshop needs one.
+assert.equal(/const OFFLINE_APPS\b/.test(template), false, 'no hard-coded offline list next to the manifests');
+const packaging = fs.readFileSync(path.join(__dirname, '..', 'packaging', 'prepare_inputs.py'), 'utf8');
+const manifestBlock = packaging.match(/APP_MANIFESTS = \{([\s\S]*?)\n\}/)[1];
+const manifestIds = [...manifestBlock.matchAll(/\("([a-z0-9]+)",/g)].map(match => match[1]);
+assert.deepEqual(manifestIds.sort(), retained.filter(id => id !== 'internet').sort(), 'every retained local workshop has an app manifest');
 
 console.log('creative hub visibility regression: ok');

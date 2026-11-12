@@ -46,6 +46,17 @@ class SubmissionBlocked(ValueError):
         self.retry_after = retry_after
 
 
+class QueueUnavailable(SubmissionBlocked):
+    """The queue cannot take any model right now; the same upload may succeed later.
+
+    Sent as 429 with Retry-After, so a pupil device's print outbox keeps the
+    model and tries again instead of treating it as a rejected file.
+    """
+
+    def __init__(self, message):
+        super().__init__(message, 60)
+
+
 def normalize_colour(value):
     value = str(value or "").lstrip("#").upper()
     return "#" + value[:6] if re.fullmatch(r"[0-9A-F]{6}([0-9A-F]{2})?", value) else None
@@ -717,17 +728,17 @@ class Queue:
             # this point; dispatch will wait for its later readiness report.
             enabled_printers = [pid for pid, printer in self.printers.items() if printer["enabled"]]
             if not self.demo and not enabled_printers:
-                raise ValueError("En voksen skal tilføje skolens printere først.")
+                raise QueueUnavailable("En voksen skal tilføje skolens printere først.")
             if enabled_printers and not any(self.fits(meta, pid) for pid in enabled_printers):
                 raise ValueError("Modellen er for stor til printerne. Gør den mindre i dit tegneprogram.")
             if colour and not any(t["colour"] == colour for p in self.printers.values() if p["enabled"] for t in self.available_trays(p)):
                 raise ValueError("Farven er ikke længere tilgængelig. Vælg en anden farve eller Ligemeget.")
             count = self.db.execute("SELECT count(*) FROM jobs WHERE status NOT IN ('done','failed','cancelled')").fetchone()[0]
             if count >= 100:
-                raise ValueError("Køen er fuld. Spørg en voksen, og prøv igen senere.")
+                raise QueueUnavailable("Køen er fuld. Spørg en voksen, og prøv igen senere.")
             used = self._upload_bytes()
             if used + len(data) > 1024**3:
-                raise ValueError("Der er ikke mere plads til modeller. Bed en voksen rydde op.")
+                raise QueueUnavailable("Der er ikke mere plads til modeller. Bed en voksen rydde op.")
             self._check_print_trigger(source)
             job_id = uuid.uuid4().hex
             name = Path(filename.replace("\\", "/")).name[:120]

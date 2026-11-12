@@ -40,8 +40,12 @@ def apps(mode: str) -> list[dict]:
     ] if mode == "closed" else [
         ("laser", True), ("scratch", True), ("microbit", True), ("internet", True),
     ]
-    return [{"id": name, "aaben": opened, "klar": True, "type": "browser" if name == "internet" else "web" if name == "microbit" else "vaerksted", "navn": name,
-             **({"start_url": "https://internet.example.test/"} if name == "internet" else {"start_url": "https://makecode.microbit.org/"} if name == "microbit" else {})}
+    # Types as in server/elevhub/konfiguration.json: laser is hosted on the
+    # school server (with a local package on the device), Scratch is local.
+    types = {"internet": "browser", "microbit": "web", "scratch": "lokal", "laser": "vaerksted"}
+    return [{"id": name, "aaben": opened, "klar": True, "type": types[name], "navn": name,
+             **({"start_url": "https://internet.example.test/"} if name == "internet" else {"start_url": "https://makecode.microbit.org/"} if name == "microbit"
+                else {"port": 8771} if name == "laser" else {"port": 8792})}
             for name, opened in values]
 
 
@@ -53,7 +57,8 @@ def manifests(mode: str) -> list[dict]:
     return [{"schema": 1, "id": name, "navn": name, "version": "synthetic-test", "start": f"http://127.0.0.1:{port}/{start}",
              "offline": True, "aflevering": None, "kraever_internet": name == "microbit", "licens": "synthetic"}
             for name, port, start in entries if not (mode == "removed" and name == "scratch")
-            and not (mode == "microbit-removed" and name == "microbit")]
+            and not (mode == "microbit-removed" and name == "microbit")
+            and not (mode == "laser-removed" and name == "laser")]
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -82,7 +87,7 @@ class Handler(BaseHTTPRequestHandler):
             query = parse_qs(parsed.query)
             mode = query.get("mode", [self.__class__.mode])[0]
             catalog = query.get("catalog", [self.__class__.catalog])[0]
-            if mode not in {"down", "closed", "open", "forbidden"} or catalog not in {"installed", "removed", "microbit-removed", "empty", "broken"}:
+            if mode not in {"down", "closed", "open", "forbidden"} or catalog not in {"installed", "removed", "microbit-removed", "laser-removed", "empty", "broken"}:
                 return self.send(400, b"bad mode")
             self.__class__.mode = mode
             self.__class__.catalog = catalog

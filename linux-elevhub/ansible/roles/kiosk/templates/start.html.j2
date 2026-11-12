@@ -72,10 +72,14 @@ function lokaltApp(app) {
   return {id: app.id, navn: app.navn, type: 'lokal', local_start: app.start, aaben: true, klar: true,
     requires_internet: app.kraever_internet, offline_unavailable: offlineMode && !app.offline};
 }
+// A workshop runs on this computer when the hub says so (type 'lokal') or when
+// its app package is installed here. A server-hosted workshop (type 'vaerksted'
+// or 'native') without a local package stays visible and opens on the server,
+// so a workshop the teacher has opened never disappears silently.
 function erLokalApp(app) {
-  return Boolean(app.local_start) ||
-    (app.id !== 'projekter' && typeof LOKALE_APP_URLER[app.id] === 'string') ||
-    (app.type !== 'browser' && app.type !== 'web');
+  if (app.local_start || (app.id !== 'projekter' && typeof LOKALE_APP_URLER[app.id] === 'string')) return true;
+  if (app.type === 'browser' || app.type === 'web') return false;
+  return app.type === 'lokal' || installeredeApps.some(value => value.id === app.id);
 }
 function tilgaengeligeApps(apps) {
   return apps.flatMap(app => {

@@ -15,7 +15,7 @@ from unittest.mock import patch
 ROOT=Path(__file__).parents[2]
 SHARED=Path(os.environ.get("MKV_SHARED_DIR", str(ROOT/"app")))
 PIN=json.loads((ROOT/"linux-elevhub/packaging/updater-pins.json").read_text())["shared_verifier_sha256"]
-if hashlib.sha256((SHARED/"simple_release.py").read_bytes()).hexdigest()!=PIN:raise RuntimeError("canonical_shared_source_changed")
+if hashlib.sha256((SHARED/"simple_release.py").read_bytes().replace(b"\r\n",b"\n")).hexdigest()!=PIN:raise RuntimeError("canonical_shared_source_changed")
 sys.path.insert(0,str(SHARED));sys.path.insert(0,str(ROOT/"linux-elevhub/administration"))
 import apt_client as M
 TOOL=Path(os.environ.get("MKV_TEST_MINISIGN", str(ROOT/"tools/minisign")))

@@ -122,6 +122,12 @@ async function startFixture() {
     await set('catalog=removed'); await waitCount(3);
     assert.deepEqual(await ids(), ['internet','laser','microbit']);
     await set('catalog=installed'); await waitCount(4);
+    // A server-hosted workshop without a local package must stay visible (it opens on the server).
+    // First drop Scratch so the next count change proves the catalogue was re-read.
+    await set('catalog=removed'); await waitCount(3);
+    await set('catalog=laser-removed'); await waitCount(4);
+    assert.deepEqual(await ids(), ['internet','laser','microbit','scratch'], 'server-hosted laser stays visible without a local package');
+    await set('catalog=installed'); await waitCount(4);
     await set('mode=closed'); await waitCount(1);
     assert.deepEqual(await ids(), ['scratch'], 'online teacher policy closes laser and Internet');
     await set('catalog=broken'); await waitCount(0);
