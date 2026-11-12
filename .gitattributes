@@ -1,3 +1,5 @@
 # Trust anchors are checked byte for byte on the devices (template_activation.py).
 # Keep their exact bytes; never let Git convert line endings.
 deployment/keys/minisign.pub -text
+# This reviewed third-party license is also a byte-pinned model3d build input.
+web/assets/model3d/Metrophobic-OFL.txt -text
