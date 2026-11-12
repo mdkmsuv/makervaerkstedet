@@ -3,6 +3,7 @@
 Denne guide viser trin for trin, hvordan en ændring bliver til en opdatering: hvordan den laves, kontrolleres,
 sendes til GitHub, bygges, udgives og kommer ud på serveren, laserstationen og elevcomputerne.
 
+Skal du finde det rigtige sted at ændre, så start med [kodekortet](KODEKORT.md).
 [Udgivelsesprocessen](UDGIVELSESPROCES.md) forklarer *hvorfor* reglerne findes og hvem der har ansvar for hvad.
 Denne guide er *hvordan*: de konkrete kommandoer og hvad der skal stå på skærmen, når det er gået godt.
 
