@@ -272,3 +272,11 @@ svg.i.turn{transform:rotate(-90deg)}
 
 .select-band{position:absolute;z-index:2;pointer-events:none;border:1.5px dashed var(--teal);background:#38798c1f;border-radius:2px}
 #pan-mode[aria-pressed=true]{background:#e3eff2;color:#275e70}
+
+/* Send til print: the STL download is secondary, the print button is the main action. */
+.toolbar .download-stl{margin-left:auto;border-color:var(--line)}
+.toolbar .download-stl+.primary{margin-left:6px}
+.print-error{color:#8c1d24;background:#fbeaec;border:1px solid #d5a6aa;border-radius:4px;padding:10px 12px}
+#print-dialog .micro{font-size:14px;color:#4f6370}
+.name-label{display:block;font-size:14px;margin:0 0 6px}
+.toolbar #send-print{min-height:44px}

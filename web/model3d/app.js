@@ -129,8 +129,8 @@ if (view) {
     document.querySelectorAll('[data-spread]').forEach(button => { button.disabled = !ready || selected.length < 3; button.dataset.tipOff = 'Vælg mindst tre figurer'; });
     $('select-all').disabled = !ready || !model.data.roots.length;
     $('show-hidden').disabled = !ready || !model.data.roots.some(id => model.object(id)?.hidden); $('mirror').disabled = !ready || !selected.length; $('duplicate').disabled = !ready || !selected.length; $('delete').disabled = !ready || !selected.length;
-    $('download').disabled = !workerReady || rendered !== sequence || !result?.merged || result?.exportBlocked;
-    $('download').dataset.tipOff = !model.data.roots.length ? 'Byg noget først' : result?.exportBlocked ? 'Skær hullet ud først' : 'Vent lidt, modellen bliver beregnet';
+    $('download').disabled = $('send-print').disabled = !workerReady || rendered !== sequence || !result?.merged || result?.exportBlocked;
+    $('download').dataset.tipOff = $('send-print').dataset.tipOff = !model.data.roots.length ? 'Byg noget først' : result?.exportBlocked ? 'Skær hullet ud først' : 'Vent lidt, modellen bliver beregnet';
     $('combine-note').hidden = !result?.exportBlocked || rendered !== sequence;
     const locked = selected.length > 0 && selected.every(node => node.locked), hidden = selected.length > 0 && selected.every(node => node.hidden);
     $('lock').setAttribute('aria-pressed', String(locked)); $('lock').dataset.tip = locked ? 'Låst. Klik for at låse op' : 'Lås: figuren kan ikke flyttes, ændres eller slettes';
@@ -615,21 +615,30 @@ if (view) {
     try { const buffer = exportBinaryStl(result), info = validateSTL(buffer), blob = new Blob([buffer], {type: 'model/stl'}), url = URL.createObjectURL(blob), link = document.createElement('a'); link.href = url; link.download = fileName(); link.click(); setTimeout(() => URL.revokeObjectURL(url), 1000); status(`Din fil er hentet: ${link.download} (${info.size.map(mm).join(' × ')} mm).`); }
     catch (error) { status('STL kunne ikke hentes: ' + error.message); }
   }
-  $('download').onclick = () => {
+  // The name dialog and the print check lead on to either a download or a print.
+  let afterCheck = saveStl;
+  function startExport(next) {
     if (!result?.merged || result.exportBlocked || rendered !== sequence) return;
+    afterCheck = next;
     if (!modelName && !model.data.objects.some(node => node.kind === 'text' && !node.hidden && node.mode !== 'hole')) {
       // A word written in the model, such as the pupil's name on a tag, is offered as the file name; Enter takes it.
       const words = model.data.objects.filter(node => node.kind === 'text' && node.params?.text?.trim()).map(node => node.params.text.trim());
-      $('model-name').value = words.length ? words[0].slice(0, 40) : ''; $('name-dialog').showModal(); $('model-name').focus(); $('model-name').select(); return;
+      $('name-submit').textContent = next === saveStl ? 'Hent STL' : 'Videre';
+      $('model-name').value = words.length ? words[0].slice(0, 40) : ''; $('model-name-error').hidden = true; $('model-name').removeAttribute('aria-invalid'); $('name-dialog').showModal(); $('model-name').focus(); $('model-name').select(); return;
     }
     checkAndSave();
-  };
+  }
+  $('download').onclick = () => startExport(saveStl);
+  $('send-print').onclick = () => startExport(confirmPrint);
   $('name-form').addEventListener('submit', event => {
-    event.preventDefault(); modelName = $('model-name').value.trim().slice(0, 40) || 'min-model'; $('name-dialog').close(); checkAndSave();
+    event.preventDefault(); const typed = $('model-name').value.trim().slice(0, 40);
+    $('model-name-error').hidden = !!typed; $('model-name').toggleAttribute('aria-invalid', !typed);
+    if (!typed) { $('model-name').focus(); return; }
+    modelName = typed; $('name-dialog').close(); checkAndSave();
   });
   $('name-cancel').onclick = () => $('name-dialog').close();
   function checkAndSave() {
-    const issues = printIssues(); if (!issues.length) { saveStl(); return; }
+    const issues = printIssues(); if (!issues.length) { afterCheck(); return; }
     const list = $('print-issues'), actions = $('print-actions'); list.replaceChildren(); actions.replaceChildren();
     for (const issue of issues) {
       const item = document.createElement('li'), text = document.createElement('p'); text.textContent = issue.text; item.append(text);
@@ -637,10 +646,71 @@ if (view) {
       list.append(item);
     }
     const anyway = document.createElement('button'), back = document.createElement('button'); anyway.type = back.type = 'button';
-    anyway.textContent = 'Hent STL alligevel'; back.textContent = 'Tilbage til modellen'; back.className = 'primary';
-    anyway.onclick = () => { $('print-check').close(); saveStl(); }; back.onclick = () => $('print-check').close(); actions.append(anyway, back);
+    anyway.textContent = afterCheck === saveStl ? 'Hent STL alligevel' : 'Send alligevel'; back.textContent = 'Tilbage til modellen'; back.className = 'primary';
+    const next = afterCheck; anyway.onclick = () => { $('print-check').close(); next(); }; back.onclick = () => $('print-check').close(); actions.append(anyway, back);
     $('print-check').showModal(); back.focus();
   }
+  // Send til print: the same request id is reused while the model is unchanged, so
+  // pressing again after a lost answer never prints the model twice.
+  let printRequest = {signature: '', id: '', receipt: ''}, printing = false;
+  const newRequestId = () => crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(20)), v => v.toString(16).padStart(2, '0')).join('');
+  function modelSignature(buffer, name) {
+    let hash = 0x811c9dc5; const bytes = new Uint8Array(buffer);
+    for (let i = 0; i < bytes.length; i++) { hash ^= bytes[i]; hash = Math.imul(hash, 0x01000193); }
+    return `${name}|${bytes.length}|${(hash >>> 0).toString(16)}`;
+  }
+  function printView({title, message, details = '', error = '', yes = '', no = 'Tilbage til tegningen', busy = false}) {
+    $('print-title').textContent = title; $('print-message').textContent = message;
+    $('print-details').textContent = details; $('print-details').hidden = !details;
+    $('print-error').textContent = error; $('print-error').hidden = !error;
+    $('print-yes').textContent = yes; $('print-yes').hidden = !yes; $('print-yes').disabled = busy;
+    $('print-no').textContent = no; $('print-no').disabled = busy;
+  }
+  const printStatus = {preparing: 'Din model klargøres til print.', dispatching: 'Din model klargøres til print.', starting: 'Din model klargøres til print.', printing: 'Din model bliver printet.', done: 'Dit print er færdigt.'};
+  function confirmPrint() {
+    printView({title: 'Send til print', message: `Er din model "${fileName().replace(/\.stl$/, '')}" færdig? Den bliver sendt til skolens 3D-printere.`,
+      details: 'Standardkvalitet · Lige meget med farven. Alle synlige, solide figurer sendes samlet. Er der ikke en ledig printer, kommer printet i kø.',
+      yes: 'Ja, send til print', no: 'Nej, tegn videre'});
+    $('print-dialog').showModal(); $('print-no').focus();
+  }
+  async function sendToPrint() {
+    if (printing) return; printing = true;
+    printView({title: 'Sender din model', message: 'Modellen klargøres og sendes til printværkstedet …', no: 'Vent …', busy: true}); $('print-title').focus();
+    let buffer, name;
+    try { buffer = exportBinaryStl(result); validateSTL(buffer); name = fileName(); }
+    catch (error) {
+      printing = false; printView({title: 'Modellen kunne ikke sendes', message: 'Modellen kunne ikke gøres klar til print.', error: error.message, no: 'Tilbage til tegningen'});
+      requestAnimationFrame(() => $('print-no').focus()); return;
+    }
+    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 60000);
+    try {
+      const signature = modelSignature(buffer, name);
+      if (signature !== printRequest.signature) printRequest = {signature, id: newRequestId(), receipt: ''};
+      const response = await fetch('/api/jobs', {method: 'POST', body: buffer, cache: 'no-store', signal: controller.signal, headers: {'Content-Type': 'application/octet-stream', Accept: 'application/json',
+        'X-Filename': encodeURIComponent(name), 'X-Colour': 'any', 'X-Quality': 'standard', 'X-Request-ID': printRequest.id}});
+      let data = null; try { data = await response.json(); } catch {}
+      if (response.status === 202 && data?.queued) {
+        printView({title: 'Printet venter på forbindelse', message: 'Der er ikke forbindelse til skolens printværksted lige nu. Modellen er gemt på computeren og bliver sendt af sig selv, når forbindelsen er tilbage.', details: 'Du kan tegne videre.'});
+      } else if (response.ok && typeof data?.id === 'string') {
+        const receipt = data.id.slice(0, 8).toUpperCase(), again = printRequest.receipt === receipt; printRequest.receipt = receipt;
+        if (again) printView({title: 'Modellen er allerede sendt', message: 'Der er ikke sendt en ekstra kopi.', details: `Afleveringsnummer: ${receipt}. Du kan tegne videre.`});
+        else printView({title: 'Din model er modtaget', message: printStatus[data.status] || (['failed', 'attention', 'cancelled', 'recovering'].includes(data.status) ? 'Indsendelsen er modtaget, men printet kræver eftersyn. Bed en voksen kontrollere printkøen.' : 'Din model er sat i kø. Den klargøres automatisk, når en passende printer er ledig.'),
+          details: `Afleveringsnummer: ${receipt}. Sig nummeret til læreren, hvis I skal finde printet. Du kan tegne videre.`});
+        status(`Sendt til print: ${name}. Afleveringsnummer ${receipt}.`);
+      } else {
+        const message = typeof data?.error === 'string' && data.error ? data.error : 'Printværkstedet afviste modellen.';
+        printView({title: 'Printet blev ikke sendt', message: 'Modellen er ikke sendt til print.', error: message, yes: 'Prøv igen'});
+      }
+    } catch (error) {
+      printView({title: 'Printet blev ikke bekræftet', message: 'Der kom ikke svar fra printværkstedet.', error: 'Prøv igen. Samme model bliver kun printet én gang.', yes: 'Prøv igen'});
+    } finally {
+      clearTimeout(timer); printing = false; $('print-no').disabled = false; $('print-yes').disabled = false;
+      requestAnimationFrame(() => (!$('print-yes').hidden ? $('print-yes') : $('print-no')).focus());
+    }
+  }
+  $('print-yes').onclick = () => sendToPrint();
+  $('print-no').onclick = () => { if (!printing) $('print-dialog').close(); };
+  $('print-dialog').addEventListener('cancel', event => { if (printing) event.preventDefault(); });
   // Idékort: a small step panel points at the button to use next. It never builds anything by itself.
   let guide = null, guideStep = 0;
   function guideContext() {

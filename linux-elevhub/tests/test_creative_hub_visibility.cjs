@@ -121,15 +121,13 @@ assert.deepEqual(document.getElementById('apps').children.map(card => card.datas
 assert.equal(discoverPrint.hidden, false, 'reopening restores discovery entry');
 assert.equal(document.getElementById('ticket-link').dataset.app, '3dprint', 'reopening restores idea entry');
 location.hash = '#vaerksted/3dprint'; context.routeWorkshop();
-assert.equal(document.getElementById('detail-model3d').hidden, false);
-assert.equal(document.getElementById('detail-model3d').disabled, false);
-document.getElementById('detail-model3d').click();
-assert.equal(context.lastLaunch.id, '3dprint');
-assert.equal(context.lastLaunch.model, true);
+// On pupil devices the 3D tile is the 3D drawing workshop; STL upload is not offered.
+assert.equal(document.getElementById('detail-model3d').hidden, true, 'no separate upload/model choice on the device');
 document.getElementById('detail-start').click();
-assert.equal(context.lastLaunch.model, undefined, 'existing print entry stays unchanged');
+assert.equal(context.lastLaunch.id, '3dprint');
+assert.equal(context.lastLaunch.model, true, 'the start button opens the 3D drawing workshop');
 context.tegn([app('3dprint', true, false)]);
-assert.equal(document.getElementById('detail-model3d').disabled, true, 'model entry follows readiness');
+assert.equal(document.getElementById('detail-start').disabled, true, 'start follows readiness');
 location.hash = ''; context.routeWorkshop();
 
 context.window.CreativeHub.connection(false, true);

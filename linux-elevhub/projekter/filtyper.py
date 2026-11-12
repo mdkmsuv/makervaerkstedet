@@ -54,6 +54,8 @@ def association(filename, kind='andet', data=None):
                     program = 'datatraener'
                 elif isinstance(obj, dict) and obj.get('format') == 'elevhub-microbit-project' and obj.get('version') == 1 and isinstance(obj.get('project'), dict):
                     program = 'microbit'
+                elif isinstance(obj, dict) and obj.get('format') in ('laservaerkstedet', 'laservaerkstedet-test') and isinstance(obj.get('project'), dict):
+                    program = 'laser'
             except (ValueError, UnicodeError):
                 pass
     program = program or 'text'

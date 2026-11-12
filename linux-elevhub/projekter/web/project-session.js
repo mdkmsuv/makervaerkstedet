@@ -284,13 +284,19 @@
     recover.hidden = true; status = node('span', 'Gem med klasse, navn og projektnavn.', {role:'status'});
     bar.append(saveButton, open, copy, recover, status); document.body.prepend(bar); document.body.classList.add('elevhub-project-ready');
     const existingSave = document.getElementById('save-project');
-    if (existingSave && ['laser', 'folie'].includes(adapter.type)) {
+    const inline = adapter.inline?.save && adapter.inline.open && adapter.inline.status && adapter.inline.actions ? adapter.inline
+      : existingSave && ['laser', 'folie'].includes(adapter.type)
+        ? {save:existingSave, open:document.getElementById('import-button'), status:document.getElementById('save-status'), actions:document.querySelector('.project-actions')}
+        : null;
+    if (inline) {
       // Reuse the editor's visible controls rather than displaying two save bars.
       bar.hidden = true; document.body.classList.add('elevhub-project-inline');
-      status = document.getElementById('save-status');
-      document.querySelector('.project-actions').append(recover);
-      existingSave.onclick = () => saveProject();
-      document.getElementById('import-button').onclick = shelf;
+      status = inline.status;
+      if (inline === adapter.inline) recover.className = 'button';
+      inline.actions.append(recover);
+      inline.save.onclick = () => saveProject();
+      inline.open.onclick = shelf;
+      inline.active = true;
     }
     initial = await signature(); saved = adapter.hasContent && await adapter.hasContent() ? null : initial;
     saveButton.onclick = () => saveProject(); open.onclick = shelf; copy.onclick = () => saveDialog(true);

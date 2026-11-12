@@ -23,7 +23,7 @@ function kort(app) {
   const name=node('h3');const title=node('a',null,info.name);title.href=visual.href;name.append(title);
   copy.append(node('p','category',info.tag),name,node('p','app-description',info.short||info.intro));
   const actions=node('div','app-actions');const launch=node('button','app-open',isOpen(app)?'Åbn '+info.name+' →':statusLabel(app));
-  launch.disabled=!isOpen(app);launch.setAttribute('aria-label',(isOpen(app)?'Åbn ':'')+info.name+(isOpen(app)?'':': '+statusLabel(app)));launch.addEventListener('click',e=>aabn(e,app));
+  launch.disabled=!isOpen(app);launch.setAttribute('aria-label',(isOpen(app)?'Åbn ':'')+info.name+(isOpen(app)?'':': '+statusLabel(app)));launch.addEventListener('click',e=>aabn(e,app,app.id==='3dprint'));
   const more=node('a','app-about','Få idéer');more.href=visual.href;more.setAttribute('aria-label','Få idéer til '+info.name);actions.append(launch,more);copy.append(actions);el.append(visual,copy);return el;
 }
 function renderCards() {
@@ -55,7 +55,7 @@ function tegn(apps) {
 function updateDetailAccess(){
   const app=allWorkshops.find(a=>a.id===selectedWorkshop),button=document.getElementById('detail-start');
   button.disabled=!app||!isOpen(app);button.textContent=app&&isOpen(app)?(workshopInfo[app.id]?.action||'Åbn værkstedet')+' ↗':app?statusLabel(app):'Værkstedet er ikke tilgængeligt';
-  const modelButton=document.getElementById('detail-model3d');modelButton.hidden=selectedWorkshop!=='3dprint';modelButton.disabled=!app||!isOpen(app);
+  const modelButton=document.getElementById('detail-model3d');modelButton.hidden=true;modelButton.disabled=!app||!isOpen(app);
   document.getElementById('detail-access').textContent=app&&!isOpen(app)?'Læreren kan hjælpe med at åbne værkstedet.':'';
 }
 function routeWorkshop(){
@@ -79,7 +79,7 @@ function routeWorkshop(){
 window.CreativeHub={connection(ok,offlineMode=false){connected=ok;offline=offlineMode;if(!ok){seneste='';if(selectedWorkshop)updateDetailAccess();}},isOffline(){return offline;}};
 document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{activeFilter=button.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));renderCards();}));
 document.querySelectorAll('[data-discover]').forEach(button=>button.addEventListener('click',()=>{const id=button.dataset.discover;if(allWorkshops.some(a=>a.id===id))location.hash='vaerksted/'+id;else document.getElementById('fejl').textContent='Dette værksted er ikke tilgængeligt på computeren endnu.';}));
-document.getElementById('detail-start').addEventListener('click',e=>{const app=allWorkshops.find(a=>a.id===selectedWorkshop);if(app&&isOpen(app))aabn(e,app);});
+document.getElementById('detail-start').addEventListener('click',e=>{const app=allWorkshops.find(a=>a.id===selectedWorkshop);if(app&&isOpen(app))aabn(e,app,app.id==='3dprint');});
 document.getElementById('detail-model3d').addEventListener('click',e=>{const app=allWorkshops.find(a=>a.id===selectedWorkshop);if(app&&app.id==='3dprint'&&isOpen(app))aabn(e,app,true);});
 window.addEventListener('hashchange',routeWorkshop);
 let ideaIndex=-1;

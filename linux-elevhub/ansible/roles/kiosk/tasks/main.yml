@@ -451,11 +451,13 @@
       - app/printer_config.py
       - app/profiles.py
       - app/school_appearance.py
+      - app/teacher_auth.py
       - app/boxes_worker.py
       - app/boxes_generator.py
       - web/workshop.html
       - web/workshop.css
       - web/laser.html
+      - web/laservaerksted
       - web/vendor/laser.js
       - web/vendor/laser-trace-worker.js
       - web/project-import.js

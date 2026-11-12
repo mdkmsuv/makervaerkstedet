@@ -756,6 +756,12 @@
     ],
     "reviewedExceptions": [
       {
+        "path": "web/laservaerksted/paper-core.min.js",
+        "lineSha256": "bf459531fe9d1d10bf4bd1140f2af033c037824a80484466e7f2822ace69d521",
+        "category": "network.local-hostname",
+        "reason": "Minified Paper.js property access to an internal flag; not a host name."
+      },
+      {
         "path": "app/discovery.py",
         "lineSha256": "872da3b536c611c8467debc126f2415761a2c5cedf18aa2aa3640a8fb85715e5",
         "category": "network.public-ip",

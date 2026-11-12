@@ -1,23 +1,32 @@
 """Kører laser- og folieeditoren lokalt på elevens egen maskine (kun loopback).
 Kun "send til læreren" videresendes til den centrale skoleserver, som stadig
 validerer med clean_svg, dedublerer på requestId og kan lukke værkstedet (423).
+Kan serveren ikke nås, lægges en gyldig aflevering i en lokal udbakke og sendes
+senere med samme requestId, så eleven kan aflevere uden forbindelse.
 """
 import argparse
 import http.client
 from http.server import ThreadingHTTPServer
 import json
+import os
 from pathlib import Path
 import re
 import socket
 import ssl
 import threading
+import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import unquote, urlparse, urlsplit
 from urllib.request import HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener
 
-from app.laser_server import Handler
+from app.laser_server import Handler, InboxBusy, clean_svg, field
 
 OFFLINE = 'Forbindelsen til læreren blev afbrudt. Prøv igen, eller gem SVG til USB.'
+OUTBOX_FULL = 'Der venter allerede mange afleveringer på forbindelse. Gem projektet, og prøv igen senere.'
+OUTBOX_LIMIT = 50
+OUTBOX_RETRY_SECONDS = 30
+OUTBOX_KEEP_REJECTED = 200
+REQUEST_ID = re.compile(r'[a-zA-Z0-9-]{16,80}')
 FORWARD_TIMEOUT = 10  # skal blive under laser.js' egen timeout på 15 s
 JOB_ID = re.compile(r'[a-f0-9]{32}')
 ELEVHUB_STYLE = '<style id="elevhub">#workshop-home { display: none !important; }</style>'
@@ -35,6 +44,150 @@ def student_identity(service):
     return module.runtime_snapshot("/usr/share/makervaerkstedet/runtime-release.json",expected_role="student",service=service)
 
 
+class Offline(ValueError):
+    """The school server could not be reached or answered nonsense."""
+
+
+class Unexpected(Offline):
+    """The server answered with a status this client does not expect (403, 404,
+    415, an unreadable 400 ...). Usually a gateway or version problem, not the
+    pupil's drawing, so the submission is kept and retried."""
+
+
+class Closed(ValueError):
+    """The teacher has closed the workshop (423). Worth retrying later."""
+
+
+def validate_submission(data):
+    """The central inbox's field rules, so the outbox never keeps a doomed job."""
+    if not isinstance(data, dict):
+        raise ValueError('Ugyldig aflevering.')
+    for key, limit in (('elevnavn', 60), ('klasse', 40), ('projekt', 60)):
+        field(data, key, limit)
+    if not isinstance(data.get('requestId'), str) or not REQUEST_ID.fullmatch(data['requestId']):
+        raise ValueError('Ugyldigt afleveringsnummer.')
+    clean_svg(data.get('svg'))
+    return {key: data[key] for key in ('elevnavn', 'klasse', 'projekt', 'svg', 'requestId')}
+
+
+class Outbox:
+    """Valid submissions waiting for the school server, one file per requestId.
+
+    Files live in the service's own state directory (not the pupil's home) and
+    are only removed after the server has accepted them or rejected them as
+    invalid. Retrying with the same requestId never creates a second job.
+    """
+
+    def __init__(self, directory, limit=OUTBOX_LIMIT):
+        self.directory = Path(directory)
+        self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        self.limit = limit
+        self.lock = threading.Lock()
+
+    def _path(self, request_id):
+        if not isinstance(request_id, str) or not REQUEST_ID.fullmatch(request_id):
+            raise ValueError('Ugyldigt afleveringsnummer.')
+        return self.directory / f'{request_id}.json'
+
+    def put(self, data):
+        path = self._path(data['requestId'])
+        with self.lock:
+            if not path.exists() and len(self.waiting()) >= self.limit:
+                raise ValueError(OUTBOX_FULL)
+            temporary = path.with_suffix('.tmp')
+            # Durable before the pupil is told the drawing is saved.
+            with open(temporary, 'w', encoding='utf-8') as handle:
+                handle.write(json.dumps(data, ensure_ascii=False))
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary, path)
+            self._sync_directory()
+
+    def _sync_directory(self):
+        try:
+            descriptor = os.open(self.directory, os.O_RDONLY)
+        except OSError:
+            return  # Windows cannot open a directory; Linux devices can.
+        try:
+            os.fsync(descriptor)
+        finally:
+            os.close(descriptor)
+
+    def waiting(self):
+        entries = []
+        for item in self.directory.glob('*.json'):
+            try:
+                entries.append((item.stat().st_mtime, item.name, item))
+            except FileNotFoundError:
+                continue  # sent by the other thread meanwhile
+        return [item for _, _, item in sorted(entries)]
+
+    def _set_aside(self, path, reason):
+        """Keep a rejected submission for an adult instead of deleting it."""
+        rejected = self.directory / 'afvist'
+        rejected.mkdir(exist_ok=True, mode=0o700)
+        try:
+            os.replace(path, rejected / path.name)
+        except FileNotFoundError:
+            return
+        print(f'Udbakke: {path.stem} lagt i afvist/: {reason}', flush=True)
+        kept = sorted(rejected.glob('*.json'), key=lambda item: item.stat().st_mtime)
+        for old in kept[:-OUTBOX_KEEP_REJECTED]:
+            old.unlink(missing_ok=True)
+
+    def flush(self, send):
+        """Send waiting jobs oldest first.
+
+        Stops while the server is unreachable or the workshop is closed. A
+        submission the server cannot take right now (quota, odd status) is
+        skipped and retried; one it rejects as invalid is set aside.
+        """
+        for stale in self.directory.glob('*.tmp'):
+            try:
+                if stale.stat().st_mtime < time.time() - 3600:
+                    stale.unlink()
+            except FileNotFoundError:
+                pass
+        sent = 0
+        for path in self.waiting():
+            try:
+                raw = path.read_text(encoding='utf-8')
+            except FileNotFoundError:
+                continue
+            except OSError as error:
+                print(f'Udbakke: {path.name} kunne ikke læses nu: {type(error).__name__}', flush=True)
+                continue
+            try:
+                data = validate_submission(json.loads(raw))
+            except ValueError as error:
+                self._set_aside(path, f'ugyldig fil ({error})')
+                continue
+            try:
+                send(data)
+            except Unexpected:
+                print(f'Udbakke: {data["requestId"]} fik et uventet svar; prøver igen senere.', flush=True)
+                continue
+            except (Offline, Closed):
+                return sent
+            except InboxBusy:
+                continue  # Køen eller elevens kvote er fuld lige nu.
+            except ValueError as error:
+                self._set_aside(path, f'afvist af serveren: {error}')
+                continue
+            path.unlink(missing_ok=True)
+            sent += 1
+            print(f'Udbakke: {data["requestId"]} sendt til læreren.', flush=True)
+        return sent
+
+    def run(self, send, stop, interval=OUTBOX_RETRY_SECONDS):
+        while not stop.is_set():
+            try:
+                self.flush(send)
+            except Exception as error:  # the worker must outlive any surprise
+                print(f'Udbakke: fejl under afsendelse: {type(error).__name__}', flush=True)
+            stop.wait(interval)
+
+
 class _NoRedirect(HTTPRedirectHandler):
     """Følger aldrig omdirigeringer - en 3xx fra "serveren" behandles som fejl."""
 
@@ -45,7 +198,7 @@ class _NoRedirect(HTTPRedirectHandler):
 class ForwardingInbox:
     """Sender submit og de faste SVG-biblioteksruter videre."""
 
-    def __init__(self, server_url, ca_file=None, timeout=FORWARD_TIMEOUT):
+    def __init__(self, server_url, ca_file=None, timeout=FORWARD_TIMEOUT, outbox=None):
         parsed = urlsplit(server_url)
         if parsed.scheme not in ('http', 'https'):
             raise ValueError('Serveradressen skal starte med http:// eller https://.')
@@ -57,6 +210,7 @@ class ForwardingInbox:
             raise ValueError('Serveradressen må ikke have en sti.')
         self.server_url = server_url.rstrip('/')
         self.timeout = timeout
+        self.outbox = outbox
         context = ssl.create_default_context(cafile=ca_file)
         self.opener = build_opener(ProxyHandler({}), HTTPSHandler(context=context), _NoRedirect())
         # Samme attributter som Inbox, så Handler.session()/login kan bruge dem uændret.
@@ -65,13 +219,24 @@ class ForwardingInbox:
         self.attempts = {}
 
     def submit(self, data):
+        if self.outbox is not None:
+            data = validate_submission(data)
+        try:
+            return self.send(data)
+        except Offline:
+            if self.outbox is None:
+                raise
+            self.outbox.put(data)
+            return {'queued': True, 'requestId': data['requestId']}
+
+    def send(self, data):
         try:
             return self._submit(data)
         except ValueError:
             raise
         except Exception:
             # Intet uventet må vælte requesten - eleven skal altid se en dansk fejltekst.
-            raise ValueError(OFFLINE) from None
+            raise Offline(OFFLINE) from None
 
     def library(self, path):
         """Forward one fixed workshop-library route and recheck its gate."""
@@ -132,24 +297,29 @@ class ForwardingInbox:
         except HTTPError as error:
             with error:  # lukker forbindelsen; tjenesten kører hele skoledagen
                 raw = error.read(65536)
-            if error.code in (400, 413, 423):
-                message = self._error_message(raw)
-                if message is not None:
-                    raise ValueError(message) from None
-            raise ValueError(OFFLINE) from None
+            message = self._error_message(raw)
+            if error.code >= 500:
+                raise Offline(OFFLINE) from None
+            if message is not None and error.code in (400, 413):
+                raise ValueError(message) from None
+            if message is not None and error.code == 423:
+                raise Closed(message) from None
+            if message is not None and error.code == 429:
+                raise InboxBusy(message) from None
+            raise Unexpected(OFFLINE) from None
         except (URLError, socket.timeout, ssl.SSLError, OSError):
-            raise ValueError(OFFLINE) from None
+            raise Offline(OFFLINE) from None
         if status != 200:
-            raise ValueError(OFFLINE)
+            raise Offline(OFFLINE)
         try:
             payload = json.loads(raw.decode('utf-8'))
         except (ValueError, UnicodeDecodeError):
-            raise ValueError(OFFLINE) from None
+            raise Offline(OFFLINE) from None
         if not isinstance(payload, dict):
-            raise ValueError(OFFLINE)
+            raise Offline(OFFLINE)
         job_id, duplicate = payload.get('id'), payload.get('duplicate')
         if not isinstance(job_id, str) or not JOB_ID.fullmatch(job_id) or not isinstance(duplicate, bool):
-            raise ValueError(OFFLINE)
+            raise Offline(OFFLINE)
         return {'id': job_id, 'duplicate': duplicate}
 
     @staticmethod
@@ -166,6 +336,8 @@ class LocalDesignHandler(Handler):
     """Server.vaerksted er 'laser' eller 'folie'; server.port er den bundne port."""
 
     def reply(self, status, body, mime='application/json; charset=utf-8', headers=None):
+        if status == 200 and isinstance(body, dict) and body.get('queued') is True:
+            status = 202  # Gemt i udbakken; sendes, når serveren kan nås.
         if mime.startswith('text/html') and isinstance(body, bytes):
             text = body.decode('utf-8')
             text = (text.replace('</head>', ELEVHUB_STYLE + PROJECT_BRIDGE + '</head>', 1) if '</head>' in text
@@ -243,7 +415,8 @@ class LocalDesignHandler(Handler):
         other_page = '/folie.html' if self.server.vaerksted == 'laser' else '/laser.html'
         if route == '/':
             return self.reply(302, {}, headers={'Location': own_page})
-        if route in (other_page, '/workshop.html', '/workshop.css'):
+        if route in (other_page, '/workshop.html', '/workshop.css') or (
+                self.server.vaerksted == 'folie' and route.startswith('/laservaerksted/')):
             return self.reply(404, {'error': 'Siden findes ikke.'})
         if (self.server.vaerksted == 'folie' and route.startswith('/api/')
                 and route not in ('/api/laser/health', '/api/school-appearance')):
@@ -260,10 +433,10 @@ class LocalDesignHandler(Handler):
         return super().do_POST()
 
 
-def create_local_servers(server_url, ca_file=None, host='127.0.0.1', laser_port=8795, folie_port=8796, projects_port=8791, runtime=None):
+def create_local_servers(server_url, ca_file=None, host='127.0.0.1', laser_port=8795, folie_port=8796, projects_port=8791, runtime=None, outbox_dir=None):
     if host not in ('127.0.0.1', 'localhost'):
         raise ValueError('Denne tjeneste må kun binde til loopback (127.0.0.1/localhost).')
-    inbox = ForwardingInbox(server_url, ca_file)
+    inbox = ForwardingInbox(server_url, ca_file, outbox=Outbox(outbox_dir) if outbox_dir else None)
     runtime = dict(runtime) if runtime is not None else student_identity("elevhub-design")
     servers = []
     for vaerksted, port in (('laser', laser_port), ('folie', folie_port)):
@@ -291,11 +464,17 @@ def main():
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--laser-port', type=int, default=8795)
     parser.add_argument('--folie-port', type=int, default=8796)
+    parser.add_argument('--outbox-dir', help='Lokal udbakke til afleveringer uden forbindelse.')
     args = parser.parse_args()
     laser_server, folie_server = create_local_servers(
-        args.server_url, args.ca_file, args.host, args.laser_port, args.folie_port)
+        args.server_url, args.ca_file, args.host, args.laser_port, args.folie_port,
+        outbox_dir=args.outbox_dir)
     folie_thread = threading.Thread(target=folie_server.serve_forever, daemon=True)
     folie_thread.start()
+    stop_outbox = threading.Event()
+    inbox = laser_server.inbox
+    if inbox.outbox is not None:
+        threading.Thread(target=inbox.outbox.run, args=(inbox.send, stop_outbox), daemon=True).start()
     print(f'Laserværksted: http://{args.host}:{laser_server.port}/  '
           f'Folieværksted: http://{args.host}:{folie_server.port}/', flush=True)
     try:
@@ -303,6 +482,7 @@ def main():
     except KeyboardInterrupt:
         pass
     finally:
+        stop_outbox.set()
         laser_server.server_close()
         folie_server.shutdown()
         folie_server.server_close()

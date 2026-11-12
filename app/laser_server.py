@@ -93,6 +93,10 @@ def generate_box_svg_timed(data):
     return svg, details
 
 
+class InboxBusy(ValueError):
+    """The inbox is full for now. The same submission may succeed later (429)."""
+
+
 def field(data, key, limit):
     value = data.get(key)
     if not isinstance(value, str) or not value.strip() or len(value) > limit:
@@ -295,7 +299,7 @@ class Inbox:
             # octet_length reads only the stored size, not the whole drawing.
             count, size = db.execute("SELECT count(*), coalesce(sum(octet_length(svg)),0) FROM jobs WHERE status IN ('received','ready') AND payload_available=1").fetchone()
             if count >= MAX_QUEUE_JOBS or size + len(svg.encode('utf-8')) > MAX_QUEUE_BYTES:
-                raise ValueError('Afleveringskøen er fuld. Gem SVG og kontakt læreren.')
+                raise InboxBusy('Afleveringskøen er fuld. Gem SVG og kontakt læreren.')
             # Keep retries above the quota check. A lost response must remain
             # recoverable even when this pupil's pending submissions are full.
             # Read only names and stored byte lengths, never all pending SVGs.
@@ -306,7 +310,7 @@ class Inbox:
                     sender_count += row[2]
                     sender_bytes += row[3]
             if sender_count >= MAX_SENDER_JOBS or sender_bytes + len(svg.encode('utf-8')) > MAX_SENDER_BYTES:
-                raise ValueError('Du har flere afleveringer, der venter på læreren. Gem SVG-filen og bed læreren afslutte de gamle afleveringer, før du sender flere.')
+                raise InboxBusy('Du har flere afleveringer, der venter på læreren. Gem SVG-filen og bed læreren afslutte de gamle afleveringer, før du sender flere.')
             job_id = uuid.uuid4().hex
             db.execute('INSERT INTO jobs (id,request_id,fingerprint,created_at,student,classroom,project,status,svg,details,payload_available) VALUES (?,?,?,?,?,?,?,?,?,?,1)',(job_id, request_id, fingerprint, datetime.now(timezone.utc).isoformat(),student,classroom,project,'received',svg,json.dumps({'width':dimensions[0],'height':dimensions[1],'operations':operations,'images':image_details(svg)})))
         return {'id':job_id, 'duplicate':False}
@@ -581,9 +585,12 @@ class Handler(BaseHTTPRequestHandler):
             local_asset = school_appearance_asset(self.server.data_root, asset)
             if local_asset is not None:
                 return self.reply(200, local_asset[0], local_asset[1])
-        route = ({'/':'/laser-teacher.html'} if teacher_surface else {'/':'/workshop.html','/folie.html':'/laser.html'}).get(route,route)
-        surface_files = {'/laser-teacher.html','/laser-teacher.js','/laser-teacher.css'} if teacher_surface else {'/workshop.html','/workshop.css','/laser.html','/vendor/laser.js','/vendor/laser-trace-worker.js','/project-import.js'}
-        allowed = route in surface_files | {'/laser.css','/laser-workshop.css','/vinyl-workshop.css','/desktop-studio.css','/school-theme.css','/school-theme.js','/favicon.svg','/assets/workshop-laser-v1.webp','/assets/workshop-vinyl-v1.webp','/assets/workshop-3d-bauhaus-v1.png','/assets/metrophobic-latin.ttf','/assets/klostermarksskolen-logo.png','/assets/Metrophobic-OFL.txt','/assets/Paper-MIT.txt','/assets/OpenType-MIT.txt','/assets/ImageTracer-UNLICENSE.txt','/assets/Clipper-LICENSE.txt'}
+        # The laser workshop uses the new editor in web/laservaerksted/. The vinyl
+        # (folie) workshop still uses the older combined editor in web/laser.html.
+        route = ({'/':'/laser-teacher.html'} if teacher_surface else {'/':'/workshop.html','/laser.html':'/laservaerksted/index.html','/folie.html':'/laser.html'}).get(route,route)
+        surface_files = {'/laser-teacher.html','/laser-teacher.js','/laser-teacher.css'} if teacher_surface else {'/workshop.html','/workshop.css','/laser.html','/laservaerksted/index.html','/vendor/laser.js','/vendor/laser-trace-worker.js','/project-import.js'}
+        editor_asset = not teacher_surface and re.fullmatch(r'/laservaerksted/(?:icons/[a-z0-9-]+\.svg|(?:paper-core|opentype)\.min\.js|usb-save\.js|laser-editor\.js)', route)
+        allowed = bool(editor_asset) or route in surface_files | {'/laser.css','/laser-workshop.css','/vinyl-workshop.css','/desktop-studio.css','/school-theme.css','/school-theme.js','/favicon.svg','/assets/workshop-laser-v1.webp','/assets/workshop-vinyl-v1.webp','/assets/workshop-3d-bauhaus-v1.png','/assets/metrophobic-latin.ttf','/assets/klostermarksskolen-logo.png','/assets/Metrophobic-OFL.txt','/assets/Paper-MIT.txt','/assets/OpenType-MIT.txt','/assets/ImageTracer-UNLICENSE.txt','/assets/Clipper-LICENSE.txt'}
         file = ROOT / 'web' / route.lstrip('/')
         if not allowed or not file.is_file():
             return self.reply(404,{'error':'Siden findes ikke.'})
@@ -692,6 +699,8 @@ class Handler(BaseHTTPRequestHandler):
             self.reply(409, {'error': str(error)})
         except PermissionError as error:
             self.reply(403, {'error': str(error)})
+        except InboxBusy as error:
+            self.reply(429, {'error': str(error)})
         except (ValueError,UnicodeDecodeError) as error:
             self.reply(400,{'error':str(error)})
         except (sqlite3.Error, OSError):

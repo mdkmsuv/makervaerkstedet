@@ -66,6 +66,7 @@ class ProjectOpening(unittest.TestCase):
         self.assertEqual(association('a.txt', 'andet', b'<cir f="1" ts="0.000005"></cir>')['program'], 'kredsloeb')
         self.assertEqual(association('a.json', 'andet', b'{"targets":[],"meta":{}}')['program'], 'scratch')
         self.assertEqual(association('a.json', 'andet', b'{"marks":[],"height":3}')['program'], 'cadoodle')
+        self.assertEqual(association('a.laser.json', 'andet', b'{"format":"laservaerkstedet","version":2,"project":{}}')['program'], 'laser')
         self.assertEqual(association('a.zip', 'andet', zipped({'project.json':'{}'}))['program'], 'scratch')
         self.assertEqual(association('a.zip', 'andet', zipped({'a.doodle':'{}','part.stl':'solid'}))['program'], 'cadoodle')
 

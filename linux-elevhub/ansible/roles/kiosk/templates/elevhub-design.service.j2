@@ -9,12 +9,14 @@ Wants=network-online.target
 
 [Service]
 Type=simple
-# Egen midlertidig bruger, ikke elevkontoen: tjenesten gemmer intet og skal
-# kunne nå serveren, mens elevkontoens egen trafik er låst af nftables.
+# Egen midlertidig bruger, ikke elevkontoen: tjenesten skal kunne nå serveren,
+# mens elevkontoens egen trafik er låst af nftables. Den gemmer kun udbakken:
+# laserafleveringer, der venter på forbindelse til skolens server.
 DynamicUser=yes
+StateDirectory=elevhub-design
 WorkingDirectory={{ kiosk_lokal_design_dest }}
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=/usr/bin/python3 -m app.laser_local --server-url {{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_laservaerksted_port | default(8771) }}{% if not kiosk_usikker_test | bool %} --ca-file /etc/elevhub/ca.pem{% endif %} --laser-port {{ kiosk_lokal_design_laser_port }} --folie-port {{ kiosk_lokal_design_folie_port }}
+ExecStart=/usr/bin/python3 -m app.laser_local --server-url {{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_laservaerksted_port | default(8771) }}{% if not kiosk_usikker_test | bool %} --ca-file /etc/elevhub/ca.pem{% endif %} --laser-port {{ kiosk_lokal_design_laser_port }} --folie-port {{ kiosk_lokal_design_folie_port }} --outbox-dir /var/lib/elevhub-design/udbakke
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true

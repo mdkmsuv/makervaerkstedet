@@ -1,0 +1,44 @@
+{
+  "name": "Juster",
+  "version": 1,
+  "viewBox": "0 0 32 32",
+  "displaySize": 40,
+  "icons": [
+    {
+      "key": "left",
+      "file": "align-left.svg",
+      "label": "Venstre",
+      "description": "Venstre kanter på samme linje."
+    },
+    {
+      "key": "hcenter",
+      "file": "align-center-horizontal.svg",
+      "label": "Vandret midt",
+      "description": "Midten af delene på samme lodrette linje."
+    },
+    {
+      "key": "right",
+      "file": "align-right.svg",
+      "label": "Højre",
+      "description": "Højre kanter på samme linje."
+    },
+    {
+      "key": "top",
+      "file": "align-top.svg",
+      "label": "Top",
+      "description": "Øverste kanter på samme linje."
+    },
+    {
+      "key": "vcenter",
+      "file": "align-center-vertical.svg",
+      "label": "Lodret midt",
+      "description": "Midten af delene på samme vandrette linje."
+    },
+    {
+      "key": "bottom",
+      "file": "align-bottom.svg",
+      "label": "Bund",
+      "description": "Nederste kanter på samme linje."
+    }
+  ]
+}
