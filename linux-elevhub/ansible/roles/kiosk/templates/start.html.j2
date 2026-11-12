@@ -77,6 +77,9 @@ function lokaltApp(app) {
 // or 'native') without a local package stays visible and opens on the server,
 // so a workshop the teacher has opened never disappears silently.
 function erLokalApp(app) {
+  if (app.type === 'vaerksted' || app.type === 'native') {
+    return Boolean(app.local_start) || installeredeApps.some(value => value.id === app.id);
+  }
   if (app.local_start || (app.id !== 'projekter' && typeof LOKALE_APP_URLER[app.id] === 'string')) return true;
   if (app.type === 'browser' || app.type === 'web') return false;
   return app.type === 'lokal' || installeredeApps.some(value => value.id === app.id);
@@ -122,7 +125,7 @@ async function meld(visning) {
 }
 function adresse(app) {
   if (app.local_start) return new URL(app.local_start).href;
-  if (typeof LOKALE_APP_URLER[app.id] === 'string') {
+  if (erLokalApp(app) && typeof LOKALE_APP_URLER[app.id] === 'string') {
     const url = new URL(LOKALE_APP_URLER[app.id]);
     if (url.hostname !== '127.0.0.1' || url.protocol !== 'http:') throw new Error('Ugyldig lokal værkstedsadresse.');
     return url.href;

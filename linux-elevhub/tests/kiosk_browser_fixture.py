@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -13,6 +14,8 @@ from jinja2 import Environment, FileSystemLoader
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "administration"))
+from template_activation import APP_URLS
 TEMPLATE_DIR = ROOT / "ansible" / "roles" / "kiosk" / "templates"
 ASSETS = ROOT / "server" / "elevhub" / "web" / "assets"
 
@@ -29,7 +32,7 @@ def render() -> bytes:
         kiosk_enhed={"ui_token": "fixture-token"},
         kiosk_theme="red",
         kiosk_school_name="Testskolen",
-        kiosk_lokale_app_urler={"projekter": f"http://127.0.0.1:{PORT}/projects/", "microbit": "http://127.0.0.1:8797/"},
+        kiosk_lokale_app_urler={**APP_URLS, "projekter": f"http://127.0.0.1:{PORT}/projects/"},
         kiosk_internet_start="https://internet.example.test/",
     ).encode("utf-8")
 

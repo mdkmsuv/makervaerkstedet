@@ -35,6 +35,9 @@ async function startFixture() {
       if (url.hostname === 'school.example.test' && url.pathname === '/api/status') {
         hubRequests++; return route.fulfill({response:await route.fetch({url:fixture.origin + '/api/status'})});
       }
+      if (url.hostname === 'school.example.test' && url.port === '8771') {
+        return route.fulfill({contentType:'text/html',body:'<h1>Synthetic server laser destination</h1>'});
+      }
       if (url.origin === 'http://127.0.0.1:8790') {
         assert.equal(route.request().headers().authorization, 'Bearer fixture-token');
         assert.equal(route.request().headers()['x-elevhub-computer'], 'browser-fixture');
@@ -127,6 +130,13 @@ async function startFixture() {
     await set('catalog=removed'); await waitCount(3);
     await set('catalog=laser-removed'); await waitCount(4);
     assert.deepEqual(await ids(), ['internet','laser','microbit','scratch'], 'server-hosted laser stays visible without a local package');
+    await page.getByRole('link', {name:'Værksteder', exact:true}).click();
+    await page.locator('[data-app=laser] .app-open').waitFor({state:'visible'});
+    await page.locator('[data-app=laser] .app-open').focus();
+    await page.keyboard.press('Enter');
+    await page.waitForURL('http://school.example.test:8771/');
+    assert.equal(await page.locator('h1').innerText(), 'Synthetic server laser destination');
+    await page.goto(fixture.origin); await waitCount(4);
     await set('catalog=installed'); await waitCount(4);
     await set('mode=closed'); await waitCount(1);
     assert.deepEqual(await ids(), ['scratch'], 'online teacher policy closes laser and Internet');

@@ -7,8 +7,8 @@ from pathlib import Path
 import re
 from build_debian import sha, DEBIAN_COMPONENTS
 
-CORE_VERSION = "2.0.0~20261112.5"
-UPDATER_VERSION = "1.0.0~20261112.4"
+CORE_VERSION = "2.0.0~20261112.6"
+UPDATER_VERSION = "1.0.0~20261112.5"
 SCRATCH_RECEIPT_SHA256 = "e6526962d7114eb8547b527c41cbed348f1cc8fb8c4d44c635dfb8cb0aa00677"
 
 SPECS = {
@@ -56,8 +56,20 @@ def validate_model3d_bundle(root, built_from=None):
             raise ValueError("model3d_bundle_hash_mismatch:" + name)
     sources = value.get("source_sha256", {})
     local_js = {p.relative_to(root).as_posix() for p in (root / "web/model3d").rglob("*.js")}
+    local_js.add("web/stl-validation.mjs")
     if not local_js <= set(sources):
         raise ValueError("model3d_source_receipt_incomplete")
+    runtime_inputs = value.get("text", {}).get("input_sha256", {})
+    if "web/assets/model3d/Metrophobic-Regular.ttf" not in runtime_inputs:
+        raise ValueError("model3d_runtime_input_receipt_incomplete")
+    for name, want in runtime_inputs.items():
+        if Path(name).is_absolute() or ".." in Path(name).parts:
+            raise ValueError("model3d_invalid_source_path")
+        if name.startswith("node_modules/"):
+            continue  # Dependency bytes are pinned by the builder, not shipped as source.
+        source = root / name
+        if not source.is_file() or sha(source) != want:
+            raise ValueError("model3d_runtime_input_hash_mismatch:" + name)
     for name, want in sorted(sources.items()):
         if Path(name).is_absolute() or ".." in Path(name).parts:
             raise ValueError("model3d_invalid_source_path")

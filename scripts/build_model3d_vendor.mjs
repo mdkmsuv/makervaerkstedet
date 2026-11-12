@@ -56,13 +56,18 @@ const entries = [
 // Reading every entry first gives a useful failure before any partial output.
 for (const [entry] of entries) await readFile(path.join(root, entry));
 const generated = [];
+const bundledSources = new Set();
 for (const [entry, output] of entries) {
   const result = await build({absWorkingDir: root, entryPoints: [entry], nodePaths: [dependencies],
     outfile: path.join(vendor, output), bundle: true, format: 'esm',
     platform: 'browser', target: 'es2022', minify: true, sourcemap: false,
-    legalComments: 'external', external: ['node:*'], write: false,
+    legalComments: 'external', external: ['node:*'], write: false, metafile: true,
     define: {'process.env.NODE_ENV': '"production"'}});
   generated.push(...result.outputFiles);
+  for (const input of Object.keys(result.metafile.inputs)) {
+    const relative = path.relative(root, path.resolve(root, input)).split(path.sep).join('/');
+    if (!relative.startsWith('../') && !path.isAbsolute(relative) && !relative.startsWith('node_modules/')) bundledSources.add(relative);
+  }
 }
 await mkdir(vendor, {recursive: true});
 await mkdir(licenses, {recursive: true});
@@ -73,7 +78,8 @@ await copyFile(path.join(dependencies, 'three/LICENSE'), path.join(licenses, 'th
 await copyFile(path.join(dependencies, 'opentype.js/LICENSE'), path.join(licenses, 'opentype-LICENSE.txt'));
 await copyFile(path.join(root, 'web/assets/model3d/Metrophobic-OFL.txt'), path.join(licenses, 'Metrophobic-OFL.txt'));
 const sourceFiles = ['package.json', 'package-lock.json', 'scripts/build_model3d_vendor.mjs',
-  'web/model3d.html', 'web/model3d.css'];
+  'web/model3d.html', 'web/model3d.css', ...bundledSources,
+  ...Object.keys(textPins).filter(name => !name.startsWith('node_modules/'))];
 const {readdir} = await import('node:fs/promises');
 async function collect(directory) {
   for (const entry of await readdir(path.join(root, directory), {withFileTypes: true})) {
@@ -84,7 +90,7 @@ async function collect(directory) {
 }
 await collect('web/model3d');
 const source_sha256 = {};
-for (const name of sourceFiles.sort()) source_sha256[name] = hash(await readFile(path.join(root, name)));
+for (const name of [...new Set(sourceFiles)].sort()) source_sha256[name] = hash(await readFile(path.join(root, name)));
 const license_sha256 = {};
 for (const name of ['manifold-3d-LICENSE.txt','three-LICENSE.txt','opentype-LICENSE.txt','Metrophobic-OFL.txt']) license_sha256[name] = hash(await readFile(path.join(licenses, name)));
 const outputs = {};
