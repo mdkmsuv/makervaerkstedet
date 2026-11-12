@@ -76,17 +76,27 @@ class LaserProjectOriginsTests(unittest.TestCase):
                         content = response.read().decode()
                         self.assertIn('frame-ancestors ' + origin + ';', response.headers['Content-Security-Policy'])
                         self.assertNotIn('8791', response.headers['Content-Security-Policy'])
-                        if path.endswith('.html'):
+                        if path == '/folie.html':
+                            # Folie still uses the older editor's SVG handoff receiver.
                             self.assertLess(content.index('/project-import-config.js'), content.index('/project-import.js'))
+                        elif path == '/laser.html':
+                            # The new laser editor opens editable .laser.json projects
+                            # through its own adapter, without the legacy SVG receiver.
+                            self.assertNotIn('/project-import-config.js', content)
+                            self.assertNotIn('/project-import.js', content)
+                            editor = content.index('/laservaerksted/laser-editor.js')
+                            for dependency in ('paper-core.min.js', 'opentype.min.js', 'usb-save.js'):
+                                self.assertLess(content.index('/laservaerksted/' + dependency), editor)
                         else:
                             self.assertIn(json.dumps([origin]), content)
                 teacher_base = f'http://127.0.0.1:{teacher.server_port}'
                 with urlopen(teacher_base + '/', timeout=3) as response:
                     self.assertIn("frame-ancestors 'none';", response.headers['Content-Security-Policy'])
-                with self.assertRaises(HTTPError) as error:
-                    urlopen(teacher_base + '/project-import-config.js', timeout=3)
-                self.assertEqual(error.exception.code, 404)
-                error.exception.close()
+                for path in ('/project-import-config.js', '/project-import.js', '/laservaerksted/laser-editor.js'):
+                    with self.subTest(teacher_path=path), self.assertRaises(HTTPError) as error:
+                        urlopen(teacher_base + path, timeout=3)
+                    self.assertEqual(error.exception.code, 404)
+                    error.exception.close()
             finally:
                 for server, worker in zip((student, teacher), workers):
                     server.shutdown()
