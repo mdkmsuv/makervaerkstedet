@@ -235,6 +235,7 @@
     "scripts/verify_microbit_controller.mjs",
     "scripts/verify_print_workshop.cjs",
     "scripts/verify_print_workshop.py",
+    ".gitattributes",
     "scripts/verify_laser_projects.mjs",
     "scripts/verify_model3d_projects.mjs",
     "scripts/verify_project_finish.mjs",

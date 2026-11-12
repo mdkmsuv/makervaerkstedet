@@ -24,12 +24,14 @@ if [ "$#" -ne 5 ]; then sed -n '2,17p' "$0"; exit 2; fi
 SRC="$1"; INPUTS="$2"; TOOLS="$3"; RELEASED="$4"; WORK="$5"
 [ "$(id -u)" = 0 ] || { echo "skal køres som root" >&2; exit 2; }
 [ ! -e "$WORK" ] || { echo "arbejdsmappen findes allerede: $WORK" >&2; exit 2; }
+command -v git >/dev/null || { echo "git mangler: installér det med apt-get install git" >&2; exit 2; }
 mkdir -p "$WORK/locks" "$WORK/debian" "$WORK/report" "$WORK/source"
 GIT=(git -C "$SRC" -c safe.directory="$SRC" -c core.autocrlf=false -c core.eol=lf)
 COMMIT=$("${GIT[@]}" rev-parse HEAD)
 "${GIT[@]}" archive --format=tar "$COMMIT" | tar -x -C "$WORK/source"
 cp -a "$SRC/web/vendor" "$WORK/source/web/vendor"
-DIRTY=$("${GIT[@]}" status --porcelain --untracked-files=no | wc -l)
+# The checkout is usually Windows (CRLF); count real content changes only.
+DIRTY=$(git -C "$SRC" -c safe.directory="$SRC" -c core.autocrlf=true status --porcelain --untracked-files=no | wc -l)
 printf '{"commit": "%s", "uncommitted_tracked_files_not_built": %s}\n' "$COMMIT" "$DIRTY" > "$WORK/report/source.json"
 echo "Bygger commit $COMMIT. Ændringer, der ikke er committet ($DIRTY filer), kommer ikke med."
 ORIG="$SRC"
@@ -47,7 +49,8 @@ python3 -B prepare_inputs.py --components core updater scratch \
   --minisign "$TOOLS/minisign-linux/minisign-linux/x86_64/minisign" \
   --minisign-license "$TOOLS/minisign-0.12-LICENSE" \
   --minisign-provenance "$TOOLS/minisign-license-provenance.json" \
-  --public-trust-dir "$SRC/deployment/keys" \n  --vendor-built-from "$ORIG"
+  --public-trust-dir "$SRC/deployment/keys" \
+  --vendor-built-from "$ORIG"
 for name in elev updater scratch; do
   version=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['version'])" "$WORK/locks/makervaerkstedet-$name.json")
   arch=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['architecture'])" "$WORK/locks/makervaerkstedet-$name.json")
