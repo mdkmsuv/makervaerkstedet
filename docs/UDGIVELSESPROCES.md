@@ -3,7 +3,7 @@
 Denne proces gælder ved forberedelse og gennemførelse af en faktisk
 produktudgivelse eller udrulning. Den er ikke en obligatorisk opstartsrutine
 for enhver kilde-, UI- eller dokumentrettelse.
-Arbejdets organisering og mandat følger [AGENTS.md](../../AGENTS.md).
+Arbejdets organisering og mandat følger `AGENTS.md` i projektroden (uden for denne kilde).
 Formålet er fortsat, at en opdatering bygges fra reproducerbar kilde og
 afprøves som installation og opdatering, før den når skolens udstyr.
 

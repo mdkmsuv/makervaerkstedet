@@ -152,7 +152,7 @@ class SikkerIntegration(unittest.TestCase):
                 self.t.saet({'microbit': False})
                 self.kald('/api/enhed/status', {'computer': 'pc1', 'version': self.t.version})
                 body = {'computer': 'pc1', 'visning': 'microbit', 'local_apps': [
-                    {'id': app, 'ready': True} for app in ('scratch', 'datatraener', 'kredsloeb', 'microbit')]}
+                    {'id': app, 'ready': True} for app in ('scratch', 'microbit')]}
                 status, _, reply = self.kald('/api/status', body, rolle='ui')
                 self.assertEqual(status, 200, reply)
                 self.assertEqual(reply['lukket_app'], 'microbit')
@@ -204,7 +204,7 @@ class SikkerIntegration(unittest.TestCase):
         bar.rod = type('Root', (), {'after': lambda self, delay, callback: callback()})()
         bar.pause_overlay = Overlay()
         bar.cadoodle = type('Cad', (), {'opdater': lambda self, state: setattr(self, 'state', state)})()
-        local = {'apps': [{'id': app, 'ready': True} for app in ('scratch', 'datatraener', 'kredsloeb', 'microbit')],
+        local = {'apps': [{'id': app, 'ready': True} for app in ('scratch', 'microbit')],
                  'navigation': {'id': 'scratch', 'version': 'a' * 32}}
         with patch.object(client, 'lokal_status', return_value=local), \
                 patch.object(client, 'usb_noegler', return_value=[]):
