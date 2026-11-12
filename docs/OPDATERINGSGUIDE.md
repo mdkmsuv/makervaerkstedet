@@ -47,11 +47,11 @@ Arbejder flere sessioner i samme mappe, så commit kun dine egne filer (se 2.4),
 
 ### 2.3 Kontrollér før commit
 
-Testene skal køres i testmiljøet, ikke i computerens almindelige Python. Det oprettes én gang, uden for OneDrive:
+Testene skal køres i testmiljøet, ikke i computerens almindelige Python. Det oprettes én gang, uden for OneDrive (i PowerShell):
 
 ```
 python -m venv <mappe-uden-for-OneDrive>\venv
-<venv>\Scripts\python -m pip install --no-index --find-links ..\byggeinput\windows\runtime-wheels -r requirements-windows-runtime.txt paho-mqtt==2.1.0 qrcode==8.2
+<venv>\Scripts\python -m pip install --no-index --find-links ..\byggeinput\windows\runtime-wheels (Get-ChildItem ..\byggeinput\windows\runtime-wheels\*.whl).FullName
 ```
 
 Kør derefter de tests, ændringen berører, og før en udgivelse hele sættet:
