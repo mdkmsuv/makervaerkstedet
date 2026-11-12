@@ -82,6 +82,9 @@ def preseed(source,payload_sha,debian_packages):
       "    echo '"+payload_sha+"  /cdrom/elevhub/payload.tar.gz' | sha256sum -c - && \\\n"
       "    mkdir -p /target/opt/makervaerkstedet-install && \\\n"
       "    tar -xzf /cdrom/elevhub/payload.tar.gz -C /target/opt/makervaerkstedet-install && \\\n"
+      # Debian runs 07preseed before its normal CD source cleanup. Reuse that
+      # cleanup now so the payload's strict apt update sees usable sources.
+      "    /usr/lib/finish-install.d/10apt-cdrom-setup && \\\n"
       "    in-target python3 -B /opt/makervaerkstedet-install/apt-firstboot.py --payload /opt/makervaerkstedet-install --apply\n\n")
     text=text[:start]+late+text[finish:]
     lines=[]

@@ -59,6 +59,31 @@ class Installation(unittest.TestCase):
         (repo/"Packages").write_text("changed")
         with self.assertRaisesRegex(ValueError,"index_hash_mismatch"):build_iso.validated_repository(repo,receipt,build_iso.sha(receipt))
 
+    def test_late_command_disables_installer_cdrom_before_payload_apt(self):
+        # Reproduce Debian finish-install ordering: 07preseed precedes the
+        # normal 10apt-cdrom-setup hook, leaving a CD source active at this point.
+        cdrom=self.root/"cdrom/elevhub";cdrom.mkdir(parents=True)
+        target=self.root/"target";sources=target/"etc/apt/sources.list"
+        sources.parent.mkdir(parents=True)
+        sources.write_text("deb cdrom:[Debian netinst]/ trixie main\ndeb https://deb.debian.org/debian trixie main\n")
+        empty=self.root/"empty";empty.mkdir()
+        payload=cdrom/"payload.tar.gz"
+        subprocess.run(["tar","-czf",str(payload),"-C",str(empty),"."],check=True)
+        cleanup=self.root/"10apt-cdrom-setup"
+        cleanup.write_text("#!/bin/sh\nsed -i '/^deb cdrom:/s/^/#/' '"+str(sources)+"'\n")
+        cleanup.chmod(0o755)
+        commands=self.root/"bin";commands.mkdir()
+        in_target=commands/"in-target"
+        in_target.write_text("#!/bin/sh\nif grep -q '^deb cdrom:' '"+str(sources)+"'; then echo active_cdrom_source >&2; exit 73; fi\ntest -d '"+str(target/"opt/makervaerkstedet-install")+"'\n")
+        in_target.chmod(0o755)
+        text=build_iso.preseed(HERE.parents[1]/"testmiljoe/vm/preseed-usb.skabelon.cfg",build_iso.sha(payload),["python3"])
+        command=text.split("d-i preseed/late_command string ",1)[1].split("\n\n",1)[0]
+        command=command.replace("/cdrom/",str(self.root/"cdrom")+"/").replace("/target/",str(target)+"/")
+        command=command.replace("/usr/lib/finish-install.d/10apt-cdrom-setup",str(cleanup))
+        result=subprocess.run(["/bin/sh","-c",command],env={**os.environ,"PATH":str(commands)+":/usr/bin:/bin"},capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        self.assertIn("deb https://deb.debian.org/debian trixie main",sources.read_text())
+
     def test_inert_payload_check_rejects_changed_bytes(self):
         payload=self.root/"payload";payload.mkdir();(payload/"public.txt").write_text("original")
         packages=[{"package":k,"architecture":v,"version":"1.0"} for k,v in build_iso.PACKAGES.items()]
