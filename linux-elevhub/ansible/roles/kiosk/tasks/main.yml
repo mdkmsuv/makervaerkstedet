@@ -69,6 +69,7 @@
     that:
       - kiosk_server is match('^(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])(\.(25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])){3}$')
       - kiosk_lokal_design_laser_port | int != kiosk_lokal_design_folie_port | int
+      - kiosk_lokal_design_model3d_port | int not in [kiosk_lokal_design_laser_port | int, kiosk_lokal_design_folie_port | int]
     fail_msg: >-
       Det lokale designværksted kræver, at kiosk_server er en IPv4-adresse (fx
       192.0.2.50 som dokumentationseksempel), og at laser og folie har hver sin port. Slå det fra med
@@ -84,7 +85,8 @@
     kiosk_lokale_app_urler: >-
       {{ kiosk_lokale_app_urler | combine({
            'laser': 'http://127.0.0.1:' ~ kiosk_lokal_design_laser_port ~ '/',
-           'folie': 'http://127.0.0.1:' ~ kiosk_lokal_design_folie_port ~ '/'}) }}
+           'folie': 'http://127.0.0.1:' ~ kiosk_lokal_design_folie_port ~ '/',
+           '3dprint': 'http://127.0.0.1:' ~ kiosk_lokal_design_model3d_port ~ '/'}) }}
   when: kiosk_lokal_design_enabled | bool
 
 - name: Grafisk minimalsystem, browser, elevbjælke og USB-nøgler
@@ -439,6 +441,7 @@
       - app/laser_server.py
       - app/maintenance.py
       - app/laser_local.py
+      - app/stl.py
       - app/runtime_health.py
       - app/laser_images.py
       - app/project_origins.py
@@ -460,6 +463,15 @@
       - web/laservaerksted
       - web/vendor/laser.js
       - web/vendor/laser-trace-worker.js
+      - web/model3d.html
+      - web/model3d.css
+      - web/vendor/model3d-app.js
+      - web/vendor/model3d-app.js.LEGAL.txt
+      - web/vendor/model3d-geometry-worker.js
+      - web/vendor/model3d-manifold.wasm
+      - web/vendor/model3d-vendor-manifest.json
+      - web/assets/model3d
+      - web/assets/licenses/model3d
       - web/project-import.js
       - web/laser.css
       - web/laser-workshop.css

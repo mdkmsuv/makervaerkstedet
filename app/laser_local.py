@@ -5,9 +5,11 @@ Kan serveren ikke nås, lægges en gyldig aflevering i en lokal udbakke og sende
 senere med samme requestId, så eleven kan aflevere uden forbindelse.
 """
 import argparse
+import base64
 import http.client
 from http.server import ThreadingHTTPServer
 import json
+import mimetypes
 import os
 from pathlib import Path
 import re
@@ -16,10 +18,13 @@ import ssl
 import threading
 import time
 from urllib.error import HTTPError, URLError
-from urllib.parse import unquote, urlparse, urlsplit
+from urllib.parse import quote, unquote, urlparse, urlsplit
 from urllib.request import HTTPRedirectHandler, HTTPSHandler, ProxyHandler, Request, build_opener
 
 from app.laser_server import Handler, InboxBusy, clean_svg, field
+from app.school_appearance import (render_local_html, school_appearance,
+                                  school_appearance_asset, school_appearance_manifest_present)
+from app.stl import MAX_BYTES, inspect_stl
 
 OFFLINE = 'Forbindelsen til læreren blev afbrudt. Prøv igen, eller gem SVG til USB.'
 OUTBOX_FULL = 'Der venter allerede mange afleveringer på forbindelse. Gem projektet, og prøv igen senere.'
@@ -78,10 +83,11 @@ class Outbox:
     invalid. Retrying with the same requestId never creates a second job.
     """
 
-    def __init__(self, directory, limit=OUTBOX_LIMIT):
+    def __init__(self, directory, limit=OUTBOX_LIMIT, validator=validate_submission):
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.limit = limit
+        self.validator = validator
         self.lock = threading.Lock()
 
     def _path(self, request_id):
@@ -92,6 +98,8 @@ class Outbox:
     def put(self, data):
         path = self._path(data['requestId'])
         with self.lock:
+            if self._check_pending(data):
+                return
             if not path.exists() and len(self.waiting()) >= self.limit:
                 raise ValueError(OUTBOX_FULL)
             temporary = path.with_suffix('.tmp')
@@ -102,6 +110,20 @@ class Outbox:
                 os.fsync(handle.fileno())
             os.replace(temporary, path)
             self._sync_directory()
+
+    def _check_pending(self, data):
+        path = self._path(data['requestId'])
+        try:
+            pending = json.loads(path.read_text(encoding='utf-8'))
+        except FileNotFoundError:
+            return False
+        if pending != data:
+            raise ValueError('Denne indsendelse er allerede brugt til en anden fil.')
+        return True
+
+    def check_pending(self, data):
+        with self.lock:
+            self._check_pending(data)
 
     def _sync_directory(self):
         try:
@@ -158,7 +180,7 @@ class Outbox:
                 print(f'Udbakke: {path.name} kunne ikke læses nu: {type(error).__name__}', flush=True)
                 continue
             try:
-                data = validate_submission(json.loads(raw))
+                data = self.validator(json.loads(raw))
             except ValueError as error:
                 self._set_aside(path, f'ugyldig fil ({error})')
                 continue
@@ -198,6 +220,8 @@ class _NoRedirect(HTTPRedirectHandler):
 class ForwardingInbox:
     """Sender submit og de faste SVG-biblioteksruter videre."""
 
+    validate = staticmethod(validate_submission)
+
     def __init__(self, server_url, ca_file=None, timeout=FORWARD_TIMEOUT, outbox=None):
         parsed = urlsplit(server_url)
         if parsed.scheme not in ('http', 'https'):
@@ -219,15 +243,19 @@ class ForwardingInbox:
         self.attempts = {}
 
     def submit(self, data):
-        if self.outbox is not None:
-            data = validate_submission(data)
-        try:
-            return self.send(data)
-        except Offline:
-            if self.outbox is None:
-                raise
-            self.outbox.put(data)
-            return {'queued': True, 'requestId': data['requestId']}
+        # Serialize submissions so two requests cannot race between the pending
+        # identity check, forwarding and saving a newly offline submission.
+        with self.lock:
+            if self.outbox is not None:
+                data = self.validate(data)
+                self.outbox.check_pending(data)
+            try:
+                return self.send(data)
+            except Offline:
+                if self.outbox is None:
+                    raise
+                self.outbox.put(data)
+                return {'queued': True, 'requestId': data['requestId']}
 
     def send(self, data):
         try:
@@ -288,8 +316,14 @@ class ForwardingInbox:
 
     def _submit(self, data):
         body = json.dumps(data, ensure_ascii=False).encode('utf-8')
-        req = Request(self.server_url + '/api/laser/submit', data=body,
-                       headers={'Content-Type': 'application/json'}, method='POST')
+        payload = self._forward('/api/laser/submit', body, {'Content-Type': 'application/json'})
+        job_id, duplicate = payload.get('id'), payload.get('duplicate')
+        if not isinstance(job_id, str) or not JOB_ID.fullmatch(job_id) or not isinstance(duplicate, bool):
+            raise Offline(OFFLINE)
+        return {'id': job_id, 'duplicate': duplicate}
+
+    def _forward(self, path, body, headers, accepted=(200,)):
+        req = Request(self.server_url + path, data=body, headers=headers, method='POST')
         try:
             with self.opener.open(req, timeout=self.timeout) as response:
                 status = response.status
@@ -309,7 +343,7 @@ class ForwardingInbox:
             raise Unexpected(OFFLINE) from None
         except (URLError, socket.timeout, ssl.SSLError, OSError):
             raise Offline(OFFLINE) from None
-        if status != 200:
+        if status not in accepted:
             raise Offline(OFFLINE)
         try:
             payload = json.loads(raw.decode('utf-8'))
@@ -317,10 +351,7 @@ class ForwardingInbox:
             raise Offline(OFFLINE) from None
         if not isinstance(payload, dict):
             raise Offline(OFFLINE)
-        job_id, duplicate = payload.get('id'), payload.get('duplicate')
-        if not isinstance(job_id, str) or not JOB_ID.fullmatch(job_id) or not isinstance(duplicate, bool):
-            raise Offline(OFFLINE)
-        return {'id': job_id, 'duplicate': duplicate}
+        return payload
 
     @staticmethod
     def _error_message(raw):
@@ -457,6 +488,158 @@ def create_local_servers(server_url, ca_file=None, host='127.0.0.1', laser_port=
     return servers[0], servers[1]
 
 
+def print_submission(body, filename, request_id):
+    if not isinstance(request_id, str) or not REQUEST_ID.fullmatch(request_id):
+        raise ValueError('Prøv at sende modellen igen.')
+    if (not isinstance(filename, str) or not filename.lower().endswith('.stl')
+            or len(filename) > 500 or any(ord(c) < 32 for c in filename)):
+        raise ValueError('Vælg en fil, der slutter med .stl.')
+    inspect_stl(body)
+    return {'type': 'print-job', 'requestId': request_id, 'filename': filename,
+            'stl': base64.b64encode(body).decode('ascii')}
+
+
+def validate_print_submission(data):
+    if (not isinstance(data, dict) or set(data) != {'type', 'requestId', 'filename', 'stl'}
+            or data['type'] != 'print-job' or not isinstance(data['stl'], str)
+            or len(data['stl']) > 4 * ((MAX_BYTES + 2) // 3)):
+        raise ValueError('Ugyldig 3D-aflevering.')
+    try:
+        body = base64.b64decode(data['stl'], validate=True)
+    except (ValueError, UnicodeError):
+        raise ValueError('Ugyldig 3D-aflevering.') from None
+    return print_submission(body, data['filename'], data['requestId'])
+
+
+class PrintForwardingInbox(ForwardingInbox):
+    validate = staticmethod(validate_print_submission)
+
+    def _submit(self, data):
+        payload = self._forward('/api/jobs', base64.b64decode(data['stl']), {
+            'Content-Type': 'application/octet-stream',
+            'X-Filename': quote(data['filename'], safe=''), 'X-Colour': 'any',
+            'X-Quality': 'standard', 'X-Request-ID': data['requestId'],
+        }, accepted=(201,))
+        if (not isinstance(payload.get('id'), str) or not JOB_ID.fullmatch(payload['id'])
+                or not isinstance(payload.get('status'), str)):
+            raise Unexpected('Printkøen svarede ikke som forventet.')
+        return {'id': payload['id'], 'status': payload['status']}
+
+
+class LocalPrintHandler(LocalDesignHandler):
+    """Only the local editor, project gateway and fixed print submission route."""
+
+    def reply(self, status, body, mime='application/json; charset=utf-8', headers=None):
+        # 3D currently exports/imports STL itself. The laser project bridge waits
+        # for an editor adapter which 3D does not expose and would block startup.
+        Handler.reply(self, status, body, mime, headers)
+
+    def send_header(self, keyword, value):
+        if keyword.lower() == 'content-security-policy':
+            value = value.replace("script-src 'self';", "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self';")
+        super().send_header(keyword, value)
+
+    def do_GET(self):
+        if not self._host_ok():
+            return self.reply(403, {'error': 'Ukendt adresse.'})
+        if self._projects():
+            return
+        route = unquote(urlsplit(self.path).path)
+        if route == '/':
+            return self.reply(302, {}, headers={'Location': '/model3d.html'})
+        if route == '/api/runtime/health':
+            return self.reply(200, {'local': True, 'surface': 'student', **self.server.runtime_health})
+        if route == '/api/school-appearance':
+            return Handler.do_GET(self)
+        if route == '/project-import-config.js':
+            origins = [f'http://{host}:{self.server.projects_port}' for host in ('127.0.0.1', 'localhost')]
+            return self.reply(200, 'window.ElevhubProjectOrigins=' + json.dumps(origins) + ';', 'text/javascript')
+        if school_appearance_manifest_present(self.server.data_root):
+            if school_appearance(self.server.data_root) is None:
+                return self.reply(503, {'error': 'Den lokale skoleprofil kunne ikke valideres.'})
+            asset = route.rsplit('/', 1)[-1] if route.startswith('/school-appearance/') else route
+            overlay = school_appearance_asset(self.server.data_root, asset)
+            if overlay is not None:
+                return self.reply(200, overlay[0], overlay[1])
+        allowed = route in ('/model3d.html', '/model3d.css', '/school-theme.css', '/project-import.js',
+                            '/school-theme.js', '/favicon.svg', '/assets/metrophobic-latin.ttf')
+        allowed = allowed or bool(re.fullmatch(r'/vendor/model3d-[a-zA-Z0-9_.-]+', route))
+        allowed = allowed or bool(re.fullmatch(r'/assets/(?:model3d|licenses/model3d)/[a-zA-Z0-9_./-]+', route))
+        web = Path(__file__).resolve().parents[1] / 'web'
+        target = (web / route.lstrip('/')).resolve()
+        if not allowed or not target.is_relative_to(web) or not target.is_file():
+            return self.reply(404, {'error': 'Siden findes ikke.'})
+        mime = {'.js': 'text/javascript', '.wasm': 'application/wasm'}.get(target.suffix)
+        mime = mime or mimetypes.guess_type(target.name)[0] or 'application/octet-stream'
+        body = target.read_bytes()
+        if mime == 'text/html':
+            body = render_local_html(body, school_appearance(self.server.data_root))
+        return self.reply(200, body, mime)
+
+    def do_POST(self):
+        if not self._host_ok():
+            return self.reply(403, {'error': 'Ukendt adresse.'})
+        if self._projects():
+            return
+        if self.path != '/api/jobs':
+            return self.reply(404, {'error': 'Funktionen findes ikke.'})
+        origin = 'http://' + self.headers.get('Host', '')
+        if self.headers.get('Origin') != origin or self.headers.get('Sec-Fetch-Site') == 'cross-site':
+            return self.reply(403, {'error': 'Send modellen fra 3D-værkstedets egen side.'})
+        try:
+            sizes = self.headers.get_all('Content-Length', [])
+            if len(sizes) != 1 or self.headers.get('Transfer-Encoding'):
+                raise ValueError('Upload modellen igen.')
+            size = int(sizes[0])
+            if not 0 < size <= MAX_BYTES:
+                return self.reply(413, {'error': 'Vælg en STL-fil på højst 25 MB.'})
+            if self.headers.get('X-Colour', 'any') != 'any' or self.headers.get('X-Quality', 'standard') != 'standard':
+                raise ValueError('Send modellen fra 3D-værkstedet.')
+            deadline = time.monotonic() + 30
+            chunks, received = [], 0
+            while received < size:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    raise ValueError('Uploaden tog for lang tid. Prøv igen.')
+                self.connection.settimeout(remaining)
+                part = self.rfile.read1(min(size - received, 1024 * 1024))
+                if not part:
+                    raise ValueError('Hele modellen blev ikke modtaget. Prøv igen.')
+                chunks.append(part)
+                received += len(part)
+            data = print_submission(b''.join(chunks), unquote(self.headers.get('X-Filename', '')),
+                                    self.headers.get('X-Request-ID', ''))
+            payload = self.server.inbox.submit(data)
+            return self.reply(202 if payload.get('queued') else 201, payload)
+        except Closed as error:
+            return self.reply(423, {'error': str(error)})
+        except InboxBusy as error:
+            return self.reply(429, {'error': str(error)})
+        except Offline:
+            return self.reply(503, {'error': 'Modellen kunne ikke gemmes til afsendelse. Gem din fil, og prøv igen.'})
+        except ValueError as error:
+            return self.reply(400, {'error': str(error)})
+        except OSError:
+            return self.reply(503, {'error': 'Modellen kunne ikke gemmes. Gem din fil, og prøv igen.'})
+
+
+def create_print_server(server_url, ca_file=None, host='127.0.0.1', port=8798,
+                        projects_port=8791, runtime=None, outbox_dir=None):
+    if host not in ('127.0.0.1', 'localhost'):
+        raise ValueError('Denne tjeneste må kun binde til loopback (127.0.0.1/localhost).')
+    outbox = Outbox(outbox_dir, validator=validate_print_submission) if outbox_dir else None
+    inbox = PrintForwardingInbox(server_url, ca_file, outbox=outbox)
+    server = ThreadingHTTPServer((host, port), LocalPrintHandler)
+    server.inbox = inbox
+    server.runtime_health = dict(runtime) if runtime is not None else student_identity('elevhub-design')
+    server.surface = 'student'
+    server.frame_ancestors = f"'self' http://127.0.0.1:{projects_port} http://localhost:{projects_port}"
+    server.port = server.server_address[1]
+    server.projects_port = projects_port
+    server.data_root = Path('/etc/elevhub')
+    return server
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--server-url', required=True)
@@ -464,6 +647,8 @@ def main():
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--laser-port', type=int, default=8795)
     parser.add_argument('--folie-port', type=int, default=8796)
+    parser.add_argument('--print-server-url', help='Hubbens printindgang, fx https://server:8770')
+    parser.add_argument('--model3d-port', type=int, default=8798)
     parser.add_argument('--outbox-dir', help='Lokal udbakke til afleveringer uden forbindelse.')
     args = parser.parse_args()
     laser_server, folie_server = create_local_servers(
@@ -471,10 +656,20 @@ def main():
         outbox_dir=args.outbox_dir)
     folie_thread = threading.Thread(target=folie_server.serve_forever, daemon=True)
     folie_thread.start()
+    print_server = None
+    if args.print_server_url:
+        print_server = create_print_server(
+            args.print_server_url, args.ca_file, args.host, args.model3d_port,
+            runtime=laser_server.runtime_health,
+            outbox_dir=Path(args.outbox_dir) / 'print' if args.outbox_dir else None)
+        threading.Thread(target=print_server.serve_forever, daemon=True).start()
     stop_outbox = threading.Event()
     inbox = laser_server.inbox
     if inbox.outbox is not None:
         threading.Thread(target=inbox.outbox.run, args=(inbox.send, stop_outbox), daemon=True).start()
+    if print_server is not None and print_server.inbox.outbox is not None:
+        inbox_print = print_server.inbox
+        threading.Thread(target=inbox_print.outbox.run, args=(inbox_print.send, stop_outbox), daemon=True).start()
     print(f'Laserværksted: http://{args.host}:{laser_server.port}/  '
           f'Folieværksted: http://{args.host}:{folie_server.port}/', flush=True)
     try:
@@ -486,6 +681,9 @@ def main():
         laser_server.server_close()
         folie_server.shutdown()
         folie_server.server_close()
+        if print_server is not None:
+            print_server.shutdown()
+            print_server.server_close()
 
 
 if __name__ == '__main__':

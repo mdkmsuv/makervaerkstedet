@@ -7,10 +7,21 @@ Debian mirror access is required. No school identities/credentials are embedded.
 """
 import argparse,ast,gzip,hashlib,io,json,os,re,shutil,subprocess,tarfile,tempfile,sys
 from pathlib import Path
+import importlib.util
 
 BASE_SHA="a7ef94ac2fb9a7fec454552abd629b7cc9d5155c886165a45649f5ce6167e355"
 KEY_SHA="5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f"
-PACKAGES={"makervaerkstedet-elev":"all","makervaerkstedet-scratch":"all","makervaerkstedet-matchbox":"amd64","makervaerkstedet-updater":"amd64"}
+# The verifier is shared by source builds and the standalone installer payload.
+_release_path = Path(__file__).resolve().with_name("simple_release.py")
+if not _release_path.is_file():
+    _source = Path(__file__).resolve()
+    if tuple(parent.name for parent in _source.parents[:3]) != ("debian", "installation", "linux-elevhub"):
+        raise FileNotFoundError("shared_release_verifier_required")
+    _release_path = _source.parents[3] / "app/simple_release.py"
+_release_spec = importlib.util.spec_from_file_location("_mkv_simple_release", _release_path)
+_release_module = importlib.util.module_from_spec(_release_spec)
+_release_spec.loader.exec_module(_release_module)
+PACKAGES = {package: architecture for package, architecture in _release_module.DEBIAN_COMPONENTS.values()}
 EXTRA_DEBIAN=("openssh-client","libnss3-tools","ca-certificates","console-setup","keyboard-configuration")
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
@@ -124,6 +135,7 @@ def build(args):
             dst.chmod(0o644);provenance[str(src.relative_to(source)) if src.is_relative_to(source) else src.name]=sha(src)
         for name in repo_files:copy(args.repo/name,payload/"apt"/name)
         copy(args.repo/"makervaerkstedet.gpg",payload/"trust/makervaerkstedet.gpg")
+        copy(source/"app/simple_release.py",payload/"simple_release.py")
         copy(here/"install_payload.py",payload/"apt-firstboot.py")
         copy(here/"bootstrap_existing.py",payload/"bootstrap_existing.py")
         copy(source/"linux-elevhub/packaging/apt_sandbox.py",payload/"apt_sandbox.py")

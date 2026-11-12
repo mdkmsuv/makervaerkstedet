@@ -10,12 +10,23 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import importlib.util
 import pwd
 import re
 import shutil
 import subprocess
 
-PACKAGES={"makervaerkstedet-elev":"all","makervaerkstedet-scratch":"all","makervaerkstedet-matchbox":"amd64","makervaerkstedet-updater":"amd64"}
+# The verifier is shared by source builds and the standalone installer payload.
+_release_path = Path(__file__).resolve().with_name("simple_release.py")
+if not _release_path.is_file():
+    _source = Path(__file__).resolve()
+    if tuple(parent.name for parent in _source.parents[:3]) != ("debian", "installation", "linux-elevhub"):
+        raise FileNotFoundError("shared_release_verifier_required")
+    _release_path = _source.parents[3] / "app/simple_release.py"
+_release_spec = importlib.util.spec_from_file_location("_mkv_simple_release", _release_path)
+_release_module = importlib.util.module_from_spec(_release_spec)
+_release_spec.loader.exec_module(_release_module)
+PACKAGES = {package: architecture for package, architecture in _release_module.DEBIAN_COMPONENTS.values()}
 APT=["/usr/bin/apt-get","-o","APT::Get::AllowUnauthenticated=false","-o","Acquire::AllowInsecureRepositories=false","-o","Acquire::AllowDowngradeToInsecureRepositories=false","-o","Acquire::Check-Valid-Until=true","-o","Acquire::Check-Date=true","-o","APT::Update::Error-Mode=any"]
 
 def check(payload):

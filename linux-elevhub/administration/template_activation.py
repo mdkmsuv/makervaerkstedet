@@ -21,9 +21,11 @@ from jinja2 import Environment, StrictUndefined
 TEMPLATES = {"start.html.j2": ("usr/local/share/elevhub/start.html", 0o644),
     "kiosk-session.j2": ("usr/local/lib/elevhub/kiosk-session", 0o755),
     "elevhub-lokal.service.j2": ("etc/systemd/system/elevhub-lokal.service", 0o644),
-    "elevhub-design.service.j2": ("etc/systemd/system/elevhub-design.service", 0o644)}
+    "elevhub-design.service.j2": ("etc/systemd/system/elevhub-design.service", 0o644),
+    "project-workshops.json.j2": ("etc/elevhub/project-workshops.json", 0o644)}
 APP_URLS = {"projekter":"http://127.0.0.1:8791/", "scratch":"http://127.0.0.1:8792/",
-    "microbit":"http://127.0.0.1:8797/"}
+    "microbit":"http://127.0.0.1:8797/", "laser":"http://127.0.0.1:8795/",
+    "folie":"http://127.0.0.1:8796/", "3dprint":"http://127.0.0.1:8798/"}
 
 class ActivationError(ValueError):
     pass
@@ -74,7 +76,7 @@ def default_config():
         "server":"127.0.0.1", "hub":"https://127.0.0.1:8773", "protokol":"https",
         "ca_fil":"/etc/elevhub/ca.pem", "ui_token":secrets.token_urlsafe(32),
         "elev":"elev", "elev_porte":[8770,8771,8772,8773,8791,8792,8795,8796,8797],
-        "lokale_app_urler":APP_URLS, "internet_app":"internet", "theme":"red",
+        "lokale_app_urler":dict(APP_URLS), "internet_app":"internet", "theme":"red",
         "school_name":"", "webproxy_required":False, "usikker_test":False}
 
 def existing_project_paths(root,user):
@@ -116,8 +118,9 @@ def context(config, root):
     urls=config.get("lokale_app_urler",APP_URLS)
     if isinstance(urls,dict):
         urls={k:v for k,v in urls.items() if k not in {"datatraener","kredsloeb","skolegpt"}}
-    allowed={**APP_URLS,"laser":"http://127.0.0.1:8795/","folie":"http://127.0.0.1:8796/",
-             "3dprint":"https://"+server+":8770/"}
+        if urls.get("3dprint") in ("https://"+server+":8770/", "https://"+server+":8770"):
+            urls["3dprint"]=APP_URLS["3dprint"]
+    allowed=APP_URLS
     if not isinstance(urls,dict) or any(k not in allowed or v.rstrip("/")!=allowed[k].rstrip("/") for k,v in urls.items()):
         raise ActivationError("unexpected_local_workshop_urls")
     urls={**allowed,**urls}
@@ -143,6 +146,7 @@ def context(config, root):
         "kiosk_mesa_gl":config.get("mesa_gl",False),"kiosk_web_bluetooth":config.get("web_bluetooth",False),"kiosk_skaerm_output":config.get("screen_output",""),"kiosk_skaerm_mode":config.get("screen_mode",""),
         "kiosk_usikker_test":not ca_available,"kiosk_lokal_design_dest":"/usr/local/lib/elevhub/designvaerksted",
         "kiosk_laservaerksted_port":8771,"kiosk_lokal_design_laser_port":8795,"kiosk_lokal_design_folie_port":8796,
+        "kiosk_lokal_design_model3d_port":8798,"kiosk_lokal_design_enabled":True,
         "kiosk_lokal_service_dest":"/usr/local/lib/elevhub/projekter/lokal.py",
         "kiosk_lokale_apps_root":"/usr/local/share/elevhub/apps", "kiosk_lokale_projects":data["projects"],
         "kiosk_lokale_state":data["state"], "kiosk_lokal_package_dest":"/usr/local/lib/elevhub/projekter"}
@@ -213,7 +217,10 @@ def activate(root=Path("/")):
     state.mkdir(parents=True,exist_ok=True,mode=0o700)
     protected(state,private=True,directory=True)
     atomic(state/"activation.json",json_bytes({"phase":"committing"}),0o600)
-    if not config_path.exists():atomic(config_path,json_bytes(config),0o644)
+    # The browser policy reads this same map. Migrate program-owned URLs while
+    # retaining the school's identity, preferences and project paths.
+    migrated={**config,"lokale_app_urler":values["kiosk_lokale_app_urler"]}
+    if not config_path.exists() or migrated!=config:atomic(config_path,json_bytes(migrated),0o644)
     hashes={}
     for target,data,mode in prepared:
         atomic(target,data,mode)

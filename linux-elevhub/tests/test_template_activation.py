@@ -29,6 +29,24 @@ class TemplateActivation(unittest.TestCase):
         for name in M.TRUST:shutil.copyfile(public/name,trust/name)
         projects=self.root/"home/elev/Projekter";projects.mkdir(parents=True)
         self.project=projects/"tidligere.klosterskitse";self.project.write_bytes(b"synthetic legacy data")
+    def test_existing_server_3d_link_migrates_to_local_editor_and_project_destination(self):
+        config=M.default_config();config.update(server="school.example",computer="test-01")
+        config["lokale_app_urler"]={**config["lokale_app_urler"],"3dprint":"https://school.example:8770/"}
+        path=self.root/"etc/elevhub/kiosk.json";path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(config));path.chmod(0o644)
+        before=path.read_bytes()
+        values=M.context(config,self.root)
+        self.assertEqual(values["kiosk_lokale_app_urler"]["3dprint"],"http://127.0.0.1:8798/")
+        M.activate(self.root)
+        projects=json.loads((self.root/"etc/elevhub/project-workshops.json").read_text())
+        self.assertEqual(projects["3dprint"],"http://127.0.0.1:8798/model3d.html")
+        unit=(self.root/"etc/systemd/system/elevhub-design.service").read_text()
+        self.assertIn("--print-server-url https://school.example:8770",unit)
+        self.assertIn("--model3d-port 8798",unit)
+        preserved=json.loads(before);preserved["lokale_app_urler"]["3dprint"]="http://127.0.0.1:8798/"
+        self.assertEqual(json.loads(path.read_bytes()),preserved)
+        self.assertEqual(self.project.read_bytes(),b"synthetic legacy data")
+
     def test_offline_firstboot_renders_local_apps_without_root_identity_or_network(self):
         with patch("urllib.request.urlopen",side_effect=AssertionError("network forbidden")):
             result=M.activate(self.root)

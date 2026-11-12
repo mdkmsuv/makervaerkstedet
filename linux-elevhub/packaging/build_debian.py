@@ -7,6 +7,7 @@ The private input lock/provenance receipt never enters the package.
 from __future__ import annotations
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path, PurePosixPath
@@ -16,8 +17,12 @@ import subprocess
 import tempfile
 
 EPOCH = 1793746800
-PACKAGES = {"makervaerkstedet-elev", "makervaerkstedet-scratch",
-            "makervaerkstedet-matchbox", "makervaerkstedet-updater"}
+_release_path = Path(__file__).resolve().parents[2] / "app/simple_release.py"
+_release_spec = importlib.util.spec_from_file_location("_mkv_simple_release", _release_path)
+_release_module = importlib.util.module_from_spec(_release_spec)
+_release_spec.loader.exec_module(_release_module)
+DEBIAN_COMPONENTS = _release_module.DEBIAN_COMPONENTS
+PACKAGES = {package for package, _ in DEBIAN_COMPONENTS.values()}
 
 def sha(path):
     with Path(path).open("rb") as stream:

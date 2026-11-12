@@ -21,6 +21,7 @@ const COMPUTER = {{ inventory_hostname | to_json }};
 const UI_TOKEN = {{ kiosk_enhed.ui_token | to_json }};
 const LOKALE_APP_URLER = {{ kiosk_lokale_app_urler | tojson }};
 LOKALE_APP_URLER.microbit = 'http://127.0.0.1:8797/';
+LOKALE_APP_URLER['3dprint'] = LOKALE_APP_URLER['3dprint'] || 'http://127.0.0.1:8798/';
 let seneste = '', starter = false, offlineMode = false;
 let startupReady = false;
 function markStartupReady() {
@@ -45,7 +46,7 @@ function markStartupReady() {
   Promise.race([assets, new Promise(resolve => setTimeout(resolve, 1500))]).then(painted, painted);
 }
 const OFFLINE_APPS = [
-  { id: '3dprint', navn: '3D-værksted', type: 'lokal', port: {{ kiosk_printvaerksted_port }}, aaben: true, klar: true, offline_unavailable: true },
+  { id: '3dprint', navn: '3D-værksted', type: 'lokal', port: 8798, aaben: true, klar: true },
   { id: 'laser', navn: 'Laser', type: 'lokal', port: 8795, aaben: true, klar: true },
   { id: 'folie', navn: 'Folie', type: 'lokal', port: 8796, aaben: true, klar: true },
   { id: 'microbit', navn: 'micro:bit', type: 'lokal', port: 8797, aaben: true, klar: true, requires_internet: true },
@@ -149,7 +150,6 @@ async function aabn(e, app, model3d = false) {
       return;
     }
     if (offlineMode) {
-      if (app.offline_unavailable) throw new Error('3D-værkstedet kræver forbindelse til skoleserveren.');
       const url = model3d ? model3dAdresse(app) : adresse(app);
       if (app.type === 'browser') {
         if (!vindue) throw new Error('Browseren kunne ikke åbne et nyt vindue. Prøv igen.');

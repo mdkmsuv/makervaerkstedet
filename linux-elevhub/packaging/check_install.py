@@ -8,8 +8,8 @@ no package installation, maintainer script or service command is executed.
 import argparse, hashlib, json, os, re, shutil, subprocess, tempfile
 from pathlib import Path
 from apt_sandbox import isolated_config, prove_isolation
+from build_debian import PACKAGES
 
-PACKAGES={"makervaerkstedet-elev","makervaerkstedet-updater","makervaerkstedet-scratch","makervaerkstedet-matchbox"}
 
 def check(packages,keyring,report):
     if not hasattr(os,"geteuid") or os.geteuid()!=0:raise RuntimeError("release_gate_requires_Linux_root")

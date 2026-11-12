@@ -29,8 +29,8 @@ følger [udgivelsesprocessen](UDGIVELSESPROCES.md).
 | Laserværkstedet | Ny editor i `web/laservaerksted/` serveres som `/laser.html` både på serveren og lokalt (`app/laser_local.py`). *Se og aflever* sender laser-SVG til `/api/laser/submit`. | UI/UX-review af den renderede flow. Gamle `.projekt.svg`-laserprojekter kan ikke åbnes i den nye editor. |
 | Laser-udbakke | `laser_local` validerer lokalt med `clean_svg`, gemmer i `/var/lib/elevhub-design/udbakke` ved manglende forbindelse, svarer 202 og sender igen hvert 30. s med samme `requestId`. | Visning i editoren af, hvor mange afleveringer der venter. |
 | Folieværkstedet | Uændret: den gamle kombinerede editor (`web/laser.html`). | Egen ny editor, når laserens er afprøvet. |
-| 3D-værkstedet | *Send til print* (bekræftelse, kvittering, samme job-id ved nyt forsøg). På elevenheden åbner 3D-flisen tegneværkstedet direkte. | Kører stadig fra serveren via hubben (port 8770). Er serveren nede, kan 3D ikke åbnes. Lokal servering og print-udbakke mangler. |
-| App-pakker | Fire faste Debian-pakker (`DEBIAN_COMPONENTS` i `app/simple_release.py`). | Manifest, pakke pr. app, skolens valg, tom ISO. |
+| 3D-værkstedet | Editor på lokal port 8798; STL fra projekthylden åbnes i editoren. Valideret STL gemmes i `udbakke/print` uden server og sendes via hubbens 8770 med samme request-id. Pakke `20261112.1` er installeret i WSL og afprøvet med systemd, genstart, isoleret HTTPS-printkø og faktisk Chrome. UI/UX-review af offlineaflevering og projektåbning udført. | ISO-opstart og kiosk-login i ren VM mangler. Editoren importerer/eksporterer STL, men har endnu ingen adapter til lagring af redigerbare 3D-projekter. WSL-prøven anvender syntetisk profil og andre upstream-porte for at undgå en optaget Windows-port. |
+| App-pakker | Fire faste Debian-pakker; bygge-, installations- og opdateringskode læser samme `DEBIAN_COMPONENTS` i `app/simple_release.py`. | Manifest, pakke pr. app, skolens valg, tom ISO. |
 
 ## App-pakken
 
@@ -76,12 +76,18 @@ Fælles regler (implementeret for laser i `app/laser_local.py`):
    browseren får **202** `{"queued": true}`.
 3. En baggrundstråd sender igen med samme `requestId`. Serveren dedublerer,
    så et nyt forsøg aldrig giver to job.
-4. Afviser serveren selve afleveringen (400/413), slettes filen og
-   hændelsen logges. Er værkstedet lukket (423), venter filen.
+4. Afviser serveren selve afleveringen (400/413 med en besked), flyttes filen
+   til `afvist/`, og hændelsen logges. Her bevares højst 200 afviste filer.
+   Er værkstedet lukket (423), venter filen. Ved 429 springes filen over i
+   denne runde; uventede svar gemmes til et senere forsøg.
 5. Udbakken har et loft (50), og eleven får en dansk besked, når den er fuld.
 
-Udbakketyper: `laser-submit` (JSON til `/api/laser/submit`, findes) og
-`print-job` (binær STL til `/api/jobs` med `X-Request-ID`, mangler).
+Udbakketyper: `laser-submit` (JSON til `/api/laser/submit`) og `print-job`
+(binær STL til `/api/jobs` med `X-Request-ID`). Print opbevarer STL som
+base64 i én atomisk JSON-fil. Laser beholder sit eksisterende filformat;
+print har egen undermappe og afsendelsesrunde, så lukning af ét værksted
+ikke spærrer det andet. Genbrug af et ventende request-id med ændret indhold
+afvises uden at overskrive den oprindelige aflevering.
 
 ## Skolens valg og tilmelding
 

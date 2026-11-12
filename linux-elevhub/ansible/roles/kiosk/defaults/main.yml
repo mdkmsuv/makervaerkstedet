@@ -68,6 +68,7 @@ kiosk_lokal_design_kilde: "{{ playbook_dir }}/../.."
 kiosk_lokal_design_dest: /usr/local/lib/elevhub/designvaerksted
 kiosk_lokal_design_laser_port: 8795
 kiosk_lokal_design_folie_port: 8796
+kiosk_lokal_design_model3d_port: 8798
 
 # Filer fra Elevhub-serveren (skrift og fælles katalog-assets), som startsiden bruger.
 kiosk_elevhub_web: "{{ playbook_dir }}/../server/elevhub/web"

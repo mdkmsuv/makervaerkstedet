@@ -6,7 +6,7 @@ from filtyper import association, archive_listing
 from makecode_import import editable_project
 from stl_check import validate_stl
 
-DEFAULT_WORKSHOPS = {'3dprint': 'http://127.0.0.1:8770/',
+DEFAULT_WORKSHOPS = {'3dprint': 'http://127.0.0.1:8798/model3d.html',
                      'laser': 'http://127.0.0.1:8766/laser.html',
                      'folie': 'http://127.0.0.1:8766/folie.html'}
 

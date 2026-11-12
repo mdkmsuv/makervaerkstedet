@@ -18,6 +18,7 @@ ENDPOINTS=(
     (8797,"/_elevhub/health","elevhub-lokal","microbit"),
     (8795,"/api/runtime/health","elevhub-design",None),
     (8796,"/api/runtime/health","elevhub-design",None),
+    (8798,"/api/runtime/health","elevhub-design",None),
 )
 
 def read_health(url):

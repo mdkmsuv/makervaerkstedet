@@ -29,7 +29,7 @@ Opdatér dette kort, når du flytter, omdøber eller tilføjer en komponent.
                         Elevcomputer (Debian 13, apt-pakker)
    kiosk-session → Chromium med start.html, elevbjaelke.py, matchbox
    elevhub-lokal  → projekter/lokal.py          lokale projekter               127.0.0.1:8791
-   elevhub-design → app.laser_local             lokal laser/folie (offline)    127.0.0.1:8795/8796
+   elevhub-design → app.laser_local             lokal laser/folie/3D (offline) 127.0.0.1:8795/8796/8798
    makervaerkstedet-apt-update.timer → apt_client.py   henter opdateringer fra serveren hvert minut
 ```
 
@@ -87,7 +87,7 @@ Hvilke filer der kommer med:
 ### 3.2 Laser og folie (`app/`)
 - `laser_server.py`: afleveringer fra elever; to flader (elev 8766, lærer 8767).
 - `laser_workflows.py`, `laser_inbox_lifecycle.py`, `laser_images.py`, `boxes_generator.py` + `boxes_worker.py`.
-- `laser_local.py`: samme elevflade lokalt på elevcomputeren. Arver `laser_server.Handler`, så ændringer i elevfladen rammer også elevcomputerne.
+- `laser_local.py`: lokale laser-/folieflader og 3D på 8798. `Outbox` bevarer laserafleveringer og print i separate mapper; `PrintForwardingInbox` sender binær STL til hubbens `/api/jobs`. Laser/folie arver `laser_server.Handler`; 3D har egne afgrænsede ruter og WASM/worker-CSP.
 
 ### 3.3 Laserstation (`app/`)
 - `laser_station.py` (lokal server og Beam Studio-overførsel), `laser_plate.py`, `laser_material.py`, `laser_scene.py`, `laser_ghost.py`, `laser_transfer.py`.

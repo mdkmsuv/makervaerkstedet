@@ -404,10 +404,11 @@ if (view) {
     notice = axis ? 'Figuren er spejlvendt forfra og bagud.' : 'Figuren er spejlvendt fra venstre til højre.'; mutate(() => model.mirror(axis, box.getCenter(new THREE.Vector3()).toArray()));
   };
   // Hent en STL-fil ind som en fast figur. A model larger than the plate is shrunk to fit, keeping its shape.
-  async function importStl(file) {
-    if (!file) return; if (!/\.stl$/i.test(file.name)) { status('Vælg en STL-fil.'); return; }
-    if (file.size > 25 * 1024 * 1024) { status('Filen er for stor. Vælg en STL-fil på højst 25 MB.'); return; }
-    let info; try { info = readStl(await file.arrayBuffer()); } catch (error) { status(`Filen kunne ikke læses: ${error.message}`); return; }
+  async function importStl(file, fromShelf = false) {
+    const fail = message => { if (fromShelf) throw Error(message); status(message); };
+    if (!file) return; if (!/\.stl$/i.test(file.name)) return fail('Vælg en STL-fil.');
+    if (file.size > 25 * 1024 * 1024) return fail('Filen er for stor. Vælg en STL-fil på højst 25 MB.');
+    let info; try { info = readStl(await file.arrayBuffer()); } catch (error) { return fail(`Filen kunne ikke læses: ${error.message}`); }
     const biggest = Math.max(...info.size), fit = biggest > 170 ? 170 / biggest : 1, size = info.size.map(value => Math.max(.1, Math.round(value * fit * 100) / 100));
     assets.set(info.id, info.positions);
     const options = {...placement('mesh'), size, asset: info.id, name: file.name.replace(/\.stl$/i, '')};
@@ -416,6 +417,7 @@ if (view) {
     if (lastColor) options.color = lastColor;
     if (!model.data.roots.length) frameFirst = true; mutate(() => model.add('mesh', options));
   }
+  window.ElevhubImportFile = file => importStl(file, true);
   // Hent en SVG-tegning ind: its filled areas become a flat part, 40 mm across and 3 mm high.
   async function importSvg(file) {
     if (!file) return; if (file.size > 5 * 1024 * 1024) { status('Tegningen er for stor. Vælg en SVG-fil på højst 5 MB.'); return; }

@@ -5,16 +5,16 @@ import hashlib
 import json
 from pathlib import Path
 import re
-from build_debian import sha
+from build_debian import sha, DEBIAN_COMPONENTS
 
-CORE_VERSION = "2.0.0~20261111.1"
-UPDATER_VERSION = "1.0.0~20261111.1"
+CORE_VERSION = "2.0.0~20261112.1"
+UPDATER_VERSION = "1.0.0~20261112.1"
 
 SPECS = {
-    "updater": ("makervaerkstedet-updater", UPDATER_VERSION, "amd64", ["python3 (>= 3.13)", "python3-jinja2", "apt", "dpkg", f"makervaerkstedet-elev (>= {CORE_VERSION})"]),
-    "core": ("makervaerkstedet-elev", CORE_VERSION, "all", ["python3 (>= 3.11)", "python3-pil", "python3-tk", "python3-xlib", "python3-affine", "python3-qrcode", "python3-shapely", "python3-typing-extensions", "chromium", "xserver-xorg-core", "xserver-xorg-input-libinput", "xinit", "x11-xserver-utils", "x11-xkb-utils", "x11-utils", "xdotool", "udiskie", "udisks2", "polkitd", "sudo", "makervaerkstedet-matchbox (= 1.2.2+git20200512+guard.20261104.1)"]),
-    "scratch": ("makervaerkstedet-scratch", "15.1.1+local.20261104.1", "all", []),
-    "matchbox": ("makervaerkstedet-matchbox", "1.2.2+git20200512+guard.20261105.1", "amd64", ["libc6", "libmatchbox1", "libx11-6", "libxext6", "libxfixes3", "libstartup-notification0", "libexpat1"]),
+    "updater": (DEBIAN_COMPONENTS["updater"][0], UPDATER_VERSION, DEBIAN_COMPONENTS["updater"][1], ["python3 (>= 3.13)", "python3-jinja2", "apt", "dpkg", f"makervaerkstedet-elev (>= {CORE_VERSION})"]),
+    "core": (DEBIAN_COMPONENTS["studentcore"][0], CORE_VERSION, DEBIAN_COMPONENTS["studentcore"][1], ["python3 (>= 3.11)", "python3-pil", "python3-tk", "python3-xlib", "python3-affine", "python3-qrcode", "python3-shapely", "python3-typing-extensions", "chromium", "xserver-xorg-core", "xserver-xorg-input-libinput", "xinit", "x11-xserver-utils", "x11-xkb-utils", "x11-utils", "xdotool", "udiskie", "udisks2", "polkitd", "sudo", "makervaerkstedet-matchbox (= 1.2.2+git20200512+guard.20261104.1)"]),
+    "scratch": (DEBIAN_COMPONENTS["scratch"][0], "15.1.1+local.20261104.1", DEBIAN_COMPONENTS["scratch"][1], []),
+    "matchbox": (DEBIAN_COMPONENTS["matchbox"][0], "1.2.2+git20200512+guard.20261105.1", DEBIAN_COMPONENTS["matchbox"][1], ["libc6", "libmatchbox1", "libx11-6", "libxext6", "libxfixes3", "libstartup-notification0", "libexpat1"]),
 }
 # Core pins the same custom binary package; an incompatible package cannot be
 # silently selected by a release builder.
@@ -121,7 +121,7 @@ def main():
             for p in sorted(assets.iterdir()):
                 if p.is_file() and p.name != "native-3d.js" and not p.name.startswith(("workshop-data-", "workshop-circuit-")):
                     add(p, "usr/local/share/elevhub/assets/" + p.name)
-            for name in ("start.html.j2", "kiosk-session.j2", "elevhub-lokal.service.j2", "elevhub-design.service.j2", "elevhub-regler.service.j2", "elevhub-webproxy.service.j2"):
+            for name in ("start.html.j2", "kiosk-session.j2", "elevhub-lokal.service.j2", "elevhub-design.service.j2", "project-workshops.json.j2", "elevhub-regler.service.j2", "elevhub-webproxy.service.j2"):
                 source = args.session_template if name == "kiosk-session.j2" and args.session_template else kiosk / "templates" / name
                 add(source, "usr/share/makervaerkstedet/templates/" + name)
             for name in ("CREDITS.md", "LICENSE-SCOPE.md", "LICENSE"):

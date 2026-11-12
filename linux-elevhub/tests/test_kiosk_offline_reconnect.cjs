@@ -27,6 +27,7 @@ class Document {
   querySelector() { return null; }
 }
 const document = new Document();
+document.add(new Element('button', 'detail-model3d'));
 document.title = 'Værkstedet starter';
 const frames = [];
 const readyTimers = [];
@@ -54,7 +55,7 @@ const inline = template.match(/<script>\r?\n([\s\S]*?)\r?\n<\/script>/)[1]
   .replaceAll('{{ inventory_hostname | to_json }}', JSON.stringify('test'))
   .replaceAll('{{ kiosk_enhed.ui_token | to_json }}', JSON.stringify('ui-token'))
   .replaceAll('{{ kiosk_lokale_app_urler | tojson }}', JSON.stringify(context.LOKALE_APP_URLER))
-  .replaceAll('{{ kiosk_internet_start | to_json }}', JSON.stringify('https://www.google.com/imghp?hl=da&safe=active')) + '\nwindow.__start = {opdater};';
+  .replaceAll('{{ kiosk_internet_start | to_json }}', JSON.stringify('https://www.google.com/imghp?hl=da&safe=active')) + '\nwindow.__start = {opdater, aabn};';
 const creative = fs.readFileSync(path.join(root, 'server','elevhub','web','assets','creative-hub.js'), 'utf8').replace(/opdater\(\);\s*$/, '');
 vm.runInNewContext(inline + '\n' + creative, context);
 function cards() { return document.getElementById('apps').children; }
@@ -63,7 +64,7 @@ const app = (id, aaben = true) => ({ id, aaben, klar:true, type:'vaerksted', nav
 
 (async () => {
   await context.window.__start.opdater();
-  assert.equal(cards().length, 9, 'timeout exposes the complete offline catalog');
+  assert.equal(cards().length, 6, 'timeout exposes the installed offline catalog');
   assert.equal(context.window.CreativeHub.isOffline(), true);
   // Offline boot also releases the start screen, only after the page has painted.
   for (let i = 0; i < 8; i++) await Promise.resolve();
@@ -79,6 +80,12 @@ const app = (id, aaben = true) => ({ id, aaben, klar:true, type:'vaerksted', nav
   for (let i = 0; i < 8; i++) await Promise.resolve();
   readyTimers.at(-1)();
   assert.equal(document.title, 'Værkstedet · Makerværkstedet', 'occluded page releases without RAF');
+  fetchImpl = (url) => {
+    assert.ok(url.startsWith('http://127.0.0.1:8790/finish'), 'offline launch only finishes the local session');
+    return Promise.resolve({ok:true, async json() { return {id:'a'.repeat(32),state:'completed'}; }});
+  };
+  await context.window.__start.aabn({preventDefault() {}}, app('3dprint'), true);
+  assert.equal(location.href, 'http://127.0.0.1:8798/model3d.html', '3D opens locally without school contact');
   fetchImpl = () => response([app('laser', false), app('scratch', true)]);
   await context.window.__start.opdater();
   assert.equal(context.window.CreativeHub.isOffline(), false, 'successful reconnect clears offline mode');
@@ -94,7 +101,7 @@ const app = (id, aaben = true) => ({ id, aaben, klar:true, type:'vaerksted', nav
   const pending = context.window.__start.opdater();
   await Promise.resolve();
   assert.equal(context.window.CreativeHub.isOffline(), true, 'pending reconnect keeps offline launch state');
-  assert.equal(cards().length, 9);
+  assert.equal(cards().length, 6);
   void pending;
   console.log('kiosk offline reconnect dynamic regression: ok');
 })().catch(error => { console.error(error); process.exitCode = 1; });

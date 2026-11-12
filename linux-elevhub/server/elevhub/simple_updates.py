@@ -4,6 +4,7 @@ Publisher verification is delegated to app.simple_release. Device reports are
 self-reports, never proof of a successful install or permission to run a URL.
 """
 from contextlib import contextmanager
+from collections.abc import Mapping
 from datetime import datetime, timezone
 import importlib.util
 import hashlib
@@ -15,11 +16,6 @@ import sqlite3
 import ssl
 from urllib.parse import unquote, urlsplit
 import uuid
-
-DEBIAN_PACKAGES = {'studentcore': ('makervaerkstedet-elev', 'all'),
-                  'scratch': ('makervaerkstedet-scratch', 'all'),
-                  'matchbox': ('makervaerkstedet-matchbox', 'amd64'),
-                  'updater': ('makervaerkstedet-updater', 'amd64')}
 
 
 class UpdateError(ValueError):
@@ -93,6 +89,27 @@ def verifier_path():
     else:
         raise UpdateError('unsupported_release_verifier_layout', 503)
     return plain(candidate)
+
+
+# Load the shared contract only when needed: an empty catalog can operate before
+# the optional release verifier is installed, as in the existing Windows flow.
+class _DebianPackages(Mapping):
+    def _mapping(self):
+        spec = importlib.util.spec_from_file_location('_elevhub_package_contract', verifier_path())
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.DEBIAN_COMPONENTS
+
+    def __getitem__(self, key):
+        return self._mapping()[key]
+
+    def __iter__(self):
+        return iter(self._mapping())
+
+    def __len__(self):
+        return len(self._mapping())
+
+DEBIAN_PACKAGES = _DebianPackages()
 
 
 class SimpleUpdates:

@@ -1,5 +1,5 @@
 {
-  "3dprint": "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_printvaerksted_port }}/",
+  "3dprint": "http://127.0.0.1:{{ kiosk_lokal_design_model3d_port | default(8798) }}/model3d.html",
 {% if kiosk_lokal_design_enabled | bool %}
   "laser": "http://127.0.0.1:{{ kiosk_lokal_design_laser_port }}/laser.html",
   "folie": "http://127.0.0.1:{{ kiosk_lokal_design_folie_port }}/folie.html"

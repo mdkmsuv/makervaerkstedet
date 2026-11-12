@@ -9,6 +9,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import importlib.util
 import re
 import shlex
 import stat
@@ -19,7 +20,17 @@ import tempfile
 from contextlib import contextmanager
 from apt_sandbox import isolated_config, prove_isolation
 
-PACKAGES={"makervaerkstedet-elev":"all","makervaerkstedet-scratch":"all","makervaerkstedet-matchbox":"amd64","makervaerkstedet-updater":"amd64"}
+# The verifier is shared by source builds and the standalone installer payload.
+_release_path = Path(__file__).resolve().with_name("simple_release.py")
+if not _release_path.is_file():
+    _source = Path(__file__).resolve()
+    if tuple(parent.name for parent in _source.parents[:3]) != ("debian", "installation", "linux-elevhub"):
+        raise FileNotFoundError("shared_release_verifier_required")
+    _release_path = _source.parents[3] / "app/simple_release.py"
+_release_spec = importlib.util.spec_from_file_location("_mkv_simple_release", _release_path)
+_release_module = importlib.util.module_from_spec(_release_spec)
+_release_spec.loader.exec_module(_release_module)
+PACKAGES = {package: architecture for package, architecture in _release_module.DEBIAN_COMPONENTS.values()}
 LEGACY_UNITS=("elevhub-full-update.service","elevhub-firstboot.service","elevhub-onboarding.service")
 LEGACY_FILES=tuple("etc/systemd/system/"+name for name in LEGACY_UNITS)+("etc/systemd/system/getty@tty1.service.d/zz-full-update.conf",)
 SESSION_FILES=("etc/profile.d/elevhub-kiosk.sh","home/elev/.bash_profile","home/elev/.profile","etc/systemd/system/getty@tty1.service.d/elevhub-autologin.conf","etc/systemd/system/getty@tty1.service.d/autologin.conf")
