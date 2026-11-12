@@ -7,7 +7,7 @@ import uuid
 from urllib.parse import parse_qs, urlsplit
 
 PREFIX = '/_elevhub/session/'
-KINDS = {'scratch', 'laser', 'folie', 'microbit'}
+KINDS = {'scratch', 'laser', 'folie', 'microbit', '3dprint'}
 
 
 def identifier(value):

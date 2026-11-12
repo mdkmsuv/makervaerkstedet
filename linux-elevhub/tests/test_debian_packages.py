@@ -63,6 +63,10 @@ class DebianPackages(unittest.TestCase):
                 self.assertIn(command, session)
                 self.assertIn(package, names)
         self.assertIn("makervaerkstedet-matchbox (= 1.2.2+git20200512+guard.20261105.1)", dependencies)
+        # The patched binary still loads Debian's theme, keyboard config and
+        # icon at startup. Library-only dependencies let it exit immediately
+        # on a clean machine, leaving Chromium covering the toolbar.
+        self.assertIn("matchbox-window-manager (>= 1.2.2+git20200512-2)", dependencies)
         self.assertIn("libmatchbox1", prepare_inputs.SPECS["matchbox"][3])
         self.assertNotIn("libmb1", prepare_inputs.SPECS["matchbox"][3])
         self.assertTrue({"xserver-xorg-core", "xserver-xorg-input-libinput", "udisks2", "polkitd", "sudo"} <= names)

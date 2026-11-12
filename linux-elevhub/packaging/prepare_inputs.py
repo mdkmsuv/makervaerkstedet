@@ -7,13 +7,14 @@ from pathlib import Path
 import re
 from build_debian import sha, DEBIAN_COMPONENTS
 
-CORE_VERSION = "2.0.0~20261112.1"
-UPDATER_VERSION = "1.0.0~20261112.1"
+CORE_VERSION = "2.0.0~20261112.5"
+UPDATER_VERSION = "1.0.0~20261112.4"
+SCRATCH_RECEIPT_SHA256 = "e6526962d7114eb8547b527c41cbed348f1cc8fb8c4d44c635dfb8cb0aa00677"
 
 SPECS = {
     "updater": (DEBIAN_COMPONENTS["updater"][0], UPDATER_VERSION, DEBIAN_COMPONENTS["updater"][1], ["python3 (>= 3.13)", "python3-jinja2", "apt", "dpkg", f"makervaerkstedet-elev (>= {CORE_VERSION})"]),
     "core": (DEBIAN_COMPONENTS["studentcore"][0], CORE_VERSION, DEBIAN_COMPONENTS["studentcore"][1], ["python3 (>= 3.11)", "python3-pil", "python3-tk", "python3-xlib", "python3-affine", "python3-qrcode", "python3-shapely", "python3-typing-extensions", "chromium", "xserver-xorg-core", "xserver-xorg-input-libinput", "xinit", "x11-xserver-utils", "x11-xkb-utils", "x11-utils", "xdotool", "udiskie", "udisks2", "polkitd", "sudo", "makervaerkstedet-matchbox (= 1.2.2+git20200512+guard.20261104.1)"]),
-    "scratch": (DEBIAN_COMPONENTS["scratch"][0], "15.1.1+local.20261104.1", DEBIAN_COMPONENTS["scratch"][1], []),
+    "scratch": (DEBIAN_COMPONENTS["scratch"][0], "15.1.1+local.20261112.2", DEBIAN_COMPONENTS["scratch"][1], []),
     "matchbox": (DEBIAN_COMPONENTS["matchbox"][0], "1.2.2+git20200512+guard.20261105.1", DEBIAN_COMPONENTS["matchbox"][1], ["libc6", "libmatchbox1", "libx11-6", "libxext6", "libxfixes3", "libstartup-notification0", "libexpat1"]),
 }
 # Core pins the same custom binary package; an incompatible package cannot be
@@ -21,6 +22,9 @@ SPECS = {
 SPECS["core"] = (SPECS["core"][0], CORE_VERSION, SPECS["core"][2],
     [d if not d.startswith("makervaerkstedet-matchbox ") else
      "makervaerkstedet-matchbox (= " + SPECS["matchbox"][1] + ")" for d in SPECS["core"][3]])
+# The patched executable uses Debian's installed default theme, keyboard
+# bindings and icon. Keep launching the patched path, not the distro binary.
+SPECS["core"][3].append("matchbox-window-manager (>= 1.2.2+git20200512-2)")
 
 def runtime_descriptor(directory,version):
     descriptor=directory/"runtime-release-student.json"
@@ -30,10 +34,38 @@ def runtime_descriptor(directory,version):
     else:descriptor.write_bytes(data)
     return descriptor
 
+# The app files are staged as build inputs and become package-owned files.
+# Micro:bit serves its wrapper locally, but the MakeCode editor needs Internet.
+APP_MANIFESTS = {
+    "core": (
+        ("laser", "Laser", "http://127.0.0.1:8795/", True, "laser-submit", False),
+        ("folie", "Folie", "http://127.0.0.1:8796/", True, None, False),
+        ("3dprint", "3D-v\u00e6rksted", "http://127.0.0.1:8798/model3d.html", True, "print-job", False),
+        ("microbit", "micro:bit", "http://127.0.0.1:8797/", True, None, True),
+    ),
+    "scratch": (("scratch", "Scratch", "http://127.0.0.1:8792/", True, None, False),),
+}
+
+
+def app_descriptors(directory, kind, version):
+    for app_id, name, start, offline, delivery, internet in APP_MANIFESTS.get(kind, ()):
+        value = {"schema": 1, "id": app_id, "navn": name, "version": version,
+                 "start": start, "offline": offline, "aflevering": delivery,
+                 "kraever_internet": internet, "licens": "Se pakkens licensoplysninger"}
+        path = directory / ("app-manifest-" + app_id + ".json")
+        data = (json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n").encode("utf-8")
+        if path.exists():
+            if path.read_bytes() != data:
+                raise ValueError("app_manifest_exists:" + app_id)
+        else:
+            path.write_bytes(data)
+        yield path, "usr/share/makervaerkstedet/apps/" + app_id + "/app.json"
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     for name in ("source-root", "fallback-root", "scratch", "matchbox", "legacy-manifest", "output-dir"):
         parser.add_argument("--" + name, type=Path, required=True)
+    parser.add_argument("--scratch-receipt", type=Path)
     parser.add_argument("--session-template", type=Path)
     parser.add_argument("--updater-source", type=Path)
     parser.add_argument("--shared-verifier", type=Path)
@@ -62,12 +94,30 @@ def main():
         if kind == "scratch":
             source = getattr(args, kind)
             prefix = "assets/" + kind + "/"
-            expected = {k[len(prefix):]: v for k, v in old.items() if k.startswith(prefix)}
+            expected = {k[len(prefix):]: (v, 0o644) for k, v in old.items() if k.startswith(prefix)}
+            if args.scratch_receipt is not None:
+                if sha(args.scratch_receipt) != SCRATCH_RECEIPT_SHA256:
+                    raise ValueError("scratch_receipt_hash_mismatch")
+                receipt = json.loads(args.scratch_receipt.read_text(encoding="utf-8"))
+                if (receipt.get("package"), receipt.get("version"), receipt.get("architecture"), receipt.get("sha256")) != (
+                        "makervaerkstedet-scratch", "15.1.1+local.20261104.1", "all",
+                        "1ae6af12a62c0bb4111967473563f99a1fa97e2cf0c7a02711fa608679713c50"):
+                    raise ValueError("invalid_scratch_receipt")
+                target_prefix = "usr/local/share/elevhub/apps/scratch/"
+                expected = {}
+                for entry in receipt["files"]:
+                    target = entry["path"]
+                    if not target.startswith(target_prefix):
+                        raise ValueError("invalid_scratch_receipt_path")
+                    rel = target[len(target_prefix):]
+                    if not rel or rel in expected or Path(rel).is_absolute() or ".." in Path(rel).parts or entry["mode"] not in (0o644, 0o755):
+                        raise ValueError("invalid_scratch_receipt_path")
+                    expected[rel] = (entry["sha256"], entry["mode"])
             actual = {p.relative_to(source).as_posix() for p in source.rglob("*") if p.is_file()}
             if not expected or actual != set(expected):
                 raise ValueError("historical_app_inventory_changed:" + kind)
-            for rel, expected_hash in sorted(expected.items()):
-                add(source / rel, "usr/local/share/elevhub/apps/" + kind + "/" + rel, expected_hash)
+            for rel, (expected_hash, mode) in sorted(expected.items()):
+                add(source / rel, "usr/local/share/elevhub/apps/" + kind + "/" + rel, expected_hash, mode)
         elif kind == "updater":
             if any(v is None for v in (args.updater_source,args.shared_verifier,args.minisign,args.minisign_license,args.minisign_provenance,args.public_trust_dir)):
                 raise ValueError("explicit_updater_inputs_required")
@@ -121,14 +171,18 @@ def main():
             for p in sorted(assets.iterdir()):
                 if p.is_file() and p.name != "native-3d.js" and not p.name.startswith(("workshop-data-", "workshop-circuit-")):
                     add(p, "usr/local/share/elevhub/assets/" + p.name)
-            for name in ("start.html.j2", "kiosk-session.j2", "elevhub-lokal.service.j2", "elevhub-design.service.j2", "project-workshops.json.j2", "elevhub-regler.service.j2", "elevhub-webproxy.service.j2"):
+            for name in ("start.html.j2", "kiosk-session.j2", "elevhub-lokal.service.j2", "elevhub-design.service.j2", "project-workshops.json.j2", "chromium-politik.json.j2", "elevhub-regler.service.j2", "elevhub-webproxy.service.j2"):
                 source = args.session_template if name == "kiosk-session.j2" and args.session_template else kiosk / "templates" / name
                 add(source, "usr/share/makervaerkstedet/templates/" + name)
             for name in ("CREDITS.md", "LICENSE-SCOPE.md", "LICENSE"):
                 add(root / name, "usr/share/doc/" + package + "/" + name)
+        for source, target in app_descriptors(args.output_dir, kind, version):
+            add(source, target)
         spec = {"schema": "makervaerkstedet.debian-inputs.v1", "package": package, "version": version,
             "architecture": arch, "depends": dependencies, "files": [files[k] for k in sorted(files)],
             "provenance": {"historical_manifest_sha256": sha(args.legacy_manifest), "source": "reviewed integration MV20-UPDATE-20261104", "component": kind}}
+        if kind == "scratch" and args.scratch_receipt is not None:
+            spec["provenance"]["scratch_receipt_sha256"] = SCRATCH_RECEIPT_SHA256
         destination = args.output_dir / (package + ".json")
         if destination.exists():
             raise ValueError("input_lock_exists")

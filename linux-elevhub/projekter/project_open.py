@@ -22,11 +22,28 @@ def workshop_urls(path=None):
     return values
 
 
-def plan(server, meta, data):
+def validate_mkv3d(data):
+    try:
+        value = json.loads(data)
+    except (ValueError, UnicodeError, RecursionError) as error:
+        raise ValueError('Ugyldigt 3D-projekt.') from error
+    if (type(value) is not dict or value.get('format') != 'makervaerkstedet-3d-project'
+            or type(value.get('version')) is not int or value['version'] != 1
+            or type(value.get('scene')) is not dict
+            or value['scene'].get('format') != 'makervaerkstedet-3d'
+            or type(value['scene'].get('version')) is not int or value['scene']['version'] != 2):
+        raise ValueError('Ugyldigt 3D-projekt.')
+    return value
+
+
+def plan(server, meta, data, revision=None):
     route = association(meta['filename'], meta['kind'], data)
     program = route['program']
     if program == '3dprint':
-        validate_stl(data)
+        if route['extension'] == '.mkv3d':
+            validate_mkv3d(data)
+        else:
+            validate_stl(data)
     result = {'project': meta, **route}
     if program in ('scratch', 'kredsloeb', 'datatraener', 'microbit'):
         app = next((a for a in server.projekt_apps if a['id'] == program), None)
@@ -40,10 +57,15 @@ def plan(server, meta, data):
         result.update(mode='download')
     elif program in server.workshop_urls:
         url = urlsplit(server.workshop_urls[program])
-        if program in ('laser', 'folie') and url.hostname in ('127.0.0.1', 'localhost'):
-            query = urlencode({'elevhub_project': meta['id']})
+        if (program in ('laser', 'folie') or (program == '3dprint' and route['extension'] == '.mkv3d')) and url.hostname in ('127.0.0.1', 'localhost'):
+            params = {'elevhub_project': meta['id']}
+            if revision is not None:
+                params['elevhub_revision'] = revision
+            query = urlencode(params)
             result.update(mode='navigate', url=urlunsplit(url._replace(query=query)))
         else:
+            if program == '3dprint' and route['extension'] == '.mkv3d':
+                raise ValueError('3D-værkstedet skal være lokalt.')
             result.update(mode='frame', url=server.workshop_urls[program])
     else:
         result.update(mode='viewer')

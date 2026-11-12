@@ -19,7 +19,21 @@ const ready = Module({ locateFile: name => name.endsWith('.wasm')
 let pending = null, running = false;
 // Imported files arrive once and stay here for the session; scenes only refer to them by id.
 const assets = new Map();
+let resetGeneration = 0, appliedResetGeneration = 0;
+function applyReset(kernel) {
+  if (kernel && appliedResetGeneration !== resetGeneration) {
+    kernel.clearCache();
+    appliedResetGeneration = resetGeneration;
+  }
+}
 self.addEventListener('message', event => {
+  if (event.data?.type === 'reset') {
+    pending = null; assets.clear(); resetGeneration++;
+    // Module/font startup may still be pending. Clear only kernel state here:
+    // a following evaluate has already supplied the new project's assets.
+    void ready.then(applyReset);
+    return;
+  }
   if (event.data?.type !== 'evaluate') return;
   for (const [id, positions] of Object.entries(event.data.assets || {})) if (/^(stl|svg)-[a-z0-9-]{1,40}$/.test(id) && positions instanceof Float32Array) assets.set(id, positions);
   pending = event.data;
@@ -31,6 +45,7 @@ async function drain() {
     const kernel = await ready;
     if (!kernel) throw new GeometryError('geometri_fejlede');
     while (pending) {
+      applyReset(kernel);
       const request = pending; pending = null;
       try {
         if (!Number.isSafeInteger(request.requestId) || request.requestId < 0) throw new GeometryError('ugyldig_scene');

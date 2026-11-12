@@ -529,11 +529,6 @@ class PrintForwardingInbox(ForwardingInbox):
 class LocalPrintHandler(LocalDesignHandler):
     """Only the local editor, project gateway and fixed print submission route."""
 
-    def reply(self, status, body, mime='application/json; charset=utf-8', headers=None):
-        # 3D currently exports/imports STL itself. The laser project bridge waits
-        # for an editor adapter which 3D does not expose and would block startup.
-        Handler.reply(self, status, body, mime, headers)
-
     def send_header(self, keyword, value):
         if keyword.lower() == 'content-security-policy':
             value = value.replace("script-src 'self';", "script-src 'self' 'wasm-unsafe-eval'; worker-src 'self';")

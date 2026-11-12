@@ -3,10 +3,15 @@ import json
 import os
 from pathlib import Path
 import shutil
+import socket
 import subprocess
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
+from urllib.error import HTTPError
+from urllib.parse import urlsplit
+from urllib.request import urlopen
 
 SOURCE=Path(__file__).parents[1]/"administration/template_activation.py"
 SPEC=importlib.util.spec_from_file_location("template_activation_test",SOURCE)
@@ -29,6 +34,90 @@ class TemplateActivation(unittest.TestCase):
         for name in M.TRUST:shutil.copyfile(public/name,trust/name)
         projects=self.root/"home/elev/Projekter";projects.mkdir(parents=True)
         self.project=projects/"tidligere.klosterskitse";self.project.write_bytes(b"synthetic legacy data")
+    def test_clean_activation_creates_browser_policy_without_an_absent_proxy(self):
+        M.activate(self.root)
+        policy=self.root/"etc/chromium/policies/managed/elevhub.json"
+        self.assertTrue(policy.is_file(), "package-only kiosk needs its managed browser policy")
+        values=json.loads(policy.read_text())
+        self.assertFalse(values["TranslateEnabled"])
+        self.assertFalse(values["PrintingEnabled"])
+        self.assertEqual(values["HomepageLocation"],"file:///usr/local/share/elevhub/start.html")
+        self.assertNotIn("ProxyServer",values)
+        self.assertNotIn("ProxyMode",values)
+        self.assertIn("http://127.0.0.1:8798/",values["InsecureContentAllowedForUrls"])
+        self.assertEqual(policy.stat().st_mode & 0o777,0o644)
+
+    def test_browser_policy_uses_explicit_proxy_and_preserves_operator_configuration(self):
+        config=M.default_config();config.update(server="school.example",webproxy_required=True)
+        path=self.root/"etc/elevhub/kiosk.json";path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(config))
+        M.activate(self.root)
+        policy=self.root/"etc/chromium/policies/managed/elevhub.json"
+        self.assertTrue(policy.is_file(), "explicit school proxy policy must be rendered")
+        values=json.loads(policy.read_text())
+        self.assertEqual(values["ProxyMode"],"fixed_servers")
+        self.assertEqual(values["ProxyServer"],"http=127.0.0.1:3128;https=127.0.0.1:3128")
+        self.assertEqual(values["ProxyBypassList"],"school.example,127.0.0.1,localhost")
+        custom=b'{"TranslateEnabled":true,"HomepageLocation":"https://operator.example/"}\n'
+        policy.write_bytes(custom)
+        M.activate(self.root)
+        self.assertEqual(policy.read_bytes(),custom)
+        policy.chmod(0o666)
+        with self.assertRaisesRegex(M.ActivationError,"unprotected_configuration"):
+            M.activate(self.root)
+
+    def test_browser_policy_context_rejects_ambiguous_proxy_and_invalid_ports(self):
+        for value in ("false",1,None):
+            with self.subTest(proxy=value):
+                config=M.default_config();config["webproxy_required"]=value
+                with self.assertRaisesRegex(M.ActivationError,"invalid_webproxy_required"):
+                    M.context(config,self.root)
+        for value in ([],[True],[0],[65536],["8770"],[8770,8770]):
+            with self.subTest(ports=value):
+                config=M.default_config();config["elev_porte"]=value
+                with self.assertRaisesRegex(M.ActivationError,"invalid_student_ports"):
+                    M.context(config,self.root)
+
+    def test_clean_activation_creates_local_startup_checks_and_preserves_existing_policy(self):
+        M.activate(self.root)
+        startup=self.root/"etc/elevhub/startup.json"
+        self.assertTrue(startup.is_file(), "clean kiosk cannot become ready without startup.json")
+        self.assertEqual(json.loads(startup.read_text()), {"urls":[
+            "http://127.0.0.1:8791/_elevhub/health",
+            "http://127.0.0.1:8795/api/runtime/health",
+            "http://127.0.0.1:8796/api/runtime/health",
+            "http://127.0.0.1:8798/api/runtime/health"]})
+        self.assertEqual(startup.stat().st_mode & 0o777, 0o644)
+        custom=b'{"urls":["http://127.0.0.1:8791/_elevhub/health"]}\n'
+        startup.write_bytes(custom)
+        M.activate(self.root)
+        self.assertEqual(startup.read_bytes(), custom)
+
+    def test_generated_workshop_readiness_succeeds_without_school_server(self):
+        from app.laser_local import create_local_servers, create_print_server
+
+        M.activate(self.root)
+        urls=json.loads((self.root/"etc/elevhub/startup.json").read_text())["urls"]
+        # Reserve an unreachable upstream: no listener and no external traffic.
+        with socket.socket() as upstream:
+            upstream.bind(('127.0.0.1',0))
+            school=f'http://127.0.0.1:{upstream.getsockname()[1]}'
+            laser,folie=create_local_servers(school,laser_port=0,folie_port=0)
+            model=create_print_server(school,port=0)
+            for server,url in zip((laser,folie,model),urls[1:],strict=True):
+                self.addCleanup(server.server_close)
+                thread=threading.Thread(target=server.serve_forever,daemon=True)
+                thread.start()
+                self.addCleanup(server.shutdown)
+                path=urlsplit(url).path
+                with urlopen(f'http://127.0.0.1:{server.port}{path}',timeout=3) as response:
+                    self.assertEqual(response.status,200)
+                    self.assertTrue(json.load(response)['local'])
+            for server in (laser,folie):
+                with self.assertRaises(HTTPError) as failure:
+                    urlopen(f'http://127.0.0.1:{server.port}/api/laser/health',timeout=3)
+                self.assertEqual(failure.exception.code,503)
+
     def test_existing_server_3d_link_migrates_to_local_editor_and_project_destination(self):
         config=M.default_config();config.update(server="school.example",computer="test-01")
         config["lokale_app_urler"]={**config["lokale_app_urler"],"3dprint":"https://school.example:8770/"}

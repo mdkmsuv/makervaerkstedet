@@ -84,8 +84,12 @@ def main():
             workshops['laser'] = f'http://school.example.test:{central.server_port}/laser.html'
         sources = {'microbit':ROOT/'linux-elevhub/server/microbit-controller'}
         for name in ('scratch',):
-            record = json.loads((ROOT/f'linux-elevhub/server/{name}/installation.json').read_text(encoding='utf-8-sig'))
-            sources[name] = Path(record['outputPath'])
+            override = os.environ.get('ELEVHUB_TEST_SCRATCH_ASSETS')
+            if override:
+                sources[name] = Path(override)
+            else:
+                record = json.loads((ROOT/f'linux-elevhub/server/{name}/installation.json').read_text(encoding='utf-8-sig'))
+                sources[name] = Path(record['outputPath'])
         servers = [local, laser, folie, printer, central, teacher, gateway]
         urls = {'projekter':f'http://127.0.0.1:{local.server_port}',
                 'print':workshops['3dprint'].rstrip('/'), 'laser':workshops['laser'],

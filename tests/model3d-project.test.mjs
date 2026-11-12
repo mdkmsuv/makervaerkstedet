@@ -1,0 +1,58 @@
+import assert from 'node:assert/strict';
+import {createRequire} from 'node:module';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root=fileURLToPath(new URL('../',import.meta.url));
+const [dependencies=root, source=root]=process.argv.slice(2);
+const require=createRequire(path.join(dependencies,'package.json'));
+const {build}=require('esbuild');
+async function load(name) {
+  const bundle=await build({entryPoints:[path.join(source,'web/model3d/'+name+'.js')],nodePaths:[path.join(dependencies,'node_modules')],bundle:true,platform:'node',format:'esm',write:false});
+  return import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
+}
+const {encodeProject,decodeProject}=await load('project');
+const {SceneModel}=await load('scene');
+const model=new SceneModel();
+for(const kind of ['box','cylinder','sphere','cone','wedge','tube','roof','halfsphere','pyramid','star','heart'])model.add(kind);
+const box=model.data.roots[0];model.setRound(box,2);
+const text=model.add('text',{params:{text:'Æble ø Å',height:14,depth:2}});
+model.object(text).hidden=true;model.object(text).locked=true;
+const hole=model.add('cylinder',{mode:'hole',params:{sides:6}});
+model.selected=[box,hole];model.group();
+const group=model.selected[0];
+model.object(group).matrix=[-1,0,0,0,.25,1,0,0,0,0,1,0,3,4,5,1];
+model.selected=[group,model.data.roots[0]];model.group();
+const stl=Float32Array.from([0,0,0,10,0,0,0,10,0, 0,0,0,0,0,10,10,0,0, 0,0,0,0,10,0,0,0,10, 10,0,0,0,0,10,0,10,0]);
+const svg=[3,0,0,10,0,0,10,-2,2,0,0,10,10]; // Filled triangle and an open, stroked line.
+const assets=new Map([['stl-test',stl],['svg-test',svg]]);
+model.add('mesh',{asset:'stl-test',name:'STL figur'});model.add('mesh',{asset:'svg-test',name:'SVG streg'});
+const before=model.snapshot(), encoded=encodeProject(model.data,assets), decoded=decodeProject(encoded);
+assert.deepEqual(decoded.scene,model.data);
+assert(decoded.assets instanceof Map);
+assert(decoded.assets.get('stl-test') instanceof Float32Array);
+assert(decoded.assets.get('svg-test') instanceof Float32Array);
+assert.deepEqual([...decoded.assets.get('stl-test')],[...stl]);
+assert.deepEqual([...decoded.assets.get('svg-test')],svg);
+assert.equal(model.snapshot(),before,'encoding must not mutate the scene');
+decoded.scene.objects[0].size[0]=99;decoded.assets.get('stl-test')[0]=99;
+assert.equal(model.snapshot(),before);assert.equal(stl[0],0,'decoded assets must not alias originals');
+function bad(change) { const document=JSON.parse(encoded);change(document);assert.throws(()=>decodeProject(JSON.stringify(document)),Error); }
+bad(d=>d.version=2);bad(d=>d.scene.version=1);bad(d=>d.scene.objects[0].kind='unknown');
+bad(d=>d.scene.objects[0].matrix=[1,2]);bad(d=>d.scene.objects[0].size[0]=null);
+bad(d=>d.scene.objects.push({...d.scene.objects[0]}));
+bad(d=>d.scene.roots.push(d.scene.roots[0]));bad(d=>d.scene.roots.push('missing'));
+bad(d=>d.scene.roots=[]);bad(d=>d.scene.objects.find(n=>n.kind==='group').children=['missing']);
+bad(d=>{const g=d.scene.objects.find(n=>n.kind==='group');g.children=[g.id];});
+bad(d=>{const groups=d.scene.objects.filter(n=>n.kind==='group');groups[0].children=[groups[1].id];groups[1].children=[groups[0].id];});
+bad(d=>d.assets=[]);bad(d=>d.assets.push(d.assets[0]));
+bad(d=>d.assets[0][1]=[0,0,0]);bad(d=>d.assets[1][1]=[3,0,0]);
+bad(d=>d.scene.objects.find(n=>n.kind==='text').params.text='x'.repeat(41));
+const invalid=structuredClone(model.data);invalid.objects[0].position[0]=Infinity;
+assert.throws(()=>encodeProject(invalid,assets),Error);
+const sparse=structuredClone(model.data);sparse.objects[0].position=new Array(3);
+assert.throws(()=>encodeProject(sparse,assets),Error,'sparse vectors must not become null-filled project data');
+assert.throws(()=>encodeProject(model.data,new Map([['stl-test',new Float32Array([NaN])]])),Error);
+assert.throws(()=>decodeProject(' '.repeat(50*1024*1024+1)),Error);
+assert.throws(()=>decodeProject('{bad JSON'),Error);
+const empty=new SceneModel();assert.deepEqual(decodeProject(encodeProject(empty.data,new Map())).scene,empty.data);
+console.log('PASS model3d editable project: shapes, text, nested holes/groups, matrix, STL/SVG assets, roundtrip isolation and invalid graph/data rejection');

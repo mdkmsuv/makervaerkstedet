@@ -108,5 +108,21 @@ class GalleryHTTP(unittest.TestCase):
         self.assertEqual(self.request('list?workshop=laser&workshop=folie')[0], 400)
 
 
+    def test_3d_scope_lists_only_native_project_and_opens_requested_revision(self):
+        project='b'*32
+        data=json.dumps({'format':'makervaerkstedet-3d-project','version':1,
+            'scene':{'format':'makervaerkstedet-3d','version':2,'units':'mm','objects':[],'roots':[]}}).encode()
+        self.store.save(data, **{**self.params, 'project':project, 'filename':'figur.mkv3d', 'kind':'3dprint'})
+        self.store.save(data+b' ', **{**self.params, 'project':project, 'filename':'figur.mkv3d', 'kind':'3dprint','expected':1})
+        status, raw, _ = self.request('list?workshop=3dprint')
+        self.assertEqual(status, 200)
+        self.assertEqual([p['id'] for p in json.loads(raw)['projects']], [project])
+        status, raw, _ = self.request('open-info?id='+project+'&revision=1')
+        result=json.loads(raw)
+        self.assertEqual((status,result['mode']),(200,'navigate'))
+        self.assertEqual(result['url'],'http://127.0.0.1:8798/model3d.html?elevhub_project='+project+'&elevhub_revision=1')
+        self.assertEqual(self.request('file?id='+project+'&revision=1')[1],data)
+
+
 if __name__ == '__main__':
     unittest.main()

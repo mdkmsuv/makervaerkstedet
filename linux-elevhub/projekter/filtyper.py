@@ -12,7 +12,7 @@ PROGRAMS = {
     'table': 'Tabelviseren', 'text': 'Tekstviseren', 'json': 'Dataviseren',
     'archive': 'Arkivviseren', 'piskel': 'Pixelviseren', 'datatraener': 'Datatræner',
 }
-UNAMBIGUOUS = {'.sb3': 'scratch', '.hex': 'microbit', '.stl': '3dprint',
+UNAMBIGUOUS = {'.sb3': 'scratch', '.hex': 'microbit', '.stl': '3dprint', '.mkv3d': '3dprint',
                '.klosterskitse': 'cadoodle', '.png': 'image', '.wav': 'audio',
                '.mp3': 'audio', '.csv': 'table', '.piskel': 'piskel'}
 
@@ -65,7 +65,7 @@ def association(filename, kind='andet', data=None):
 def project_kind(filename, hint='andet', data=None):
     program = association(filename, hint, data)['program']
     if program == '3dprint':
-        return 'cadoodle'
+        return '3dprint' if PurePosixPath(filename.lower()).suffix == '.mkv3d' else 'cadoodle'
     if program in {'scratch', 'microbit', 'cadoodle', 'laser', 'folie', 'kredsloeb', 'datatraener'}:
         return program
     return hint if hint in {'datatraener', 'scratch', 'folie', 'laser'} else 'andet'

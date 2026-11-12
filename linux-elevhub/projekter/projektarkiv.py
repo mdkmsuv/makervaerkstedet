@@ -20,9 +20,9 @@ MAX_TOTAL = 5 * 1024 * 1024 * 1024
 RETENTION_DAYS = 30
 RETENTION_SECONDS = RETENTION_DAYS * 24 * 60 * 60
 ID = re.compile(r'^[a-f0-9]{32}$')
-EXTENSIONS = ('.projekt.svg', '.klosterskitse', '.sb3', '.svg', '.hex', '.json',
+EXTENSIONS = ('.projekt.svg', '.klosterskitse', '.mkv3d', '.sb3', '.svg', '.hex', '.json',
               '.stl', '.zip', '.csv', '.txt', '.piskel', '.wav', '.mp3', '.png')
-TYPES = {'laser', 'folie', 'scratch', 'microbit', 'datatraener', 'cadoodle', 'kredsloeb', 'andet'}
+TYPES = {'3dprint', 'laser', 'folie', 'scratch', 'microbit', 'datatraener', 'cadoodle', 'kredsloeb', 'andet'}
 
 
 class Konflikt(ValueError):

@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
@@ -28,23 +29,36 @@ def render() -> bytes:
         kiosk_enhed={"ui_token": "fixture-token"},
         kiosk_theme="red",
         kiosk_school_name="Testskolen",
-        kiosk_lokale_app_urler={"projekter": f"http://127.0.0.1:{PORT}/projects/"},
+        kiosk_lokale_app_urler={"projekter": f"http://127.0.0.1:{PORT}/projects/", "microbit": "http://127.0.0.1:8797/"},
         kiosk_internet_start="https://internet.example.test/",
     ).encode("utf-8")
 
 
 def apps(mode: str) -> list[dict]:
     values = [
-        ("laser", False), ("scratch", True), ("internet", False),
+        ("laser", False), ("scratch", True), ("microbit", False), ("internet", False),
     ] if mode == "closed" else [
-        ("laser", True), ("scratch", True), ("internet", True),
+        ("laser", True), ("scratch", True), ("microbit", True), ("internet", True),
     ]
-    return [{"id": name, "aaben": opened, "klar": True, "type": "vaerksted", "navn": name}
+    return [{"id": name, "aaben": opened, "klar": True, "type": "browser" if name == "internet" else "web" if name == "microbit" else "vaerksted", "navn": name,
+             **({"start_url": "https://internet.example.test/"} if name == "internet" else {"start_url": "https://makecode.microbit.org/"} if name == "microbit" else {})}
             for name, opened in values]
+
+
+def manifests(mode: str) -> list[dict]:
+    if mode == "empty":
+        return []
+    entries = [("3dprint", 8798, "model3d.html"), ("laser", 8795, ""), ("folie", 8796, ""),
+               ("microbit", 8797, ""), ("scratch", 8792, "")]
+    return [{"schema": 1, "id": name, "navn": name, "version": "synthetic-test", "start": f"http://127.0.0.1:{port}/{start}",
+             "offline": True, "aflevering": None, "kraever_internet": name == "microbit", "licens": "synthetic"}
+            for name, port, start in entries if not (mode == "removed" and name == "scratch")
+            and not (mode == "microbit-removed" and name == "microbit")]
 
 
 class Handler(BaseHTTPRequestHandler):
     mode = "down"
+    catalog = "installed"
 
     def log_message(self, *_args):
         pass
@@ -60,12 +74,25 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if parsed.path == "/__stop":
+            self.send(204, b"")
+            threading.Thread(target=self.server.shutdown, daemon=True).start()
+            return
         if parsed.path == "/__set":
-            mode = parse_qs(parsed.query).get("mode", [""])[0]
-            if mode not in {"down", "closed", "open"}:
+            query = parse_qs(parsed.query)
+            mode = query.get("mode", [self.__class__.mode])[0]
+            catalog = query.get("catalog", [self.__class__.catalog])[0]
+            if mode not in {"down", "closed", "open", "forbidden"} or catalog not in {"installed", "removed", "microbit-removed", "empty", "broken"}:
                 return self.send(400, b"bad mode")
             self.__class__.mode = mode
+            self.__class__.catalog = catalog
             return self.send(204, b"")
+        if parsed.path == "/apps":
+            if self.headers.get("Authorization") != "Bearer fixture-token" or self.headers.get("X-Elevhub-Computer") != "browser-fixture":
+                return self.send(403, b"forbidden")
+            if self.__class__.catalog == "broken":
+                return self.send(503, b'{"error":"synthetic unreadable manifest"}', "application/json")
+            return self.send(200, json.dumps({"apps": manifests(self.__class__.catalog)}).encode(), "application/json")
         if parsed.path in {"/", "/start.html"}:
             return self.send(200, render(), "text/html; charset=utf-8")
         if parsed.path.startswith("/assets/"):
@@ -86,6 +113,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.send(404, b"missing")
         if self.__class__.mode == "down":
             return self.send(503, b"offline")
+        if self.__class__.mode == "forbidden":
+            return self.send(403, b"forbidden")
         body = json.dumps({"version": 1, "apps": apps(self.__class__.mode)}).encode("utf-8")
         return self.send(200, body, "application/json")
 

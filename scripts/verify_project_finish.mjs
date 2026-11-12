@@ -18,6 +18,9 @@ const page = await context.newPage(); const checks = [], errors = [];
 page.on('pageerror', e => errors.push(e.message));
 const pass = text => { checks.push(text); console.log('PASS ' + text); };
 const local = `http://127.0.0.1:${ports.local}`;
+// PROJECT_FINISH_WORKSHOP=folie runs the unchanged common lifecycle against Folie only.
+const workshop = process.env.PROJECT_FINISH_WORKSHOP || 'laser';
+assert.ok(['laser','folie'].includes(workshop), 'Expected laser or folie');
 const projectList = () => fetch(local + '/_elevhub/projekter/api/list').then(r=>r.json()).then(d=>d.projects);
 async function start(name = 'Min raket') {
   await page.locator('#project-classroom').fill('5.B');
@@ -37,7 +40,7 @@ async function waitState(id, expected) {
   assert.equal((await status(id)).state,expected);
 }
 try {
-  await page.goto(`http://127.0.0.1:${ports.laser}/laser.html`);
+  await page.goto(`http://127.0.0.1:${ports[workshop]}/${workshop}.html`);
   await page.locator('#project-start-confirm').waitFor();
   assert.equal((await projectList()).length, 0);
   await start();
@@ -94,8 +97,8 @@ try {
   assert.ok((await projectList()).some(p=>p.kind==='folie'&&p.folder==='5.B · Alma K.'));
   pass('the same entry, naming and native finish flow works for Folie');
   await page.goto(local+'/_elevhub/projekter/open?id='+saved.id);
-  await page.waitForURL('**/laser.html?elevhub_project=*');
-  await page.waitForFunction(()=>window.ElevhubProjectSession?.naming()?.student==='Alma K.');
+  await page.waitForURL(`**/${workshop}.html?elevhub_project=*`);
+  await page.waitForFunction(()=>window.ElevhubProjectSession?.naming()?.student==='Alma K.', null, {timeout:5000});
   assert.equal(await page.locator('#items > *').count(),1);
   assert.equal(await page.locator('#elevhub-project-dialog').isVisible(),false);
   await page.keyboard.press('Control+z');
@@ -105,7 +108,7 @@ try {
   pass('overview opens the saved project with its identity; clean finish needs no repeated question');
   assert.deepEqual(errors,[]);
   await mkdir('.runtime/project-finish-20261009',{recursive:true});
-  await writeFile('.runtime/project-finish-20261009/browser-verification.json',JSON.stringify({checks,errors},null,2));
+  await writeFile('.runtime/project-finish-20261009/browser-verification'+(process.env.PROJECT_FINISH_WORKSHOP?'-'+workshop:'')+'.json',JSON.stringify({checks,errors},null,2));
 } finally {
   await browser.close(); fixture.stdin.end('\n'); await once(fixture,'exit');
 }

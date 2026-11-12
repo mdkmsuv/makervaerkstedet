@@ -1,7 +1,7 @@
-const {startFixture,loadPlaywright,loadJSZip}=require('./student_journey_fixture.js');
+const {startFixture,loadPlaywright}=require('./student_journey_fixture.js');
 const path=require('node:path');
 const {chromium} = loadPlaywright();
-const JSZip = loadJSZip();
+const {unzipSync, strFromU8} = require('fflate');
 const assert = require('node:assert/strict');
 (async () => {
  const fixture=await startFixture();
@@ -34,11 +34,11 @@ const assert = require('node:assert/strict');
   assert.equal(meta.revision,2,'unchanged Scratch zip must not create a duplicate version');
   for(const [revision,name] of [[1,'Månekat'],[2,'Stjernekat']]){
    const response=await page.request.get(`${fixture.urls.scratch}/_elevhub/projekter/api/file?id=${project.id}&revision=${revision}`);
-   const zip=await JSZip.loadAsync(await response.body());
-   const saved=JSON.parse(await zip.file('project.json').async('string'));
+   const zip=unzipSync(new Uint8Array(await response.body()));
+   const saved=JSON.parse(strFromU8(zip['project.json']));
    assert(saved.targets.some(t=>t.name===name));
-   assert(Object.keys(zip.files).some(n=>n.endsWith('.svg')),'costumes in sb3');
-   assert(Object.keys(zip.files).some(n=>n.endsWith('.wav')),'sounds in sb3');
+   assert(Object.keys(zip).some(n=>n.endsWith('.svg')),'costumes in sb3');
+   assert(Object.keys(zip).some(n=>n.endsWith('.wav')),'sounds in sb3');
   }
   await page.goto(`${fixture.urls.scratch}/?elevhub_project=${project.id}&elevhub_revision=1`);
   await page.waitForFunction(()=>window.ElevhubProjectAdapter&&window.ElevhubProjectAdapter.signature().includes('Månekat'));

@@ -4,7 +4,7 @@ const path=require('node:path');
 const fs=require('node:fs/promises');
 const exists=require('node:fs').existsSync;
 const root=path.resolve(__dirname,'../..');
-const output=path.join(root,'output/maturity-final-20261013/student');
+const output=process.env.ELEVHUB_TEST_OUTPUT_DIR || path.join(root,'output/maturity-final-20261013/student');
 async function startFixture(){
  await fs.mkdir(output,{recursive:true});
  const python=process.env.ELEVHUB_TEST_PYTHON||process.env.PYTHON||

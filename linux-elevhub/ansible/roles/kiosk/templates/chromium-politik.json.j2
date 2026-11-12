@@ -1,8 +1,10 @@
 {
   "HomepageLocation": "file://{{ kiosk_startside_mappe }}/start.html",
+{% if kiosk_webproxy_required | default(true) | bool %}
   "ProxyMode": "fixed_servers",
   "ProxyServer": "http=127.0.0.1:3128;https=127.0.0.1:3128",
   "ProxyBypassList": {{ ([kiosk_server, "127.0.0.1", "localhost"] | join(',')) | tojson }},
+{% endif %}
   "QuicAllowed": false,
   "DnsOverHttpsMode": "off",
   "EncryptedClientHelloEnabled": false,
@@ -32,6 +34,7 @@
 {% if kiosk_lokal_design_enabled | bool %}
     ,"http://127.0.0.1:{{ kiosk_lokal_design_laser_port }}/"
     ,"http://127.0.0.1:{{ kiosk_lokal_design_folie_port }}/"
+    ,"http://127.0.0.1:{{ kiosk_lokal_design_model3d_port | default(8798) }}/"
 {% endif %}
   ],
   "AllowFileSelectionDialogs": true,

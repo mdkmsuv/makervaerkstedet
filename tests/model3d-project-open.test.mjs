@@ -63,7 +63,11 @@ test('saved STL opens from real shelf into local 3D scene', {skip: !shelf, timeo
     await editor.locator('#object-list button').waitFor();
     await editor.locator('#download:enabled').waitFor();
     assert.equal(await editor.locator('#object-list button').count(), 1);
-    assert.equal(await editor.locator('#elevhub-project-dialog').count(), 0, 'No adapterless project modal');
+    await editor.locator('#project-classroom').fill('Testklasse');
+    await editor.locator('#project-student').fill('Testelev');
+    await editor.locator('#project-title').fill('STL-projekt');
+    await editor.getByRole('button', {name: 'Start projekt', exact:true}).click();
+    assert.equal(await editor.locator('#object-list button').count(), 1, 'Session startup must preserve the imported STL');
     assert.match(await page.locator('iframe').getAttribute('src'), /127\.0\.0\.1:8798\/model3d\.html\?elevhub_import=1/);
     assert.equal(await page.locator('#retry').isVisible(), false);
     assert.deepEqual(errors, []);

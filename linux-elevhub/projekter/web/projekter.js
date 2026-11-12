@@ -1,13 +1,14 @@
 'use strict';
 const $=id=>document.getElementById(id), BASE='/_elevhub/projekter/api/';
-const labels={laser:'Laser',folie:'Folie',scratch:'Scratch',cadoodle:'3D / CaDoodle',microbit:'micro:bit',datatraener:'Datatræneren',kredsloeb:'Kredsløb',andet:'Andre filer'};
+const labels={'3dprint':'3D-v\u00e6rkstedet',laser:'Laser',folie:'Folie',scratch:'Scratch',cadoodle:'3D / CaDoodle',microbit:'micro:bit',datatraener:'Datatræneren',kredsloeb:'Kredsløb',andet:'Andre filer'};
+const option3d=document.createElement('option');option3d.value='3dprint';option3d.textContent=labels['3dprint'];document.getElementById('kind').append(option3d);
 const parameters=new URL(location.href).searchParams;
 const requestedPicker=parameters.get('pick');
 const picker=Object.hasOwn(labels,requestedPicker)?requestedPicker:null;
 const requestedScope=parameters.has('pick')?requestedPicker:parameters.get('workshop');
 const scope=Object.hasOwn(labels,requestedScope)?requestedScope:null;
 const invalidScope=(parameters.has('pick')||parameters.has('workshop'))&&!scope;
-const categoryOrder=['cadoodle','laser','folie','scratch','microbit','kredsloeb','datatraener','andet'];
+const categoryOrder=['3dprint','cadoodle','laser','folie','scratch','microbit','kredsloeb','datatraener','andet'];
 const expanded=new Set();
 let projects=[],apps=[],uploadId=null,working=false,refreshNumber=0;
 const date=n=>new Date(n*1000).toLocaleString('da-DK',{dateStyle:'short',timeStyle:'short'});
@@ -15,7 +16,7 @@ const shortDate=n=>new Date(n*1000).toLocaleDateString('da-DK',{day:'numeric',mo
 function node(tag,text,cls){const n=document.createElement(tag);if(text!==undefined)n.textContent=text;if(cls)n.className=cls;return n;}
 async function api(path,options={}){const r=await fetch(BASE+path,{cache:'no-store',...options});if(!r.ok){let e;try{e=await r.json();}catch{}throw Error(e?.error||'Projektbiblioteket svarer ikke. Prøv igen.');}return r.json();}
 function fileUrl(p,revision){return BASE+'file?'+new URLSearchParams({id:p.id,revision:revision||p.revision});}
-function shelfKind(p){const app=p.opening?.program;return app==='3dprint'?'cadoodle':labels[app]?app:p.kind==='datatraener'?'datatraener':'andet';}
+function shelfKind(p){const app=p.opening?.program;return app==='3dprint'&&p.opening?.extension==='.stl'?'cadoodle':labels[app]?app:p.kind==='datatraener'?'datatraener':'andet';}
 function canOpen(p){return !invalidScope&&(!scope||shelfKind(p)===scope);}
 function open(p,revision){
  if(!canOpen(p))return;
@@ -25,7 +26,7 @@ function open(p,revision){
 function actions(p,revision){const n=node('div',undefined,'actions');if(canOpen(p)){const b=node('button',picker?'Åbn her':'Åbn i '+(p.opening?.label||labels[p.kind]||'Filviseren'));b.onclick=()=>open(p,revision);n.append(b);}const a=node('a','Hent fil','button secondary');a.href=fileUrl(p,revision);a.download=p.filename;n.append(a);return n;}
 async function history(p){$('history-title').textContent=p.name;const box=$('versions');box.replaceChildren(node('p','Henter versioner …'));$('history').showModal();try{const d=await api('meta?id='+p.id);box.replaceChildren(...d.versions.map(v=>{const n=node('div',undefined,'version');n.append(node('span','Version '+v.revision+' · '+date(v.created)),actions(p,v.revision));return n;}));}catch(e){box.textContent=e.message;}}
 function icon(kind){
- const paths={cadoodle:'M12 2 3 7v10l9 5 9-5V7L12 2Zm0 10L3 7m9 5 9-5m-9 5v10',laser:'m5 3 16 16M6 15l-3 6 6-3m-5-6H1m11 8v3m3-11h5m-8-5V2',folie:'M4 3h16v12l-6 6H4V3Zm10 18v-6h6M7 7h9M7 11h6',scratch:'m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18',microbit:'M5 5h14v14H5V5ZM8 9h1m3 0h1m3 0h1M8 13h1m3 0h1m3 0h1M9 2v3m6-3v3M9 19v3m6-3v3',kredsloeb:'M6 6h12v12H6V6ZM9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4',datatraener:'M4 17V7h16v10H4Zm4-6h1m6 0h1m-7 3h6M12 3v4M9 21h6m-3-4v4',andet:'M3 5h7l3 3h8v12H3V5Z'};
+ const paths={'3dprint':'M12 2 3 7v10l9 5 9-5V7L12 2Zm0 10L3 7m9 5 9-5m-9 5v10',cadoodle:'M12 2 3 7v10l9 5 9-5V7L12 2Zm0 10L3 7m9 5 9-5m-9 5v10',laser:'m5 3 16 16M6 15l-3 6 6-3m-5-6H1m11 8v3m3-11h5m-8-5V2',folie:'M4 3h16v12l-6 6H4V3Zm10 18v-6h6M7 7h9M7 11h6',scratch:'m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18',microbit:'M5 5h14v14H5V5ZM8 9h1m3 0h1m3 0h1M8 13h1m3 0h1m3 0h1M9 2v3m6-3v3M9 19v3m6-3v3',kredsloeb:'M6 6h12v12H6V6ZM9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4',datatraener:'M4 17V7h16v10H4Zm4-6h1m6 0h1m-7 3h6M12 3v4M9 21h6m-3-4v4',andet:'M3 5h7l3 3h8v12H3V5Z'};
  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
  for(const [key,value]of Object.entries({viewBox:'0 0 24 24',width:'24',height:'24',fill:'none',stroke:'currentColor','stroke-width':'1.6','stroke-linecap':'round','stroke-linejoin':'round','aria-hidden':'true'}))svg.setAttribute(key,value);
  const path=document.createElementNS(svg.namespaceURI,'path');path.setAttribute('d',paths[kind]||paths.andet);svg.append(path);return svg;

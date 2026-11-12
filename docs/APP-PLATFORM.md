@@ -26,11 +26,12 @@ følger [udgivelsesprocessen](UDGIVELSESPROCES.md).
 
 | Del | Nu | Mangler |
 |---|---|---|
-| Laserværkstedet | Ny editor i `web/laservaerksted/` serveres som `/laser.html` både på serveren og lokalt (`app/laser_local.py`). *Se og aflever* sender laser-SVG til `/api/laser/submit`. | UI/UX-review af den renderede flow. Gamle `.projekt.svg`-laserprojekter kan ikke åbnes i den nye editor. |
+| Laserværkstedet | Ny lokal editor i `web/laservaerksted/`. Fælles metadata, `.laser.json`, hylde/direkte genåbning og fortsæt/gem/kassér er afprøvet i faktisk Chrome; UI/UX-review ved 1024×688. | Gamle `.projekt.svg`-laserprojekter kan endnu ikke åbnes i den nye editor. |
 | Laser-udbakke | `laser_local` validerer lokalt med `clean_svg`, gemmer i `/var/lib/elevhub-design/udbakke` ved manglende forbindelse, svarer 202 og sender igen hvert 30. s med samme `requestId`. | Visning i editoren af, hvor mange afleveringer der venter. |
-| Folieværkstedet | Uændret: den gamle kombinerede editor (`web/laser.html`). | Egen ny editor, når laserens er afprøvet. |
-| 3D-værkstedet | Editor på lokal port 8798; STL fra projekthylden åbnes i editoren. Valideret STL gemmes i `udbakke/print` uden server og sendes via hubbens 8770 med samme request-id. Pakke `20261112.1` er installeret i WSL og afprøvet med systemd, genstart, isoleret HTTPS-printkø og faktisk Chrome. UI/UX-review af offlineaflevering og projektåbning udført. | ISO-opstart og kiosk-login i ren VM mangler. Editoren importerer/eksporterer STL, men har endnu ingen adapter til lagring af redigerbare 3D-projekter. WSL-prøven anvender syntetisk profil og andre upstream-porte for at undgå en optaget Windows-port. |
-| App-pakker | Fire faste Debian-pakker; bygge-, installations- og opdateringskode læser samme `DEBIAN_COMPONENTS` i `app/simple_release.py`. | Manifest, pakke pr. app, skolens valg, tom ISO. |
+| Folieværkstedet | Fælles projektflow i den eksisterende folieeditor (`web/folie.html`). Dummytekst oprettes ikke før direkte projektåbning på en administreret enhed. Otte Chrome-forløb for metadata, gem/genåbn, fejl og elevskift består. | Ingen ny folieeditor i denne ændring. |
+| 3D-værkstedet | Lokal port 8798, STL-import og vedvarende print-udbakke. Fælles klasse/elevnavn/projektnavn, redigerbare `.mkv3d` med importerede figurer, revisioner og ren næste elev. Faktisk WSL- og Hyper-V-installation: gem, tjenestegenstart, genåbn, redigér og gem ny revision består. Native VM-startdialog og Til start er afprøvet. | Samlet ny produkt-ISO er ikke bygget med alle rettelser. |
+| Installeret app-katalog | Fem manifester i de eksisterende core- og Scratch-pakker. Autentificeret lokal `GET /apps` læser dem ved hvert kald; startsiden bruger kataloget både online og offline og bevarer lærerens aktuelle lukning. Faktisk WSL-opgradering, Scratch-fjernelse/geninstallation uden kataloggenstart og bevarelse af profil, CA, projekter og ventende print er afprøvet. Renderede browserprøver og UI/UX-review er udført. | Første grafiske opstart er nu afprøvet i lokal Hyper-V. Signeret udgivelse og appopdeling mangler. |
+| App-pakker | Fire faste Debian-pakker; bygge-, installations- og opdateringskode læser samme `DEBIAN_COMPONENTS` i `app/simple_release.py`. | Pakke pr. app, skolens valg og tom produkt-ISO. |
 
 ## App-pakken
 
@@ -62,6 +63,14 @@ Manifestet (første udgave):
   anden vej til serveren.
 - Startsiden (`start.html.j2`) bygges fra de installerede manifester i stedet
   for den faste `OFFLINE_APPS`-liste.
+
+I den nuværende overgang ligger laser, folie, 3D og micro:bit stadig i
+core-pakken, mens Scratch har sin egen pakke. Manifestet beskriver installeret
+indhold; det giver ikke tilladelse til at installere en vilkårlig pakke.
+`offline` betyder adgang uden skoleforbindelse. Micro:bits lokale indgang
+kræver stadig internet til selve MakeCode-editoren (`kraever_internet`).
+Et manglende eller ugyldigt katalog giver ingen gamle lokale app-fliser;
+Internet-indgangen forbliver tilgængelig.
 
 ## Udbakken
 

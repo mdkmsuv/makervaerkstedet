@@ -3,6 +3,7 @@ import importlib.util
 import json
 from pathlib import Path
 import threading
+import tempfile
 import unittest
 from unittest.mock import Mock, patch
 
@@ -69,6 +70,39 @@ class LaunchTests(unittest.TestCase):
         self.assertEqual(self.request('OPTIONS', headers=headers)[0], 200)
         headers['Access-Control-Request-Headers'] = 'x-arbitrary-command'
         self.assertEqual(self.request('OPTIONS', headers=headers)[0], 403)
+
+    def test_installed_apps_follow_manifest_removal_without_restart(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.server.manifest_root = Path(directory)
+            folder = Path(directory)/'laser'; folder.mkdir()
+            manifest = {'schema':1,'id':'laser','navn':'Laser','version':'2.0.0',
+                        'start':'http://127.0.0.1:8795/','offline':True,
+                        'aflevering':'laser-submit','kraever_internet':False,'licens':'MIT'}
+            file = folder/'app.json'; file.write_text(json.dumps(manifest))
+            status, raw = self.request('GET', '/apps')
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(raw), {'apps':[manifest]})
+            file.unlink()
+            self.assertEqual(json.loads(self.request('GET', '/apps')[1]), {'apps':[]})
+            self.assertTrue(self.server.requests.empty())
+
+    def test_app_catalog_rejects_invalid_manifest_and_untrusted_requests(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.server.manifest_root = Path(directory)
+            folder = Path(directory)/'laser'; folder.mkdir()
+            (folder/'app.json').write_text('{"schema":1,"unexpected_field":"not in error"}')
+            status, raw = self.request('GET', '/apps')
+            self.assertEqual(status, 503)
+            self.assertNotIn(b'unexpected_field', raw)
+            for headers in ({'Origin':'https://example.com'}, {'Authorization':'Bearer wrong'},
+                            {'Host':'example.com'}, {'X-Elevhub-Computer':'another'}):
+                self.assertEqual(self.request('GET', '/apps', headers)[0], 403)
+
+    def test_app_catalog_preflight_uses_existing_local_authentication(self):
+        headers = {'Access-Control-Request-Method':'GET',
+                   'Access-Control-Request-Headers':'authorization,x-elevhub-computer'}
+        self.assertEqual(self.request('OPTIONS', '/apps', headers)[0], 200)
+        self.assertEqual(self.request('POST', '/apps')[0], 404)
 
     def test_finish_is_available_when_teacher_closed_3d_and_has_pollable_status(self):
         self.open = False

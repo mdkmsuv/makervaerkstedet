@@ -22,7 +22,8 @@ TEMPLATES = {"start.html.j2": ("usr/local/share/elevhub/start.html", 0o644),
     "kiosk-session.j2": ("usr/local/lib/elevhub/kiosk-session", 0o755),
     "elevhub-lokal.service.j2": ("etc/systemd/system/elevhub-lokal.service", 0o644),
     "elevhub-design.service.j2": ("etc/systemd/system/elevhub-design.service", 0o644),
-    "project-workshops.json.j2": ("etc/elevhub/project-workshops.json", 0o644)}
+    "project-workshops.json.j2": ("etc/elevhub/project-workshops.json", 0o644),
+    "chromium-politik.json.j2": ("etc/chromium/policies/managed/elevhub.json", 0o644)}
 APP_URLS = {"projekter":"http://127.0.0.1:8791/", "scratch":"http://127.0.0.1:8792/",
     "microbit":"http://127.0.0.1:8797/", "laser":"http://127.0.0.1:8795/",
     "folie":"http://127.0.0.1:8796/", "3dprint":"http://127.0.0.1:8798/"}
@@ -112,6 +113,13 @@ def context(config, root):
         raise ActivationError("invalid_ui_token")
     if config.get("protokol","https") != "https":
         raise ActivationError("https_required")
+    webproxy=config.get("webproxy_required",False)
+    if type(webproxy) is not bool:raise ActivationError("invalid_webproxy_required")
+    ports=config.get("elev_porte",[8770,8771,8772,8773])
+    if (not isinstance(ports,list) or not 1 <= len(ports) <= 64
+            or any(type(port) is not int or not 1 <= port <= 65535 for port in ports)
+            or len(set(ports)) != len(ports)):
+        raise ActivationError("invalid_student_ports")
     user=config.get("elev","elev")
     if not isinstance(user,str) or not re.fullmatch(r"[a-z][a-z0-9_-]{0,31}",user):
         raise ActivationError("invalid_student_user")
@@ -141,6 +149,7 @@ def context(config, root):
     return {"inventory_hostname":computer,"kiosk_enhed":{"ui_token":ui}, "kiosk_server":server,
         "kiosk_protokol":"https", "kiosk_hub_port":8773, "kiosk_printvaerksted_port":8770, "kiosk_theme":theme,
         "kiosk_school_name":school,"kiosk_bruger":user,"kiosk_lokale_app_urler":urls,
+        "kiosk_app_porte":ports,"kiosk_lokale_apps_enabled":True,"kiosk_webproxy_required":webproxy,
         "kiosk_internet_start":"https://www.google.com/imghp?hl=da&safe=active",
         "kiosk_startside_mappe":"/usr/local/share/elevhub", "kiosk_tastatur":keyboard,
         "kiosk_mesa_gl":config.get("mesa_gl",False),"kiosk_web_bluetooth":config.get("web_bluetooth",False),"kiosk_skaerm_output":config.get("screen_output",""),"kiosk_skaerm_mode":config.get("screen_mode",""),
@@ -206,11 +215,28 @@ def activate(root=Path("/")):
     environment.filters["to_json"]=lambda v: json.dumps(v,ensure_ascii=True).replace("<","\\u003c").replace(">","\\u003e").replace("&","\\u0026")
     prepared=[]
     for name,(target,mode) in TEMPLATES.items():
+        destination=plain(root/target)
+        if name=="chromium-politik.json.j2" and destination.exists():
+            protected(destination)
+            continue  # Existing school/operator browser policy is authoritative.
         source=protected(templates/name).read_text(encoding="utf-8")
         data=environment.from_string(source).render(**values).encode()
+        if name=="chromium-politik.json.j2":json.loads(data)
         if b"fresh_session.py" in data or b"start_cad" in data:
             raise ActivationError("retired_template_binding")
-        prepared.append((plain(root/target),data,mode))
+        prepared.append((destination,data,mode))
+    # Ansible used to create this separately. A package-only clean install
+    # needs the same local checks, otherwise the startup cover never clears.
+    # Preserve an existing operator-managed policy during upgrades.
+    startup=plain(root/"etc/elevhub/startup.json")
+    if startup.exists():
+        protected(startup)
+    else:
+        prepared.append((startup,json_bytes({"urls":[
+            "http://127.0.0.1:8791/_elevhub/health",
+            "http://127.0.0.1:8795/api/runtime/health",
+            "http://127.0.0.1:8796/api/runtime/health",
+            "http://127.0.0.1:8798/api/runtime/health"]}),0o644))
     # Render all outputs before the first write. A crash mid-commit is repaired
     # by the same offline firstboot pass before local services/login next boot.
     state=root/"var/lib/makervaerkstedet-updater"

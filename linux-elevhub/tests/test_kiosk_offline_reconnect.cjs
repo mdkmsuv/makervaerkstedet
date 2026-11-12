@@ -17,7 +17,7 @@ class Element {
 class Document {
   constructor() {
     this.activeElement = new Element('body'); this.activeElement.ownerDocument = this; this.elements = new Map(); this.filters = []; this.discover = []; this.projectLinks = [];
-    for (const id of ['apps','empty-filter','workshop-count','ticket-link','shuffle-idea','ticket-workshop','ticket-title','ticket-text','workshop-detail','hub-home','detail-start','detail-access','detail-name','detail-tag','detail-title','detail-intro','detail-tools','detail-image','detail-steps','detail-ideas','detail-tip-text','fejl','venter','offline','ingen']) this.add(new Element('div', id));
+    for (const id of ['apps','empty-filter','workshop-count','ticket-link','shuffle-idea','ticket-workshop','ticket-title','ticket-text','workshop-detail','hub-home','detail-start','detail-access','detail-name','detail-tag','detail-title','detail-intro','detail-tools','detail-image','detail-steps','detail-ideas','detail-tip-text','fejl','venter','offline','ingen','catalog-status','catalog-error','workshops-title']) this.add(new Element('div', id));
     this.elements.get('shuffle-idea').tagName = 'BUTTON'; this.elements.get('detail-start').tagName = 'BUTTON';
   }
   add(element) { element.ownerDocument = this; this.elements.set(element.id, element); return element; }
@@ -38,10 +38,10 @@ let fetchImpl = () => Promise.reject({ name: 'TypeError', message: 'offline' });
 const context = {
   console, document, location, URL, AbortController, setTimeout(callback, delay) { if (delay === 500) readyTimers.push(callback); }, clearTimeout() {},
   requestAnimationFrame(callback) { frames.push(callback); },
-  fetch(...args) { return fetchImpl(...args); },
+  fetch(...args) { if (args[0] === 'http://127.0.0.1:8790/apps') return response(manifests); return fetchImpl(...args); },
   window: { CreativeWorkshops: workshops, addEventListener() {}, scrollTo() {}, open() { return null; } },
   SERVER:'192.0.2.1', PROTOKOL:'https', HUB:'https://192.0.2.1:8773', COMPUTER:'test', UI_TOKEN:'ui-token',
-  LOKALE_APP_URLER:{ scratch:'http://127.0.0.1:8792/', datatraener:'http://127.0.0.1:8793/', kredsloeb:'http://127.0.0.1:8794/', laser:'http://127.0.0.1:8795/', folie:'http://127.0.0.1:8796/', projekter:'http://127.0.0.1:8791/' }
+  LOKALE_APP_URLER:{ microbit:'http://127.0.0.1:8797/', scratch:'http://127.0.0.1:8792/', datatraener:'http://127.0.0.1:8793/', kredsloeb:'http://127.0.0.1:8794/', laser:'http://127.0.0.1:8795/', folie:'http://127.0.0.1:8796/', projekter:'http://127.0.0.1:8791/' }
 };
 for (const id of ['3dprint','laser','folie']) { const button = new Element('button'); button.dataset.discover = id; document.discover.push(button); }
 for (const filter of ['alle','byg','kode','ide']) { const button = new Element('button'); button.dataset.filter = filter; document.filters.push(button); }
@@ -60,6 +60,7 @@ const creative = fs.readFileSync(path.join(root, 'server','elevhub','web','asset
 vm.runInNewContext(inline + '\n' + creative, context);
 function cards() { return document.getElementById('apps').children; }
 function response(apps, status = 200) { return Promise.resolve({ ok: status >= 200 && status < 300, status, async json() { return { apps }; } }); }
+const manifests = ['3dprint','laser','folie','microbit','scratch'].map((id, i) => ({schema:1,id,navn:id,version:'test',start:'http://127.0.0.1:'+({'3dprint':8798,laser:8795,folie:8796,microbit:8797,scratch:8792}[id])+'/'+(id==='3dprint'?'model3d.html':''),offline:true,kraever_internet:id==='microbit',aflevering:null,licens:'test'}));
 const app = (id, aaben = true) => ({ id, aaben, klar:true, type:'vaerksted', navn:id });
 
 (async () => {
@@ -91,6 +92,41 @@ const app = (id, aaben = true) => ({ id, aaben, klar:true, type:'vaerksted', nav
   assert.equal(context.window.CreativeHub.isOffline(), false, 'successful reconnect clears offline mode');
   assert.equal(cards().length, 1, 'teacher closed policy remains enforced after reconnect');
   assert.equal(cards()[0].dataset.app, 'scratch');
+  const microbitWeb = {...app('microbit'), type:'web', start_url:'https://makecode.microbit.org/'};
+  fetchImpl = url => url.startsWith('http://127.0.0.1:8790/finish')
+    ? Promise.resolve({ok:true,json:async()=>({id:'a'.repeat(32),state:'completed'})})
+    : response([microbitWeb, {...app('word'),type:'web',start_url:'https://word.example.test/'}]);
+  await context.window.__start.opdater();
+  assert.deepEqual(cards().map(card=>card.dataset.app), ['microbit','word']);
+  await context.window.__start.aabn({preventDefault(){}}, microbitWeb);
+  assert.equal(location.href, 'http://127.0.0.1:8797/', 'web-typed local wrapper uses its manifest start');
+  const microbitIndex = manifests.findIndex(value=>value.id==='microbit');
+  const [microbitManifest] = manifests.splice(microbitIndex, 1);
+  await context.window.__start.opdater();
+  assert.deepEqual(cards().map(card=>card.dataset.app), ['word'], 'local web wrappers require a manifest; external web apps remain');
+  await context.window.__start.aabn({preventDefault(){}}, microbitWeb);
+  assert.equal(location.href, 'http://127.0.0.1:8797/', 'stale micro:bit action must not navigate to external MakeCode');
+  assert.match(document.getElementById('fejl').textContent, /ikke installeret/);
+  manifests.push(microbitManifest);
+  const scratchManifest = manifests.find(value=>value.id==='scratch');
+  scratchManifest.offline = false;
+  fetchImpl = () => Promise.reject({name:'TypeError',message:'offline'});
+  await context.window.__start.opdater();
+  let scratchCard = cards().find(card=>card.dataset.app==='scratch');
+  assert.equal(scratchCard.children[0].children[1].textContent, 'Kræver serverforbindelse');
+  assert.equal(scratchCard.children[1].children.at(-1).children[0].disabled, true);
+  const beforeBlockedLaunch = location.href;
+  await context.window.__start.aabn({preventDefault(){}}, app('scratch'));
+  assert.equal(location.href, beforeBlockedLaunch, 'offline:false cannot launch during outage');
+  assert.match(document.getElementById('fejl').textContent, /kræver forbindelse til skoleserveren/);
+  fetchImpl = url => url.startsWith('http://127.0.0.1:8790/finish')
+    ? Promise.resolve({ok:true,json:async()=>({id:'a'.repeat(32),state:'completed'})}) : response([app('scratch')]);
+  await context.window.__start.opdater();
+  scratchCard = cards().find(card=>card.dataset.app==='scratch');
+  assert.equal(scratchCard.children[1].children.at(-1).children[0].disabled, false, 'online teacher-open app remains enabled');
+  await context.window.__start.aabn({preventDefault(){}}, app('scratch'));
+  assert.equal(location.href, 'http://127.0.0.1:8792/', 'offline:false may launch online');
+  scratchManifest.offline = true;
   fetchImpl = () => response([], 403);
   await context.window.__start.opdater();
   assert.equal(context.window.CreativeHub.isOffline(), false, '403 is not treated as offline');

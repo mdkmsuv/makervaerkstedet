@@ -6,7 +6,9 @@ import {exportBinaryStl} from './geometry.js';
 import {GUIDES} from './guides.js';
 import {readStl} from './stl-import.js';
 import {readSvg} from './svg-import.js';
+import {encodeProject, decodeProject} from './project.js';
 const $ = id => document.getElementById(id), model = new SceneModel();
+const managed = Boolean(document.getElementById('elevhub'));
 const labels = {box: 'Kasse', cylinder: 'Cylinder', sphere: 'Kugle', cone: 'Kegle', wedge: 'Kile', tube: 'Rør', roof: 'Tag', halfsphere: 'Halvkugle', pyramid: 'Pyramide', star: 'Stjerne', heart: 'Hjerte', text: 'Tekst', mesh: 'Hentet figur', group: 'Samlet figur'};
 const colorNames = ['Rød', 'Orange', 'Gul', 'Grøn', 'Blå', 'Lilla', 'Lyserød', 'Hvid', 'Sort'];
 const status = text => { $('status').textContent = text; }, round = value => Math.round(value * 100) / 100;
@@ -113,7 +115,7 @@ if (view) {
     document.querySelectorAll('[data-rotation]').forEach(element => { element.readOnly = !editable || !single || !state || state.sheared; });
     document.querySelectorAll('[data-position]').forEach(element => { element.readOnly = !editable; });
     document.querySelectorAll('#text-value, #text-height, #text-depth').forEach(element => { element.disabled = !editable; });
-    if (!model.data.roots.length) modelName = '';
+    if (!model.data.roots.length && !managed) modelName = '';
     $('empty').hidden = model.data.roots.length > 0; $('selection-controls').hidden = !selected.length;
     $('selection-label').textContent = single ? listName(selected[0].id) : `${selected.length} figurer valgt`;
     $('solid').setAttribute('aria-pressed', String(selected.length > 0 && selected.every(node => node.mode === 'solid')));
@@ -417,7 +419,17 @@ if (view) {
     if (lastColor) options.color = lastColor;
     if (!model.data.roots.length) frameFirst = true; mutate(() => model.add('mesh', options));
   }
-  window.ElevhubImportFile = file => importStl(file, true);
+  let projectReady = false;
+  window.ElevhubImportFile = async file => {
+    // The shared session resets the editor once at startup. Do not let that
+    // reset erase an STL delivered by the project shelf while modules load.
+    const until = Date.now() + 15000;
+    while (managed && !projectReady) {
+      if (Date.now() > until) throw Error('Projektgemning blev ikke klar. Prøv igen.');
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    return importStl(file, true);
+  };
   // Hent en SVG-tegning ind: its filled areas become a flat part, 40 mm across and 3 mm high.
   async function importSvg(file) {
     if (!file) return; if (file.size > 5 * 1024 * 1024) { status('Tegningen er for stor. Vælg en SVG-fil på højst 5 MB.'); return; }
@@ -765,6 +777,8 @@ if (view) {
   $('help-open').onclick = () => { $('help').showModal(); $('help').scrollTop = 0; $('help').querySelector('h2').focus(); };
   document.addEventListener('keydown', event => {
     if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target.tagName) || event.target.closest('dialog')) return;
+    // Alt+Left belongs to browser navigation, including the kiosk's Til start.
+    if (event.altKey) return;
     if (event.key === 'Escape' && $('pan-mode').getAttribute('aria-pressed') === 'true') { setPan(false); return; }
     if (event.key === 'Escape') { const dragging = Boolean(view.drag?.active); view.cancelDrag(true); if (!dragging && model.selected.length) { model.selected = []; renderUI(); } return; }
     if (view.drag || view.pendingPreview) return;
@@ -780,6 +794,56 @@ if (view) {
     const arrows = {ArrowLeft: [-right[0] * step, -right[1] * step, 0], ArrowRight: [right[0] * step, right[1] * step, 0], ArrowUp: [away[0] * step, away[1] * step, 0], ArrowDown: [-away[0] * step, -away[1] * step, 0], PageUp: [0, 0, step], PageDown: [0, 0, -step]};
     if (arrows[event.key] && model.selected.length) { event.preventDefault(); move(...arrows[event.key]); }
   });
-  window.addEventListener('beforeunload', event => { if (model.dirty) { event.preventDefault(); event.returnValue = ''; } });
+  window.addEventListener('beforeunload', event => { if (!managed && model.dirty) { event.preventDefault(); event.returnValue = ''; } });
+  if (managed) {
+    const pendingImports = new WeakMap();
+    const settle = async () => {
+      const until = Date.now() + 20000;
+      while (busy() || queued.length) {
+        if (Date.now() > until) throw Error('Modellen beregnes stadig. Vent et øjeblik, og prøv igen.');
+        await new Promise(resolve => setTimeout(resolve, 40));
+      }
+      if (failed) throw Error('Modellen kunne ikke beregnes. Ret fejlen, før du gemmer.');
+    };
+    const prepare = async () => {
+      if (printing) throw Error('Vent, til afleveringen til print er færdig.');
+      clearTimeout(textPause);
+      if (document.activeElement?.closest('#text-controls')) updateText();
+      view.cancelDrag(true);
+      await settle();
+    };
+    const readProject = async blob => {
+      if (!blob || blob.size > 50 * 1024 * 1024) throw Error('Vælg et 3D-projekt på højst 50 MB.');
+      return pendingImports.get(blob) || decodeProject(await blob.text());
+    };
+    const replaceScene = (scene, nextAssets, name = '') => {
+      clearTimeout(textPause); queued = []; view.cancelDrag(true);
+      worker.postMessage({type:'reset'});
+      Object.assign(model, new SceneModel(), {data:scene});
+      assets.clear(); for (const [id, asset] of nextAssets) assets.set(id, asset); sentAssets.clear();
+      modelName = String(name).slice(0, 100); printRequest = {signature:'', id:'', receipt:''};
+      guide = pendingGuide = null; showGuide(); lastColor = null; stickyError = notice = lastWarning = '';
+      frameFirst = Boolean(scene.roots.length); focusText = false; panelFor = null;
+      for (const modal of document.querySelectorAll('dialog[open]')) if (modal.id !== 'elevhub-project-dialog') modal.close();
+      evaluate();
+    };
+    window.ElevhubProjectAdapter = {
+      type:'3dprint', extension:'.mkv3d', name:() => modelName,
+      setName:name => { modelName = String(name).slice(0, 100); },
+      signature:() => model.snapshot(), hasContent:() => Boolean(model.data.roots.length),
+      prepareSave:prepare, prepareFinish:prepare,
+      export:async () => { await prepare(); return new Blob([encodeProject(model.data, assets)], {type:'application/json'}); },
+      validateImport:async blob => { pendingImports.set(blob, await readProject(blob)); },
+      import:async (blob, name) => {
+        const next = await readProject(blob); await prepare();
+        replaceScene(next.scene, next.assets, name); await settle(); model.dirty = false;
+      },
+      reset:async () => {
+        if (printing) throw Error('Vent, til afleveringen til print er færdig.');
+        replaceScene(new SceneModel().data, new Map()); await settle(); projectReady = true;
+      }
+    };
+    for (const note of document.querySelectorAll('[data-project-save-note]')) note.textContent = 'Gem projekt bevarer alle figurer, tekst og huller, så du kan arbejde videre næste gang. Hent STL laver en fil til print.';
+  }
   evaluate();
 }

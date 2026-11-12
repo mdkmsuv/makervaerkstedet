@@ -939,7 +939,7 @@ async function start(){
       reflect:text=>{if(state.learning){state.learning.reflection=String(text).slice(0,1000);persist();}}
     });
     if(!restore()){
-      if(VINYL){const value='DIT NAVN',size=16;const o=makeItem(value,center(textPath(value,size),state.width/2,state.height/2),'cut',{text:{value,size}});state.items.push(o);selected=new Set([o.id]);}
+      if(VINYL&&!MANAGED){const value='DIT NAVN',size=16;const o=makeItem(value,center(textPath(value,size),state.width/2,state.height/2),'cut',{text:{value,size}});state.items.push(o);selected=new Set([o.id]);}
       persist();
     }
     restoreReceipt();

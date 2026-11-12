@@ -99,7 +99,7 @@ def handle(handler):
                 for p in store.list(arg('q')):
                     route = opening(h.server, p)
                     program = route['program']
-                    category = ('cadoodle' if program == '3dprint' else program if program in TYPES
+                    category = ('cadoodle' if program == '3dprint' and route['extension'] == '.stl' else program if program in TYPES
                                 else 'datatraener' if p['kind'] == 'datatraener' else 'andet')
                     if not workshop or category == workshop:
                         projects.append({**p, 'opening': route})
@@ -122,7 +122,7 @@ def handle(handler):
             elif path == '/api/open-info':
                 revision = int(arg('revision')) if arg('revision') else None
                 meta, data = store.read(arg('id'), revision)
-                h.svar(200, plan(h.server, meta, data))
+                h.svar(200, plan(h.server, meta, data, revision=revision))
             elif path == '/api/open-status':
                 h.svar(200, native_status(h.server, arg('request')))
             elif path == '/api/file':

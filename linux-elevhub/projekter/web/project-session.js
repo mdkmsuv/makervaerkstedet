@@ -227,6 +227,7 @@
       if (info.program !== adapter.type) throw Error('Projektet hører til et andet værksted.');
       blob = info.editable ? new Blob([JSON.stringify(info.editable)], {type:'application/json'}) :
         await (await request(base + 'file?' + new URLSearchParams({id, revision}))).blob();
+      if (adapter.validateImport) await adapter.validateImport(blob);
       if (await dirty() && !await finish()) return;
       busy = importing = true;
       await adapter.import(blob, info.project.name);

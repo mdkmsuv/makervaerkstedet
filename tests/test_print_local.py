@@ -57,7 +57,8 @@ class LocalPrintTests(unittest.TestCase):
         status, body, headers = self.request('/model3d.html')
         self.assertEqual(status, 200)
         self.assertIn(b'/vendor/model3d-app.js', body)
-        self.assertNotIn(b'/_elevhub/projekter/bridge.js', body)
+        self.assertIn(b'/_elevhub/projekter/bridge.js', body)
+        self.assertIn(b'id="elevhub"', body)
         self.assertIn("'wasm-unsafe-eval'", headers['Content-Security-Policy'])
         self.assertIn("worker-src 'self'", headers['Content-Security-Policy'])
         for path in ('/vendor/model3d-app.js', '/vendor/model3d-geometry-worker.js',

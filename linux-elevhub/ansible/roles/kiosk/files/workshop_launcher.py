@@ -1,5 +1,6 @@
 """Authenticated loopback finish/navigation for local web workshops."""
 import hmac
+import importlib.util
 import http.client
 import json
 import os
@@ -12,6 +13,20 @@ from urllib.parse import parse_qs, urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = 8790
+
+
+def installed_apps(root):
+    """Use the same strict reader in installed and source layouts, without caching apps."""
+    here = Path(__file__).resolve()
+    reader = here.parent / 'projekter/app_manifests.py'
+    if not reader.is_file():
+        if tuple(p.name for p in here.parents[:4]) != ('files', 'kiosk', 'roles', 'ansible'):
+            raise ValueError('manifest_reader_missing')
+        reader = here.parents[4] / 'projekter/app_manifests.py'
+    spec = importlib.util.spec_from_file_location('_mkv_app_manifests', reader)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.load_manifests(root)
 
 
 def session_request(method, path, data=None):
@@ -131,7 +146,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_OPTIONS(self):
         requested = {h.strip().lower() for h in self.headers.get('Access-Control-Request-Headers', '').split(',') if h.strip()}
-        good = (self.allowed_origin() and urlsplit(self.path).path in ('/open', '/status', '/finish', '/finish/status')
+        good = (self.allowed_origin() and urlsplit(self.path).path in ('/open', '/status', '/finish', '/finish/status', '/apps')
                 and self.headers.get('Access-Control-Request-Method') in ('GET', 'POST')
                 and requested <= {'authorization', 'x-elevhub-computer', 'x-elevhub-page'})
         self.reply(200 if good else 403, {})
@@ -139,6 +154,13 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         if not self.authenticated():
             self.reply(403, {'error': 'Åbn fra Vælg værksted på denne computer.'})
+        elif self.path == '/apps':
+            try:
+                apps = installed_apps(self.server.manifest_root)
+            except (OSError, ValueError):
+                self.reply(503, {'error': 'De lokale værksteder kunne ikke læses. Prøv igen om lidt.'})
+            else:
+                self.reply(200, {'apps': apps})
         elif urlsplit(self.path).path == '/finish/status':
             request_id = parse_qs(urlsplit(self.path).query).get('id', [''])[0]
             with self.server.state_lock:
@@ -191,6 +213,7 @@ def make_server(computer, token, available, port=PORT):
     if not isinstance(token, str) or len(token) < 32:
         raise ValueError('Missing local UI identity')
     server = LocalServer(('127.0.0.1', port), Handler)
+    server.manifest_root = Path('/usr/share/makervaerkstedet/apps')
     server.computer, server.token, server.available = computer, token, lambda: False
     server.requests = queue.Queue(maxsize=1)
     server.results, server.pending_id, server.pending_action = {}, None, None
