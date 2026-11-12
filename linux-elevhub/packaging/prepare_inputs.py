@@ -7,8 +7,8 @@ from pathlib import Path
 import re
 from build_debian import sha
 
-CORE_VERSION = "2.0.0~20261109.2"
-UPDATER_VERSION = "1.0.0~20261109.4"
+CORE_VERSION = "2.0.0~20261111.1"
+UPDATER_VERSION = "1.0.0~20261111.1"
 
 SPECS = {
     "updater": ("makervaerkstedet-updater", UPDATER_VERSION, "amd64", ["python3 (>= 3.13)", "python3-jinja2", "apt", "dpkg", f"makervaerkstedet-elev (>= {CORE_VERSION})"]),

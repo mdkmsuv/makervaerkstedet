@@ -85,7 +85,7 @@ def validate(value,*,test_artifact=False):
         gate.validate_model3d_assets(package)
     return compiler,package
 
-def build(value,output,*,test_artifact=False):
+def build(value,output,*,test_artifact=False,payload_output=None):
     compiler,package=validate(value,test_artifact=test_artifact);output=Path(output)
     if output.exists():raise ValueError('output_already_exists')
     output.mkdir(parents=True);own=Path(__file__).parent
@@ -118,6 +118,11 @@ def build(value,output,*,test_artifact=False):
         for name in ('lifecycle.py','task_control.ps1'):shutil.copyfile(own/name,payload/name)
         files={p.relative_to(payload).as_posix():sha(p) for p in payload.rglob('*') if p.is_file()}
         manifest=payload/'installer-payload.json';manifest.write_text(json.dumps({'schema':1,'role':value['role'],'version':value['version'],'files':files,'test_artifact':test_artifact},sort_keys=True),encoding='utf-8')
+        if payload_output is not None:
+            # A copy of exactly what the installer unpacks, for installation tests
+            # that run lifecycle.py directly without the wizard.
+            if Path(payload_output).exists():raise ValueError('payload_output_already_exists')
+            shutil.copytree(payload,payload_output)
         expected=sha(manifest);label='Makervaerkstedet-'+value['role']+('-source-test' if test_artifact else '-Setup')
         recipe=own/'Makervaerkstedet.iss'
         arguments=[str(staged_compiler/'ISCC.exe'),'/Qp','/DPayloadRoot='+str(payload),'/DAppRole='+value['role'],'/DProductVersion='+value['version'],
@@ -131,6 +136,6 @@ def build(value,output,*,test_artifact=False):
         (output/'build-provenance.json').write_text(json.dumps(receipt,indent=2),encoding='utf-8')
         return receipt
 if __name__=='__main__':
-    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--inputs',required=True,type=Path);parser.add_argument('--output',required=True,type=Path);parser.add_argument('--test-artifact',action='store_true');args=parser.parse_args()
-    try:print(json.dumps(build(json.loads(args.inputs.read_bytes()),args.output,test_artifact=args.test_artifact)))
+    parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--inputs',required=True,type=Path);parser.add_argument('--output',required=True,type=Path);parser.add_argument('--test-artifact',action='store_true');parser.add_argument('--payload-output',type=Path,help='Gem også en kopi af den udpakkede installationspayload til test.');args=parser.parse_args()
+    try:print(json.dumps(build(json.loads(args.inputs.read_bytes()),args.output,test_artifact=args.test_artifact,payload_output=args.payload_output)))
     except (ValueError,OSError,subprocess.CalledProcessError) as error:parser.exit(2,str(error)+'\n')

@@ -44,7 +44,7 @@ class DebianPackages(unittest.TestCase):
         core=prepare_inputs.SPECS["core"][1]
         descriptor=prepare_inputs.runtime_descriptor(self.root,core)
         self.assertEqual(json.loads(descriptor.read_text()),{"schema":1,"release_id":core,"role":"student"})
-        self.assertIn("makervaerkstedet-elev (>= 2.0.0~20261109.2)",prepare_inputs.SPECS["updater"][3])
+        self.assertIn("makervaerkstedet-elev (>= "+prepare_inputs.CORE_VERSION+")",prepare_inputs.SPECS["updater"][3])
         self.assertNotEqual(core,prepare_inputs.SPECS["updater"][1])
         with self.assertRaisesRegex(ValueError,"runtime_descriptor_exists"):
             prepare_inputs.runtime_descriptor(self.root,"9.9.9")

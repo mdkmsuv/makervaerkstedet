@@ -275,7 +275,43 @@ def cleanup_duplicate_program(program,parked,backup,expected):
     suffix=parked.name[len(program.name+'.previous-'):]
     require(str(uuid.UUID(suffix))==suffix,'unsafe_parked_cleanup')
     require(tree(backup)==expected and tree(parked)==expected,'program_cleanup_backup_mismatch')
-    shutil.rmtree(parked)
+    remove_tree(parked)
+
+
+def remove_tree(folder,attempts=6,pause=2.0):
+    """Delete a folder that a virus scanner or indexer may still be reading.
+
+    A single locked or read-only file must not leave 700 MB behind, so clear
+    the read-only bit and try again a few times before giving up.
+    """
+    def writable(function,path,_error):
+        os.chmod(path,0o700);function(path)
+    for attempt in range(attempts):
+        try:
+            shutil.rmtree(folder,onerror=writable);return
+        except OSError:
+            if attempt==attempts-1:raise
+            time.sleep(pause)
+
+
+def prune_finished_operations(program,journals,current):
+    """Free the space earlier, finished updates still hold.
+
+    Every update keeps a full copy of the previous program in its journal, and
+    a previous-folder if its cleanup was interrupted. Once a later update has
+    completed they are no longer the way back, so remove them. Journals that
+    did not finish cleanly are never touched. Returns the names removed.
+    """
+    program,journals=plain(program),plain(journals);removed=[]
+    for journal in sorted(journals.iterdir()):
+        try:
+            if not journal.is_dir() or journal.name==current or str(uuid.UUID(journal.name))!=journal.name:continue
+            if read(journal/'state.json').get('phase')!='complete_paused':continue
+            for folder in (journal/'program-before',program.with_name(program.name+'.previous-'+journal.name)):
+                if folder.is_dir() and not folder.is_symlink():
+                    remove_tree(folder,attempts=2);removed.append(folder.name if folder.parent==program.parent else journal.name+'/program-before')
+        except (OSError,ValueError):continue
+    return removed
 
 
 def recovery_code(error):
@@ -289,6 +325,10 @@ def recovery_failure(journal,operation,phase,original,recovery,**extra):
     raise LifecycleError(phase+':'+recovery_code(original)+':'+recovery_code(recovery)) from original
 
 
+def note_hold(journal,released):
+    """Record whether the update's own queue hold was lifted; the phase is unchanged."""
+    state=read(journal/'state.json');state['hold_released']=bool(released);record(journal/'state.json',state)
+
 def update_server(package, program, journal, native, *, expected_files=None):
     expected_files=tree(package) if expected_files is None else expected_files
     require(tree(package)==expected_files,'source_package_changed')
@@ -298,7 +338,10 @@ def update_server(package, program, journal, native, *, expected_files=None):
     journal.mkdir(parents=True);native.protect_journal(journal)
     try:native.acquire_pause(operation);native.assert_pause(operation)
     except BaseException:
-        record(journal/'state.json',{'phase':'pause_incomplete_no_stop','operation_id':operation,'queue_may_remain_paused':True})
+        # Nothing was stopped or replaced. Lift whatever part of the hold this
+        # operation managed to take, so the teacher can resume the queue.
+        released=native.release_hold(operation)
+        record(journal/'state.json',{'phase':'pause_incomplete_no_stop','operation_id':operation,'queue_may_remain_paused':True,'hold_released':bool(released)})
         raise
     record(journal/'state.json',{'phase':'pause_held','operation_id':operation})
     stopped=False;stop_attempted=False;before=None;replaced=False;configure_attempted=False
@@ -329,8 +372,14 @@ def update_server(package, program, journal, native, *, expected_files=None):
         cleanup='duplicate_removed'
         try:cleanup_duplicate_program(program,parked,journal/'program-before',before)
         except (OSError,ValueError):cleanup='duplicate_retained_for_manual_review'
-        record(journal/'state.json',{'phase':'complete_paused','operation_id':operation,'program_backup':before,'cleanup':cleanup})
-        return {'status':'complete_paused','operation_id':operation,'cleanup':cleanup}
+        # The queue itself stays paused until the teacher resumes it. Only the
+        # update's own hold is lifted; without this nobody could resume the
+        # queue or start the next update.
+        released=native.release_hold(operation)
+        # This update is the new way back; older finished ones only take space.
+        pruned=prune_finished_operations(program,journal.parent,operation)
+        record(journal/'state.json',{'phase':'complete_paused','operation_id':operation,'program_backup':before,'cleanup':cleanup,'hold_released':bool(released),'pruned':pruned})
+        return {'status':'complete_paused','operation_id':operation,'cleanup':cleanup,'hold_released':bool(released),'pruned':pruned}
     except BaseException as original:
         if replaced:
             try:native.stop_owned(journal);stopped=True
@@ -346,7 +395,11 @@ def update_server(package, program, journal, native, *, expected_files=None):
             try:native.restore_owned(journal)
             except BaseException as failure:
                 recovery_failure(journal,operation,'task_restore_failed_manual_recovery_required',original,failure,program_backup=before)
-        # Never release queue hold or restore databases, even after failure.
+        # The previous program runs again with its tasks restored. Databases are
+        # never restored and the queue stays paused, but the update's own hold is
+        # lifted so the teacher can resume and a later update can start.
+        # (recovery_failure above raises, so an unclear state keeps its hold.)
+        note_hold(journal,native.release_hold(operation))
         raise
 
 class NativeWindows:
@@ -382,6 +435,20 @@ class NativeWindows:
         self.barrier=MachineMaintenanceBarrier(journal.name,printer_profile=config.get('makerspace_printers'),
             laser_profile=config.get('makerspace_laser_queue'),configuration_root=self.state)
     def acquire_pause(self,operation):self.barrier.acquire('server')
+    def release_hold(self,operation):
+        """Lift this operation's hold; the queue's own pause flag is left set.
+
+        The backends may still be starting, so try for a while. Returns False
+        instead of raising: a hold that could not be lifted must not turn a
+        finished update into a rollback.
+        """
+        if self.barrier is None:return False
+        deadline=time.monotonic()+45
+        while True:
+            try:self.barrier.release('server');return True
+            except Exception:
+                if time.monotonic()>=deadline:return False
+                time.sleep(1)
     def assert_pause(self,operation):
         require(self.barrier is not None,'maintenance_barrier_not_prepared')
         self.barrier.assert_held('server')

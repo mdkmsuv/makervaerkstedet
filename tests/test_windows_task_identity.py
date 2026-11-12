@@ -44,7 +44,8 @@ $global:tasks.ElevhubServer=[pscustomobject]@{TaskName='ElevhubServer';State='Ru
 $global:tasks.ElevhubSchoolEnrollment=[pscustomobject]@{TaskName='ElevhubSchoolEnrollment';State='__ENROLLSTATE__';Description='Elevhub skole-enrollment';Settings=@{Enabled=__ENABLE__};Principal=@{UserId='S-1-5-18'};Actions=@([pscustomobject]@{Execute=(Join-Path $root 'runtime\python.exe');Arguments=$argsEnroll+'__CHANGED__';WorkingDirectory=$root})}
 __HASHMOCK__
 function Get-ScheduledTask($TaskName,$TaskPath){return $global:tasks[$TaskName]}
-function Export-ScheduledTask($TaskName,$TaskPath){return '<Task><Name>'+$TaskName+'</Name><Enabled>true</Enabled></Task>'}
+# Like Windows: Settings/Enabled is absent while enabled and present as false when disabled.
+function Export-ScheduledTask($TaskName,$TaskPath){$settings=if($global:tasks[$TaskName].Settings.Enabled){'<Settings><Hidden>false</Hidden></Settings>'}else{"<Settings>`r`n    <Enabled>false</Enabled>`r`n    <Hidden>false</Hidden></Settings>"};return '<Task xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task"><Triggers><BootTrigger><Enabled>true</Enabled></BootTrigger></Triggers>'+$settings+'<Name>'+$TaskName+'</Name></Task>'}
 function Disable-ScheduledTask($TaskName,$TaskPath){$global:events.Add('disable:'+$TaskName);$global:tasks[$TaskName].Settings.Enabled=$false}
 function Stop-ScheduledTask($TaskName,$TaskPath){$global:events.Add('stop:'+$TaskName);$global:tasks[$TaskName].State='Ready'}
 function Enable-ScheduledTask($TaskName,$TaskPath){$global:events.Add('enable:'+$TaskName);$global:tasks[$TaskName].Settings.Enabled=$true}
@@ -61,6 +62,11 @@ try{& '__SCRIPT__' -Action Stop -Journal '__JOURNAL__';if($LASTEXITCODE -ne 0){t
         result=self.scenario(True);self.assertIsNone(result['failure']);self.assertIn('stop:ElevhubSchoolEnrollment',result['events']);self.assertIn('start:ElevhubSchoolEnrollment',result['events']);self.assertIn('start:ElevhubServer',result['events'])
     def test_disabled_enrollment_is_not_enabled_or_started(self):
         result=self.scenario(False);self.assertIsNone(result['failure']);self.assertNotIn('start:ElevhubSchoolEnrollment',result['events']);self.assertNotIn('enable:ElevhubSchoolEnrollment',result['events'])
+    def test_own_disable_does_not_block_restore(self):
+        # Regression: the update disabled the tasks and then refused to restore
+        # them, because the exported XML gained <Enabled>false</Enabled>.
+        result=self.scenario(True);self.assertIsNone(result['failure'],result)
+        self.assertEqual([e for e in result['events'] if e.startswith('start:')],['start:ElevhubServer','start:ElevhubSchoolEnrollment'])
     def test_changed_enrollment_is_rejected_before_any_task_mutation(self):
         result=self.scenario(True,True);self.assertIn('Enrollment task ownership',result['failure']);self.assertEqual(result['events'],[])
 

@@ -1,3 +1,4 @@
+import os
 """Program/pause invariants using synthetic files and an explicit fake OS edge."""
 import importlib.util
 import base64
@@ -16,7 +17,7 @@ build=importlib.util.module_from_spec(spec);spec.loader.exec_module(build)
 
 class FakeOS:
     def __init__(self,data,*,health_fail=False,stop_fail=False,pause_fail=False):
-        self.data=data;self.events=[];self.paused=False;self.jobs=['printing','dispatching','attention'];self.health_fail=health_fail;self.stop_fail=stop_fail;self.pause_fail=pause_fail
+        self.data=data;self.events=[];self.paused=False;self.holder=None;self.jobs=['printing','dispatching','attention'];self.health_fail=health_fail;self.stop_fail=stop_fail;self.pause_fail=pause_fail
     def protect_journal(self,path):self.events.append('protect')
     def preflight_update(self,program,journal):self.events.append('preflight')
     def acquire_pause(self,operation):
@@ -24,6 +25,11 @@ class FakeOS:
         if self.pause_fail:raise ValueError('laser_endpoint_missing')
     def assert_pause(self,operation):
         assert self.paused and self.holder==operation;self.events.append('assert')
+    def release_hold(self,operation):
+        # Like the real backends: the hold goes, the queue's pause flag stays.
+        self.events.append('release_hold')
+        if self.holder!=operation:return False
+        self.holder=None;return True
     def stop_owned(self,journal):
         assert self.paused;self.events.append('stop_owned')
         if self.stop_fail:self.stop_fail=False;raise ValueError('process_remains')
@@ -47,6 +53,11 @@ class LifecycleTests(unittest.TestCase):
     def test_active_and_full_queues_do_not_block_update_and_pause_precedes_owned_stop(self):
         native=FakeOS(self.data);result=life.update_server(self.package,self.program,self.journal,native)
         self.assertEqual(result['status'],'complete_paused');self.assertTrue(native.paused)
+        # The queue stays paused, but the update's own hold is lifted last so the
+        # teacher can resume the queue and the next update can start.
+        self.assertIsNone(native.holder);self.assertTrue(result['hold_released'])
+        self.assertEqual(native.events[-1],'release_hold');self.assertLess(native.events.index('health'),native.events.index('release_hold'))
+        self.assertTrue(json.loads((self.journal/'state.json').read_text())['hold_released'])
         self.assertEqual(native.jobs,['printing','dispatching','attention'])
         self.assertLess(native.events.index('pause'),native.events.index('stop_owned'))
         self.assertLess(native.events.index('stop_owned'),native.events.index('database_backup'))
@@ -60,7 +71,32 @@ class LifecycleTests(unittest.TestCase):
         self.assertEqual((self.program/'main.py').read_bytes(),b'old program')
         self.assertEqual(self.data.read_bytes(),b'new submission after restart')
         self.assertTrue(native.paused)
+        # Clean rollback: tasks restored first, then the hold is lifted.
+        self.assertIsNone(native.holder);self.assertLess(native.events.index('restore_owned'),native.events.index('release_hold'))
+        self.assertTrue(json.loads((self.journal/'state.json').read_text())['hold_released'])
         self.assertEqual(json.loads((self.journal/'state.json').read_bytes())['phase'],'program_restored_paused')
+    def test_later_update_frees_space_held_by_earlier_finished_updates_only(self):
+        native=FakeOS(self.data);first=self.journal;life.update_server(self.package,self.program,first,native)
+        self.assertTrue((first/'program-before').is_dir())
+        # An interrupted cleanup left the first update's previous folder behind.
+        leftover=self.program.with_name(self.program.name+'.previous-'+first.name);leftover.mkdir();(leftover/'old.py').write_bytes(b'x')
+        # A journal that did not finish cleanly must keep its backup.
+        broken=self.root/'journals'/str(uuid.uuid4());(broken/'program-before').mkdir(parents=True)
+        (broken/'state.json').write_text(json.dumps({'phase':'rollback_stop_failed_manual_recovery_required'}))
+        (self.package/'main.py').write_bytes(b'newer program')
+        second=self.root/'journals'/str(uuid.uuid4());result=life.update_server(self.package,self.program,second,native)
+        self.assertFalse((first/'program-before').exists());self.assertFalse(leftover.exists())
+        self.assertTrue((first/'state.json').is_file());self.assertTrue((second/'program-before').is_dir())
+        self.assertTrue((broken/'program-before').is_dir())
+        self.assertEqual(sorted(result['pruned']),sorted([leftover.name,first.name+'/program-before']))
+    def test_cleanup_retries_a_briefly_locked_or_read_only_file(self):
+        folder=self.root/'parked';folder.mkdir();locked=folder/'a.py';locked.write_bytes(b'x');os.chmod(locked,0o400)
+        life.remove_tree(folder,attempts=2,pause=0);self.assertFalse(folder.exists())
+    def test_two_updates_in_a_row_are_possible(self):
+        native=FakeOS(self.data);life.update_server(self.package,self.program,self.journal,native)
+        (self.package/'main.py').write_bytes(b'newer program')
+        result=life.update_server(self.package,self.program,self.root/'journals'/str(uuid.uuid4()),native)
+        self.assertEqual(result['status'],'complete_paused');self.assertEqual((self.program/'main.py').read_bytes(),b'newer program')
     def test_database_backup_failure_leaves_program_and_data_before_replacement(self):
         native=FakeOS(self.data)
         with patch.object(native,'backup_databases',side_effect=ValueError('database_backup_failed')):
@@ -106,7 +142,9 @@ class LifecycleTests(unittest.TestCase):
         self.assertIn('PrivilegesRequired=admin',recipe);self.assertIn('PrivilegesRequired=lowest',recipe)
         self.assertNotIn('PrivilegesRequiredOverridesAllowed',recipe)
         source=(ROOT/'windows/inno/lifecycle.py').read_text()
-        self.assertNotIn('assert_idle(',source);self.assertNotIn('.release(',source)
+        self.assertNotIn('assert_idle(',source)
+        # The hold is lifted in exactly one place, never the queue's pause flag.
+        self.assertEqual(source.count('.release('),1);self.assertIn("self.barrier.release('server')",source)
 class BuilderInputTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)

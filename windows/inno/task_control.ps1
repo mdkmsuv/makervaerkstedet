@@ -76,9 +76,18 @@ if($owner.adoptedPrinterLights){
  $owned+=,$lights
 }
 if($Action -eq 'Hold'){foreach($item in $owned){Disable-ScheduledTask -TaskName $item.TaskName -TaskPath '\'|Out-Null;Stop-ScheduledTask -TaskName $item.TaskName -TaskPath '\'};exit 0}
+# Windows omits Settings/Enabled from the exported XML while a task is enabled
+# and writes <Enabled>false</Enabled> once it is disabled. Compare the task
+# definition without that one element, and without insignificant whitespace,
+# so that our own Disable does not look like a foreign change.
+function Get-TaskConfiguration([string]$Xml){
+ $document=[xml]$Xml
+ foreach($node in @($document.SelectNodes("/*[local-name()='Task']/*[local-name()='Settings']/*[local-name()='Enabled']"))){[void]$node.ParentNode.RemoveChild($node)}
+ return $document.OuterXml
+}
 $rows=@(foreach($item in $owned){
  $xml=Export-ScheduledTask -TaskName $item.TaskName -TaskPath '\'
- @{name=$item.TaskName;xml=$xml;configuration=($xml -replace '<Enabled>(true|false)</Enabled>','<Enabled/>');enabled=[bool]$item.Settings.Enabled;running=($item.State -eq 'Running')}
+ @{name=$item.TaskName;xml=$xml;configuration=(Get-TaskConfiguration $xml);enabled=[bool]$item.Settings.Enabled;running=($item.State -eq 'Running')}
 })
 if($Action -eq 'Inspect'){Write-Output 'owned-flat-server-and-enrollment-tasks';exit 0}
 $record=Join-Path $Journal 'task-state.json'
