@@ -277,7 +277,10 @@
       show(loading);
     }
     adapter = window.ElevhubProjectAdapter;
-    if (!adapter) { setTimeout(() => start().catch(startFailed), 250); return; }
+    if (!adapter) {
+      if (window.ElevhubProjectStartupError) throw Error(window.ElevhubProjectStartupError);
+      setTimeout(() => start().catch(startFailed), 250); return;
+    }
     if (document.getElementById('elevhub-project-bar')) return;
     const bar = node('section', undefined, {id:'elevhub-project-bar', 'aria-label':'Gem og åbn projekter'});
     const saveButton = button('Gem projekt', 'elevhub-project-save'), open = button('Åbn projekt', 'elevhub-project-open');

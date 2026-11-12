@@ -21,7 +21,9 @@ try {
   view = new View($('canvas'), (...args) => select(...args), delta => transform(delta), edit => editObject(edit),
     text => { $('drag-readout').hidden = !text; $('drag-readout').textContent = text; });
 } catch {
-  worker.terminate(); status('Din browser kan ikke vise 3D. Bed en voksen om hjælp.'); document.querySelectorAll('main button, main input, main select').forEach(element => { element.disabled = true; });
+  const message = 'Din browser kan ikke vise 3D. Bed en voksen om hjælp.';
+  if (managed) window.ElevhubProjectStartupError = message;
+  worker.terminate(); status(message); document.querySelectorAll('main button, main input, main select').forEach(element => { element.disabled = true; });
 }
 if (view) {
   // Matches the panel widths in model3d.css; on a phone the panel floats over the picture instead.

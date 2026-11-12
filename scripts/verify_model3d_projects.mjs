@@ -73,6 +73,27 @@ try {
   const page = await context.newPage(), errors = [], browserDialogs = [];
   page.on('pageerror', error => errors.push(error.message));
   page.on('dialog', dialog => {browserDialogs.push(dialog.type()); dialog.dismiss();});
+  const noGl = await browser.newContext({viewport:{width:1024,height:688}});
+  await noGl.addInitScript(()=>{
+    if(sessionStorage.getItem('review-webgl-retry')==='ready')return;
+    const original=HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext=function(type,...args){
+      return /webgl/i.test(type)?null:original.call(this,type,...args);
+    };
+  });
+  const failedPage=await noGl.newPage();
+  failedPage.on('pageerror',error=>errors.push(error.message));
+  await failedPage.goto(origin+'/model3d.html');
+  await failedPage.locator('#project-start-retry').waitFor({timeout:5000});
+  assert.match(await failedPage.locator('#elevhub-project-dialog').innerText(),/Din browser kan ikke vise 3D/);
+  assert.doesNotMatch(await failedPage.locator('#elevhub-project-dialog').innerText(),/Gør værkstedet klar/);
+  await failedPage.screenshot({path:path.join(output,'webgl-start-error.png')});
+  await failedPage.evaluate(()=>sessionStorage.setItem('review-webgl-retry','ready'));
+  await failedPage.locator('#project-start-retry').click();
+  await failedPage.locator('#project-classroom').waitFor({timeout:8000});
+  assert.equal(await failedPage.evaluate(()=>document.activeElement.id),'project-classroom');
+  await noGl.close();
+  console.log('3D WebGL startup failure has a Danish explanation and working retry instead of an endless loading dialog: OK');
   await page.goto(origin + '/model3d.html');
   await page.locator('#project-classroom').waitFor({timeout:8000});
   assert.equal(await page.evaluate(() => document.activeElement.id), 'project-classroom');

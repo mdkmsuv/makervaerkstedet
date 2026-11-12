@@ -44,6 +44,8 @@ try {
     }
     throw Error('Finish acknowledgement timed out');
   }
+  const previousPage=new URL('/laservaerksted/PAPER-LICENSE.txt',editor).href;
+  await page.goto(previousPage);
   await page.goto(editor);
   await page.locator('#project-start-confirm').waitFor();
   await page.screenshot({path:path.join(output,'initial-metadata.png')});
@@ -78,7 +80,27 @@ try {
   assert.equal(await page.evaluate(()=>window.ElevhubProjectSession.naming()),null);
   await page.keyboard.press('Control+z');
   assert.equal(await page.evaluate(()=>window.ElevhubProjectAdapter.hasContent()),false,'finish must clear old undo');
-  await page.reload(); await page.locator('#project-start-confirm').waitFor();
+  const cleared=await signature();
+  await page.evaluate(()=>{
+    window.addEventListener('keydown',event=>{
+      if(event.altKey&&event.key==='ArrowLeft') sessionStorage.setItem('laser-native-return-prevented',String(event.defaultPrevented));
+    });
+    window.addEventListener('beforeunload',()=>{
+      sessionStorage.setItem('laser-native-return-state',window.ElevhubProjectAdapter.signature());
+    });
+  });
+  await page.locator('#designCanvas').focus();
+  await page.keyboard.press('Alt+ArrowLeft');
+  assert.equal(await signature(),cleared,'Alt+ArrowLeft must not move a selected starter figure');
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem('laser-native-return-prevented')),'false','editor must allow native browser navigation');
+  // CDP key events do not invoke Chromium's native window accelerator in headless mode.
+  // Exercise the browser history transition separately, after checking the actual DOM key event.
+  await page.goBack();
+  await page.waitForURL(previousPage,{timeout:4000});
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem('laser-native-return-state')),cleared,'native browser return must not move the selected starter figure');
+  assert.deepEqual(dialogs,[],'native return after approved finish must not trigger Leave app');
+  console.log('PASS actual Alt+ArrowLeft preserves the selected figure and allows browser history return without a warning');
+  await page.goto(editor); await page.locator('#project-start-confirm').waitFor();
   for(const id of ['project-classroom','project-student'])assert.equal(await page.locator('#'+id).inputValue(),'');
   assert.notEqual(await page.locator('#project-title').inputValue(),'Min laserfigur','next pupil must not inherit the previous title');
   await page.locator('#project-start-open').click();
