@@ -110,6 +110,10 @@ try {
   pass('vinyl preview reports open cut strokes', (await page.locator('#preview-issues').innerText()).includes('Åbne streger'));
   await page.locator('[data-close="preview-dialog"]').first().click();
   const brother = await download('#export-button');
+  const feedback = await page.locator('#toast').innerText();
+  pass('SVG feedback announces download start and explains safe USB removal', feedback.includes('SVG-downloaden er startet.') && feedback.includes('sikkert ud'));
+  await page.waitForTimeout(3500);
+  pass('USB removal instruction remains visible long enough to read', await page.locator('#toast').isVisible());
   const exportInfo = await page.evaluate(source => { const doc = new DOMParser().parseFromString(source, 'image/svg+xml'); const root = doc.documentElement; return {width: root.getAttribute('width'), height: root.getAttribute('height'), paths: root.querySelectorAll('path').length, forbidden: root.querySelectorAll('image,text,g,metadata,style,script').length, engrave: source.includes('engrave')}; }, brother);
   pass('Brother export is physical mm plain paths without engrave or metadata', exportInfo.width === '296mm' && exportInfo.height === '603mm' && exportInfo.paths === 3 && exportInfo.forbidden === 0 && !exportInfo.engrave);
 
@@ -122,14 +126,17 @@ try {
   while (!blockedRequest) await new Promise(resolve => setTimeout(resolve, 20));
   version = 2; releaseBlockedFile?.(); await addPromise; await new Promise(resolve => setTimeout(resolve, 100));
   pass('access revocation during file fetch does not insert', (await state()).items.length === beforeBlocked.items.length);
-  blockVinylFile = false; await page.locator('[data-close="library-dialog"]').first().click();
+  blockVinylFile = false;
+  await page.waitForFunction(() => !document.querySelector('#library-dialog')?.open);
 
   offline = true; await page.reload(); await ready();
+  await openLevels();
   await page.locator('[data-level="1"]').click(); await page.locator('[data-add="circle"]').click();
   pass('offline mode still permits local figures', (await state()).items.length >= 2);
   const savedOffline = await download('#save-project');
   pass('offline mode still permits local project save', savedOffline.includes('kloster-folievaerksted-v1') || savedOffline.includes('Bevar denne tegning'));
 
+  offline = false;
   await page.goto(`${base}/laser.html`); await page.evaluate(() => localStorage.clear()); await page.reload(); await ready();
   await page.locator('#library-button').click(); await page.waitForFunction(() => document.querySelector('#library-dialog')?.open);
   await page.locator('#library-grid article').first().locator('button').click();

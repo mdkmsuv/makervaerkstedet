@@ -36,7 +36,7 @@ const chosen=()=>state.items.filter(o=>selected.has(o.id));
 const one=()=>selected.size===1?objectById([...selected][0]):null;
 const num=(id,min,max)=>{const v=Number($(id).value);if(!Number.isFinite(v)||v<min||v>max)throw Error(`Skriv et tal mellem ${min} og ${max}.`);return v;};
 function notify(message,error=false){$('notice').textContent=message;$('notice').classList.toggle('error',error);$('notice').hidden=false;}
-function toast(message){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,3000);}
+function toast(message,duration=3000){$('toast').textContent=message;$('toast').hidden=false;clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').hidden=true,duration);}
 function projectIssues(s){
   const learning=cleanLearning(s.learning);
   if(!learning||!getProject(learning.id,VINYL)||!learning.frameId)return [];
@@ -731,7 +731,8 @@ function restorePendingProject(){
 function download(){
   if(!finishPendingPoints())return;
   const issues=issuesForDrawing(state);if(issues.length){notify(issues.join(' '),true);showPreview();return;}
-  saveFile(exportDrawing(state));toast(VINYL?'SVG-filen er hentet. Kopiér den til din USB-nøgle.':'Din SVG til laseren er hentet.');
+  saveFile(exportDrawing(state));
+  toast(VINYL?(MANAGED?'SVG-downloaden er startet. Tryk “Tag USB ud” i bjælken, før du fjerner USB-nøglen.':'SVG-downloaden er startet. Gemmer du på USB, skal nøglen skubbes sikkert ud, før du fjerner den.'):'Din SVG til laseren er hentet.',VINYL?10000:3000);
 }
 async function inboxStatus(){
   if(VINYL)return;
