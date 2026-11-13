@@ -45,3 +45,6 @@ main{max-width:1504px;margin:auto;padding:0 32px}.eyebrow{color:var(--brand);fon
   .app h3{font-size:25px}
   .app-description{min-height:42px;margin-bottom:10px}
 }
+
+/* Ideas may return to a workshop hidden by the active filter. */
+#workshops-title:focus-visible,#detail-title:focus-visible{outline:3px solid var(--brand);outline-offset:4px}

@@ -40,6 +40,23 @@ async function fixture(){
   await check('action error survives status polling; dismiss restores focus; retry succeeds',async()=>{await home();finish='error';await page.locator('article[data-app="folie"] .app-open').click();await page.locator('#fejl').filter({hasText:/Prøv igen/}).waitFor();await page.waitForTimeout(3500);assert(await page.locator('#kiosk-notice').isVisible());await page.locator('#kiosk-dismiss').click();assert(await page.locator('article[data-app="folie"] .app-open').evaluate(e=>e===document.activeElement));assert.equal(await page.locator('#kiosk-notice').isVisible(),false);finish='completed';await page.keyboard.press('Enter');await page.waitForURL(f.urls.folie+'**');});
   for(const size of [{width:1366,height:708},{width:1920,height:1020}])await check('first-row launch buttons visible on initial '+size.width,async()=>{await page.setViewportSize(size);await home();const rows=await page.locator('#apps > article').evaluateAll(cards=>cards.map(c=>({top:c.getBoundingClientRect().top,button:c.querySelector('.app-open').getBoundingClientRect().toJSON()})));const first=rows.filter(c=>Math.abs(c.top-rows[0].top)<2);assert(first.length>0);assert(first.every(c=>c.button.top>=0&&c.button.bottom<=size.height),'first row launch buttons clipped: '+JSON.stringify(first));await snap('home-initial-'+size.width);});
   await check('ideas retain detail and return focus',async()=>{await home();await page.locator('article[data-app="folie"] .app-about').click();await page.locator('#detail-title').waitFor();assert.match(page.url(),/#vaerksted\/folie/);await page.getByRole('link',{name:/Alle værksteder/}).click();assert(await page.locator('article[data-app="folie"] .app-about').evaluate(e=>e===document.activeElement));await audit('home');await snap('home');});
+  await check('filtered idea return restores visible keyboard focus without changing filter',async()=>{
+   await page.setViewportSize({width:1366,height:708});await home();
+   await page.locator('[data-filter="ide"]').click();
+   const ideaApp=await page.locator('#ticket-link').getAttribute('data-app');
+   assert.equal(await page.locator('article[data-app="'+ideaApp+'"]').count(),0,'Suggested workshop must be outside the active filter');
+   await page.locator('#ticket-link').focus();await page.keyboard.press('Enter');
+   await page.locator('#detail-title').waitFor();
+   const detailOutline=await page.locator('#detail-title').evaluate(e=>({style:getComputedStyle(e).outlineStyle,width:getComputedStyle(e).outlineWidth}));
+   await page.getByRole('link',{name:/Alle værksteder/}).focus();await page.keyboard.press('Enter');
+   await page.waitForFunction(()=>document.getElementById('workshop-detail').hidden);
+   assert(await page.locator('#workshops-title').evaluate(e=>e===document.activeElement),'Focus must return to the visible workshop heading when the original card is filtered out');
+   assert.equal(await page.locator('[data-filter="ide"]').getAttribute('aria-pressed'),'true');
+   const heading=await page.locator('#workshops-title').boundingBox();assert(heading&&heading.y>=0&&heading.y+heading.height<=708);
+   const outline=await page.locator('#workshops-title').evaluate(e=>({style:getComputedStyle(e).outlineStyle,width:getComputedStyle(e).outlineWidth}));
+   assert.equal(outline.style,'solid');assert.equal(outline.width,'3px');assert.deepEqual(detailOutline,outline);
+   await snap('filtered-idea-return-focus');
+  });
   await check('finish cancellation preserves current page',async()=>{await home();finish='cancelled';const before=page.url(),n=finishCalls;await page.locator('article[data-app="folie"] .app-open').click();await page.waitForTimeout(400);assert(finishCalls>n);assert.equal(page.url(),before);finish='completed';});
   await check('server closure blocks launch at click time',async()=>{await home();await page.request.get(f.urls.hub+'/__set?mode=closed');await page.locator('article[data-app="folie"] .app-open').click();await page.locator('#fejl').filter({hasText:/lærer|ikke åbnes/}).waitFor();assert(page.url().startsWith(f.urls.hub));});
   await check('offline local workshop remains available',async()=>{await home('down');assert.match(await page.locator('article[data-app="folie"]').innerText(),/Tilgængelig offline/);assert.match(await page.locator('article[data-app="microbit"]').innerText(),/Kræver internet/);await page.locator('article[data-app="folie"] .app-open').click();await page.waitForURL(f.urls.folie+'**');});

@@ -67,7 +67,7 @@ function routeWorkshop(){
   if(!location.hash.startsWith('#vaerksted/')||!app||!info){
     const wasDetail=selectedWorkshop;selectedWorkshop=null;document.getElementById('workshop-detail').hidden=true;document.getElementById('hub-home').hidden=false;
     document.title='Værkstedet · Makerværkstedet';
-    if(wasDetail){const destination=document.getElementById(location.hash.slice(1));if(destination)destination.scrollIntoView();else window.scrollTo(0,0);if(location.hash==='#workshops')document.querySelector('[data-app="'+wasDetail+'"] .app-about')?.focus({preventScroll:true});}
+    if(wasDetail){const destination=document.getElementById(location.hash.slice(1));if(destination)destination.scrollIntoView();else window.scrollTo(0,0);if(location.hash==='#workshops'){const target=document.querySelector('[data-app="'+wasDetail+'"] .app-about')||document.getElementById('workshops-title');target.focus({preventScroll:true});}}
     return;
   }
   if(id===selectedWorkshop)return;
