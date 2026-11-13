@@ -1,36 +1,39 @@
-# Agentindgang til Makerværkstedet
+# Produktindgang — Makerværkstedet
 
-Makerværkstedet er et system til skolers makerspace med læreradministration,
-printer- og laserforløb samt digitale elevværksteder. Denne fil hjælper en
-kodeagent med installation, skoletilpasning og videreudvikling.
+Arbejdsform og mandat følger [projektrodens AGENTS.md](../AGENTS.md):
+hovedagenten udvikler selv, højst tre underagenter og UI/UX-review ved alle
+UI-/flowændringer. Den gamle faste agentfordeling gælder ikke længere.
+Denne fil supplerer reglerne og genindfører ikke et generelt installationsforbud.
+Arbejdsmapper under 2.0 følger også projektrodens regler.
 
-## Start her
+## Læs kun det relevante
 
-- [Kom godt i gang](docs/KOM-GODT-IGANG.md): vælg installation eller opdatering.
-- [De to opsætninger](docs/TO-OPSAETNINGER.md): fælles Windows-computer eller
-  Windows-server med separat laserstation. Elevcomputere bruger Linux.
-- [Agentvejledning](docs/AGENTINDGANG.md): arkitektur, relevante kildefiler og tests.
-- [Skoletilpasning](docs/SKOLETILPASNING.md): lokal skoleprofil, tema og netværk.
-- [GitHub-opdateringer](docs/GITHUB-OPDATERINGER.md) og
-  [backup](docs/MAKERSPACE-BACKUP.md): versionsskift og databevarelse.
+| Opgave | Reference |
+|---|---|
+| UI eller brugerflow | [UI/UX-agent](docs/agenter/UI-UX-AGENT.md), relevante [krav](docs/UI-UX-KRAV.md) |
+| Arkitektur, kildefiler og testkommandoer | [Agentindgang](docs/AGENTINDGANG.md) |
+| Installation/opdatering og maskinrolle | [Kom godt i gang](docs/KOM-GODT-IGANG.md), [to opsætninger](docs/TO-OPSAETNINGER.md) |
+| Skoleprofil, tema og netværk | [Skoletilpasning](docs/SKOLETILPASNING.md) |
+| Faktisk pakke, udgivelse eller udrulning | Relevante dele af [udgivelsesprocessen](docs/UDGIVELSESPROCES.md) |
+| Backup, gendannelse eller versionsskift | [Backup](docs/MAKERSPACE-BACKUP.md), [opdateringer](docs/GITHUB-OPDATERINGER.md) |
 
-## Ved installation og ændringer
+## Produktgrænser
 
-- Afklar målcomputerens rolle og om opgaven er ny installation, opdatering
-  eller gendannelse. En kodeændring er ikke en installation.
-- Bevar lokale skoleprofiler, temaer, nøgler, elevprojekter, maskinopsætning,
-  køer og historik ved opdatering. Brug ikke ren installation som opdatering.
-- Læreren styrer den daglige drift gennem kontrolpanelet. Kodeagenten har
-  ingen særskilt driftskonto eller skjult adgang til skolens udstyr.
-- Brug syntetiske data i tests. Del ikke skolers data, nøgler eller lokale
-  tilpasninger i kildekode, eksempler eller installationspakker.
-- Kør relevante tests for ændringen. Skeln mellem kildeprøver, byggede pakker
-  og faktisk afprøvning på det pågældende operativsystem og udstyr.
-- Ved serverudfald skal elevværksteder, CaDoodle og Internet være åbne;
-  lærerens aktuelle valg gælder igen, når forbindelsen vender tilbage.
-- Bevar [ophavskreditering](CREDITS.md), [licensafgrænsning](LICENSE-SCOPE.md)
-  og tredjepartslicenser, også når en skole vælger eget navn og tema.
-
-Offentlige kildeudgivelser følger filudvalget i
-`deployment/public-source-manifest.json`. Kontrollér det med
-`python scripts/public_source.py --check-repository` før udgivelse.
+- Afklar ny installation, opdatering eller gendannelse. Bevar lokale profiler,
+  temaer, nøgler, projekter, maskinopsætning, køer og historik ved opdatering,
+  medmindre den konkrete bestilling ændrer bevaringskravet.
+- Brug syntetiske testdata. Skoledata, nøgler, private skins og rå driftslogs
+  må ikke indgå i generisk produktkode, eksempler eller pakker.
+- Læreren styrer fysisk drift. Ingen skjult driftskonto eller test, der
+  automatisk starter maskiner eller kvitterer en fysisk ryddet plade.
+- Ved serverudfald skal lokale elevværksteder og Internet-adgang være åbne;
+  eksterne tjenester kræver stadig netværk. Lærerens aktuelle valg gælder
+  igen ved forbindelse.
+- Bevar [kreditering](CREDITS.md), [licensafgrænsning](LICENSE-SCOPE.md)
+  og tredjepartslicenser ved genbrug og skoletilpasning.
+- En udgivelse skal kunne genskabes fra dokumenteret kilde. Windows-
+  udgivelser følger relevante installations- og opdateringsprøver i
+  udgivelsesprocessen, ikke ved hver lille kilde- eller dokumentrettelse.
+- Før offentlig kildeudgivelse kontrolleres deployment/public-source-manifest.json
+  med den eksisterende offentlighedskontrol. En almindelig udviklingsbestilling
+  er ikke i sig selv en bestilling om publicering.

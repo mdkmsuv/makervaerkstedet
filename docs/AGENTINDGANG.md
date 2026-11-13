@@ -96,8 +96,9 @@ kræver særskilt praktisk afprøvning.
 - Læreren styrer systemet. De interne HTTP-funktioner under `/api/makerspace/`
   betjener lærerens panel og kræver lærerlogin. Private forbindelsesnøgler
   mellem lokale tjenester er komponentkommunikation, ikke agentadgang.
-- Ved serverudfald er alle elevværksteder, CaDoodle og Internet åbne, også ved
-  kold opstart. Ved genforbindelse gælder lærerens aktuelle valg igen.
+- Ved serverudfald er de understøttede lokale elevværksteder og Internet-adgang
+  åbne, også ved kold opstart; eksterne tjenester kræver stadig netværk.
+  CaDoodle er udtaget af 2.0. Ved genforbindelse gælder lærerens aktuelle valg igen.
 - Printerkø og laser-Inbox ejer deres egne job. Et workflow eller en ny
   tilpasning må ikke omgå fysisk kontrol, lærerbekræftelse eller pladerydning.
 - Nye understøttede maskiner skal kunne opsættes gennem administrationen;
