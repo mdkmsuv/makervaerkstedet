@@ -37,10 +37,26 @@ aktuel køversion og afviser et forsøg, der stadig kører. En uklar HTTP-fejl
 kan genforsøges med samme request-ID gennem knappen **Prøv samme anmodning
 igen**. **Klargjort · afventer genstart** er ikke en afsluttet opdatering;
 den nye version skal bekræftes efter normal genstart. Eleven gemmer sit
-arbejde først. Der sendes ingen automatisk genstart fra panelet. På en ældre elevinstallation kan første
-opstart give serverkontakt og klargøring; først næste normale genstart anvender
-den klargjorte udgivelse. Det er to adskilte opstarter, når maskinen først
-kommer online ved den første.
+arbejde først. På en ældre elevinstallation sender panelet ingen automatisk
+genstart: første opstart kan give serverkontakt og klargøring, og først næste
+normale genstart anvender den klargjorte udgivelse. Det er to adskilte
+opstarter, når maskinen først kommer online ved den første.
+
+## Elevarbejde under opdatering er lærerens ansvar
+
+Læreren bestemmer selv, hvornår en opdatering sættes i kø. **Sæt først
+computere i kø, når eleverne ikke arbejder på dem.**
+
+En Debian-elevcomputer installeret fra produkt-ISO'en henter den valgte
+udgivelse som signerede pakker, kort efter at læreren har sat den i kø.
+Når pakkerne er installeret, genstartes de lokale værksteder og elevens
+skærm af sig selv, så den nye version tages i brug med det samme. Computeren
+spørger ikke eleven først og ser ikke efter, om nogen arbejder. Arbejde, som
+eleven ikke har gemt, går tabt. Gemte projekter og afleveringer, der venter
+i udbakken, bevares.
+
+Det er en bevidst beslutning (13. november 2026): opdateringer startes kun af
+læreren, så der er ingen indbygget spærring mod at opdatere en computer i brug.
 
 ## Hvis en elevcomputer slukkes under opdatering
 

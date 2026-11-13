@@ -91,7 +91,10 @@ En uklar netværksfejl kan genforsøges med samme anmodnings-ID. Slukkede
 computere bliver i køen. En eksisterende uafsluttet opdatering erstattes
 ikke automatisk af en nyere udgivelse. Almindelig opdatering afviser samme
 eller en ældre version end den senest bekræftede; en planlagt gendannelse er
-en særskilt handling. Ingen elevcomputer genstartes automatisk.
+en særskilt handling. Ingen elevcomputer genstartes helt af sig selv, men på en Debian-elevcomputer
+med pakkeopdatering genstartes elevens skærm og de lokale værksteder, når
+pakkerne er installeret; se
+[elevarbejde under opdatering](OPDATERINGSKOE.md#elevarbejde-under-opdatering-er-lærerens-ansvar).
 
 Ved første overgang fra en gammel installation skal den installerede version
 kunne bestemmes. Mangler en entydig versionsmarkør, kontrollerer skolens IT
