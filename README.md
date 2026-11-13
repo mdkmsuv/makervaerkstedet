@@ -32,8 +32,8 @@ dermed automatisk understøttet hardware. En laserhandling giver lærerens
 tilladelse til næste trin, men starter ikke fysisk udstyr uden den særskilte
 stationsintegration.
 
-Når serveren ikke kan nås, skal værksteder, CaDoodle og Internet være åbne,
-også efter kold opstart. Når forbindelsen vender tilbage, bruges lærerens
+Når serveren ikke kan nås, skal de lokale værksteder og Internet være åbne,
+også efter kold opstart; eksterne tjenester kræver stadig netværk. Når forbindelsen vender tilbage, bruges lærerens
 aktuelle valg igen.
 
 Den offentlige kildeudgave bruger generiske Bauhaus-inspirerede skins.
@@ -53,8 +53,7 @@ installationsudgivelse.
 
 Denne udgave indeholder ingen AI til pladekontrol, laseranalyse eller anden
 maskinstyring. Læreren vurderer kamerabilleder og frigiver plader manuelt.
-Datatræner bevares som undervisningsværktøj i maskinlæring, og SkoleGPT som
-eksternt undervisningslink. Projektets egne nye
+CaDoodle, Datatræner, Kredsløb og SkoleGPT er udtaget af 2.0. Projektets egne nye
 dele følger GPL-3.0-or-later; se [LICENSE](LICENSE) og
 [licensafgrænsningen](LICENSE-SCOPE.md). Produktet er udviklet af Mathias
 Kusk Damgaard med kreditering til Klostermarksskolen. Medfølgende
