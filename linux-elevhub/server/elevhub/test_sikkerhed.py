@@ -293,7 +293,7 @@ class SikkerIntegration(unittest.TestCase):
             with self.assertRaises(ssl.SSLCertVerificationError):
                 self.client_tls.wrap_socket(raw, server_hostname='forkert.invalid')
 
-    def test_https_kasseformular_til_http_backend_bevarer_origin_kontrol(self):
+    def test_https_aflevering_til_http_backend_bevarer_origin_kontrol(self):
         received = []
 
         class HttpWorkshop(BaseHTTPRequestHandler):
@@ -325,20 +325,20 @@ class SikkerIntegration(unittest.TestCase):
             host = f'127.0.0.1:{gateway.server_address[1]}'
             body = {'level': 3, 'kind': 'abox', 'x': 80, 'y': 60, 'h': 40,
                     'thickness': 3, 'burn': 0.1}
-            status, _, _ = self.kald('/api/laser/boxes', body, rolle=None,
+            status, _, _ = self.kald('/api/laser/submit', body, rolle=None,
                                     headers={'origin': 'https://' + host}, server=gateway)
             self.assertEqual(status, 200)
-            self.assertEqual(received[-1], ('/api/laser/boxes', 'http://' + host, host))
+            self.assertEqual(received[-1], ('/api/laser/submit', 'http://' + host, host))
             for origin in ('https://foreign.invalid', 'http://' + host, 'null'):
                 with self.subTest(origin=origin):
                     before = len(received)
-                    status, _, _ = self.kald('/api/laser/boxes', body, rolle=None,
+                    status, _, _ = self.kald('/api/laser/submit', body, rolle=None,
                                             headers={'Origin': origin, 'X-Forwarded-Proto': 'https'},
                                             server=gateway)
                     self.assertEqual(status, 403)
                     self.assertEqual(len(received), before, 'Rejected requests must not reach the backend')
             # Native clients do not send a browser Origin; retain that contract.
-            self.assertEqual(self.kald('/api/laser/boxes', body, rolle=None, server=gateway)[0], 200)
+            self.assertEqual(self.kald('/api/laser/submit', body, rolle=None, server=gateway)[0], 200)
             self.assertIsNone(received[-1][1])
         finally:
             for server in (gateway, backend):

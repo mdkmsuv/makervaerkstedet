@@ -82,13 +82,15 @@ class Regler(unittest.TestCase):
                 self.assertEqual(r(metode, sti)[0], forventet)
 
     def test_laser_og_folie_holdes_adskilt(self):
-        self.assertEqual(regler.laser('GET', '/'), ('omdiriger', '/laser.html'))
-        self.assertEqual(regler.folie('GET', '/'), ('omdiriger', '/folie.html'))
-        self.assertEqual(regler.laser('GET', '/folie.html')[0], 'afvis')
-        self.assertEqual(regler.folie('GET', '/laser.html')[0], 'afvis')
+        # The editors run on the pupil computer; the server serves no pages,
+        # scripts or drawing helpers through the design entrances.
+        for regel in (regler.laser, regler.folie):
+            for sti in ('/', '/laser.html', '/folie.html', '/workshop.html', '/laser.js', '/vendor/laser.js'):
+                with self.subTest(regel=regel.__name__, sti=sti):
+                    self.assertEqual(regel('GET', sti)[0], 'afvis')
         self.assertEqual(regler.laser('POST', '/api/laser/submit')[0], 'tillad')
         self.assertEqual(regler.folie('POST', '/api/laser/submit')[0], 'afvis')
-        self.assertEqual(regler.laser('POST', '/api/laser/boxes')[0], 'tillad')
+        self.assertEqual(regler.laser('POST', '/api/laser/boxes')[0], 'afvis')
         self.assertEqual(regler.folie('POST', '/api/laser/boxes')[0], 'afvis')
         self.assertEqual(regler.laser('GET', '/api/laser/jobs')[0], 'afvis')
         self.assertEqual(regler.folie('GET', '/api/laser/health')[0], 'tillad')
@@ -424,8 +426,8 @@ class Integration(unittest.TestCase):
         self.assertEqual(self.kald('3dprint', 'POST', '/api/print-access/unblock', b'{}')[0], 403)
         self.assertEqual(self.kald('3dprint', 'GET', '/laerer')[0], 403)
         self.assertEqual(self.kald('3dprint', 'POST', '/api/queue/pause', b'{}', {'Content-Length': '2'})[0], 403)
-        status, h, _ = self.kald('laser', 'GET', '/')
-        self.assertEqual((status, h['Location']), (302, '/laser.html'))
+        self.assertEqual(self.kald('laser', 'GET', '/')[0], 403)
+        self.assertEqual(self.kald('laser', 'GET', '/laser.html')[0], 403)
         status, h, data = self.kald('3dprint', 'GET', '/side.html')
         self.assertIn(b'<style id="elevhub">a[href="/laerer"] { display: none !important; }</style></head>', data)
         self.assertEqual(int(h['Content-Length']), len(data))

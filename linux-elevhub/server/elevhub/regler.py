@@ -40,34 +40,33 @@ def printvaerksted(metode, raa_sti):
     return AFVIS
 
 
-def _designvaerksted(metode, raa_sti, egen_side, anden_side, maa_aflevere, maa_lave_kasse=False):
+def _designvaerksted(metode, raa_sti, maa_aflevere):
+    """Design entrances carry queue traffic only.
+
+    The laser and foil editors run on the pupil computer. The school server
+    does not serve their pages, scripts or server-side drawing helpers: with
+    hundreds of pupil computers the server must only handle updates,
+    administration and queues. The fixed library routes are handled before
+    these rules by the entrance itself.
+    """
     sti = ren_sti(raa_sti)
     if sti is None:
         return AFVIS
-    lav = sti.lower()
     if metode in ('GET', 'HEAD'):
-        if sti in ('/', '/workshop.html'):
-            return ('omdiriger', egen_side)
-        if lav == anden_side or 'teacher' in lav or 'laerer' in lav:
-            return AFVIS
-        if lav.startswith('/api/'):
-            return TILLAD if sti in ('/api/laser/health', '/api/school-appearance') else AFVIS
-        return TILLAD
+        return TILLAD if sti in ('/api/laser/health', '/api/school-appearance') else AFVIS
     if metode == 'POST' and maa_aflevere and sti == '/api/laser/submit':
-        return TILLAD
-    if metode == 'POST' and maa_lave_kasse and sti == '/api/laser/boxes':
         return TILLAD
     return AFVIS
 
 
 def laser(metode, raa_sti):
-    """Designværkstedets lasereditor (127.0.0.1:8766): tegne og aflevere til læreren."""
-    return _designvaerksted(metode, raa_sti, '/laser.html', '/folie.html', maa_aflevere=True, maa_lave_kasse=True)
+    """Laserindgangen (127.0.0.1:8766): kun aflevering til læreren og helbred."""
+    return _designvaerksted(metode, raa_sti, maa_aflevere=True)
 
 
 def folie(metode, raa_sti):
-    """Designværkstedets folieeditor (127.0.0.1:8766): tegne og gemme. Ingen aflevering."""
-    return _designvaerksted(metode, raa_sti, '/folie.html', '/laser.html', maa_aflevere=False)
+    """Folieindgangen (127.0.0.1:8766): kun helbred. Ingen aflevering."""
+    return _designvaerksted(metode, raa_sti, maa_aflevere=False)
 
 
 REGLER = {'printvaerksted': printvaerksted, 'laser': laser, 'folie': folie}
