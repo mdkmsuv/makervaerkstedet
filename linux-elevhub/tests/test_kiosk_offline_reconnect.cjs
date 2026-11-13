@@ -129,8 +129,12 @@ const app = (id, aaben = true) => ({ id, aaben, klar:true, type:'vaerksted', nav
   scratchManifest.offline = true;
   fetchImpl = () => response([], 403);
   await context.window.__start.opdater();
-  assert.equal(context.window.CreativeHub.isOffline(), false, '403 is not treated as offline');
-  assert.equal(cards().length, 0, '403 clears stale offline cards');
+  // The server answers, but not with a usable list: the installed workshops
+  // stay available, Internet is not offered, and the pupil is told why.
+  assert.equal(context.window.CreativeHub.isOffline(), true, '403 keeps local workshops launchable');
+  assert.equal(cards().some(card=>card.dataset.app==='internet'), false, '403 does not offer Internet');
+  assert.equal(cards().length, 5, '403 keeps the installed workshops');
+  assert.match(document.getElementById('fejl').textContent, /noget galt med skoleserveren.*Internet er lukket lige nu/);
   fetchImpl = () => Promise.reject({ name: 'TypeError', message: 'offline' });
   await context.window.__start.opdater();
   fetchImpl = () => new Promise(() => {});

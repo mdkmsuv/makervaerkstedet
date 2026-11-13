@@ -155,6 +155,20 @@ class InternetreglerTest(unittest.TestCase):
         self.assertIn('\n        reject\n', nft.call_args.kwargs['input'])
         self.assertFalse(REGLER.ANVENDT.exists())
 
+    def test_afvist_serversvar_holder_lokale_vaerksteder_tilladt(self):
+        # No usable teacher list (403, expired certificate, garbage): Internet
+        # stays closed, but every workshop installed on this computer is allowed.
+        policy = json.loads(REGLER._chromium_url_policy(False, []))
+        for port in (8791, 8792, 8793, 8794):
+            self.assertIn(f'http://127.0.0.1:{port}/', policy['URLAllowlist'])
+        self.assertNotIn('URLBlocklist', {k: v for k, v in policy.items() if v == []})
+        self.assertFalse(any(url.startswith('https://') for url in policy['URLAllowlist']))
+
+    def test_laererens_lukning_gaelder_stadig_med_gyldig_liste(self):
+        apps = [{'id': 'scratch', 'type': 'lokal', 'aaben': False}]
+        policy = json.loads(REGLER._chromium_url_policy(False, apps))
+        self.assertNotIn('http://127.0.0.1:8792/', policy['URLAllowlist'])
+
     def test_offline_fjerner_gamle_lukninger_af_lokale_apps(self):
         policy = json.loads(REGLER._chromium_url_policy(True, []))
         self.assertNotIn('http://127.0.0.1:8792/', policy.get('URLBlocklist', []))

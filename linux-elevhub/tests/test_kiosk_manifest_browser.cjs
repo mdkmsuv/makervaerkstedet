@@ -125,18 +125,10 @@ async function startFixture() {
     await set('catalog=removed'); await waitCount(3);
     assert.deepEqual(await ids(), ['internet','laser','microbit']);
     await set('catalog=installed'); await waitCount(4);
-    // A server-hosted workshop without a local package must stay visible (it opens on the server).
-    // First drop Scratch so the next count change proves the catalogue was re-read.
-    await set('catalog=removed'); await waitCount(3);
-    await set('catalog=laser-removed'); await waitCount(4);
-    assert.deepEqual(await ids(), ['internet','laser','microbit','scratch'], 'server-hosted laser stays visible without a local package');
-    await page.getByRole('link', {name:'Værksteder', exact:true}).click();
-    await page.locator('[data-app=laser] .app-open').waitFor({state:'visible'});
-    await page.locator('[data-app=laser] .app-open').focus();
-    await page.keyboard.press('Enter');
-    await page.waitForURL('http://school.example.test:8771/');
-    assert.equal(await page.locator('h1').innerText(), 'Synthetic server laser destination');
-    await page.goto(fixture.origin); await waitCount(4);
+    // Workshops never open from the school server: without a local package the
+    // card is not offered on this computer.
+    await set('catalog=laser-removed'); await waitCount(3);
+    assert.deepEqual(await ids(), ['internet','microbit','scratch'], 'laser without a local package is not offered from the server');
     await set('catalog=installed'); await waitCount(4);
     await set('mode=closed'); await waitCount(1);
     assert.deepEqual(await ids(), ['scratch'], 'online teacher policy closes laser and Internet');
@@ -144,10 +136,19 @@ async function startFixture() {
     assert.equal(await page.evaluate(() => window.CreativeHub.isOffline()), false);
     assert.equal(await page.locator('#fejl').innerText(), '', 'catalog error is not a school-offline error');
     assert.match(await page.locator('#catalog-error').innerText(), /kunne ikke læses/);
+    // The server answers 403: installed workshops stay, Internet is not offered.
     await set('mode=forbidden&catalog=installed');
-    await page.locator('#fejl').filter({hasText:/bekræftes/}).waitFor();
-    assert.equal(await page.evaluate(() => window.CreativeHub.isOffline()), false);
-    assert.deepEqual(await ids(), []);
+    await page.locator('#fejl').filter({hasText:/noget galt med skoleserveren/}).waitFor();
+    assert.equal(await page.evaluate(() => window.CreativeHub.isOffline()), true);
+    assert.deepEqual(await ids(), ['3dprint','folie','laser','microbit','scratch']);
+    if (process.env.KIOSK_REJECTED_SCREENSHOT) {
+      const before = page.viewportSize();
+      await page.setViewportSize({width:1024,height:688});
+      await page.evaluate(() => { location.hash = ''; scrollTo(0, 0); });
+      assert.equal(await page.locator('#fejl').evaluate(node => { const box = node.getBoundingClientRect(); return box.top >= 0 && box.bottom <= innerHeight; }), true, 'the message is visible without scrolling at 1024x688');
+      await page.screenshot({path:process.env.KIOSK_REJECTED_SCREENSHOT});
+      await page.setViewportSize(before);
+    }
     await set('mode=down&catalog=broken'); await waitCount(1);
     // Optional specialist review; default regression needs only the locked Playwright dependency.
     if (process.env.KIOSK_MANIFEST_AXE === '1') {

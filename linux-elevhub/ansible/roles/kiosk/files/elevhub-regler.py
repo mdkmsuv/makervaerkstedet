@@ -182,6 +182,21 @@ def _chromium_url_policy(internet_aaben, apps):
                 (local_open if app.get('aaben') is True else local_closed).extend(aliases)
             except (TypeError, ValueError):
                 continue
+        if not internet_aaben and not apps:
+            # Closed without any teacher list: the server answered, but not
+            # with a usable policy (expired certificate, lost enrolment, a
+            # reinstalled server). Internet stays closed, but the workshops
+            # installed on this computer do not depend on the server and stay
+            # reachable, exactly as during an outage.
+            for url in local_urls.values():
+                try:
+                    parsed = urlsplit(url)
+                    if (parsed.scheme == 'http' and parsed.hostname == '127.0.0.1'
+                            and parsed.port is not None and parsed.path in ('', '/')):
+                        local_open.extend([f'http://127.0.0.1:{parsed.port}/',
+                                           f'http://localhost:{parsed.port}/'])
+                except (AttributeError, TypeError, ValueError):
+                    continue
         if internet_aaben:
             policy['URLBlocklist'] = sorted(set(policy.get('URLBlocklist', []) + local_closed))
         else:
