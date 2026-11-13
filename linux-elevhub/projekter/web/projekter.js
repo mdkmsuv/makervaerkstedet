@@ -30,7 +30,9 @@ function open(p,revision){
  if(picker){window.parent.postMessage({type:'elevhub-open-project',id:p.id,revision:revision||p.revision},location.origin);return;}
  location.assign('/_elevhub/projekter/open?'+new URLSearchParams({id:p.id,revision:revision||p.revision}));
 }
-function actions(p,revision){const n=node('div',undefined,'actions');if(canOpen(p)){const b=node('button',picker?'Åbn her':'Åbn i '+(p.opening?.label||labels[p.kind]||'Filviseren'));b.onclick=()=>open(p,revision);n.append(b);}const a=node('a','Hent fil','button secondary');a.href=fileUrl(p,revision);a.download=p.filename;n.append(a);return n;}
+// Files that no workshop can open (also old CaDoodle projects) can only be downloaded.
+function downloadOnly(p){return p.opening?.program==='andet';}
+function actions(p,revision){const n=node('div',undefined,'actions');if(canOpen(p)){const b=node('button',picker?'Åbn her':downloadOnly(p)?'Hent fil':'Åbn i '+(p.opening?.label||labels[p.kind]||'Filviseren'));b.onclick=()=>open(p,revision);n.append(b);}const a=node('a','Hent fil','button secondary');a.href=fileUrl(p,revision);a.download=p.filename;n.append(a);return n;}
 async function history(p){$('history-title').textContent=p.name;const box=$('versions');box.replaceChildren(node('p','Henter versioner …'));$('history').showModal();try{const d=await api('meta?id='+p.id);box.replaceChildren(...d.versions.map(v=>{const n=node('div',undefined,'version');n.append(node('span','Version '+v.revision+' · '+date(v.created)),actions(p,v.revision));return n;}));}catch(e){box.textContent=e.message;}}
 function icon(kind){
  const paths={'3dprint':'M12 2 3 7v10l9 5 9-5V7L12 2Zm0 10L3 7m9 5 9-5m-9 5v10',stl:'M12 2 3 7v10l9 5 9-5V7L12 2Zm0 10L3 7m9 5 9-5m-9 5v10',laser:'m5 3 16 16M6 15l-3 6 6-3m-5-6H1m11 8v3m3-11h5m-8-5V2',folie:'M4 3h16v12l-6 6H4V3Zm10 18v-6h6M7 7h9M7 11h6',scratch:'m8 7-5 5 5 5m8-10 5 5-5 5m-3-14-2 18',microbit:'M5 5h14v14H5V5ZM8 9h1m3 0h1m3 0h1M8 13h1m3 0h1m3 0h1M9 2v3m6-3v3M9 19v3m6-3v3',kredsloeb:'M6 6h12v12H6V6ZM9 2v4m6-4v4M9 18v4m6-4v4M2 9h4m-4 6h4m12-6h4m-4 6h4',datatraener:'M4 17V7h16v10H4Zm4-6h1m6 0h1m-7 3h6M12 3v4M9 21h6m-3-4v4',andet:'M3 5h7l3 3h8v12H3V5Z'};
@@ -44,7 +46,7 @@ function savedAgo(timestamp){
 }
 function projectCard(p){
  const kind=shelfKind(p),c=node('article',undefined,'project');c.dataset.kind=kind;c.dataset.id=p.id;
- const preview=node('button',undefined,'project-preview');preview.type='button';preview.setAttribute('aria-label','Åbn projekt: '+p.name);preview.onclick=()=>open(p);
+ const preview=node('button',undefined,'project-preview');preview.type='button';preview.setAttribute('aria-label',(downloadOnly(p)&&!picker?'Hent fil: ':'Åbn projekt: ')+p.name);preview.onclick=()=>open(p);
  const fallback=node('span',undefined,'preview-fallback');fallback.setAttribute('aria-hidden','true');fallback.append(icon(kind),node('span','Intet projektbillede'));preview.append(fallback);
  const img=node('img');img.alt='';img.loading='lazy';img.decoding='async';img.style.opacity='0';
  img.onload=()=>{img.style.opacity='1';fallback.hidden=true;};img.onerror=()=>img.remove();
@@ -53,7 +55,7 @@ function projectCard(p){
  const body=node('div',undefined,'project-body');body.append(node('h3',p.name),node('p',p.folder,'project-folder'));
  const saved=node('p',savedAgo(p.modified),'project-modified');saved.title='Gemt '+date(p.modified)+' · version '+p.revision;body.append(saved);c.append(body);
  const footer=node('div',undefined,'project-footer');
- const b=node('button',picker?'Åbn her':'Åbn projekt →','open-project');b.setAttribute('aria-label',picker?'Åbn her: '+p.name:'Åbn projekt i '+(p.opening?.label||labels[p.kind]||'Filviseren'));b.onclick=()=>open(p);footer.append(b);
+ const b=node('button',picker?'Åbn her':downloadOnly(p)?'Hent fil ↓':'Åbn projekt →','open-project');b.setAttribute('aria-label',picker?'Åbn her: '+p.name:downloadOnly(p)?'Hent fil: '+p.name:'Åbn projekt i '+(p.opening?.label||labels[p.kind]||'Filviseren'));b.onclick=()=>open(p);footer.append(b);
  const menu=node('details',undefined,'project-menu'),summary=node('summary','⋯');summary.setAttribute('aria-label','Flere muligheder for '+p.name);menu.append(summary);
  const options=node('div',undefined,'menu-items'),download=node('a','Hent fil','button secondary');download.href=fileUrl(p);download.download=p.filename;options.append(download);
  const versions=node('button','Tidligere versioner','secondary');versions.onclick=()=>{menu.open=false;history(p);$('history').onclose=()=>summary.isConnected&&summary.focus();};options.append(versions);menu.append(options);footer.append(menu);c.append(footer);
