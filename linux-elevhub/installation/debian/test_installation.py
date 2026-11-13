@@ -23,7 +23,7 @@ class Installation(unittest.TestCase):
         for name,text in values.items():
             path=folder/name;path.write_text(text);path.chmod(0o600)
     def test_enrollment_activates_extracted_templates_without_root_token_in_browser(self):
-        self.extract();self.profile();project=self.root/"home/elev/Projekter/old.klosterskitse";project.parent.mkdir(parents=True);project.write_bytes(b"preserve existing bytes")
+        self.extract();self.profile();project=self.root/"home/elev/Projekter/old.projekt";project.parent.mkdir(parents=True);project.write_bytes(b"preserve existing bytes")
         with patch.object(enroll_device,"validator",self.validator):result=enroll_device.apply_profile(self.root)
         self.assertTrue(result["updater_configured"])
         self.assertEqual(project.read_bytes(),b"preserve existing bytes")

@@ -87,7 +87,7 @@
     name: getty@tty1
     state: restarted
   listen: Genstart kiosk
-  # USB-installationen åbner først elevskærmen, når også CaDoodle er klar.
+  # USB-installationen åbner først elevskærmen, når førstegangsopsætningen er færdig.
   when:
     - not (elevhub_firstboot | default(false) | bool)
     - kiosk_skaerm_i_brug.rc | default(1) != 0 or (kiosk_genstart_nu | bool)

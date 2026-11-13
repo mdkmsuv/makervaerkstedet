@@ -302,7 +302,7 @@ def _check_processes(processes, roots, own_pid, *, maintenance_runtime=None):
         if any(word in name for word in ('beam', 'flux', 'ghost')):
             raise ValueError('En native makerspaceproces kører stadig.')
         path, command = item['path'], item['command_line']
-        if ('python' in name or any(word in name for word in ('bambu', 'cadoodle', 'laser'))) and (not path or not command):
+        if ('python' in name or any(word in name for word in ('bambu', 'laser'))) and (not path or not command):
             raise ValueError('En relevant proces kan ikke identificeres.')
         if path and _under(path, roots):
             raise ValueError('En generationsproces kører stadig.')

@@ -18,8 +18,7 @@ en WSL/Xvfb-test efterviser kun genvejshåndteringen.
 
 Dobbeltklik på `Open-Elevhub-Administration.cmd`. Computerlisten er som
 standard `ansible/inventory/skole/fra-serveren.py`, der henter de tændte
-elevcomputere fra serveren. Vælg eventuelt en vært, og vælg **CaDoodle** eller
-**Hele elevsystemet**.
+elevcomputere fra serveren. Vælg eventuelt en vært, og opdatér **Hele elevsystemet**.
 **Tjek ændringer** bruger `koer.sh tjek`; **Anvend opdatering** bruger
 `koer.sh koer`. Output åbnes i et separat PowerShell-vindue, så brugeren ikke
 skal skrive kommandoer.
@@ -31,11 +30,8 @@ med `wslpath`, og argumenterne sendes som separate argumenter.
 
 `Hele elevsystemet` viser en ekstra advarsel, fordi baggrundstjenester kan blive
 genstartet. En elevskærm, der er i brug, genstartes ikke; ændringen virker fra
-næste opstart (`-e kiosk_genstart_nu=true` tvinger genstart). Standardvalget er
-**CaDoodle**. Vinduet starter ingen opdatering, før brugeren vælger en handling.
-Ved en CaDoodle-JAR-opdatering håndterer den eksisterende rolle en åben
-CaDoodle ved at springe den maskine over med en tydelig fejltekst; de øvrige
-maskiner fortsætter. Elevprojekter slettes ikke af opdateringsværktøjet.
+næste opstart (`-e kiosk_genstart_nu=true` tvinger genstart). Vinduet starter
+ikke en opdatering, før brugeren vælger en handling. Elevprojekter slettes ikke af opdateringsværktøjet.
 
 Elevcomputerne behøver ikke faste IP-adresser. Hver computer melder sig til
 serveren med sin egen enhedsnøgle og sender sin adresse og offentlige

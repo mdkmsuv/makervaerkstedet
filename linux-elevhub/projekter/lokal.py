@@ -193,7 +193,7 @@ class Handler(BaseHTTPRequestHandler):
     do_GET = do_HEAD = do_POST = do_PUT = do_DELETE = dispatch
 
 
-def make_server(port, store, scanner=None, app='projekter', assets=None, apps=None, navigation=None, workshops=None, native=False, sessions=None, runtime=None):
+def make_server(port, store, scanner=None, app='projekter', assets=None, apps=None, navigation=None, workshops=None, sessions=None, runtime=None):
     server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
     server.daemon_threads = True
     server.projekter, server.scanner, server.app = store, scanner, app
@@ -202,7 +202,6 @@ def make_server(port, store, scanner=None, app='projekter', assets=None, apps=No
     server.projekt_apps = apps or []
     server.navigation = navigation or Navigation()
     server.workshop_urls = workshops if workshops is not None else workshop_urls()
-    server.native_projects = native
     server.workshop_sessions = sessions or WorkshopSessions()
     return server
 
@@ -224,7 +223,6 @@ def main():
     except (OSError, ValueError) as error:
         logging.error('Værkstedsadresser kunne ikke læses (%s); projekter åbnes kun som visning.', error)
         workshops = {}
-    native = False  # Native 3D has been retired; existing files remain downloadable.
     store = Projektarkiv(args.state or args.projects/'.elevhub')
     scanner = Scanner(args.projects, store)
     apps = [] if args.only_projects else [{'id': app, 'port': port} for app, port in APPS.items()
@@ -234,9 +232,9 @@ def main():
     sessions = WorkshopSessions()
     runtime = student_identity("elevhub-lokal")
     try:
-        servers.append(make_server(args.port, store, scanner, apps=apps, navigation=navigation, workshops=workshops, native=native, sessions=sessions, runtime=runtime))
+        servers.append(make_server(args.port, store, scanner, apps=apps, navigation=navigation, workshops=workshops, sessions=sessions, runtime=runtime))
         for app in apps:
-            servers.append(make_server(app['port'], store, scanner, app['id'], args.apps_root/app['id'], apps, navigation, workshops, native, sessions, runtime))
+            servers.append(make_server(app['port'], store, scanner, app['id'], args.apps_root/app['id'], apps, navigation, workshops, sessions, runtime))
         for server in servers:
             threading.Thread(target=server.serve_forever, daemon=True).start()
         threading.Thread(target=scanner.run, args=(stop,), daemon=True).start()

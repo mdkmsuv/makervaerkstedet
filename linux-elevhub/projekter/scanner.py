@@ -1,13 +1,11 @@
 """Snapshot stable project files and expire verified projects after 30 days."""
 import hashlib
-import io
 import json
 import logging
 import os
 import threading
 import time
 import uuid
-import zipfile
 from pathlib import Path
 from projektarkiv import EXTENSIONS, MAX_FILE
 from filtyper import project_kind
@@ -32,7 +30,7 @@ def kind_for(path, data=None):
     for word, kind in [('scratch', 'scratch'), ('folie', 'folie'), ('laser', 'laser'),
                        ('datatræner', 'datatraener'), ('datatraener', 'datatraener'),
                        ('kredsløb', 'kredsloeb'), ('kredsloeb', 'kredsloeb'),
-                       ('cadoodle', 'cadoodle'), ('microbit', 'microbit')]:
+                       ('microbit', 'microbit')]:
         if word in name:
             return project_kind(path.name, kind, data)
     return project_kind(path.name, 'andet', data)
@@ -50,77 +48,6 @@ class Scanner:
         self.seen, self.error = {}, ''
         self.lock = threading.RLock()
 
-    def cadoodle(self, directory, doodle, observed):
-        """Snapshot a complete native project, including imported STL dependencies."""
-        relative = doodle.relative_to(self.projects)
-        key = laesbar(relative.as_posix())
-        files = []
-        for parent, dirs, names in os.walk(directory, followlinks=False):
-            dirs[:] = [d for d in dirs if not d.startswith('.') and not (Path(parent)/d).is_symlink()]
-            for name in sorted(names):
-                path = Path(parent)/name
-                if not name.startswith('.') and not path.is_symlink() and path.is_file():
-                    files.append(path)
-        files.sort()
-        signature = [[p.relative_to(directory).as_posix(), p.stat().st_mtime_ns, p.stat().st_size] for p in files]
-        if len(files) > 5000 or sum(item[2] for item in signature) > MAX_FILE:
-            raise ValueError('3D-projektet er for stort til projektarkivet.')
-        observed[key] = signature
-        prior = self.saved.get(key, {})
-        if self.seen.get(key) != signature:
-            return False
-        if prior.get('stat') == signature:
-            if not prior.get('source'):
-                source = self._cadoodle_source(relative, signature, files)
-                if source:
-                    prior['source'] = source
-                    self.saved[key] = prior
-                    return True
-            return False
-        buffer = io.BytesIO()
-        with zipfile.ZipFile(buffer, 'w', compression=zipfile.ZIP_DEFLATED) as archive:
-            for path in files:
-                # Fixed timestamps make unchanged project snapshots byte-identical.
-                entry = zipfile.ZipInfo(laesbar(path.relative_to(directory).as_posix()))
-                entry.compress_type = zipfile.ZIP_DEFLATED
-                archive.writestr(entry, path.read_bytes())
-        if signature != [[p.relative_to(directory).as_posix(), p.stat().st_mtime_ns, p.stat().st_size] for p in files]:
-            return False
-        project = uuid.uuid5(uuid.NAMESPACE_URL, 'elevhub-local:'+key).hex
-        name = laesbar(doodle.stem)[:100]
-        try:
-            native_name = json.loads(doodle.read_text(encoding='utf-8')).get('projectName')
-            if isinstance(native_name, str) and native_name.strip() and not any(ord(c) < 32 for c in native_name):
-                name = native_name.strip()[:100]
-        except (ValueError, AttributeError, UnicodeError):
-            pass
-        try:
-            expected = self.store.meta(project)['revision']
-        except KeyError:
-            expected = 0
-        result = self.store.save(buffer.getvalue(), project=project, name=name,
-            folder=laesbar(str(relative.parent.parent))[:100] or '3D-værkstedet', kind='cadoodle',
-            filename=laesbar(doodle.stem)[:170]+'.zip', expected=expected, source='Projekter-mappen')
-        self.saved[key] = {'stat': signature, 'id': project, 'revision': result['revision'],
-                           'source': self._cadoodle_source(relative, signature, files)}
-        return True
-
-    def _cadoodle_source(self, relative, signature, files):
-        entries = []
-        for path, item in zip(files, signature):
-            try:
-                relative_path = path.relative_to(self.projects).as_posix()
-                digest = hashlib.sha256(path.read_bytes()).hexdigest()
-            except (OSError, UnicodeEncodeError):
-                return None
-            entries.append({'relative': relative_path, 'stat': item[1:], 'digest': digest})
-        try:
-            relative.as_posix().encode('utf-8')
-        except UnicodeEncodeError:
-            return None
-        return {'type': 'cadoodle', 'relative': relative.as_posix(),
-                'directory': relative.parent.as_posix(), 'files': entries}
-
     def scan(self):
         with self.lock:
             self._scan()
@@ -133,14 +60,6 @@ class Scanner:
             dirs[:] = [d for d in dirs if not d.startswith('.') and
                        not (Path(directory)/d).is_symlink() and
                        not (Path(directory)/d).resolve().is_relative_to(self.store.root.resolve())]
-            doodles = [Path(directory)/n for n in names if n.lower().endswith('.doodle') and not (Path(directory)/n).is_symlink()]
-            if len(doodles) == 1:
-                try:
-                    changed = self.cadoodle(Path(directory), doodles[0], observed) or changed
-                except (OSError, ValueError):
-                    self.error = 'Et 3D-projekt kunne ikke gemmes i oversigten. Originalen er bevaret.'
-                dirs[:] = []
-                continue
             for name in names:
                 p = Path(directory) / name
                 if name.startswith('.') or not name.lower().endswith(EXTENSIONS) or p.is_symlink():
@@ -209,6 +128,13 @@ class Scanner:
         return {'type': 'file', 'relative': relative.as_posix(),
                 'stat': signature, 'digest': hashlib.sha256(data).hexdigest()}
 
+    def _legacy_record(self, source):
+        files = source.get('files')
+        if isinstance(files, list) and all(isinstance(e, dict) and isinstance(e.get('relative'), str) and
+                                          not (self.projects / e['relative']).exists() for e in files):
+            return {**source, 'missing': True}
+        return source
+
     def cleanup(self, now=None):
         with self.lock:
             records = {}
@@ -219,6 +145,11 @@ class Scanner:
                 # protects a file that was changed, removed, or only partly
                 # visited while scanning from retention deletion.
                 if not source or not project:
+                    continue
+                if source.get('type') == 'cadoodle':
+                    # Legacy record of a retired project type: expires like any
+                    # other, but originals are only removed if still unchanged.
+                    records[project] = self._legacy_record(source)
                     continue
                 if self.seen.get(key) == saved.get('stat'):
                     records[project] = source

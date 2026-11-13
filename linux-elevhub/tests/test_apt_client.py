@@ -133,7 +133,7 @@ class AptClient(unittest.TestCase):
     def test_half_configured_readonly_dpkg_fixture_never_success_acks_or_touches_projects(self):
         database=self.root/"dpkg-fixture";database.mkdir()
         (database/"status").write_text("Package: makervaerkstedet-updater\nStatus: install ok half-configured\nPriority: optional\nSection: education\nInstalled-Size: 1\nMaintainer: Synthetic <test@example.invalid>\nArchitecture: amd64\nVersion: 2.0.0\nDescription: Synthetic state fixture, never installed\n\n")
-        project=self.root/"legacy.klosterskitse";project.write_bytes(b"old project bytes")
+        project=self.root/"legacy.projekt";project.write_bytes(b"old project bytes")
         class Pending(IsolatedCommands):
             def installed(self):return M.Commands.installed(self)
         adapter=Pending();self.client.commands=adapter

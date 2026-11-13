@@ -53,7 +53,7 @@ def plan(server, meta, data, revision=None):
         if program == 'microbit' and route['extension'] == '.hex':
             result['editable'] = {'format': 'elevhub-microbit-project', 'version': 1,
                                   'type': 'microbit', 'project': editable_project(data)}
-    elif program == 'cadoodle':
+    elif program == 'andet':
         result.update(mode='download')
     elif program in server.workshop_urls:
         url = urlsplit(server.workshop_urls[program])
@@ -72,11 +72,3 @@ def plan(server, meta, data, revision=None):
         if program == 'archive':
             result['entries'] = archive_listing(data)
     return result
-
-
-def native_request(server, meta, data, request_id):
-    raise ValueError('Dette projekt kan downloades som fil. Native 3D er udgået.')
-
-
-def native_status(server, request_id):
-    raise ValueError('Native 3D er udgået. Projektfilen er bevaret.')

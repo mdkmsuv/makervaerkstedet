@@ -7,7 +7,7 @@ from urllib.parse import parse_qs, quote, urlsplit
 from projektarkiv import MAX_FILE, Konflikt
 from projektarkiv import TYPES
 from filtyper import association, project_kind
-from project_open import plan, native_request, native_status
+from project_open import plan
 from previews import build_preview
 from student_appearance import read_appearance, KIOSK_CONFIG
 from student_home import serve_home
@@ -104,7 +104,7 @@ def handle(handler):
                 for p in store.list(arg('q')):
                     route = opening(h.server, p)
                     program = route['program']
-                    category = ('cadoodle' if program == '3dprint' and route['extension'] == '.stl' else program if program in TYPES
+                    category = ('stl' if program == '3dprint' and route['extension'] == '.stl' else program if program in TYPES
                                 else 'datatraener' if p['kind'] == 'datatraener' else 'andet')
                     if not workshop or category == workshop:
                         projects.append({**p, 'opening': route})
@@ -136,8 +136,6 @@ def handle(handler):
                 revision = int(arg('revision')) if arg('revision') else None
                 meta, data = store.read(arg('id'), revision)
                 h.svar(200, plan(h.server, meta, data, revision=revision))
-            elif path == '/api/open-status':
-                h.svar(200, native_status(h.server, arg('request')))
             elif path == '/api/file':
                 revision = int(arg('revision')) if arg('revision') else None
                 meta, data = store.read(arg('id'), revision)
@@ -146,19 +144,12 @@ def handle(handler):
                     'Content-Security-Policy': "sandbox; default-src 'none'"})
             else:
                 h.svar(404, {'error': 'Findes ikke.'})
-        elif h.command == 'POST' and path in ('/api/save', '/api/open-native'):
+        elif h.command == 'POST' and path == '/api/save':
             origin = ('https://' if isinstance(h.connection, ssl.SSLSocket) else 'http://') + h.headers.get('Host', '')
             # Exact origin plus non-simple header. No LAN access or CORS.
             source = 'browser'
             if h.headers.get('Origin') != origin or h.headers.get('X-Elevhub-Project') != '1':
                 raise PermissionError('Gem fra projektarkivets egen side.')
-            if path == '/api/open-native':
-                if size:
-                    raise ValueError('Åbn en gemt projektfil.')
-                revision = int(arg('revision')) if arg('revision') else None
-                meta, data = store.read(arg('id'), revision)
-                h.svar(200, native_request(h.server, meta, data, arg('request')))
-                return True
             if h.headers.get_content_type() != 'application/octet-stream':
                 h.close_connection = True
                 h.svar(415, {'error': 'Forkert filtype i forespørgslen.'})

@@ -27,8 +27,6 @@ MAX_ZIP_ENTRIES = 5000
 MAX_ZIP_BYTES = 50 * 1024 * 1024
 MAX_ZIP_ENTRY = 8 * 1024 * 1024
 MAX_STL_TRIANGLES = 10_000
-MAX_SKETCH_MARKS = 300
-MAX_SKETCH_POINTS = 8_000
 MAX_JSON = 4 * 1024 * 1024
 MAX_SVG_NODES = 10_000
 MAX_SVG_DEPTH = 64
@@ -309,70 +307,6 @@ def _stl(data: bytes) -> bytes | None:
     return _svg_preview(projected, fill="#63a4d8")
 
 
-def _sketch(data: bytes) -> bytes | None:
-    if len(data) > MAX_JSON:
-        return None
-    try:
-        drawing = json.loads(data)
-    except (ValueError, UnicodeDecodeError):
-        return None
-    if not isinstance(drawing, dict) or drawing.get("version") != 1:
-        return None
-    marks = drawing.get("marks")
-    height = drawing.get("height", 3)
-    if not isinstance(marks, list) or len(marks) > MAX_SKETCH_MARKS or not _finite(height, absolute=180) or not 0.4 <= float(height) <= 180:
-        return None
-    shapes = []
-    count = 0
-    for mark in marks:
-        if not isinstance(mark, dict) or mark.get("tool") not in {"Rektangel", "Ellipse", "Polygon", "Frihånd", "Viskelæder"}:
-            return None
-        points = mark.get("points")
-        width = mark.get("width", 3)
-        if not isinstance(points, list) or len(points) > MAX_SKETCH_POINTS or not _finite(width, absolute=30) or not 0.4 <= float(width) <= 30:
-            return None
-        count += len(points)
-        if count > MAX_SKETCH_POINTS:
-            return None
-        parsed = []
-        for point in points:
-            if not isinstance(point, list) or len(point) != 2 or not all(_finite(v, absolute=180) and 0 <= float(v) <= 180 for v in point):
-                return None
-            parsed.append((float(point[0]), float(point[1])))
-        if len(parsed) < 1:
-            continue
-        tool = mark["tool"]
-        if tool in {"Rektangel", "Ellipse"} and len(parsed) >= 2:
-            x, y = min(parsed[0][0], parsed[-1][0]), min(parsed[0][1], parsed[-1][1])
-            w, h = abs(parsed[-1][0] - parsed[0][0]), abs(parsed[-1][1] - parsed[0][1])
-            if w and h:
-                shapes.append(("rectangle" if tool == "Rektangel" else "ellipse", [(x, y), (x + w, y + h)], width, mark.get("cut", False)))
-        elif len(parsed) >= 2:
-            shapes.append(("polygon" if tool == "Polygon" else "polyline", parsed, width, mark.get("cut", False)))
-        else:
-            x, y = parsed[0]
-            shapes.append(("circle", [(x, y)], width, mark.get("cut", False)))
-    if not shapes:
-        return None
-    body = ['<rect width="180" height="180" fill="#f8fafc"/>']
-    for tool, points, width, cut in shapes:
-        colour = "#f8fafc" if cut or tool == "circle" and cut else "#2563eb"
-        if tool == "rectangle":
-            (x1, y1), (x2, y2) = points
-            body.append(f'<rect x="{x1:g}" y="{y1:g}" width="{x2-x1:g}" height="{y2-y1:g}" fill="{colour}" stroke="#12304a" stroke-width="{width:g}"/>')
-        elif tool == "ellipse":
-            (x1, y1), (x2, y2) = points
-            body.append(f'<ellipse cx="{(x1+x2)/2:g}" cy="{(y1+y2)/2:g}" rx="{(x2-x1)/2:g}" ry="{(y2-y1)/2:g}" fill="{colour}" stroke="#12304a" stroke-width="{width:g}"/>')
-        elif tool == "circle":
-            x, y = points[0]
-            body.append(f'<circle cx="{x:g}" cy="{y:g}" r="{width/2:g}" fill="{colour}"/>')
-        else:
-            tag = "polygon" if tool == "polygon" else "polyline"
-            body.append(f'<{tag} points="{" ".join(f"{x:g},{y:g}" for x,y in points)}" fill="{colour if tag == "polygon" else "none"}" stroke="#12304a" stroke-width="{width:g}" stroke-linecap="round" stroke-linejoin="round"/>')
-    result = f'<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 180 180" preserveAspectRatio="xMidYMid meet">{"".join(body)}</svg>'.encode()
-    return result if len(result) <= MAX_SVG else None
-
-
 def _zip_preview(data: bytes, *, scratch: bool = False) -> tuple[bytes, str] | None:
     if len(data) > MAX_INPUT:
         return None
@@ -462,12 +396,9 @@ def build_preview(meta, data: bytes) -> tuple[bytes, str] | None:
     if filename.endswith(".stl"):
         image = _stl(data)
         return (image, "image/svg+xml") if image is not None else None
-    if filename.endswith(".klosterskitse"):
-        image = _sketch(data)
-        return (image, "image/svg+xml") if image is not None else None
     if filename.endswith(".sb3") or kind == "scratch":
         return _zip_preview(data, scratch=True)
-    if filename.endswith(".zip") or kind == "cadoodle":
+    if filename.endswith(".zip"):
         return _zip_preview(data)
     return None
 

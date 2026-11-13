@@ -14,7 +14,7 @@ import zipfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'projekter'))
 from filtyper import association, archive_listing
 from makecode_import import project_url, editable_project
-from project_open import plan, native_request, native_status, workshop_urls, DEFAULT_WORKSHOPS
+from project_open import plan, workshop_urls, DEFAULT_WORKSHOPS
 from projekt_http import opening
 from projektarkiv import Projektarkiv
 from scanner import Scanner
@@ -33,7 +33,7 @@ class ProjectOpening(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.projects = Path(self.temp.name) / 'Projekter'
         self.store = Projektarkiv(self.projects / '.elevhub')
-        self.server = SimpleNamespace(projekter=self.store, native_projects=True,
+        self.server = SimpleNamespace(projekter=self.store,
             workshop_urls=DEFAULT_WORKSHOPS, projekt_apps=[{'id':'scratch','port':8792}, {'id':'kredsloeb','port':8794}])
 
     def tearDown(self):
@@ -53,7 +53,7 @@ class ProjectOpening(unittest.TestCase):
 
     def test_all_supported_extensions_have_a_program(self):
         expected = {'a.sb3':'scratch', 'a.HEX':'microbit', 'a.stl':'3dprint',
-            'a.klosterskitse':'cadoodle', 'a.svg':'laser', 'a.projekt.svg':'laser',
+            'a.svg':'laser', 'a.projekt.svg':'laser',
             'a.png':'image', 'a.wav':'audio', 'a.mp3':'audio', 'a.csv':'table',
             'a.txt':'text', 'a.json':'json', 'a.zip':'archive', 'a.piskel':'piskel'}
         for name, program in expected.items():
@@ -65,10 +65,10 @@ class ProjectOpening(unittest.TestCase):
         self.assertEqual(association('a.txt', 'microbit', b'$ 1 0.000005 10\nr 1 2')['program'], 'kredsloeb')
         self.assertEqual(association('a.txt', 'andet', b'<cir f="1" ts="0.000005"></cir>')['program'], 'kredsloeb')
         self.assertEqual(association('a.json', 'andet', b'{"targets":[],"meta":{}}')['program'], 'scratch')
-        self.assertEqual(association('a.json', 'andet', b'{"marks":[],"height":3}')['program'], 'cadoodle')
+        self.assertEqual(association('a.json', 'andet', b'{"marks":[],"height":3}')['program'], 'json')
         self.assertEqual(association('a.laser.json', 'andet', b'{"format":"laservaerkstedet","version":2,"project":{}}')['program'], 'laser')
         self.assertEqual(association('a.zip', 'andet', zipped({'project.json':'{}'}))['program'], 'scratch')
-        self.assertEqual(association('a.zip', 'andet', zipped({'a.doodle':'{}','part.stl':'solid'}))['program'], 'cadoodle')
+        self.assertEqual(association('a.zip', 'andet', zipped({'a.doodle':'{}','part.stl':'solid'}))['program'], 'archive')
 
     def test_real_makecode_lzma_js_export(self):
         data = (Path(__file__).parent/'fixtures/makecode-source.hex').read_bytes()
@@ -89,29 +89,30 @@ class ProjectOpening(unittest.TestCase):
         with self.assertRaises(ValueError):
             project_url(data[:90])
 
-    def test_retired_projects_preserve_both_revisions_without_native_requests(self):
-        m = self.save('figur.klosterskitse', b'{"marks":[],"height":3}')
+    def test_old_cadoodle_records_are_plain_downloads_and_keep_revisions(self):
+        m = self.save('figur.klosterskitse', b'{"marks":[],"height":3}', 'cadoodle')
         self.store.save(b'{"marks":[],"height":8}', project=m['id'], name=m['name'],
             folder=m['folder'], kind=m['kind'], filename=m['filename'], expected=1)
         for revision, data in ((1, b'{"marks":[],"height":3}'), (2, b'{"marks":[],"height":8}')):
             meta, old = self.store.read(m['id'], revision)
-            self.assertEqual(plan(self.server, meta, old)['mode'], 'download')
-            with self.assertRaisesRegex(ValueError, 'downloades'):
-                native_request(self.server, meta, old, uuid.uuid4().hex)
+            self.assertEqual(meta['kind'], 'cadoodle')
+            result = plan(self.server, meta, old)
+            self.assertEqual((result['mode'], result['program']), ('download', 'andet'))
             self.assertEqual(self.store.read(m['id'], revision)[1], data)
-        self.assertFalse((self.store.root / 'open-requests').exists())
-        with self.assertRaisesRegex(ValueError, 'udgået'):
-            native_status(self.server, uuid.uuid4().hex)
+        archive = self.save('gammel.zip', zipped({'a.doodle': '{}', 'snapshot.png': 'x'}), 'cadoodle')
+        self.assertEqual(opening(self.server, archive)['program'], 'andet')
+        self.assertEqual(plan(self.server, archive, self.store.read(archive['id'])[1])['mode'], 'download')
+        model = b'\0'*80 + struct.pack('<I12fH',1,0,0,1,0,0,0,10,0,0,0,10,0,0)
+        stl = self.save('gammel.stl', model, 'cadoodle')
+        self.assertEqual(opening(self.server, stl)['program'], '3dprint')
 
-    def test_local_svg_uses_guarded_project_entry_and_stl_native_or_preview(self):
+    def test_local_svg_uses_guarded_project_entry_and_stl_preview(self):
         m = self.save('a.svg',b'<svg data-workshop="vinyl"/>')
         result = plan(self.server,m,self.store.read(m['id'])[1])
         self.assertEqual(result['mode'], 'navigate')
         self.assertEqual(result['url'],DEFAULT_WORKSHOPS['folie']+'?elevhub_project='+m['id'])
         model = b'\0'*80 + struct.pack('<I12fH',1,0,0,1,0,0,0,10,0,0,0,10,0,0)
         m = self.save('a.stl',model)
-        self.assertEqual(plan(self.server,m,model)['mode'],'frame')
-        self.server.native_projects=False
         self.assertEqual(plan(self.server,m,model)['mode'],'frame')
         for broken in (b'stl',model[:-1],model[:96]+struct.pack('<f',float('nan'))+model[100:]):
             with self.subTest(data=broken[:6]), self.assertRaises(ValueError):
@@ -139,10 +140,10 @@ class ProjectOpening(unittest.TestCase):
             result = plan(self.server,m,data)
             self.assertEqual((result['program'],result['mode'],result['port']), (kind,'local',port))
 
-    def test_archive_paths_are_checked_before_native_extract(self):
+    def test_archive_paths_are_checked_before_listing(self):
         for path in ('../outside','/outside','C:/outside','..\\outside'):
             with self.subTest(path=path), self.assertRaises(ValueError):
-                archive_listing(zipped({'project.doodle':'{}',path:'bad'}))
+                archive_listing(zipped({'project.json':'{}',path:'bad'}))
         with self.assertRaises(ValueError):
             archive_listing(b'not a zip')
 
@@ -153,21 +154,14 @@ class ProjectOpening(unittest.TestCase):
             folder=m['folder'],kind=m['kind'],filename=m['filename'],expected=1)
         self.assertEqual(opening(self.server,m)['program'],'laser')
 
-    def test_native_project_snapshot_includes_dependencies_and_versions(self):
+    def test_doodle_folders_are_no_longer_packed_only_known_files_are_saved(self):
         folder=self.projects/'3D'/'Min model';folder.mkdir(parents=True)
         (folder/'Min model.doodle').write_text('{}')
         (folder/'figur.stl').write_bytes(b'first model')
         scan=Scanner(self.projects,self.store)
-        scan.scan();self.assertEqual(self.store.list(),[])
-        scan.scan();items=self.store.list();self.assertEqual(len(items),1)
-        m, data=self.store.read(items[0]['id'])
-        self.assertEqual(association(m['filename'],m['kind'],data)['program'],'cadoodle')
-        with zipfile.ZipFile(io.BytesIO(data)) as archive:
-            self.assertEqual(archive.read('figur.stl'),b'first model')
-        (folder/'figur.stl').write_bytes(b'changed model')
         scan.scan();scan.scan()
-        self.assertEqual(self.store.meta(m['id'])['revision'],2)
-        self.assertEqual(self.store.read(m['id'],1)[1],data)
+        items=self.store.list()
+        self.assertEqual([(i['filename'],i['kind']) for i in items],[('figur.stl','stl')])
 
 
 if __name__ == '__main__':

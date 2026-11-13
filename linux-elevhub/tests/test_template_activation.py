@@ -33,7 +33,7 @@ class TemplateActivation(unittest.TestCase):
         public=Path(os.environ.get("MKV_PUBLIC_TRUST_DIR",str(SOURCE.parents[2]/"deployment/keys")))
         for name in M.TRUST:shutil.copyfile(public/name,trust/name)
         projects=self.root/"home/elev/Projekter";projects.mkdir(parents=True)
-        self.project=projects/"tidligere.klosterskitse";self.project.write_bytes(b"synthetic legacy data")
+        self.project=projects/"tidligere.projekt";self.project.write_bytes(b"synthetic legacy data")
     def test_clean_activation_creates_browser_policy_without_an_absent_proxy(self):
         M.activate(self.root)
         policy=self.root/"etc/chromium/policies/managed/elevhub.json"

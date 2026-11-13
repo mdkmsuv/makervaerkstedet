@@ -87,7 +87,7 @@ async function main() {
   if(width>=1024)await page.screenshot({path:path.join(output,'gallery-'+width+'.png'),fullPage:true});
  }
  await page.setViewportSize({width:680,height:720});
- for(const kind of ['laser','folie','scratch','cadoodle','microbit','kredsloeb','datatraener']){
+ for(const kind of ['laser','folie','scratch','stl','microbit','kredsloeb','datatraener']){
   await page.goto(url+'/_elevhub/projekter/?pick='+kind);
   await page.locator('.project').first().waitFor();
   assert.deepEqual(await page.locator('.category').evaluateAll(items=>items.map(item=>item.dataset.kind)),[kind]);
@@ -108,11 +108,11 @@ async function main() {
   await page.waitForFunction(()=>window.picked?.revision===1);
   if(kind==='laser')await page.screenshot({path:path.join(output,'laser-picker.png')});
  }
- await page.goto(url+'/_elevhub/projekter/?workshop=cadoodle');
+ await page.goto(url+'/_elevhub/projekter/?workshop=stl');
  await page.locator('.project').first().waitFor();
- assert.deepEqual(await page.locator('.category').evaluateAll(items=>items.map(item=>item.dataset.kind)),['cadoodle']);
+ assert.deepEqual(await page.locator('.category').evaluateAll(items=>items.map(item=>item.dataset.kind)),['stl']);
  assert.equal(await page.locator('body.picker').count(),0);
- await page.getByRole('button',{name:'Åbn projekt i CaDoodle',exact:true}).click();
+ await page.getByRole('button',{name:'Åbn projekt i 3D-værkstedet',exact:true}).click();
  await page.waitForURL('**/open?**');assert.equal(new URL(page.url()).searchParams.get('id'),'e'.repeat(32));
  // Older hosts can return an unfiltered list; the picker must still stay scoped.
  await page.route('**/api/list?workshop=folie',async route=>{

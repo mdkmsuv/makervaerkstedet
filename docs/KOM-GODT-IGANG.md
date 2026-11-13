@@ -114,14 +114,14 @@ Engangskoden gælder i 30 minutter. Del kun den aktuelle offentlige
    installationsprogrammet. ISO'en sletter den valgte interne disk efter en
    ekstra bekræftelse og stopper, hvis diskvalget er uklart.
 3. Sørg for internet under Debian-installationen, så netinst-systempakker kan
-   hentes. Værksteder og CaDoodle følger med ISO'en.
+   hentes. Værkstederne følger med ISO'en.
 4. Start den installerede Linux-computer, indsæt USB'en med
    `school-connection.json`, og vælg skolefilen. Indtast computerens unikke
    navn og engangskoden fra lærerens panel.
 5. Vent på færdig tilmelding, genstart og kontrollér, at elevens værkstedskort
    åbner. Gentag med et nyt navn og en ny kode for næste computer.
 
-Ved netudfald skal værksteder, CaDoodle og Internet fortsat være åbne, også ved
+Ved netudfald skal værksteder og Internet fortsat være åbne, også ved
 kold opstart. Når serveren kommer tilbage, gælder lærerens aktuelle valg igen.
 Elevprojekter er lokale på elevcomputeren; afleveringer, køer og lærerens valg
 ligger på serveren.
@@ -133,15 +133,15 @@ ligger på serveren.
 Den eksisterende [administrationsvej](../linux-elevhub/administration/README.md)
 åbnes med `linux-elevhub/administration/Open-Elevhub-Administration.cmd` fra
 administrationskilderne. Den bruger SSH og Ansible, vælger computerliste og
-tilbyder **Tjek ændringer** efterfulgt af **Anvend opdatering**. Der kan vælges
-**CaDoodle** eller **Hele elevsystemet**, uden at Debian geninstalleres.
+tilbyder **Tjek ændringer** efterfulgt af **Anvend opdatering**. Opdateringen omfatter
+**Hele elevsystemet**, uden at Debian geninstalleres.
 
 Dette er en teknisk administrationsvej, ikke en færdig versionslåst
 releaseopdatering. Hele systemets opskrift skriver også skolekonfiguration,
 enhedsoplysninger og SSH-adgang fra administrationscomputerens provisionering.
 Brug derfor den eksisterende skoles kontrollerede opsætning; en ny generisk
 skoleprofil er ikke en opdatering af den tilmeldte computer. Elevprojekterne
-ligger uden for softwarekopieringen. Åben CaDoodle springes over, og en aktiv
+ligger uden for softwarekopieringen. En aktiv
 elevskærm genstartes som udgangspunkt ikke; baggrundstjenester kan genstarte.
 
 En færdig releaseopdatering skal vise kilde- og målversion, kontrollere den
@@ -246,8 +246,8 @@ Gå gennem denne korte prøve med én lærercomputer og én Linux-elevcomputer:
    elevcomputere;
 2. elevcomputer tilmeldes med frisk kode og vises online;
 3. ét lokalt værksted åbnes og lukkes fra panelet;
-4. elevcomputeren genstartes uden serverforbindelse, og lokale værksteder,
-   CaDoodle og Internet åbner;
+4. elevcomputeren genstartes uden serverforbindelse, og lokale værksteder
+   og Internet åbner;
 5. forbindelsen gendannes, og lærerens aktuelle valg anvendes;
 6. en særskilt DEMO-opstilling gennemfører print- og laserkøforløb
    uden fysisk udstyr; skolens almindelige installation prøves med skolens

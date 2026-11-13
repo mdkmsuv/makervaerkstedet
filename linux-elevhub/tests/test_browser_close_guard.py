@@ -23,7 +23,7 @@ class PolicyTests(unittest.TestCase):
         self.assertFalse(guard.blocked(protected, True, 'w', False))
         self.assertFalse(guard.blocked(('chromium', 'Chromium'), False, 'w', False))
         self.assertTrue(guard.blocked(('chromium', 'Chromium'), False, 'q', True))
-        self.assertFalse(guard.blocked(('cadoodle', 'CaDoodle'), False, 'q', True))
+        self.assertFalse(guard.blocked(('otherapp', 'OtherApp'), False, 'q', True))
         self.assertFalse(guard.blocked((guard.INSTANCE, 'WrongClass'), False, 'w', False))
 
 
@@ -64,9 +64,9 @@ class PrivateX11Tests(unittest.TestCase):
                 ('container-ctrl-f4', (guard.INSTANCE, guard.CLASS), False, 'F4', False, None, False),
                 ('other-browser', ('chromium', 'Chromium'), False, 'w', False, None, True),
                 ('dialog', (guard.INSTANCE, guard.CLASS), True, 'w', False, None, True),
-                ('other-app', ('cadoodle', 'CaDoodle'), False, 'w', False, None, True),
+                ('other-app', ('otherapp', 'OtherApp'), False, 'w', False, None, True),
                 ('global-quit', ('chromium', 'Chromium'), False, 'q', True, None, False),
-                ('other-app-quit', ('cadoodle', 'CaDoodle'), False, 'q', True, None, True),
+                ('other-app-quit', ('otherapp', 'OtherApp'), False, 'q', True, None, True),
                 ('toolbar-reset', (guard.INSTANCE, guard.CLASS), False, 'w', False, int(time.time()) + 5, True),
                 ('expired-reset', (guard.INSTANCE, guard.CLASS), False, 'w', False, int(time.time()) - 5, False),
             ]

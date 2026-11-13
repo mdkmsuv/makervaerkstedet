@@ -203,7 +203,6 @@ class SikkerIntegration(unittest.TestCase):
         bar.local_navigation_version = None
         bar.rod = type('Root', (), {'after': lambda self, delay, callback: callback()})()
         bar.pause_overlay = Overlay()
-        bar.cadoodle = type('Cad', (), {'opdater': lambda self, state: setattr(self, 'state', state)})()
         local = {'apps': [{'id': app, 'ready': True} for app in ('scratch', 'microbit')],
                  'navigation': {'id': 'scratch', 'version': 'a' * 32}}
         with patch.object(client, 'lokal_status', return_value=local), \
@@ -238,7 +237,6 @@ class SikkerIntegration(unittest.TestCase):
             self.assertFalse(bar.pause_overlay.closed)
             self.assertFalse(bar.pause_overlay.paused)
             self.assertTrue(bar.internet_aaben)
-            self.assertIsInstance(bar.cadoodle.state, dict)
             # Reclosing the still-open document works without navigation.
             teacher('/api/laerer/app', {'id': 'scratch', 'aaben': False})
             bar._meld()

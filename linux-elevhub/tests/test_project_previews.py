@@ -64,10 +64,10 @@ class ProjectPreviews(unittest.TestCase):
         data = b"fixture".ljust(80, b" ") + struct.pack("<I", MAX_STL_TRIANGLES + 1) + triangle * (MAX_STL_TRIANGLES + 1)
         self.assertIsNone(build_preview({"filename": "too-large.stl"}, data))
 
-    def test_cadoodle_zip_uses_existing_preview_png(self):
+    def test_zip_uses_existing_preview_png(self):
         image = png()
-        data = archive({"model.doodle": b'{"projectName":"Test"}', "snapshot.png": image, "part.stl": b"ignored"})
-        self.assertEqual(build_preview({"filename": "project.zip", "kind": "cadoodle"}, data), (image, "image/png"))
+        data = archive({"model.json": b'{}', "snapshot.png": image, "part.stl": b"ignored"})
+        self.assertEqual(build_preview({"filename": "project.zip", "kind": "andet"}, data), (image, "image/png"))
 
     def test_scratch_uses_referenced_costume_as_partial_scene_preview(self):
         costume = b'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8" fill="orange"/></svg>'
@@ -77,12 +77,9 @@ class ProjectPreviews(unittest.TestCase):
         self.assertEqual(result[1], "image/svg+xml")
         self.assertIn(b"circle", result[0])
 
-    def test_klosterskitse_is_rendered_only_for_small_valid_geometry(self):
+    def test_retired_sketch_files_have_no_preview(self):
         drawing = {"version": 1, "height": 3, "marks": [{"tool": "Rektangel", "cut": False, "width": 2, "points": [[10, 10], [90, 60]]}]}
-        result = build_preview({"filename": "skitse.klosterskitse", "kind": "cadoodle"}, json.dumps(drawing).encode())
-        self.assertEqual(result[1], "image/svg+xml")
-        self.assertIn(b"rect", result[0])
-        self.assertIsNone(build_preview({"filename": "skitse.klosterskitse"}, b'{"version":1,"height":3,"marks":[{"tool":"Nope","points":[]}] }'))
+        self.assertIsNone(build_preview({"filename": "skitse.klosterskitse", "kind": "cadoodle"}, json.dumps(drawing).encode()))
 
     def test_unsupported_and_malformed_project_content_have_no_preview(self):
         self.assertIsNone(build_preview({"filename": "notes.txt"}, b"hello"))

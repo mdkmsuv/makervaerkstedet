@@ -72,7 +72,7 @@ konkret, før understøttelse loves. ARM-enheder kan ikke bruge ISO'en.
 ISO-installationen sletter den valgte interne disk efter en ekstra bekræftelse.
 Kontrollér diskmodel og størrelse, og tag kopi af filer først. Den stopper ved
 flere interne diske i stedet for at gætte. Debian netinst-systempakker kræver
-internet under installationen; værksteder og CaDoodle følger med ISO'en.
+internet under installationen; værkstederne følger med ISO'en.
 
 4. FØRSTE TILMELDING
 

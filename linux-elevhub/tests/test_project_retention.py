@@ -1,5 +1,6 @@
 import os
 import gc
+import hashlib
 import json
 import sqlite3
 import sys
@@ -178,28 +179,51 @@ class ProjectRetention(unittest.TestCase):
         self.assertEqual(scanner.cleanup(now=now)['deleted'], [])
         self.assertEqual(self.store.meta(project)['revision'], 1)
 
-    def test_cadoodle_new_dependency_blocks_cleanup(self):
-        folder = self.projects / '3D-print' / 'model'
+    def legacy_cadoodle_record(self, folder, names):
+        """An archive record written by an earlier version (kind and source type cadoodle)."""
         folder.mkdir(parents=True)
-        (folder / 'model.doodle').write_text('{"projectName":"Model"}', encoding='utf-8')
-        (folder / 'base.stl').write_bytes(b'base')
+        entries = []
+        for name, data in names.items():
+            path = folder / name
+            path.write_bytes(data)
+            stat = path.stat()
+            entries.append({'relative': path.relative_to(self.projects).as_posix(),
+                            'stat': [stat.st_mtime_ns, stat.st_size], 'digest': hashlib.sha256(data).hexdigest()})
+        project = uuid.uuid4().hex
+        self.store.save(b'PK old snapshot', project=project, name='Model', folder='3D', kind='cadoodle',
+                        filename='model.zip', expected=0, source='Projekter-mappen')
         scanner = Scanner(self.projects, self.store)
-        scanner.scan()
-        scanner.scan()
-        scanner.scan()
-        project = self.store.list()[0]['id']
-        source = scanner.saved[next(key for key, value in scanner.saved.items() if value['id'] == project)]['source']
+        first = next(iter(names))
+        scanner.saved[(folder / first).relative_to(self.projects).as_posix()] = {
+            'stat': 'legacy', 'id': project, 'revision': 1,
+            'source': {'type': 'cadoodle', 'relative': entries[0]['relative'],
+                       'directory': folder.relative_to(self.projects).as_posix(), 'files': entries}}
+        with self.store.connect() as db:
+            db.execute('UPDATE projects SET modified=? WHERE id=?', (time.time() - RETENTION_SECONDS, project))
+        return scanner, project
+
+    def test_old_cadoodle_record_expires_after_retention_with_unchanged_originals(self):
+        folder = self.projects / '3D-print' / 'model'
+        scanner, project = self.legacy_cadoodle_record(folder, {'model.doodle': b'{}', 'base.stl': b'base'})
+        self.assertEqual(self.store.list()[0]['kind'], 'cadoodle')
+        self.assertEqual(scanner.cleanup(now=time.time())['deleted'], [project])
+        self.assertFalse((folder / 'model.doodle').exists())
+        self.assertFalse((folder / 'base.stl').exists())
+        self.assertEqual(self.store.list(), [])
+
+    def test_old_cadoodle_record_with_removed_originals_still_expires(self):
+        folder = self.projects / '3D-print' / 'model'
+        scanner, project = self.legacy_cadoodle_record(folder, {'model.doodle': b'{}'})
+        (folder / 'model.doodle').unlink()
+        self.assertEqual(scanner.cleanup(now=time.time())['deleted'], [project])
+
+    def test_old_cadoodle_new_dependency_blocks_cleanup(self):
+        folder = self.projects / '3D-print' / 'model'
+        scanner, project = self.legacy_cadoodle_record(folder, {'model.doodle': b'{}', 'base.stl': b'base'})
         (folder / 'new.stl').write_bytes(b'new')
-        now = time.time()
-        db = sqlite3.connect(self.store.root / 'projekter.sqlite3')
-        try:
-            db.execute('UPDATE projects SET modified=? WHERE id=?', (now - RETENTION_SECONDS, project))
-            db.commit()
-        finally:
-            db.close()
-        result = self.store.cleanup({project: source}, projects_root=self.projects, now=now)
-        self.assertEqual(result['deleted'], [])
+        self.assertEqual(scanner.cleanup(now=time.time())['deleted'], [])
         self.assertTrue((folder / 'new.stl').exists())
+        self.assertEqual(self.store.meta(project)['kind'], 'cadoodle')
 
     @unittest.skipUnless(os.name == 'posix', 'symlinks are required for this safety test')
     def test_symlink_original_and_path_escape_are_never_deleted(self):
@@ -285,18 +309,10 @@ class ProjectRetention(unittest.TestCase):
         self.assertFalse(original.exists())
         self.assertEqual(self.store.cleanup(projects_root=self.projects, now=now)['deleted'], [project])
 
-    def test_partial_cadoodle_deletion_retries_after_restart(self):
+    def test_partial_old_cadoodle_deletion_retries_after_restart(self):
         folder = self.projects / '3D' / 'model'
-        folder.mkdir(parents=True)
-        (folder/'model.doodle').write_text('{"projectName":"Model"}', encoding='utf-8')
-        (folder/'base.stl').write_bytes(b'base')
-        scanner = Scanner(self.projects, self.store)
-        scanner.scan()
-        scanner.scan()
-        project = self.store.list()[0]['id']
+        scanner, project = self.legacy_cadoodle_record(folder, {'model.doodle': b'{}', 'base.stl': b'base'})
         now = time.time()
-        with self.store.connect() as db:
-            db.execute('UPDATE projects SET modified=? WHERE id=?', (now-RETENTION_SECONDS, project))
         real_unlink = Path.unlink
         calls = 0
         def fail_second(path):

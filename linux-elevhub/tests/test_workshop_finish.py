@@ -51,8 +51,6 @@ class ToolbarFinishTests(unittest.TestCase):
         toolbar.pause_overlay = SimpleNamespace(paused=False)
         toolbar.rod = SimpleNamespace(after=lambda _delay, callback: callback())
         toolbar.start, toolbar.besked = Mock(), Mock()
-        toolbar.cadoodle = Mock()
-        toolbar.cadoodle.afslut_session.return_value = {'state': 'completed'}
         toolbar.paa_start = Mock(return_value=False)
         return toolbar
 
@@ -63,35 +61,23 @@ class ToolbarFinishTests(unittest.TestCase):
             toolbar.afslut_foer(action)
         return web
 
-    def test_native_continue_never_hides_or_navigates_or_resets_web(self):
-        toolbar, action = self.toolbar(), Mock()
-        toolbar.cadoodle.afslut_session.return_value = {'state': 'cancelled'}
-        web = self.run_finish(toolbar, action)
-        web.assert_not_called()
-        action.assert_not_called()
-        toolbar.cadoodle.skjul.assert_not_called()
-        self.assertFalse(toolbar.navigation_busy)
-
-    def test_web_continue_or_error_never_hides_or_navigates(self):
+    def test_web_continue_or_error_never_navigates(self):
         for state in ('cancelled', 'error'):
             with self.subTest(state=state):
                 toolbar, action = self.toolbar(), Mock()
                 self.run_finish(toolbar, action, state)
                 action.assert_not_called()
-                toolbar.cadoodle.skjul.assert_not_called()
 
-    def test_every_editor_completed_allows_one_hide_and_navigation(self):
+    def test_every_editor_completed_allows_one_navigation(self):
         toolbar, action = self.toolbar(), Mock()
         self.run_finish(toolbar, action)
-        toolbar.cadoodle.skjul.assert_called_once()
         action.assert_called_once()
 
-    def test_home_page_does_not_need_project_service_but_still_finishes_native(self):
+    def test_home_page_does_not_need_project_service(self):
         toolbar, action = self.toolbar(), Mock()
         toolbar.paa_start.return_value = True
         web = self.run_finish(toolbar, action)
         web.assert_not_called()
-        toolbar.cadoodle.afslut_session.assert_called_once()
         action.assert_called_once()
 
     def test_repeated_click_and_screen_pause_do_not_start_another_finish(self):
@@ -99,24 +85,8 @@ class ToolbarFinishTests(unittest.TestCase):
             toolbar, action, completed = self.toolbar(), Mock(), Mock()
             toolbar.navigation_busy, toolbar.pause_overlay.paused = busy, paused
             self.assertFalse(toolbar.afslut_foer(action, completed=completed))
-            toolbar.cadoodle.afslut_session.assert_not_called()
             action.assert_not_called()
             completed.assert_called_once_with({'state': 'cancelled'})
-
-    def test_native_library_reuses_kiosk_container_even_when_internet_is_closed(self):
-        import threading
-        toolbar = self.toolbar()
-        toolbar.internet_aaben = False
-        toolbar.workshop_launcher = SimpleNamespace(state_lock=threading.Lock(), navigation_target=None)
-        toolbar._til_start = Mock()
-        toolbar.afslut_foer = Mock()
-        toolbar.aabn_native_projekter()
-        self.assertEqual(toolbar.afslut_foer.call_args.kwargs, {'reason': 'switch'})
-        toolbar._til_start.assert_not_called()
-        with patch.object(bar.threading, 'Thread', side_effect=lambda *, target, **_kwargs: SimpleNamespace(start=target)):
-            toolbar.afslut_foer.call_args.args[0]()
-        toolbar._til_start.assert_called_once()
-        self.assertEqual(toolbar.workshop_launcher.navigation_target['page'], 'cadoodle-projects')
 
 
 class PowerFinishTests(unittest.TestCase):

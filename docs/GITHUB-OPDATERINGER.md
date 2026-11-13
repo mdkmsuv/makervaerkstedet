@@ -55,7 +55,7 @@ En udgivelse, der kan bygges uafhængigt af udviklingsmaskinen, kræver:
 - Et rent checkout af den valgte Git-version med nødvendige byggefiler og
   licenser. Arbejdsnotater, pilotdata og lokale testmapper indgår ikke.
 - Tilgængelige, gennemgåede eksterne inputs med fast version og SHA-256,
-  herunder Windows-runtime, CaDoodle, Scratch, Datatræner og Matchbox.
+  herunder Windows-runtime, Scratch, Datatræner og Matchbox.
   En sti til en udviklers eksisterende programmappe er ikke tilstrækkelig.
   Store binære inputs kan ligge som release-assets.
 - Særskilte pakker og prøver til ren Linux-installation, Linux-opdatering,

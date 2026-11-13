@@ -40,20 +40,19 @@ class GalleryHTTP(unittest.TestCase):
         finally:
             connection.close()
 
-    def test_retired_project_download_is_byte_exact_and_native_open_writes_nothing(self):
+    def test_old_cadoodle_record_is_byte_exact_download_in_other_files(self):
         project = 'a' * 32
         data = b'{"marks":[],"height":3}'
         self.store.save(data, **{**self.params, 'project': project, 'filename': 'figur.klosterskitse', 'kind': 'cadoodle'})
-        status, raw, _ = self.request('open-info?id=' + project)
+        status, raw = self.request('open-info?id=' + project)[:2]
         self.assertEqual((status, json.loads(raw)['mode']), (200, 'download'))
         status, raw, headers = self.request('file?id=' + project + '&revision=1')
         self.assertEqual((status, raw), (200, data))
         self.assertIn('attachment', headers['Content-Disposition'])
-        origin = 'http://127.0.0.1:' + str(self.server.server_port)
-        status, _, _ = self.request('open-native?id=' + project + '&request=' + 'b' * 32,
-            {'Origin': origin, 'X-Elevhub-Project': '1'}, method='POST')
-        self.assertEqual(status, 400)
-        self.assertFalse((self.store.root / 'open-requests').exists())
+        listed = [p for p in json.loads(self.request('list')[1])['projects'] if p['id'] == project]
+        self.assertEqual((listed[0]['kind'], listed[0]['opening']['program']), ('cadoodle', 'andet'))
+        self.assertEqual([p['id'] for p in json.loads(self.request('list?workshop=andet')[1])['projects']], [project])
+        self.assertEqual(self.request('list?workshop=cadoodle')[0], 400)
         self.assertEqual(self.store.read(project, 1)[1], data)
 
     def test_preview_security_and_exact_revision(self):
@@ -95,8 +94,8 @@ class GalleryHTTP(unittest.TestCase):
                         **{**self.params, 'project': foil, 'name': 'Mærke'})
         cube = '4' * 32
         self.store.save(b'solid fixture\nendsolid fixture',
-                        **{**self.params, 'project': cube, 'filename': 'cube.stl', 'kind': 'cadoodle'})
-        for workshop, expected in [('laser', [self.project]), ('folie', [foil]), ('cadoodle', [cube]),
+                        **{**self.params, 'project': cube, 'filename': 'cube.stl', 'kind': 'stl'})
+        for workshop, expected in [('laser', [self.project]), ('folie', [foil]), ('stl', [cube]),
                                    ('scratch', []), ('microbit', []), ('datatraener', []), ('kredsloeb', [])]:
             with self.subTest(workshop=workshop):
                 status, data, _ = self.request('list?workshop=' + workshop)
@@ -108,7 +107,7 @@ class GalleryHTTP(unittest.TestCase):
         self.assertEqual(self.request('list?workshop=laser&workshop=folie')[0], 400)
 
 
-    def test_3d_scope_lists_only_native_project_and_opens_requested_revision(self):
+    def test_3d_scope_lists_only_3d_project_and_opens_requested_revision(self):
         project='b'*32
         data=json.dumps({'format':'makervaerkstedet-3d-project','version':1,
             'scene':{'format':'makervaerkstedet-3d','version':2,'units':'mm','objects':[],'roots':[]}}).encode()

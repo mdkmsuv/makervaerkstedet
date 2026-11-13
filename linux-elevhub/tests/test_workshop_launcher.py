@@ -177,14 +177,14 @@ class LaunchTests(unittest.TestCase):
         self.assertEqual(self.request(path='/finish', headers={'Origin': 'https://example.com'})[0], 403)
         self.assertTrue(self.server.requests.empty())
 
-    def test_native_project_target_is_delivered_once_only_to_start_page(self):
+    def test_project_target_is_delivered_once_only_to_start_page(self):
         import time
-        self.server.navigation_target = {'page': 'cadoodle-projects', 'created': time.time()}
+        self.server.navigation_target = {'page': 'projects', 'created': time.time()}
         status, raw = self.request('GET', '/status')
         self.assertIsNone(json.loads(raw)['navigation'])
         self.assertIsNotNone(self.server.navigation_target)
         status, raw = self.request('GET', '/status', {'X-Elevhub-Page': 'workshops-v1'})
-        self.assertEqual(json.loads(raw)['navigation'], 'cadoodle-projects')
+        self.assertEqual(json.loads(raw)['navigation'], 'projects')
         self.assertIsNone(self.server.navigation_target)
 
 

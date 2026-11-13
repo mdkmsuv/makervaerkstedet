@@ -36,7 +36,7 @@ def add_path(source, destination):
     if source.is_dir():
         destination.mkdir(parents=True, exist_ok=True)
         for child in sorted(source.iterdir()):
-            if child.name not in IGNORED | {'cadoodle_vaerksted.py', 'native-3d.js'} and child.suffix not in {'.pyc', '.pyo'} and not child.name.startswith(('workshop-data-', 'workshop-circuit-')):
+            if child.name not in IGNORED and child.suffix not in {'.pyc', '.pyo'} and not child.name.startswith(('workshop-data-', 'workshop-circuit-')):
                 add_path(child, destination / child.name)
     elif source.is_file():
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -90,7 +90,7 @@ def bundle(args):
             'linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512-2.debian.tar.xz',
             'linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512-2.dsc',
             'linux-elevhub/LICENSE', 'linux-elevhub/THIRD_PARTY.md',
-        ] + [p.relative_to(ROOT).as_posix() for p in sorted((ROOT / "linux-elevhub/ansible/roles").iterdir()) if p.name != "cadoodle"] + design_paths()
+        ] + [p.relative_to(ROOT).as_posix() for p in sorted((ROOT / "linux-elevhub/ansible/roles").iterdir())] + design_paths()
         for relative in paths:
             add_path(ROOT / relative, stage / relative)
         for source, name in [(args.scratch, 'scratch')]:

@@ -20,9 +20,10 @@ MAX_TOTAL = 5 * 1024 * 1024 * 1024
 RETENTION_DAYS = 30
 RETENTION_SECONDS = RETENTION_DAYS * 24 * 60 * 60
 ID = re.compile(r'^[a-f0-9]{32}$')
-EXTENSIONS = ('.projekt.svg', '.klosterskitse', '.mkv3d', '.sb3', '.svg', '.hex', '.json',
+EXTENSIONS = ('.projekt.svg', '.mkv3d', '.sb3', '.svg', '.hex', '.json',
               '.stl', '.zip', '.csv', '.txt', '.piskel', '.wav', '.mp3', '.png')
-TYPES = {'3dprint', 'laser', 'folie', 'scratch', 'microbit', 'datatraener', 'cadoodle', 'kredsloeb', 'andet'}
+TYPES = {'3dprint', 'laser', 'folie', 'scratch', 'microbit', 'datatraener', 'stl', 'kredsloeb', 'andet'}
+LEGACY_TYPES = {'cadoodle'}  # old pupil records stay readable and keep their retention
 
 
 class Konflikt(ValueError):
@@ -110,7 +111,9 @@ class Projektarkiv:
         filename = tekst(filename, 180, 'Filnavn')
         if '/' in filename or '\\' in filename or ':' in filename or filename in ('.', '..'):
             raise ValueError('Ugyldigt filnavn.')
-        if not filename.lower().endswith(EXTENSIONS) or kind not in TYPES:
+        if kind in LEGACY_TYPES:
+            pass  # existing record of a retired type; its original filename stays valid
+        elif not filename.lower().endswith(EXTENSIONS) or kind not in TYPES:
             raise ValueError('Denne projekttype understøttes ikke.')
         if type(expected) is not int or expected < 0:
             raise ValueError('Ugyldig versionsangivelse.')
@@ -189,7 +192,7 @@ class Projektarkiv:
         ``originals`` is an optional mapping from project id to scanner records.
         Records are deliberately supplied by the scanner: the archive never
         guesses which pupil files belong to a project.  A record must contain
-        ``type`` (``file`` or ``cadoodle``), ``relative`` and a stat/digest
+        ``type`` (``file``, or legacy ``cadoodle`` from retired records), ``relative`` and a stat/digest
         captured after two stable scans. Unverifiable scanned originals defer
         expiry of both the source and its history. Known missing sources are safe.
         """
@@ -301,7 +304,7 @@ class Projektarkiv:
         if record.get('type') == 'file':
             entries = [{'relative': record['relative'], 'stat': record.get('stat'),
                         'digest': record.get('digest')}]
-        elif record.get('type') == 'cadoodle':
+        elif record.get('type') == 'cadoodle':  # legacy scanner record, no longer created
             entries = record.get('files')
             if not isinstance(entries, list) or not entries:
                 return None

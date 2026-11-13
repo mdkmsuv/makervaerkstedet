@@ -3,7 +3,7 @@
 > Offentlig dokumentation: LOKAL_IP er en pladsholder. Brug skolens egne adresser.
 
 Installationsforløbet er udvidet, så en fælles USB-ISO kan medbringe hele
-elevsystemet: CaDoodle med Kloster-udvidelsen og guideprojekterne, elevskærmen,
+elevsystemet: elevskærmen,
 projektmapper, Scratch, Datatræneren, Kredsløb, laser, folie og kassegenerator.
 Windows-serveren med printkø og lærerfunktioner forbliver en separat server.
 
@@ -63,7 +63,7 @@ bootfejl kan stadig vise tekst. Eksisterende ISO'er ændres ikke af kildefilerne
    softwarepakken og den valgte computers eksisterende skoleprofil fra USB-mediet.
 2. Når installationen har slukket, fjernes USB-mediet, og computeren tændes.
 3. Systemtjenesten `elevhub-firstboot` installerer elevsystemet automatisk.
-   CaDoodle pakkes ud uden en manuel første åbning. Elevskærmen starter først,
+   Elevskærmen starter først,
    når hele opskriften er gennemført.
 4. SSH er tilgængelig under klargøringen og ved senere opstarter. En fejl
    gemmes i journalen, og klargøringen forsøges igen efter 60 sekunder. En
@@ -108,8 +108,7 @@ Admin åbner en lokal terminal med login; Ctrl+Alt+F1 vender tilbage til værkst
 
 `build.py bundle` laver en genbrugelig softwarepakke uden credentials.
 Filoversigten er eksplicit: projektets rod, serverhemmeligheder og private
-nøgler kopieres ikke. CaDoodles officielle `.deb` kontrolleres mod den
-pinnede SHA256. Alle pakkens filer får desuden en SHA256 i `manifest.json`.
+nøgler kopieres ikke. Alle pakkens filer får desuden en SHA256 i `manifest.json`.
 
 Eksempel på udviklerkørsel i WSL, med de eksisterende lokale artefakter:
 
@@ -168,14 +167,12 @@ Windows-serverens egne veje. Se [de fire produktveje](../../docs/KOM-GODT-IGANG.
 
 Åbn [Windows-administrationen](../administration/README.md), vælg skolens
 computerliste og derefter **Tjek ændringer** eller **Anvend opdatering**.
-Vælg **CaDoodle** for kun 3D-programmet eller **Hele elevsystemet** for hele
-opsætningen. Der skrives ingen kommandoer på elevcomputeren.
+Opdatér **Hele elevsystemet**. Der skrives ingen kommandoer på elevcomputeren.
 
 Administrationen bruger den eksisterende SSH-nøgle og Ansible. Computerlisten
 `ansible/inventory/skole/fra-serveren.py` henter de tændte computere og deres
 SSH-værtsnøgler fra serveren (se [administrationen](../administration/README.md)).
 Faste IP'er er derfor ikke nødvendige. Værtskontrollen slås ikke fra.
-Hvis CaDoodle er åbent, springer CaDoodle-rollen hele sin opdatering over.
 En elevskærm, der er i brug, genstartes ikke af en opdatering; ændringen
 virker fra næste opstart.
 
@@ -201,8 +198,6 @@ virkende VM er ikke bevis for USB-opstart eller Wi-Fi på fysisk udstyr.
 - `linux-elevhub/tests/test_full_installation.py`: profiler, pakkeintegritet,
   svarfil samt første opstarts succes, fejl og gentagelse med simulerede
   systemkald.
-- `linux-elevhub/tests/test_cadoodle_bootstrap.py`: sikker udpakning og
-  bevarelse af en eksisterende installation.
 - `linux-elevhub/tests/test_ssh_bootstrap.py`: SSH-opstart og fejlforløb.
 - `linux-elevhub/tests/test_install_disk_selection.py`: valg af intern disk,
   NVMe/SATA, USB med removable=0, flere diske og ukendt installationsmedie.

@@ -8,8 +8,7 @@ Udfyld skolens egne værdier i en privat inventory-fil uden for repositoryet.
 ## Hvad rollerne dækker
 
 Rollerne kan sætte elevbjælke, kiosk, USB-håndtering, værksteder,
-HTTPS-klient, sikkerhedsopdateringer og valgfri projektbackup op. CaDoodle,
-administratorkonto og backup er lokale valg og kræver særskilt afprøvning.
+HTTPS-klient, sikkerhedsopdateringer og valgfri projektbackup op. Administratorkonto og backup er lokale valg og kræver særskilt afprøvning.
 En registreret maskine er ikke dermed automatisk understøttet hardware.
 
 `inventory/skole/` er en skabelon. Den skal udfyldes lokalt med skolens

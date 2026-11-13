@@ -5,15 +5,16 @@ import re
 import zipfile
 from pathlib import PurePosixPath
 
+LEGACY_KIND = 'cadoodle'  # stored kind of retired projects; kept readable, never created
 PROGRAMS = {
     'scratch': 'Scratch', 'microbit': 'MakeCode', '3dprint': '3D-værkstedet',
-    'cadoodle': 'CaDoodle', 'laser': 'Laserværkstedet', 'folie': 'Folieværkstedet',
+    'andet': 'Filviseren', 'laser': 'Laserværkstedet', 'folie': 'Folieværkstedet',
     'kredsloeb': 'Kredsløb', 'image': 'Billedviseren', 'audio': 'Lydafspilleren',
     'table': 'Tabelviseren', 'text': 'Tekstviseren', 'json': 'Dataviseren',
     'archive': 'Arkivviseren', 'piskel': 'Pixelviseren', 'datatraener': 'Datatræner',
 }
 UNAMBIGUOUS = {'.sb3': 'scratch', '.hex': 'microbit', '.stl': '3dprint', '.mkv3d': '3dprint',
-               '.klosterskitse': 'cadoodle', '.png': 'image', '.wav': 'audio',
+               '.png': 'image', '.wav': 'audio',
                '.mp3': 'audio', '.csv': 'table', '.piskel': 'piskel'}
 
 
@@ -33,14 +34,10 @@ def association(filename, kind='andet', data=None):
             try:
                 with zipfile.ZipFile(io.BytesIO(data)) as archive:
                     names = archive.namelist()
-                    if any('/' not in n and n.lower().endswith('.doodle') for n in names):
-                        program = 'cadoodle'
-                    elif 'project.json' in names:
+                    if 'project.json' in names:
                         program = 'scratch'
             except zipfile.BadZipFile:
                 pass
-        elif kind == 'cadoodle':
-            program = 'cadoodle'
     elif not program and ext == '.json':
         program = 'json'
         if data and len(data) <= 50 * 1024 * 1024:
@@ -48,8 +45,6 @@ def association(filename, kind='andet', data=None):
                 obj = json.loads(data)
                 if isinstance(obj, dict) and isinstance(obj.get('targets'), list) and 'meta' in obj:
                     program = 'scratch'
-                elif isinstance(obj, dict) and isinstance(obj.get('marks'), list) and 'height' in obj:
-                    program = 'cadoodle'
                 elif isinstance(obj, dict) and obj.get('format') == 'elevhub-datatraener-project' and obj.get('version') == 1 and isinstance(obj.get('gestureData'), list):
                     program = 'datatraener'
                 elif isinstance(obj, dict) and obj.get('format') == 'elevhub-microbit-project' and obj.get('version') == 1 and isinstance(obj.get('project'), dict):
@@ -59,14 +54,17 @@ def association(filename, kind='andet', data=None):
             except (ValueError, UnicodeError):
                 pass
     program = program or 'text'
+    if kind == LEGACY_KIND and program != '3dprint':
+        # Pupil archives from earlier versions may hold retired project types: plain download only.
+        program = 'andet'
     return {'program': program, 'label': PROGRAMS[program], 'extension': ext}
 
 
 def project_kind(filename, hint='andet', data=None):
     program = association(filename, hint, data)['program']
     if program == '3dprint':
-        return '3dprint' if PurePosixPath(filename.lower()).suffix == '.mkv3d' else 'cadoodle'
-    if program in {'scratch', 'microbit', 'cadoodle', 'laser', 'folie', 'kredsloeb', 'datatraener'}:
+        return '3dprint' if PurePosixPath(filename.lower()).suffix == '.mkv3d' else 'stl'
+    if program in {'scratch', 'microbit', 'laser', 'folie', 'kredsloeb', 'datatraener'}:
         return program
     return hint if hint in {'datatraener', 'scratch', 'folie', 'laser'} else 'andet'
 

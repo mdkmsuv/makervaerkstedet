@@ -23,14 +23,7 @@ styrer den daglige drift gennem kontrolpanelet.
 | [installation](installation/README.md) | Kilder til elevinstallation og opdatering. |
 | [backup](backup/README.md) | Valgfri lokal versionsbackup til et eksplicit valgt mål. |
 
-### Skoleprofil i den native 3D-indgang
-
-Ansible skriver den valgte `school_name` til elevcomputerens lokale `kiosk.json`.
-Den native CaDoodle-indgang bruger navnet i sine Tk-vinduestitler og øverste
-overskrifter, med `Makerværkstedet` som fallback ved en manglende eller ugyldig
-værdi. Inden visning fjernes kontrol-/formattegn, linjeskift samles til enkelt
-mellemrum, og navnet begrænses til 80 tegn. Det ændrer kun den lokale visning;
-det giver ikke skolen en ny adgangs- eller netværksrolle.
+### Skoleprofil
 
 Valgfri private skolefarver følger samme vej som `theme`: `brand` og
 `brand_dark` (begge `#rrggbb` med små bogstaver, eller ingen af dem) går fra
@@ -48,7 +41,7 @@ printerkø eller laser-Inbox. Elevcomputeren ejer sine projektfiler;
 serveren ejer afleveringernes status og lærerens valg. Personlige
 skoleprofiler, nøgler, certifikater og elevdata er ikke byggekilder.
 
-Ved utilgængelig server er alle værksteder, CaDoodle og Internet åbne,
+Ved utilgængelig server er alle værksteder og Internet åbne,
 også ved kold opstart. Gamle lukninger og skærmpauser må ikke fastholdes.
 Ved genforbindelse anvendes lærerens aktuelle valg igen. Dette er en fast
 produktkontrakt og erstatter ældre pilotnoter om lukning ved tabt kontakt.

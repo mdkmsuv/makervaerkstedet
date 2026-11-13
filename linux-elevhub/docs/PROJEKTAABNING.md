@@ -10,8 +10,7 @@ Mappingen følger `linux-elevhub/projekter/filtyper.py`:
 | --- | --- | --- |
 | `.sb3` | Scratch | Lokal redigering |
 | `.hex` | MakeCode | Navigerer til MakeCode med projektet indlæst |
-| `.stl` | 3D-værkstedet | Printpreview i browseren; CaDoodle bruges kun på computere med native CaDoodle |
-| `.klosterskitse` | CaDoodle | Native CaDoodle |
+| `.stl` | 3D-værkstedet | Printpreview i browseren |
 | `.png` | Billedviseren | Visning |
 | `.wav`, `.mp3` | Lydafspilleren | Afspilning |
 | `.csv` | Tabelviseren | Visning som tabel |
@@ -22,12 +21,11 @@ Mappingen følger `linux-elevhub/projekter/filtyper.py`:
 | `.txt` med CircuitJS-header (`$ ...` eller `<cir ...`) | Kredsløb | Lokal redigering |
 | anden `.txt` | Tekstviseren | Visning |
 | `.json` med Scratch-strukturen (`targets` og `meta`) | Scratch | Lokal redigering |
-| `.json` med CaDoodle-strukturen (`marks` og `height`) | CaDoodle | Native CaDoodle |
 | anden `.json` | Dataviseren | Visning |
 
 ## ZIP-filer
 
-En ZIP-fil åbnes først som Arkivviseren. Hvis den indeholder en `.doodle`-fil i ZIP-filens rod, behandles den som et CaDoodle-projekt. Hvis den indeholder `project.json`, behandles den som en Scratch-pakke. Andre ZIP-filer bliver i Arkivviseren.
+En ZIP-fil åbnes først som Arkivviseren. Hvis den indeholder `project.json`, behandles den som en Scratch-pakke. Andre ZIP-filer bliver i Arkivviseren.
 
 ## HEX og kildekode
 

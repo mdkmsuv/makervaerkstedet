@@ -414,7 +414,7 @@ class Indgang(Grund):
             # forwarded-proto header, or give native clients a new Origin.
             headers = {k: v for k, v in headers.items() if k.lower() != 'origin'}
             headers['Origin'] = 'http://' + self.headers.get('Host', '')
-        # Use the connection address for both CaDoodle and browser submissions.
+        # Use the connection address for print submissions.
         # Never accept a source identity chosen by the pupil's request headers.
         if self.server.app.get('regler') == 'printvaerksted':
             headers['X-Print-Source'] = self.client_address[0]

@@ -90,8 +90,6 @@ serverkode.
   repositoriets LGPL-3.0 (opgave til ejeren, ikke juridisk rådgivning).
   Oracle-copyrightteksten skal under alle omstændigheder følge med ved
   videredistribution.
-- Den officielle CaDoodle-Application-installers egen licens/EULA (den
-  distribuerede JAR, ikke GitHub-kilderepoet) er ikke undersøgt.
 - Clipper-lib-linket i tabellen er JavaScript-porten (`junmer/clipper-lib`),
   som den lokale licensfil selv henviser til; det oprindelige C++
   Clipper-biblioteks egen hjemmeside/licens er ikke slået separat op.

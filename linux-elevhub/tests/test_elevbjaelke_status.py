@@ -90,7 +90,7 @@ class BjaelkeKontaktTest(unittest.TestCase):
         self.assertFalse(bar.internet_aaben)
         self.assertEqual(bar.server_status, 'online')
 
-    def test_malformed_reachable_reply_invalidates_old_cadoodle_policy(self):
+    def test_malformed_reachable_reply_invalidates_old_internet_policy(self):
         bar = ELEVBAELKE.Bjaelke.__new__(ELEVBAELKE.Bjaelke)
         bar.konf = {'computer': 'pc-1', 'hub': 'https://hub:8773', 'ui_token': 'ui-token',
                     'ca_fil': '/ca.pem', 'internet_app': 'internet'}
@@ -99,13 +99,11 @@ class BjaelkeKontaktTest(unittest.TestCase):
         bar.rod = type('Root', (), {'after': lambda self, _delay, callback: callback()})()
         bar.pause_overlay = type('Overlay', (), {'acknowledgement': lambda self: None,
             'offline': lambda self: (_ for _ in ()).throw(AssertionError('must stay closed'))})()
-        bar.cadoodle = type('Cad', (), {'opdater': lambda self, svar: setattr(self, 'svar', svar)})()
         with patch.object(ELEVBAELKE, 'usb_noegler', return_value=[]), \
                 patch.object(ELEVBAELKE, 'hent_json', return_value={'not': 'a status'}):
             bar._meld()
         self.assertEqual(bar.server_status, 'online')
         self.assertFalse(bar.internet_aaben)
-        self.assertIsNone(bar.cadoodle.svar)
 
 
 class LokalStatusTest(unittest.TestCase):
@@ -152,7 +150,6 @@ class LokalStatusTest(unittest.TestCase):
                     'lokale_app_urler': {'projekter': 'http://127.0.0.1:8791/'}}
         bar.internet_aaben = False
         bar.local_navigation_version = None
-        bar.cadoodle = None
         local = {'apps': [{'id': 'scratch', 'ready': True}],
                  'navigation': {'id': 'scratch', 'version': 'b' * 32}}
         with patch.object(ELEVBAELKE, 'usb_noegler', return_value=[]), \

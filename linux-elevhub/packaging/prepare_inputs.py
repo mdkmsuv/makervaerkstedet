@@ -227,13 +227,13 @@ def main():
                     add(args.fallback_root / rel, target, old[rel])
             kiosk = root / "linux-elevhub/ansible/roles/kiosk"
             for p in sorted((kiosk / "files").glob("*.py")):
-                if not p.name.startswith("test_") and p.name != "cadoodle_vaerksted.py":
+                if not p.name.startswith("test_"):
                     target = "usr/local/sbin/elevhub-power" if p.name == "elevhub-power.py" else "usr/local/lib/elevhub/" + p.name
                     add(p, target, mode=0o755 if p.name == "elevhub-power.py" else 0o644)
             tree(root / "linux-elevhub/server/microbit-controller", "usr/local/share/elevhub/apps/microbit")
             assets = root / "linux-elevhub/server/elevhub/web/assets"
             for p in sorted(assets.iterdir()):
-                if p.is_file() and p.name != "native-3d.js" and not p.name.startswith(("workshop-data-", "workshop-circuit-")):
+                if p.is_file() and not p.name.startswith(("workshop-data-", "workshop-circuit-")):
                     add(p, "usr/local/share/elevhub/assets/" + p.name)
             for name in ("start.html.j2", "kiosk-session.j2", "elevhub-lokal.service.j2", "elevhub-design.service.j2", "project-workshops.json.j2", "chromium-politik.json.j2", "elevhub-regler.service.j2", "elevhub-webproxy.service.j2"):
                 source = args.session_template if name == "kiosk-session.j2" and args.session_template else kiosk / "templates" / name

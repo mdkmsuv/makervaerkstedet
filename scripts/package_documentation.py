@@ -19,7 +19,7 @@ understøttede elevcomputerplatform er Linux; Windows bruges som lærerens
 server- og administrationsplatform.
 
 Den historiske implementation indeholder en lokal shell, webværksteder,
-projekthylden og de installerede Scratch-, Datatræner-, Kredsløb- og CaDoodle-
+projekthylden og de installerede Scratch-, Datatræner- og Kredsløb-
 komponenter. Den tekst beskriver ikke en aktuel support- eller
 installationskontrakt.
 

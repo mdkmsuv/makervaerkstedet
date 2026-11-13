@@ -36,7 +36,6 @@ eller af en ny blanket-`LICENSE`.
 | Egne programillustrationer | 37 hashbundne runtime-stier under CC BY 4.0; provenance og fuld tekst i `web/assets/PUBLIC-ILLUSTRATIONS.md` og `CC-BY-4.0.txt`. Skolelogo og private fotos er udeladt. |
 | Datatræner | Eksternt runtime-artifact; versionspin og upstream MIT/notices skal følge det konkrete artifact. |
 | Boxes.py og CircuitJS1 | Bevar de relevante GPL-tekster og kilde-/noticekrav. |
-| CaDoodle | CC0- og LGPL-kildetekster fra de præcise upstream-pins ligger i `linux-elevhub/cadoodle/kloster/licenses/` med kilde-URL og SHA-256. Den officielle JARs øvrige komponentvilkår gælder særskilt. |
 | Bambu Studio og øvrige medfølgende værktøjer | Match de bundtede versioner med deres faktiske notices og redistributionsvilkår. |
 | Klostermarksskolen i krediteringen | Tilladelsen er oplyst; krediteringen skal bevares. |
 | Skolelogo og referencebilleder | Særskilte aktivers tilladelse eller neutral erstatning til generisk udgivelse. |

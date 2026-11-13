@@ -1,5 +1,6 @@
 """Isolated gallery server used only by test_project_gallery.cjs."""
 import json
+import struct
 import sys
 import time
 from pathlib import Path
@@ -29,7 +30,7 @@ def main():
                folder='Vores egne noter', kind='andet', filename='noter.txt', expected=0)
     for project, kind, filename, data in [
         ('d'*32, 'scratch', 'spil.sb3', b'Scratch fixture'),
-        ('e'*32, 'cadoodle', 'figur.klosterskitse', b'{"version":1,"height":3,"marks":[]}'),
+        ('e'*32, 'stl', 'figur.stl', b'\0'*80 + struct.pack('<I12fH', 1, 0, 0, 1, 0, 0, 0, 10, 0, 0, 0, 10, 0, 0)),
         ('f'*32, 'microbit', 'robot.hex', b'MakeCode fixture'),
         ('9'*32, 'datatraener', 'model.json', b'{"format":"elevhub-datatraener-project","version":1,"gestureData":[]}'),
     ]:
