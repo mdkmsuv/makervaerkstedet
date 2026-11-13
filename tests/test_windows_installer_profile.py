@@ -65,7 +65,7 @@ class InstallerProfileTests(unittest.TestCase):
         for bad,fragment in [({'brand':'#1f5a8c'},'både'),({'brand_dark':'#143c5e'},'både'),
                              ({'brand':'#1F5A8C','brand_dark':'#143c5e'},'#rrggbb'),
                              ({'brand':'#ffd400','brand_dark':'#143c5e'},'for lys'),
-                             ({'brand':'#1f5a8c','brand_dark':'#999999'},'4,5:1'),
+                             ({'brand':'#1f5a8c','brand_dark':'#999999'},'5,3:1'),
                              ({'brand':'','brand_dark':''},'#rrggbb')]:
             with self.subTest(bad=bad),self.assertRaisesRegex(life.LifecycleError,fragment):
                 life.validate_server_profile(dict(value,**bad))

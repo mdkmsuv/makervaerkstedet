@@ -76,13 +76,13 @@ function Get-WhiteContrast([string]$Colour) {
 }
 
 function Assert-SchoolBrandColours([string]$Brand, [string]$BrandDark) {
-    # Where colours are set: both or neither, #rrggbb lower case, and white text >= 4.5:1.
+    # Where colours are set: both or neither, #rrggbb lower case, and white contrast >= 5.3:1 (keeps brand-coloured text readable on light backgrounds).
     if (-not $Brand -and -not $BrandDark) { return }
     if (-not $Brand -or -not $BrandDark) { throw 'Angiv både Brand og BrandDark, eller ingen af dem.' }
     foreach ($pair in @(@{name='Brand';value=$Brand}, @{name='BrandDark';value=$BrandDark})) {
         if ($pair.value -cnotmatch '^#[0-9a-f]{6}\z') { throw "$($pair.name) skal skrives som #rrggbb med små bogstaver, fx #1f5a8c." }
         $ratio = Get-WhiteContrast $pair.value
-        if ($ratio -lt 4.5) { throw ("{0} er for lys: hvid tekst får kontrast {1}:1, men skal have mindst 4,5:1. Vælg en mørkere farve." -f $pair.name, $ratio.ToString('0.00', [Globalization.CultureInfo]::GetCultureInfo('da-DK'))) }
+        if ($ratio -lt 5.3) { throw ("{0} er for lys: hvid tekst får kontrast {1}:1, men skal have mindst 5,3:1, så tekst kan læses. Vælg en mørkere farve." -f $pair.name, $ratio.ToString('0.00', [Globalization.CultureInfo]::GetCultureInfo('da-DK'))) }
     }
 }
 

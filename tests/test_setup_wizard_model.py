@@ -32,7 +32,7 @@ class SetupWizardModelTests(unittest.TestCase):
         self.assertTrue(v['valid']); self.assertEqual((v['parameters']['Brand'], v['parameters']['BrandDark']), ('#1f5a8c', '#143c5e'))
         self.assertEqual(v['parameters']['Theme'], 'green')
         for extra, fragment in ((";brand='#1f5a8c'", 'ingen af dem'), (";brand='#1F5A8C';brandDark='#143c5e'", '#rrggbb'),
-                                (";brand='#f2c94c';brandDark='#143c5e'", '4,5:1')):
+                                (";brand='#f2c94c';brandDark='#143c5e'", '5,3:1')):
             with self.subTest(extra=extra):
                 r = self.run_ps(base % extra); self.assertEqual(r.returncode, 0, r.stderr); v = json.loads(r.stdout)
                 self.assertFalse(v['valid']); self.assertEqual(v['errors'][0]['field'], 'brand'); self.assertIn(fragment, v['errors'][0]['message'])

@@ -105,10 +105,10 @@ class EnrollmentTests(unittest.TestCase):
         self.assertEqual(enrollment.set_brand_colours(self.root, colours), colours)
         self.assertEqual(enrollment.read_json(self.root / 'school.json'), {**self.school, **colours})
         for value, fragment in (({'brand': '#1f5a8c'}, 'både'),
-                                ({'brand': '#1F5A8C', 'brand_dark': '#143c5e'}, '#rrggbb'),
+                                ({'brand': '#1F5A8C', 'brand_dark': '#143c5e'}, 'seks tegn'),
                                 ({'brand': '#1f5a8c', 'brand_dark': '#143c5e', 'theme': 'red'}, 'kun brand'),
                                 ({'brand': '#f2c94c', 'brand_dark': '#143c5e'}, 'for lys'),
-                                ({'brand': '#1f5a8c', 'brand_dark': '#8a8a8a'}, '4,5:1')):
+                                ({'brand': '#1f5a8c', 'brand_dark': '#8a8a8a'}, '5,3:1')):
             with self.subTest(value=value):
                 with self.assertRaisesRegex(ValueError, fragment):
                     enrollment.set_brand_colours(self.root, value)

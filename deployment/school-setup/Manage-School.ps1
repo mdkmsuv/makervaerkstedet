@@ -316,10 +316,22 @@ switch ($choice) {
     & $restartHelper -Mode Local
   }
   '14' {
-    Write-Host 'Skolefarverne er private installationsdata: en JSON-fil med brand og brand_dark, fx {"brand":"#1f5a8c","brand_dark":"#143c5e"}.'
-    Write-Host 'Hvid tekst skal have mindst 4,5:1 i kontrast på begge farver. Kun farverne ændres; nøgler, køer og computere bevares.'
-    $answer = Read-Host 'Sti til skolefarvefilen, eller skriv FJERN for at bruge temaets farver igen'
-    if ($answer.Trim() -ceq 'FJERN') { Set-SchoolColours -Clear } else { Set-SchoolColours -ColoursFile $answer }
+    Write-Host 'Skolens egne farver: en hovedfarve og en mørkere farve, skrevet som # og seks tegn, fx #1f5a8c og #143c5e.'
+    Write-Host 'Begge farver skal være mørke nok til, at tekst kan læses. Kun farverne ændres; nøgler, køer og computere bevares.'
+    Write-Host 'Bemærk: Serverens sider skifter med det samme. Elevcomputere, som allerede er tilmeldt, beholder deres farver, til de tilmeldes igen.'
+    $answer = (Read-Host 'Skriv hovedfarven, stien til en skolefarvefil, eller FJERN for at bruge temaets farver igen').Trim()
+    if ($answer -ieq 'FJERN') { Set-SchoolColours -Clear }
+    elseif ($answer -match '^#?[0-9a-fA-F]{6}$') {
+      $dark = (Read-Host 'Skriv den mørke farve').Trim()
+      if ($dark -notmatch '^#?[0-9a-fA-F]{6}$') { throw 'Den mørke farve skal skrives som # og seks tegn, fx #143c5e.' }
+      $typed = Join-Path ([IO.Path]::GetTempPath()) ('skolefarver-' + [guid]::NewGuid().ToString('N') + '.json')
+      try {
+        $pair = [ordered]@{ brand = '#' + $answer.TrimStart('#').ToLowerInvariant(); brand_dark = '#' + $dark.TrimStart('#').ToLowerInvariant() }
+        [IO.File]::WriteAllText($typed, ($pair | ConvertTo-Json -Compress), [Text.UTF8Encoding]::new($false))
+        Set-SchoolColours -ColoursFile $typed
+      } finally { Remove-Item -LiteralPath $typed -Force -ErrorAction SilentlyContinue }
+    }
+    else { Set-SchoolColours -ColoursFile $answer }
   }
   default { throw 'Ugyldigt valg.' }
 }

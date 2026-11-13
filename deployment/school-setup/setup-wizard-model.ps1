@@ -77,12 +77,12 @@ function Get-SetupWhiteContrast([string]$Colour) {
 }
 
 function Get-SetupBrandColourError([string]$Brand, [string]$BrandDark) {
-    # Optional private school colours: both or neither, #rrggbb, white text >= 4.5:1.
+    # Optional private school colours: both or neither, #rrggbb, white contrast >= 5.3:1.
     if (-not $Brand -and -not $BrandDark) { return $null }
     if (-not $Brand -or -not $BrandDark) { return 'Angiv både skolens farve og den mørke skolefarve, eller ingen af dem.' }
     foreach ($colour in @($Brand, $BrandDark)) {
         if ($colour -cnotmatch '^#[0-9a-f]{6}\z') { return 'Skolefarver skal skrives som #rrggbb med små bogstaver, fx #1f5a8c.' }
-        if ((Get-SetupWhiteContrast $colour) -lt 4.5) { return "Skolefarven $colour er for lys: hvid tekst skal have mindst 4,5:1 i kontrast. Vælg en mørkere farve." }
+        if ((Get-SetupWhiteContrast $colour) -lt 5.3) { return "Skolefarven $colour er for lys: kontrasten til hvid skal være mindst 5,3:1, så tekst kan læses. Vælg en mørkere farve." }
     }
     return $null
 }

@@ -410,7 +410,7 @@ body.desktop-studio.laser-studio.laser-workshop .tool {
 body.desktop-studio.laser-studio.laser-workshop .tool.active,
 body.desktop-studio.laser-studio.laser-workshop .tool[aria-pressed="true"] {
   border-color: var(--laser-burgundy);
-  background: #f7eeee;
+  background: var(--school-brand-soft, #f7eeee);
   color: var(--laser-burgundy-dark);
 }
 

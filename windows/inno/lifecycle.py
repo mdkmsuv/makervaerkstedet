@@ -116,15 +116,15 @@ def white_contrast(colour):
     return 1.05/(0.2126*linear[0]+0.7152*linear[1]+0.0722*linear[2]+0.05)
 
 def validate_brand_colours(profile):
-    """Optional private school colours: both or neither, #rrggbb and white text >= 4.5:1."""
+    """Optional private school colours: both or neither, #rrggbb and white contrast >= 5.3:1."""
     present=[key in profile for key in ('brand','brand_dark')]
     if not any(present):return
     require(all(present),'Angiv både brand og brand_dark, eller ingen af dem.')
     for key in ('brand','brand_dark'):
         require(isinstance(profile[key],str) and re.fullmatch(r'#[0-9a-f]{6}',profile[key]),
             f'{key} skal skrives som #rrggbb med små bogstaver, fx #1f5a8c.')
-        require(white_contrast(profile[key])>=4.5,
-            f'{key} er for lys: hvid tekst skal have mindst 4,5:1 i kontrast. Vælg en mørkere farve.')
+        require(white_contrast(profile[key])>=5.3,
+            f'{key} er for lys: kontrasten til hvid skal være mindst 5,3:1, så tekst kan læses. Vælg en mørkere farve.')
 
 def validate_server_profile(profile):
     required={'school_name','server_mode','role_ip','student_subnet','theme','machine'}

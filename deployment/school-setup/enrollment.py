@@ -41,7 +41,10 @@ MAX_REVOKE_INTENT_BYTES = 2 * 1024
 # never part of the public source; readers fall back to the theme.
 COLOUR = re.compile(r'#[0-9a-f]{6}')
 COLOUR_KEYS = ('brand', 'brand_dark')
-MIN_WHITE_CONTRAST = 4.5
+# 5.3:1 against white keeps brand-coloured text readable (>= 4.5:1) on the
+# light paper and tint backgrounds the pages use, not only white on brand.
+MIN_WHITE_CONTRAST = 5.3
+COLOUR_LABELS = {'brand': 'Hovedfarven', 'brand_dark': 'Den mørke farve'}
 
 class RevokeIntentSuperseded(RuntimeError):
     """Abort this operation after discarding only an obsolete validated intent."""
@@ -343,14 +346,17 @@ def validate_brand_colours(value):
     if not any(present):
         return {}
     if not all(present):
-        raise ValueError('Angiv både brand og brand_dark, eller ingen af dem.')
+        raise ValueError('Angiv både hovedfarven (brand) og den mørke farve (brand_dark), eller ingen af dem.')
     for key in COLOUR_KEYS:
         colour = value[key]
         if not isinstance(colour, str) or not COLOUR.fullmatch(colour):
-            raise ValueError(f'{key} skal skrives som #rrggbb med små bogstaver, fx #1f5a8c.')
+            raise ValueError(f'{COLOUR_LABELS[key]} ({key}) skal skrives som # og seks tegn, fx #1f5a8c.')
         if white_contrast(colour) < MIN_WHITE_CONTRAST:
-            raise ValueError(f'{key} er for lys: hvid tekst får kontrast '
-                             f'{white_contrast(colour):.2f}:1, men skal have mindst 4,5:1. Vælg en mørkere farve.')
+            ratio = f'{white_contrast(colour):.2f}'.replace('.', ',')
+            raise ValueError(f'{COLOUR_LABELS[key]} ({key}) er for lys: kontrasten til hvid er {ratio}:1, '
+                             'men skal være mindst 5,3:1, så tekst kan læses. Vælg en mørkere farve.')
+    if white_contrast(value['brand_dark']) < white_contrast(value['brand']):
+        raise ValueError('Den mørke farve (brand_dark) skal være mørkere end hovedfarven (brand).')
     return {key: value[key] for key in COLOUR_KEYS}
 
 
@@ -692,9 +698,12 @@ def main():
             except (OSError, ValueError):
                 raise ValueError('Skolefarvefilen kunne ikke læses som JSON.') from None
             if not value:
-                raise ValueError('Skolefarvefilen er tom. Brug --clear for at fjerne farverne.')
+                raise ValueError('Skolefarvefilen er tom. Vælg Fjern i skolemenuen for at fjerne farverne.')
+            if isinstance(value, dict):
+                # Colour pickers give upper-case hex; accept it where colours are set.
+                value = {key: item.strip().lower() if isinstance(item, str) else item for key, item in value.items()}
             colours = set_brand_colours(root, value)
-            print(f"Skolefarverne er gemt: brand {colours['brand']}, brand_dark {colours['brand_dark']}.")
+            print(f"Skolefarverne er gemt: hovedfarve {colours['brand']}, mørk farve {colours['brand_dark']}.")
         print('Serverens sider bruger farverne ved næste indlæsning. Elevcomputere, som allerede er '
               'tilmeldt, beholder deres farver, til de tilmeldes igen.')
     elif args.action == 'check':

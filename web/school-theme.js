@@ -17,6 +17,9 @@
        &&colour.test(appearance.brand)&&colour.test(appearance.brand_dark)){
       for(const name of ['--brand','--school-brand'])root.style.setProperty(name,appearance.brand);
       for(const name of ['--brand-dark','--school-brand-dark'])root.style.setProperty(name,appearance.brand_dark);
+      // Light tint for selected and hover states, so no pink remains beside a
+      // school colour that is not red.
+      for(const name of ['--brand-soft','--school-brand-soft'])root.style.setProperty(name,'color-mix(in srgb, '+appearance.brand+' 8%, #fff)');
     }
     document.querySelectorAll('[data-school-name]').forEach(node=>{node.textContent=appearance.school_name;});
     document.querySelectorAll('[data-school-footer]').forEach(node=>{node.textContent=appearance.school_name+' · Makerværkstedet · Udviklet af Mathias Kusk Damgaard · Kreditering: Klostermarksskolen';});
