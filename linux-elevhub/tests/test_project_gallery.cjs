@@ -46,7 +46,7 @@ async function main() {
  await page.locator('#search').fill('findes ikke');assert(await page.locator('#empty-projects').isVisible());
  await page.locator('#clear-search').click();
  await page.locator('#kind').selectOption('folie');assert.equal(await page.locator('.project').count(),1);
- await page.getByRole('button',{name:'Åbn i Folieværkstedet',exact:true}).click();
+ await page.getByRole('button',{name:'Åbn projekt i Folieværkstedet',exact:true}).click();
  await page.waitForURL('**/open?**');assert.equal(new URL(page.url()).searchParams.get('id'),'a'.repeat(32));
  await page.goto(url);
  await page.locator('#show-upload').click();
@@ -56,7 +56,7 @@ async function main() {
  await page.locator('#search').fill('Nyt SVG');await page.locator('.project img').waitFor({state:'visible'});
  assert.equal(await page.locator('.project').count(),1);assert.match(await page.locator('.project-expiry').innerText(),/Slettes/);
  await page.locator('#search').fill('');
- const output=path.join(root,'output/project-library-20261009/verification');fs.mkdirSync(output,{recursive:true});
+ const output=process.env.ELEVHUB_TEST_OUTPUT_DIR||path.join(root,'output/project-library-20261009/verification');fs.mkdirSync(output,{recursive:true});
  for(const width of [1366,1024,768,390]){
   await page.setViewportSize({width,height:900});
   await page.waitForFunction(w=>document.documentElement.clientWidth===w,width);
@@ -83,7 +83,7 @@ async function main() {
   assert.deepEqual(await page.locator('.category').evaluateAll(items=>items.map(item=>item.dataset.kind)),[kind]);
   await page.getByRole('button',{name:'Opdater',exact:true}).click();
   await page.evaluate(()=>window.addEventListener('message',event=>{if(event.data.type==='elevhub-open-project')window.picked=event.data;}));
-  await page.getByRole('button',{name:'Åbn her',exact:true}).first().click();
+  await page.getByRole('button',{name:/^Åbn her:/}).first().click();
   await page.waitForFunction(()=>window.picked?.revision===1);
   if(kind==='laser')await page.screenshot({path:path.join(output,'laser-picker.png')});
  }
@@ -91,7 +91,7 @@ async function main() {
  await page.locator('.project').first().waitFor();
  assert.deepEqual(await page.locator('.category').evaluateAll(items=>items.map(item=>item.dataset.kind)),['cadoodle']);
  assert.equal(await page.locator('body.picker').count(),0);
- await page.getByRole('button',{name:'Åbn i CaDoodle',exact:true}).click();
+ await page.getByRole('button',{name:'Åbn projekt i CaDoodle',exact:true}).click();
  await page.waitForURL('**/open?**');assert.equal(new URL(page.url()).searchParams.get('id'),'e'.repeat(32));
  // Older hosts can return an unfiltered list; the picker must still stay scoped.
  await page.route('**/api/list?workshop=folie',async route=>{

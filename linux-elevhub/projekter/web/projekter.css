@@ -12,3 +12,15 @@ header,main,footer{padding:26px max(24px,calc((100vw - 1280px)/2))}header{displa
 @media(max-width:420px){header{flex-wrap:wrap}.category-grid,.picker .category-grid{grid-template-columns:minmax(0,1fr)}.empty-projects{padding:20px;gap:12px}.empty-mark{width:44px}.empty-projects h2{font-size:20px}.category-header{align-items:flex-start}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 [hidden]{display:none!important}
+
+/* Names and actions stay visible in the embedded desktop project picker. */
+.picker .project{display:grid;grid-template-columns:88px minmax(0,1fr);align-content:start}
+.picker .project-preview{grid-row:1/4;width:88px;height:96px;aspect-ratio:auto;align-self:start;padding:8px}
+.picker .project-preview img{inset:8px;width:calc(100% - 16px);height:calc(100% - 16px)}
+.picker .preview-fallback{gap:4px;font-size:11px}
+.picker .preview-fallback svg{width:28px;height:28px}
+.picker .project-body{min-width:0;padding:10px 12px 2px}
+.picker .project h3{font-size:16px}
+.picker .project-folder{font-size:13px}
+.picker .project-footer{grid-column:2;padding:0 8px 4px 12px}
+.picker .project-expiry{grid-column:2;padding:5px 12px}

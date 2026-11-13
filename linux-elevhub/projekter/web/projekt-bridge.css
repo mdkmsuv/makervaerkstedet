@@ -8,3 +8,5 @@
 #elevhub-project-bar[hidden]{display:none!important}
 body.elevhub-project-ready.elevhub-project-inline{padding-top:0!important}
 @media(max-width:700px){#elevhub-project-bar{height:auto;min-height:54px;flex-wrap:wrap}#elevhub-project-dialog button{display:block;width:100%;margin:10px 0 0}}
+
+#elevhub-project-dialog [role=alert]:not(:empty)::before{content:"Fejl: ";font-weight:700}

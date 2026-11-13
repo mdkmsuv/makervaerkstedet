@@ -691,6 +691,7 @@
     .help-steps li { margin-bottom: 12px; padding-left: 4px; }
     .field-error { margin: 6px 0 0; color: #8c1d24; font-weight: 700; }
     #successHeading:focus { outline: none; }
+    .file-error:not(:empty)::before, .field-error:not(:empty)::before, .tool-message.error:not(:empty)::before { content: "Fejl: "; font-weight: 700; }
     .file-error { padding: 12px; color: #721c24; background: #fbeaec; border: 1px solid #d5a6aa; border-radius: 6px; }
 
     .visually-hidden {

@@ -24,7 +24,7 @@
     return n;
   };
   const button = (text, id) => node('button', text, {type:'button', id});
-  const say = (text, error = false) => { status.textContent = text; status.classList.toggle('error', error); };
+  const say = (text, error = false) => { status.textContent = error && text ? 'Fejl: ' + text : text; status.classList.toggle('error', error); };
   async function request(url, options = {}) {
     const r = await fetch(url, {cache:'no-store', ...options});
     if (!r.ok) {

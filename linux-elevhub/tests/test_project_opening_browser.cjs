@@ -44,7 +44,7 @@ const runId=crypto.randomUUID().slice(0,8);
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100" data-workshop="vinyl"><rect x="10" y="10" width="35" height="20" fill="black"/></svg>';
   const s=await save('skilt.svg',svg,'laser');
   await page.goto(base);await page.locator('#search').fill(s.name);
-  await page.getByRole('button',{name:'Åbn i Folieværkstedet',exact:true}).click();
+  await page.getByRole('button',{name:'Åbn projekt i Folieværkstedet',exact:true}).click();
   await page.waitForURL(fixture.urls.folie+'**');
   await page.waitForFunction(()=>window.ElevhubProjectAdapter);
   await acceptFreshImport();

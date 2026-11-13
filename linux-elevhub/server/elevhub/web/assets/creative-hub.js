@@ -16,22 +16,25 @@ function statusLabel(app) {
 function kort(app) {
   const info=workshopInfo[app.id]||{name:app.navn,tag:app.kategori,intro:app.beskrivelse,image:'hub-bauhaus-v1.png'};
   const el=node('article','app'); el.dataset.app=app.id;
-  const visual=node('a','app-image');visual.href='#vaerksted/'+encodeURIComponent(app.id);visual.setAttribute('aria-label','Se idéer til '+info.name);
+  const aboutHref='#vaerksted/'+encodeURIComponent(app.id);
+  const open=e=>aabn(e,app,app.id==='3dprint');
+  const visual=node('button','app-image');visual.type='button';visual.disabled=!isOpen(app);visual.setAttribute('aria-label','Åbn '+info.name);visual.addEventListener('click',open);
   const img=node('img');img.src='assets/'+info.image;img.alt='';img.loading='lazy';img.width=600;img.height=400;
-  visual.append(img,node('span','app-status'+(isOpen(app)?'':' closed'),statusLabel(app)));
+  visual.append(img);
+  const picture=node('div','app-visual');picture.append(visual,node('span','app-status'+(isOpen(app)?'':' closed'),statusLabel(app)));
   const copy=node('div','app-copy');
-  const name=node('h3');const title=node('a',null,info.name);title.href=visual.href;name.append(title);
+  const name=node('h3');const title=node('button','app-title',info.name);title.type='button';title.disabled=!isOpen(app);title.setAttribute('aria-label','Åbn '+info.name);title.addEventListener('click',open);name.append(title);
   copy.append(node('p','category',info.tag),name,node('p','app-description',info.short||info.intro));
   const actions=node('div','app-actions');const launch=node('button','app-open',isOpen(app)?'Åbn '+info.name+' →':statusLabel(app));
-  launch.disabled=!isOpen(app);launch.setAttribute('aria-label',(isOpen(app)?'Åbn ':'')+info.name+(isOpen(app)?'':': '+statusLabel(app)));launch.addEventListener('click',e=>aabn(e,app,app.id==='3dprint'));
-  const more=node('a','app-about','Få idéer');more.href=visual.href;more.setAttribute('aria-label','Få idéer til '+info.name);actions.append(launch,more);copy.append(actions);el.append(visual,copy);return el;
+  launch.disabled=!isOpen(app);launch.setAttribute('aria-label',(isOpen(app)?'Åbn ':'')+info.name+(isOpen(app)?'':': '+statusLabel(app)));launch.addEventListener('click',open);
+  const more=node('a','app-about','Få idéer');more.href=aboutHref;more.setAttribute('aria-label','Få idéer til '+info.name);actions.append(launch,more);copy.append(actions);el.append(picture,copy);return el;
 }
 function renderCards() {
   const focus=document.activeElement;const appId=focus?.closest('[data-app]')?.dataset.app;const control=focus?.className;
   const filtered=allWorkshops.filter(a=>activeFilter==='alle'||workshopInfo[a.id]?.group===activeFilter);
   const grid=document.getElementById('apps');grid.replaceChildren(...filtered.map(kort));
   document.getElementById('empty-filter').hidden=filtered.length>0||allWorkshops.length===0;
-  document.getElementById('workshop-count').textContent=filtered.length+' værksteder';
+  document.getElementById('workshop-count').textContent=filtered.length+(filtered.length===1?' værksted':' værksteder');
   if(appId&&control){const card=Array.from(grid.children).find(c=>c.dataset.app===appId);Array.from(card?.querySelectorAll('a,button')||[]).find(c=>c.className===control)?.focus({preventScroll:true});}
 }
 function tegn(apps) {
@@ -78,7 +81,7 @@ function routeWorkshop(){
 }
 window.CreativeHub={connection(ok,offlineMode=false){connected=ok;offline=offlineMode;if(!ok){seneste='';if(selectedWorkshop)updateDetailAccess();}},isOffline(){return offline;}};
 document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{activeFilter=button.dataset.filter;document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));renderCards();}));
-document.querySelectorAll('[data-discover]').forEach(button=>button.addEventListener('click',()=>{const id=button.dataset.discover;if(allWorkshops.some(a=>a.id===id))location.hash='vaerksted/'+id;else document.getElementById('fejl').textContent='Dette værksted er ikke tilgængeligt på computeren endnu.';}));
+document.querySelectorAll('[data-discover]').forEach(button=>button.addEventListener('click',()=>{const id=button.dataset.discover;if(allWorkshops.some(a=>a.id===id))location.hash='vaerksted/'+id;else visFejl('Dette værksted er ikke tilgængeligt på computeren endnu.',true);}));
 document.getElementById('detail-start').addEventListener('click',e=>{const app=allWorkshops.find(a=>a.id===selectedWorkshop);if(app&&isOpen(app))aabn(e,app,app.id==='3dprint');});
 document.getElementById('detail-model3d').addEventListener('click',e=>{const app=allWorkshops.find(a=>a.id===selectedWorkshop);if(app&&app.id==='3dprint'&&isOpen(app))aabn(e,app,true);});
 window.addEventListener('hashchange',routeWorkshop);

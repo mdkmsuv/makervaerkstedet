@@ -5,8 +5,8 @@
 {% set kb = kiosk_brand | default('', true) | string %}{% set kd = kiosk_brand_dark | default('', true) | string %}{% set skolefarver = kb | length == 7 and kd | length == 7 and kb[0] == '#' and kd[0] == '#' and kb[1:].strip('0123456789abcdef') == '' and kd[1:].strip('0123456789abcdef') == '' %}{% set skolefarver_stil = (' style="--brand:' ~ kb ~ ';--deep:' ~ kd ~ ';--brand-dark:' ~ kd ~ '"') if skolefarver else '' %}
 <body data-theme="{{ kiosk_theme | default('red') }}"{{ skolefarver_stil }}>
 <a class="skip-link" href="#workshops">Spring til værkstederne</a>
-<header class="hub-header" data-theme="{{ kiosk_theme | default('red') }}"{{ skolefarver_stil }}><a class="brand" href="#" aria-label="Værkstedets forside"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-name"><span>{{ kiosk_school_name | default('Makerværkstedet', true) | e }}</span><strong>Værkstedet<span class="brand-dot">.</span></strong></span></a><nav class="header-actions" aria-label="Hovedmenu"><a href="#workshops">Værksteder</a><a href="#opdag">Få en idé</a><a class="project-link" data-project-link href="{{ kiosk_lokale_app_urler.projekter }}">Find mit projekt <span aria-hidden="true">↗</span></a></nav></header>
-<main><p id="fejl" class="status" role="alert"></p><div id="hub-home">
+<header class="hub-header" data-theme="{{ kiosk_theme | default('red') }}"{{ skolefarver_stil }}><a class="brand" href="#" title="Til forsiden"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></span><span class="brand-name"><span>{{ kiosk_school_name | default('Makerværkstedet', true) | e }}</span><strong>Værkstedet<span class="brand-dot">.</span></strong></span></a><nav class="header-actions" aria-label="Hovedmenu"><a href="#workshops">Værksteder</a><a href="#opdag">Få en idé</a><a class="project-link" data-project-link href="{{ kiosk_lokale_app_urler.projekter }}">Find mit projekt <span aria-hidden="true">↗</span></a></nav></header>
+<main><div id="kiosk-notice" class="kiosk-notice" hidden><span class="notice-icon" aria-hidden="true">!</span><p id="fejl" role="alert" aria-atomic="true"></p><button id="kiosk-dismiss" type="button" aria-label="Luk besked">×</button></div><div id="hub-home">
 <section class="hub-hero" aria-labelledby="home-title"><div class="hero-copy"><p class="eyebrow">{{ kiosk_school_name | default('Makerværkstedet', true) | e }} · VÆRKSTEDER</p><h1 id="home-title">Hvad vil du<br><em>lave i dag?</em></h1><p>Byg en robot, tegn et mærke, eller lav et spil.</p><a class="primary" href="#workshops">Vælg et værksted <span aria-hidden="true">↓</span></a></div><figure class="hero-photo"><img src="assets/hub-bauhaus-v1.png" alt="En rover, en træraket og en paprobot på et bord fuldt af byggeidéer." width="1536" height="1024" fetchpriority="high"><figcaption><strong>Hvad vil du bygge?</strong></figcaption></figure></section>
 <section id="workshops" class="workshop-section" aria-labelledby="workshops-title"><div class="section-heading"><h2 id="workshops-title" tabindex="-1">Vælg et værksted</h2><span id="workshop-count" class="workshop-count" role="status"></span></div><div class="workshop-toolbar" role="group" aria-label="Vis værksteder"><button class="filter-button" data-filter="alle" aria-pressed="true">Det hele</button><button class="filter-button" data-filter="byg" aria-pressed="false">Tegn & byg</button><button class="filter-button" data-filter="kode" aria-pressed="false">Spil, kode & strøm</button><button class="filter-button" data-filter="ide" aria-pressed="false">Find på & undersøg</button></div>
 <div id="venter" class="besked" role="status"><h2>Henter værksteder …</h2></div><div id="offline" class="besked" role="status" hidden><h2>Ingen forbindelse</h2><p>Vi prøver igen automatisk. Spørg din lærer, hvis det bliver ved.</p></div><div id="ingen" class="besked" hidden><h2>Værkstederne er ikke klar endnu.</h2><p>Din lærer hjælper med at gøre dem klar.</p></div><p id="catalog-status" class="status" role="status"></p><p id="catalog-error" class="status" role="alert"></p><div id="apps" class="apps" hidden></div><p id="empty-filter" class="empty-filter" hidden>Prøv en anden gruppe, eller vælg Det hele.</p></section>
@@ -72,10 +72,28 @@ async function hentKatalog() {
 }
 // Write a message only when it changes: the page polls every 3 s, and an
 // alert that is rewritten with the same text is announced again each time.
-function visFejl(tekst) {
+let handlingsFejl = '', forbindelsesBesked = '', lukketBesked = '', beskedRetur = null;
+function visFejl(tekst, handling = false) {
+  if (handling) {
+    handlingsFejl = tekst;
+    lukketBesked = '';
+    if (tekst) beskedRetur = document.activeElement;
+  } else forbindelsesBesked = tekst;
+  const besked = handlingsFejl || forbindelsesBesked;
   const element = document.getElementById('fejl');
-  if (element.textContent !== tekst) element.textContent = tekst;
+  if (element.textContent !== besked) { element.textContent = besked; lukketBesked = ''; }
+  const notice = document.getElementById('kiosk-notice');
+  notice.classList.toggle('is-error', Boolean(handlingsFejl));
+  notice.hidden = !besked || besked === lukketBesked;
 }
+document.getElementById('kiosk-dismiss').addEventListener('click', () => {
+  lukketBesked = document.getElementById('fejl').textContent;
+  document.getElementById('kiosk-notice').hidden = true;
+  const fallback = document.getElementById('workshop-detail').hidden ? 'workshops-title' : 'detail-title';
+  const focus = beskedRetur?.isConnected && beskedRetur.getClientRects().length && !beskedRetur.disabled
+    ? beskedRetur : document.getElementById(fallback);
+  focus.focus({preventScroll:true});
+});
 function lokaltApp(app) {
   return {id: app.id, navn: app.navn, type: 'lokal', local_start: app.start, aaben: true, klar: true,
     requires_internet: app.kraever_internet, offline_unavailable: offlineMode && !app.offline};
@@ -188,17 +206,18 @@ document.querySelectorAll('[data-project-link]').forEach(link => link.addEventLi
   event.preventDefault();
   if (starter) return;
   starter = true;
+  visFejl('', true);
   try {
     if (await kioskHandling('/finish')) location.assign(link.href);
   } catch (error) {
-    visFejl('Dit arbejde er stadig åbent. ' + error.message);
+    visFejl('Dit arbejde er stadig åbent. ' + error.message, true);
   } finally { starter = false; }
 }));
 async function aabn(e, app, model3d = false) {
   e.preventDefault();
   if (starter) return;
   starter = true;
-  visFejl('');
+  visFejl('', true);
   // A plain browser window is created synchronously to avoid popup blocking.
   // Remove its opener before any external navigation; no tokens enter its URL.
   let vindue = null;
@@ -241,7 +260,7 @@ async function aabn(e, app, model3d = false) {
     } else { location.assign(url); }
   } catch (fejl) {
     if (vindue) vindue.close();
-    visFejl(fejl.name === 'AbortError' ? 'Serveren svarer ikke lige nu. Prøv igen.' : fejl.message);
+    visFejl(fejl.name === 'AbortError' ? 'Serveren svarer ikke lige nu. Prøv igen.' : fejl.message, true);
   } finally { starter = false; }
 }
 async function opdater() {

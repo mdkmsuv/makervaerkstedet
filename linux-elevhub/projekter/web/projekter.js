@@ -1,7 +1,6 @@
 'use strict';
 const $=id=>document.getElementById(id), BASE='/_elevhub/projekter/api/';
-const labels={'3dprint':'3D-v\u00e6rkstedet',laser:'Laser',folie:'Folie',scratch:'Scratch',cadoodle:'3D / CaDoodle',microbit:'micro:bit',datatraener:'Datatræneren',kredsloeb:'Kredsløb',andet:'Andre filer'};
-const option3d=document.createElement('option');option3d.value='3dprint';option3d.textContent=labels['3dprint'];document.getElementById('kind').append(option3d);
+const labels={'3dprint':'3D-værksted',laser:'Laser',folie:'Folie',scratch:'Scratch',cadoodle:'3D-filer (STL m.fl.)',microbit:'micro:bit',datatraener:'Datatræneren (ældre projekter)',kredsloeb:'Kredsløb (ældre projekter)',andet:'Andre filer'};
 const parameters=new URL(location.href).searchParams;
 const requestedPicker=parameters.get('pick');
 const picker=Object.hasOwn(labels,requestedPicker)?requestedPicker:null;
@@ -17,6 +16,14 @@ function node(tag,text,cls){const n=document.createElement(tag);if(text!==undefi
 async function api(path,options={}){const r=await fetch(BASE+path,{cache:'no-store',...options});if(!r.ok){let e;try{e=await r.json();}catch{}throw Error(e?.error||'Projektbiblioteket svarer ikke. Prøv igen.');}return r.json();}
 function fileUrl(p,revision){return BASE+'file?'+new URLSearchParams({id:p.id,revision:revision||p.revision});}
 function shelfKind(p){const app=p.opening?.program;return app==='3dprint'&&p.opening?.extension==='.stl'?'cadoodle':labels[app]?app:p.kind==='datatraener'?'datatraener':'andet';}
+function updateFilters(){
+ if(scope||invalidScope)return;
+ const selected=$('kind').value,present=new Set(projects.map(shelfKind));
+ const all=node('option','Alle værksteder');all.value='';
+ $('kind').replaceChildren(all,...categoryOrder.filter(kind=>present.has(kind)).map(kind=>{const option=node('option',labels[kind]);option.value=kind;return option;}));
+ $('kind').value=present.has(selected)?selected:'';
+ $('kind').disabled=!present.size;
+}
 function canOpen(p){return !invalidScope&&(!scope||shelfKind(p)===scope);}
 function open(p,revision){
  if(!canOpen(p))return;
@@ -37,8 +44,8 @@ function savedAgo(timestamp){
 }
 function projectCard(p){
  const kind=shelfKind(p),c=node('article',undefined,'project');c.dataset.kind=kind;c.dataset.id=p.id;
- const preview=node('button',undefined,'project-preview');preview.type='button';preview.setAttribute('aria-label','Åbn '+p.name);preview.onclick=()=>open(p);
- const fallback=node('span',undefined,'preview-fallback');fallback.append(icon(kind),node('span','Intet projektbillede'));preview.append(fallback);
+ const preview=node('button',undefined,'project-preview');preview.type='button';preview.setAttribute('aria-label','Åbn projekt: '+p.name);preview.onclick=()=>open(p);
+ const fallback=node('span',undefined,'preview-fallback');fallback.setAttribute('aria-hidden','true');fallback.append(icon(kind),node('span','Intet projektbillede'));preview.append(fallback);
  const img=node('img');img.alt='';img.loading='lazy';img.decoding='async';img.style.opacity='0';
  img.onload=()=>{img.style.opacity='1';fallback.hidden=true;};img.onerror=()=>img.remove();
  img.src=BASE+'preview?'+new URLSearchParams({id:p.id,revision:p.revision});preview.append(img);c.append(preview);
@@ -46,7 +53,7 @@ function projectCard(p){
  const body=node('div',undefined,'project-body');body.append(node('h3',p.name),node('p',p.folder,'project-folder'));
  const saved=node('p',savedAgo(p.modified),'project-modified');saved.title='Gemt '+date(p.modified)+' · version '+p.revision;body.append(saved);c.append(body);
  const footer=node('div',undefined,'project-footer');
- const b=node('button',picker?'Åbn her':'Åbn projekt →','open-project');b.setAttribute('aria-label',picker?'Åbn her':'Åbn i '+(p.opening?.label||labels[p.kind]||'Filviseren'));b.onclick=()=>open(p);footer.append(b);
+ const b=node('button',picker?'Åbn her':'Åbn projekt →','open-project');b.setAttribute('aria-label',picker?'Åbn her: '+p.name:'Åbn projekt i '+(p.opening?.label||labels[p.kind]||'Filviseren'));b.onclick=()=>open(p);footer.append(b);
  const menu=node('details',undefined,'project-menu'),summary=node('summary','⋯');summary.setAttribute('aria-label','Flere muligheder for '+p.name);menu.append(summary);
  const options=node('div',undefined,'menu-items'),download=node('a','Hent fil','button secondary');download.href=fileUrl(p);download.download=p.filename;options.append(download);
  const versions=node('button','Tidligere versioner','secondary');versions.onclick=()=>{menu.open=false;history(p);};options.append(versions);menu.append(options);footer.append(menu);c.append(footer);
@@ -76,7 +83,7 @@ function render(){
  $('clear-search').hidden=!available.length;
 }
 $('clear-search').onclick=()=>{$('search').value='';if(!scope)$('kind').value='';render();$('search').focus();};
-async function refresh(){if(invalidScope){$('status').textContent='Værkstedet kunne ikke genkendes. Åbn projektoversigten fra værkstedet igen.';return;}const request=++refreshNumber;try{const [list,config]=await Promise.all([api('list'+(scope?'?workshop='+scope:'')),api('config')]);if(request!==refreshNumber)return;projects=list.projects;apps=config.apps;render();if(list.scan_error)$('status').textContent+=' · '+list.scan_error;}catch(e){if(request===refreshNumber)$('status').textContent=e.message;}}
+async function refresh(){if(invalidScope){$('status').textContent='Værkstedet kunne ikke genkendes. Åbn projektoversigten fra værkstedet igen.';return;}const request=++refreshNumber;try{const [list,config]=await Promise.all([api('list'+(scope?'?workshop='+scope:'')),api('config')]);if(request!==refreshNumber)return;projects=list.projects;apps=config.apps;updateFilters();render();if(list.scan_error)$('status').textContent+=' · '+list.scan_error;}catch(e){if(request===refreshNumber)$('status').textContent=e.message;}}
 $('show-upload').onclick=()=>{uploadId=null;$('upload-error').textContent='';$('upload').showModal();};$('cancel-upload').onclick=()=>{if(!working)$('upload').close();};$('close-history').onclick=()=>$('history').close();$('refresh').onclick=refresh;$('search').oninput=$('kind').onchange=render;
 if(parameters.has('pick'))document.body.classList.add('picker');
 if(scope||invalidScope){$('kind').value=scope||'';$('kind').disabled=true;$('kind').closest('label').hidden=true;$('show-upload').hidden=true;}
