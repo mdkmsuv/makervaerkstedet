@@ -9,7 +9,7 @@ linjenumre; søg efter de nævnte navne med `rg`.
 ## Det vigtigste først
 
 - **En app er en lokal webside på elevenheden.** Den åbnes fra startsiden
-  «Værkstedet» i Chromium på `http://127.0.0.1:<port>/` og skal virke, når
+  «Makerværkstedet · Værksteder» i Chromium på `http://127.0.0.1:<port>/` og skal virke, når
   skolens server er væk, også efter kold opstart.
 - **Serveren står kun for opdateringer, administration og køer.** En app må
   ikke hente sin brugerflade, sine data eller sine beregninger fra serveren.
@@ -47,7 +47,7 @@ sikkerhedsændring og kræver særskilt aftale.
 
 **Navigation og afslutning**
 
-- Sidens `<title>` må ikke begynde med `Værkstedet · Makerværkstedet`; den
+- Sidens `<title>` må ikke begynde med `Makerværkstedet · Værksteder`; den
   tekst bruger elevbjælken til at genkende startsiden.
 - «Til start» går tilbage i browserhistorikken. Brug ikke
   `location.replace` væk fra startsiden, og åbn ikke nye vinduer.

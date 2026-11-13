@@ -106,6 +106,8 @@ Payload for hver udgivet version gemmes i `bygninger/`, så A altid findes.
 
 Testen kører samme kode som installeren, men klikker ikke gennem installerens sider. Ændres siderne (`Makervaerkstedet.iss`), skal EXE-filen også åbnes i hånden på test-VM'en.
 
+Scripts til de øvrige testkørsler (laserstation, serveropdatering, WSL-elevpakker, browserprøver, ISO-installation og signering) ligger i `scripts/release_qa/`; rækkefølgen står i [README](../scripts/release_qa/README.md).
+
 ### Port 6 — Elevpakker i WSL
 Rører opgaven elevsystemet (alt, der ender i pakken `makervaerkstedet-elev` eller `makervaerkstedet-updater`), hæves
 `CORE_VERSION` og `UPDATER_VERSION` i `linux-elevhub/packaging/prepare_inputs.py`, og pakkerne bygges i WSL-Debian som root:
