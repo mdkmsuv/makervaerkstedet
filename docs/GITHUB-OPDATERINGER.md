@@ -46,6 +46,9 @@ Skolens skin er en privat del af installationen. Det samme gælder
 konfiguration, tilmelding, certifikater og nøgler, maskinopsætning,
 elevprojekter, køer, workflows og historik. Disse data skal bevares og
 sikkerhedskopieres sammen med opdateringstjenestens lokale opsætning.
+Eneste undtagelse er den engangsovergang, der flytter en eksisterende
+elevcomputer ind i 2.0: den sletter gamle elevprojekter, men bevarer køer og
+ventende afleveringer (se `linux-elevhub/installation/debian/OVERGANG-OG-VEDLIGEHOLDELSE.md`).
 En ny download fra GitHub kan genskabe programfilerne, men ikke skolens data.
 Se [backup og gendannelse](MAKERSPACE-BACKUP.md) og
 [lokal skoleprofil](SKOLETILPASNING.md).

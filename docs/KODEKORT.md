@@ -112,7 +112,7 @@ Hvilke filer der kommer med:
 - `ansible/roles/kiosk/templates/`: `start.html.j2` (startsiden), `kiosk-session.j2`, systemd-tjenester, Chromium-politik.
 - `projekter/`: lokal projekthylde, åbning af projekter i det rigtige værksted.
 - `administration/`: `apt_client.py`, `template_activation.py`, `runtime_checks.py`, `os_maintenance.py`.
-- `installation/debian/`: ny ren installation (`build_iso.py`, `install_payload.py`, `enroll_device.py`) og overgang fra ældre installation (`bootstrap_existing.py`).
+- `installation/debian/`: ny ren installation (`build_iso.py`, `install_payload.py`, `enroll_device.py`) og overgang fra ældre installation (`bootstrap_existing.py`, som også sletter gamle elevprojekter én gang).
 - `packaging/`: byg af de fire `.deb`-pakker og installationsporten (`build_from_source.sh`).
 
 ### 3.6 Windows-installation

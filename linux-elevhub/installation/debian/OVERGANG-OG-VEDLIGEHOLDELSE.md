@@ -37,7 +37,8 @@ sha256sum plan.json
 
 Første kommando er kun inspektion. Planen binder også install-lock.json med SHA256 og kræver metadata/poolfiler til alle fire pakker. Den indeholder hashes og status, ikke
 root-tokenets indhold. Gennemgå den konkrete identitet, session og de gamle
-bindinger. Gem den gennemgåede plans SHA256. Først en særskilt autoriseret
+bindinger og `pupil_projects` / `pupil_projects_summary`: de elevmapper og det
+antal filer, der slettes. Gem den gennemgåede plans SHA256. Først en særskilt autoriseret
 installation bruger:
 
 ```sh
@@ -50,7 +51,8 @@ stopper elevsession/lokale tjenester i vedligeholdelsen. Kun de navngivne gamle
 `elevhub-full-update.service`, `elevhub-firstboot.service`,
 `elevhub-onboarding.service` og `getty@tty1.service.d/zz-full-update.conf`
 arkiveres, hvis de findes; de tre gamle tjenester maskeres. Den præcise installerede cadoodle1.9.6/status bindes i planen. Før kioskændring kræves dpkg --no-act --remove cadoodle; efter ny pakkeinstallation fjernes kun denne kendte pakke med dpkg --remove cadoodle. Reverse-dependencyproblemer afvises uden force. Der køres ingen
-purge/autoremove eller sletning af elevprodukter, køer eller historik. En maskine uden pakken fjerner intet; andre installerede CaDoodle-versioner kræver manuel vurdering. Andre gamle
+purge/autoremove eller sletning af køer eller historik. Elevprojekter slettes
+dog én gang, se "Gamle elevprojekter slettes ved overgangen" nedenfor. En maskine uden pakken fjerner intet; andre installerede CaDoodle-versioner kræver manuel vurdering. Andre gamle
 opdaterings-/bootbindinger skal afklares i piloten og føjes til en ny konkret
 reviewet understøttelse, før en maskine med dem accepteres.
 
@@ -60,6 +62,62 @@ hverken en ny identitet eller en skjult driftskonto. Ny firstboot, lokale
 tjenester og timer aktiveres. Timeren startes først efter målt runtime-health.
 Skoleserveren skal også have enheden bundet til student/debian-amd64 og en
 ønsket udgivelse. Almindelige apt-opdateringer overtager derefter.
+
+### Gamle elevprojekter slettes ved overgangen
+
+Ejerens beslutning (13. november 2026): gamle elevprojekter må bortfalde.
+Overgangen til 2.0 sletter derfor **alle elevprojekter** på computeren, så
+ingen gammel fil kan åbnes i de nye værksteder. Det gælder alt i elevens
+`Projekter`-mappe (`/home/elev/Projekter`): gamle CaDoodle-projekter, STL- og
+SVG-filer fra laser og folie, filer hentet i browseren (browseren gemmer altid
+dér, når der ikke sidder en USB-nøgle i) og projektarkivets versioner og
+oversigt i `Projekter/.elevhub`. Har den lokale projekttjeneste andre
+`--projects`/`--state`-stier under `/home/elev`, tømmes de også. Selve mapperne
+bliver stående tomme med samme ejer og rettigheder, så projekttjenesten starter
+rent. Mangler de, oprettes de tomme.
+
+**Skal noget gemmes, så kopiér det til en USB-nøgle, før overgangen køres.**
+Bed elever og lærere om det i god tid. Bagefter kan filerne ikke hentes tilbage
+fra computeren.
+
+Det bevares: skoleprofil, certifikater, enhedens identitet og tilmelding,
+maskinopsætning, elevkontoen og dens automatiske login, alt under
+`/etc/elevhub` og nøgler, og **ventende afleveringer** i designværkstedets
+udbakke (`/var/lib/elevhub-design/udbakke`, også `afvist/` og `print/`) og andre
+køer. Browserprofilen røres ikke. Almindelige apt-opdateringer i 2.0 sletter
+aldrig elevprojekter; sletningen sker kun i denne overgang. En ren ISO-
+installation starter i forvejen tom.
+
+Sådan er sletningen sikret:
+
+- Planen viser de præcise stier, deres ejer og rettigheder og et antal (filer,
+  mapper, andre poster og bytes). Den indeholder ingen filnavne.
+- Stierne, ejer og rettigheder er en del af det hashbundne inventar. Er en sti
+  ændret, blevet til et link, har fået en anden ejer eller rettighed, afviser
+  `--apply` før første ændring. Nyt elevarbejde mellem plan og apply ændrer kun
+  antallet og slettes med.
+- Kun en elevsti under `/home/elev` accepteres. Overlappende stier (bortset fra
+  arkivet direkte i projektmappen), links som projektmappe eller arkiv, en anden
+  ejer end elevkontoen og et andet filsystem (mountpoint) afvises.
+- Sletningen sker først efter, at de nye pakker er installeret og kontrolleret,
+  og kun når den lokale projekttjeneste og elevens session (`user-UID.slice`)
+  er stoppet. Inventaret kontrolleres igen lige før, også om den nye
+  projekttjeneste stadig bruger de samme stier. Afvigelse giver `failed.json`
+  og manuel vurdering.
+- Links inde i mapperne følges aldrig; selve linket fjernes. Der krydses ikke
+  ind i et andet filsystem.
+- `complete.json` og svaret fra `--apply` angiver kun antal under
+  `pupil_projects_wiped`.
+
+Det slettes ikke: en tidligere browser-downloadmappe som `~/Downloads` eller
+`~/Hentede filer` (kioskens browserpolitik peger på `Projekter`; en mappe fra
+en ældre opsætning er ikke en kendt sti),
+CaDoodles egen eventuelle arbejdskopi uden for `Projekter` (programmet fjernes,
+så den kan ikke åbnes), browserens lokale sikkerhedskopier (IndexedDB og
+localStorage i Chromium-profilen, som ikke kan afgrænses sikkert) og en lokal
+projektbackup (restic), hvis en skole har slået den til.
+
+### Kvittering og fejl
 
 Forsøget og de præcise tidligere filer ligger rootbeskyttet under
 `/var/lib/makervaerkstedet-updater/bootstrap`. `complete.json` kræver korrekt

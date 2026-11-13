@@ -3,11 +3,14 @@
 
 An operator reviews the exact inventory and pins its plan SHA before --apply.
 Failed/partial attempts require manual review; no automatic retry or data purge.
+The single deliberate deletion is the one-time wipe of the pupil's project
+folders (plan-bound paths, counts only in the receipt); queues stay.
 """
 import argparse
 import hashlib
 import json
 import os
+import posixpath
 from pathlib import Path
 import importlib.util
 import re
@@ -38,6 +41,17 @@ IDENTITY_FILES=("etc/elevhub/enhed.json","etc/elevhub/ca.pem","etc/elevhub/kiosk
 KEY_SHA="5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f"
 APT=["/usr/bin/apt-get","-o","APT::Get::AllowUnauthenticated=false","-o","Acquire::AllowInsecureRepositories=false","-o","Acquire::AllowDowngradeToInsecureRepositories=false","-o","Acquire::Check-Valid-Until=true","-o","Acquire::Check-Date=true","-o","APT::Update::Error-Mode=any"]
 STATE="var/lib/makervaerkstedet-updater/bootstrap"
+# One-time wipe of pupil projects when an existing computer enters 2.0 (owner's
+# decision 13 Nov 2026). Only these exact paths of the pupil account are wiped:
+# the browser's fixed download folder ~/Projekter (elevhub-regler), the local
+# project service's --projects and its archive --state. Outboxes, /etc/elevhub,
+# keys and the account itself are never touched. Normal apt updates never wipe.
+PUPIL="elev"
+PUPIL_HOME="/home/"+PUPIL
+PROJECT_SERVICE="etc/systemd/system/elevhub-lokal.service"
+SAFE_PROJECT_PATH=re.compile(r"/[A-Za-z0-9_./-]+")
+MAX_PROJECT_DEPTH=256
+WIPE_COUNTS=("files","directories","other","bytes")
 
 def require(ok,code):
     if not ok:raise ValueError(code)
@@ -79,6 +93,149 @@ def retired_cadoodle(run):
     require(status=="install ok installed","retired_cadoodle_manual_repair_required")
     require(version=="1.9.6","unsupported_retired_cadoodle_version")
     return {"package":"cadoodle","version":version,"status":status}
+
+def pupil_account(root):
+    for line in regular(root/"etc/passwd").decode().splitlines():
+        fields=line.split(":")
+        if len(fields)==7 and fields[0]==PUPIL:
+            require(fields[2].isdigit() and fields[3].isdigit() and int(fields[2])!=0,"invalid_pupil_account")
+            require(fields[5]==PUPIL_HOME,"unsupported_pupil_home")
+            return int(fields[2]),int(fields[3])
+    raise ValueError("pupil_account_missing")
+
+def project_service_paths(root):
+    """The same --projects/--state the 2.0 renderer carries over from the old unit."""
+    projects,state=PUPIL_HOME+"/Projekter",None
+    unit=root/PROJECT_SERVICE
+    require(not unit.is_symlink(),"linked_project_service")
+    if unit.exists():
+        commands=[line[len("ExecStart="):] for line in regular(unit).decode().splitlines() if line.startswith("ExecStart=")]
+        require(len(commands)==1,"ambiguous_project_service")
+        argv=shlex.split(commands[0])
+        require(not any(a.startswith(("--projects=","--state=")) for a in argv),"ambiguous_project_paths")
+        for flag in ("--projects","--state"):
+            require(argv.count(flag)<=1,"ambiguous_project_paths")
+            if flag in argv:
+                index=argv.index(flag);require(index+1<len(argv),"invalid_project_paths")
+                if flag=="--projects":projects=argv[index+1]
+                else:state=argv[index+1]
+    return projects,state or projects+"/.elevhub"
+
+DIRECTORY_FLAGS=None
+def open_directory(name,parent):
+    global DIRECTORY_FLAGS
+    if DIRECTORY_FLAGS is None:DIRECTORY_FLAGS=os.O_RDONLY|os.O_DIRECTORY|os.O_NOFOLLOW|os.O_CLOEXEC
+    try:return os.open(name,DIRECTORY_FLAGS,dir_fd=parent)
+    except OSError:raise ValueError("linked_or_missing_pupil_project_path") from None
+
+def open_parent(root,path,uid):
+    """Parent directory of path; no component is followed as a link."""
+    fd=os.open(root,os.O_RDONLY|os.O_DIRECTORY)
+    try:
+        current=""
+        for part in path.strip("/").split("/")[:-1]:
+            child=open_directory(part,fd);os.close(fd);fd=child;current+="/"+part
+            info=os.fstat(fd)
+            if current==PUPIL_HOME or current.startswith(PUPIL_HOME+"/"):
+                require(info.st_uid==uid,"unexpected_pupil_project_owner")
+            else:require(info.st_uid==0 and not info.st_mode&0o022,"unprotected_pupil_project_parent")
+        return fd
+    except BaseException:
+        os.close(fd);raise
+
+def walk_projects(fd,device,counts,*,delete,skip=(),depth=0):
+    """Count or remove everything below fd. Links are never followed; a link is
+    itself removed. Another filesystem or an excessive depth is refused."""
+    require(depth<=MAX_PROJECT_DEPTH,"pupil_projects_too_deep")
+    with os.scandir(fd) as entries:names=[entry.name for entry in entries]
+    for name in names:
+        if name in skip:continue
+        info=os.stat(name,dir_fd=fd,follow_symlinks=False)
+        require(info.st_dev==device,"pupil_project_mount_inside")
+        if stat.S_ISDIR(info.st_mode):
+            child=open_directory(name,fd)
+            try:
+                opened=os.fstat(child)
+                require((opened.st_dev,opened.st_ino)==(info.st_dev,info.st_ino),"pupil_projects_changed")
+                walk_projects(child,device,counts,delete=delete,depth=depth+1)
+            finally:os.close(child)
+            if delete:os.rmdir(name,dir_fd=fd)
+            counts["directories"]+=1
+        else:
+            if delete:os.unlink(name,dir_fd=fd)
+            if stat.S_ISREG(info.st_mode):counts["files"]+=1;counts["bytes"]+=info.st_size
+            else:counts["other"]+=1
+
+def nested_names(path,paths):
+    return {posixpath.basename(other) for other in paths if posixpath.dirname(other)==path}
+
+def pupil_projects(root):
+    """Binding of the exact project paths (for the plan inventory) and a
+    count-only summary. No pupil file name leaves this function."""
+    uid,gid=pupil_account(root)
+    projects,state=project_service_paths(root)
+    roles={}
+    for path,role in ((PUPIL_HOME+"/Projekter","downloads"),(projects,"projekter"),(state,"arkiv")):
+        require(SAFE_PROJECT_PATH.fullmatch(path) and posixpath.normpath(path)==path and path.startswith(PUPIL_HOME+"/"),"unsupported_pupil_project_path")
+        roles.setdefault(path,[]).append(role)
+    paths=sorted(roles)
+    for outer in paths:
+        for inner in paths:
+            if inner.startswith(outer+"/"):
+                # Only the default archive layout (a direct child) may nest.
+                require(roles[inner]==["arkiv"] and posixpath.dirname(inner)==outer,"overlapping_pupil_project_paths")
+    targets=[];missing=set();summary=dict.fromkeys(WIPE_COUNTS,0)
+    for path in paths:
+        target={"path":path,"roles":sorted(roles[path])}
+        info=None
+        if posixpath.dirname(path) not in missing:
+            parent=open_parent(root,path,uid)
+            try:
+                try:info=os.stat(posixpath.basename(path),dir_fd=parent,follow_symlinks=False)
+                except FileNotFoundError:info=None
+                if info is not None:
+                    require(not stat.S_ISLNK(info.st_mode),"linked_pupil_projects")
+                    require(stat.S_ISDIR(info.st_mode),"pupil_projects_not_directory")
+                    require(info.st_uid==uid,"unexpected_pupil_project_owner")
+                    require(info.st_dev==os.fstat(parent).st_dev,"pupil_projects_mountpoint")
+                    fd=open_directory(posixpath.basename(path),parent)
+                    try:
+                        opened=os.fstat(fd);require((opened.st_dev,opened.st_ino)==(info.st_dev,info.st_ino),"pupil_projects_changed")
+                        walk_projects(fd,info.st_dev,summary,delete=False,skip=nested_names(path,paths))
+                    finally:os.close(fd)
+            finally:os.close(parent)
+        if info is None:
+            missing.add(path);target["exists"]=False
+        else:target.update(exists=True,uid=info.st_uid,gid=info.st_gid,mode="%04o"%stat.S_IMODE(info.st_mode))
+        targets.append(target)
+    return {"user":PUPIL,"uid":uid,"gid":gid,"home":PUPIL_HOME,"targets":targets},summary
+
+def wipe_pupil_projects(root,binding):
+    """Empty the bound project folders in place (owner/mode kept); recreate a
+    missing project folder/archive so the project service starts cleanly."""
+    current,_=pupil_projects(root)
+    require(current==binding,"pupil_projects_changed")
+    counts=dict.fromkeys(WIPE_COUNTS,0);paths=[t["path"] for t in binding["targets"]]
+    for target in binding["targets"]:
+        path=target["path"];name=posixpath.basename(path)
+        if not target["exists"] and target["roles"]==["downloads"]:continue
+        parent=open_parent(root,path,binding["uid"])
+        try:
+            if target["exists"]:
+                fd=open_directory(name,parent)
+                try:
+                    info=os.fstat(fd)
+                    require(info.st_uid==target["uid"] and info.st_gid==target["gid"] and "%04o"%stat.S_IMODE(info.st_mode)==target["mode"] and info.st_dev==os.fstat(parent).st_dev,"pupil_projects_changed")
+                    walk_projects(fd,info.st_dev,counts,delete=True,skip=nested_names(path,paths))
+                finally:os.close(fd)
+            else:
+                mode=0o700 if target["roles"]==["arkiv"] else 0o750
+                os.mkdir(name,mode,dir_fd=parent)
+                fd=open_directory(name,parent)
+                try:os.fchown(fd,binding["uid"],binding["gid"]);os.fchmod(fd,mode)
+                finally:os.close(fd)
+        finally:os.close(parent)
+    return counts
 
 def inspect(root=Path("/"),run=command):
     values={}
@@ -124,11 +281,22 @@ def inspect(root=Path("/"),run=command):
         state=dict(line.split("=",1) for line in raw.splitlines() if "=" in line)
         require(state.get("MainPID","0")=="0" and state.get("ActiveState") in {"inactive","failed","active"},"legacy_update_still_running")
         states[name]=state
-    return {"schema":1,"target":"debian13-amd64","retired_cadoodle":retired_cadoodle(run),"machine_sha256":sha(regular(root/"etc/machine-id")),"files":files,"legacy_units":states}
+    return {"schema":1,"target":"debian13-amd64","retired_cadoodle":retired_cadoodle(run),"machine_sha256":sha(regular(root/"etc/machine-id")),"files":files,"legacy_units":states,"pupil_projects":pupil_projects(root)[0]}
+
+def plan_document(root=Path("/"),run=command,payload=None):
+    # The summary tells the operator how much will be wiped (counts only). It
+    # is informational: new pupil work before apply is wiped too. The exact
+    # paths, owners and modes are bound in the inventory and re-checked.
+    result={"schema":1,"inventory":inspect(root,run),"pupil_projects_summary":pupil_projects(root)[1]}
+    if payload is not None:
+        check_payload(payload);result["payload_sha256"]=sha(regular(payload/"install-lock.json"))
+    return result
 
 def validate_plan(raw,pin,inventory,payload_sha256):
     require(re.fullmatch(r"[a-f0-9]{64}",pin or "") and sha(raw)==pin,"reviewed_plan_hash_required")
-    plan=strict(raw);require(type(plan) is dict and set(plan)=={"schema","inventory","payload_sha256"} and type(plan["schema"]) is int and plan["schema"]==1,"invalid_bootstrap_plan")
+    plan=strict(raw);require(type(plan) is dict and set(plan)=={"schema","inventory","payload_sha256","pupil_projects_summary"} and type(plan["schema"]) is int and plan["schema"]==1,"invalid_bootstrap_plan")
+    summary=plan["pupil_projects_summary"]
+    require(type(summary) is dict and set(summary)==set(WIPE_COUNTS) and all(type(v) is int and v>=0 for v in summary.values()),"invalid_bootstrap_plan")
     require(plan["inventory"]==inventory,"bootstrap_inventory_changed")
     require(plan["payload_sha256"]==payload_sha256,"bootstrap_payload_changed")
 
@@ -224,7 +392,10 @@ def apply(payload,plan_raw,plan_pin,*,root=Path("/"),run=command):
             raw=run(["/usr/bin/systemctl","show","--property=ActiveState,MainPID","makervaerkstedet-apt-update.service"])
             current=dict(line.split("=",1) for line in raw.splitlines() if "=" in line)
             require(current.get("MainPID","0")=="0" and current.get("ActiveState") in {"inactive","failed"},"updater_started_during_bootstrap")
-            for name in ("makervaerkstedet-apt-update.timer","getty@tty1.service","elevhub-lokal.service","elevhub-design.service"):
+            # The pupil's own slice ends the browser session too, so neither the
+            # project service nor a download writes during the project wipe.
+            pupil_slice="user-%d.slice"%inventory["pupil_projects"]["uid"]
+            for name in ("makervaerkstedet-apt-update.timer","getty@tty1.service",pupil_slice,"elevhub-lokal.service","elevhub-design.service"):
                 stop_loaded(name)
             for name in LEGACY_FILES:
                 path=root/name
@@ -248,13 +419,22 @@ def apply(payload,plan_raw,plan_pin,*,root=Path("/"),run=command):
             run(["/usr/bin/python3","-B","/usr/lib/makervaerkstedet/updater/template_activation.py"])
             check=run(["/usr/bin/python3","-B","/usr/lib/makervaerkstedet/updater/apt_client.py","--check-config"])
             require(strict(check).get("state")=="configured","bootstrap_updater_not_configured")
+            # One-time wipe of old pupil projects, only after the new version is
+            # installed and while nothing can write there. The re-rendered unit
+            # must still name the bound paths (checked inside the wipe).
+            for name in ("elevhub-lokal.service",pupil_slice):
+                raw=run(["/usr/bin/systemctl","show","--property=ActiveState",name])
+                current=dict(line.split("=",1) for line in raw.splitlines() if "=" in line)
+                require(current.get("ActiveState") in {"inactive","failed"},"pupil_project_writer_running")
+            journal();mutated=True
+            wiped=wipe_pupil_projects(root,inventory["pupil_projects"])
             units=["makervaerkstedet-firstboot.service","makervaerkstedet-apt-update.timer","elevhub-lokal.service","elevhub-design.service","getty@tty1.service"]
             run(["/usr/bin/systemctl","daemon-reload"]);run(["/usr/bin/systemctl","enable",*units])
             run(["/usr/bin/systemctl","restart","elevhub-lokal.service","elevhub-design.service","getty@tty1.service"])
             ready=run(["/usr/bin/python3","-B","/usr/lib/makervaerkstedet/updater/apt_client.py","--check-runtime"])
             require(strict(ready).get("state")=="ready","bootstrap_runtime_not_ready")
             run(["/usr/bin/systemctl","start","makervaerkstedet-apt-update.timer"])
-            write(state/"complete.json",json.dumps({"schema":1,"plan_sha256":plan_pin,"packages":packages}).encode())
+            write(state/"complete.json",json.dumps({"schema":1,"plan_sha256":plan_pin,"packages":packages,"pupil_projects_wiped":wiped}).encode())
     except BaseException:
         if mutated:write(state/"failed.json",b'{"manual_review_required":true}\n')
         elif state.exists():
@@ -262,17 +442,14 @@ def apply(payload,plan_raw,plan_pin,*,root=Path("/"),run=command):
             (state/"reviewed-plan.json").unlink();state.rmdir()
         raise
     finally:handle.close()
-    return {"state":"complete","packages":len(packages)}
+    return {"state":"complete","packages":len(packages),"pupil_projects_wiped":wiped}
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply",action="store_true");parser.add_argument("--payload",type=Path);parser.add_argument("--plan",type=Path);parser.add_argument("--plan-sha256")
     args=parser.parse_args();require(os.geteuid()==0,"root_required")
     if not args.apply:
-        result={"schema":1,"inventory":inspect()}
-        if args.payload is not None:
-            check_payload(args.payload);result["payload_sha256"]=sha(regular(args.payload/"install-lock.json"))
-        print(json.dumps(result,sort_keys=True));return
+        print(json.dumps(plan_document(payload=args.payload),sort_keys=True));return
     require(args.payload is not None and args.plan is not None,"payload_and_reviewed_plan_required")
     print(json.dumps(apply(args.payload.resolve(),regular(args.plan),args.plan_sha256)))
 

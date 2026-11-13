@@ -38,7 +38,9 @@ method as the existing kiosk role. Public project signing keys bootstrap the apt
 client; no updater configuration is created until enrollment is available. The
 teacher then binds the registered computer to student/debian-amd64 and chooses an
 update. No role is inferred from the enrollment client. This introduces no pupil
-login or storage scheme. Projects remain /home/elev/Projekter.
+login or storage scheme. Projects remain /home/elev/Projekter. The transition of
+an existing computer (`bootstrap_existing.py`) empties old pupil projects once;
+see OVERGANG-OG-VEDLIGEHOLDELSE.md. Normal apt updates never delete projects.
 
 `install_payload.py --payload <path>` only checks payload hashes. Its explicit
 `--apply` option is invoked by Debian Installer on the freshly partitioned target,
