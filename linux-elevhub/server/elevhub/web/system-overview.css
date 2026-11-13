@@ -41,7 +41,7 @@
 .system-secondary { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
 .system-badge { display: inline-block; padding: 3px 7px; border: 1px solid #cfcfc9; color: var(--muted); font-size: 11px; line-height: 1.3; white-space: nowrap; }
 .system-badge.online, .system-badge.current, .system-badge.ready { border-color: var(--success); color: var(--success); background: var(--success-pale); }
-.system-badge.offline, .system-badge.different { border-color: #b27a21; color: #76500e; background: #fbf3e2; }
+.system-badge.offline, .system-badge.different, .system-badge.expiring_365_days, .system-badge.expiring_30_days { border-color: #b27a21; color: #76500e; background: #fbf3e2; }
 .system-badge.unknown { color: var(--muted); background: #f7f7f5; }
 .system-empty { margin: 0; padding: 16px; border: 1px dashed #cfcfc9; color: var(--muted); font-size: 13px; }
 @media (max-width: 800px) {

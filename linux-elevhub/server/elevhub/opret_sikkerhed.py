@@ -331,7 +331,7 @@ def init_security(output_dir: Path, issuer_dir: Path, sans: Iterable[str], commo
             alt_lines.extend(f"{kind}.{index} = {value}" for index, (kind, value) in enumerate(san_pairs, 1))
             _write_private(ext, "\n".join(alt_lines) + "\n")
             _run_openssl(openssl, ["req", "-new", "-newkey", "rsa:3072", "-nodes", "-batch", "-keyout", str(server_key), "-out", str(csr), "-subj", f"/CN={cn}"])
-            _run_openssl(openssl, ["x509", "-req", "-in", str(csr), "-CA", str(ca_crt), "-CAkey", str(ca_key), "-CAcreateserial", "-CAserial", str(serial), "-out", str(server_crt), "-days", "825", "-sha256", "-extfile", str(ext)])
+            _run_openssl(openssl, ["x509", "-req", "-in", str(csr), "-CA", str(ca_crt), "-CAkey", str(ca_key), "-CAcreateserial", "-CAserial", str(serial), "-out", str(server_crt), "-days", "3649", "-sha256", "-extfile", str(ext)])
             _run_openssl(openssl, ["verify", "-CAfile", str(ca_crt), str(server_crt)])
         _mode(server_key, 0o600)
         _mode(server_crt, 0o644)

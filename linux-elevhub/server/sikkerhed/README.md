@@ -27,7 +27,7 @@ mappen indeholder `ca.crt`, `server.crt`, `server.key`, `enheder.json` og
 runtime-fil. Private nøgler og credentials får mode `600`; registryfilen
 indeholder kun SHA-256-hashes.
 
-`server.crt` er gyldigt i 825 dage og CA-certifikatet i 3650 dage. Kontrollér
+`server.crt` er gyldigt i 3649 dage og CA-certifikatet i 3650 dage. Kontrollér
 udløb med:
 
 ```sh

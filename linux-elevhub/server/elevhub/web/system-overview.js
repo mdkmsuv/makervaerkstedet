@@ -158,7 +158,7 @@ function cell(primary, secondary) {
   return td;
 }
 function certificateStatusLabel(status) {
-  return ({valid:'Gyldigt', expiring_30_days:'Udløber inden 30 dage', expired:'Udløbet',
+  return ({valid:'Gyldigt', expiring_30_days:'Udløber inden 30 dage', expiring_365_days:'Udløber inden for et år', expired:'Udløbet',
     not_yet_valid:'Ikke gyldigt endnu', unavailable:'Ikke tilgængeligt'})[status] || 'Ukendt';
 }
 function certificateDate(value) {
@@ -190,6 +190,11 @@ function renderCertificates(tls) {
   } else if (certificate.status === 'expiring_30_days' || certificate.status === 'expired' ||
       ca.status === 'expiring_30_days') {
     block.append(node('p', 'Kontakt skoleadministrationen via menu 12 for at forny certifikatet.', 'system-tls-action'));
+  }
+  if (ca.status === 'expiring_365_days' || ca.status === 'expiring_30_days') {
+    block.append(node('p', `Skolens lokale CA udløber ${certificateDate(ca.not_after)}. Derefter kan elevcomputerne ikke aflevere eller opdatere, før skolen har fået nye certifikater, og alle elevcomputere er tilmeldt igen. Aftal det med skole-IT i god tid.`, 'system-tls-action'));
+  } else if (certificate.status === 'expiring_365_days') {
+    block.append(node('p', `Servercertifikatet udløber ${certificateDate(certificate.not_after)}. Det kan fornys i menu 12; planlæg det inden udløb.`, 'system-tls-action'));
   }
   if (ca.status === 'unavailable') {
     block.append(node('p', 'CA-certifikatet kunne ikke læses. Kontrollér opsætningen; behold skolens eksisterende signaturnøgle ved fornyelse.', 'system-secondary'));

@@ -111,6 +111,8 @@ def _atomic_write(path: Path, text: str) -> None:
         _restrict_private_path(path)
 
 
+# Leaf and CA share one lifetime; a renewed leaf is capped by the CA's expiry.
+SERVER_CERT_DAYS = 3650
 TLS_FILES = ('ca.crt', 'server.crt', 'server.key', 'enheder.json')
 TLS_PRIVATE_FILE = 'ca.key'
 TLS_ALL_FILES = TLS_FILES + (TLS_PRIVATE_FILE,)
@@ -141,7 +143,7 @@ def _tls_material(server_ip: str) -> dict[str, str]:
     name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'Elevhub local CA')])
     ca = (x509.CertificateBuilder().subject_name(name).issuer_name(name).public_key(ca_key.public_key())
           .serial_number(x509.random_serial_number()).not_valid_before(now - timedelta(minutes=1))
-          .not_valid_after(now + timedelta(days=3650)).add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
+          .not_valid_after(now + timedelta(days=SERVER_CERT_DAYS)).add_extension(x509.BasicConstraints(ca=True, path_length=0), critical=True)
           .add_extension(x509.KeyUsage(digital_signature=True, content_commitment=False,
               key_encipherment=False, data_encipherment=False, key_agreement=False,
               key_cert_sign=True, crl_sign=True, encipher_only=None, decipher_only=None), critical=True)
@@ -152,7 +154,10 @@ def _tls_material(server_ip: str) -> dict[str, str]:
     server_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, server_ip)])
     server = (x509.CertificateBuilder().subject_name(server_name).issuer_name(ca.subject).public_key(server_key.public_key())
               .serial_number(x509.random_serial_number()).not_valid_before(now - timedelta(minutes=1))
-              .not_valid_after(now + timedelta(days=825))
+              # Same lifetime as the CA (decision 13 Nov 2026): the school runs
+              # no Apple clients that cap leaf lifetime, and an expired leaf
+              # stops submissions and updates on every device at once.
+              .not_valid_after(now + timedelta(days=SERVER_CERT_DAYS) - timedelta(minutes=1))
               .add_extension(x509.SubjectAlternativeName([x509.IPAddress(ipaddress.ip_address(server_ip)),
                   x509.IPAddress(ipaddress.ip_address('127.0.0.1')), x509.DNSName('localhost')]), critical=False)
               .add_extension(x509.BasicConstraints(ca=False, path_length=None), critical=True)
@@ -649,7 +654,7 @@ def _renewed_leaf(material: dict[str, object]) -> str:
     # clock skew and fail closed if the retained CA is already too close to
     # expiry to issue a usable certificate.
     ca_not_after = ca.not_valid_after_utc if hasattr(ca, 'not_valid_after_utc') else ca.not_valid_after.replace(tzinfo=timezone.utc)
-    leaf_not_after = min(now + timedelta(days=825), ca_not_after - timedelta(minutes=1))
+    leaf_not_after = min(now + timedelta(days=SERVER_CERT_DAYS), ca_not_after - timedelta(minutes=1))
     if leaf_not_after <= now:
         raise ValueError('Den bevarede CA har ikke nok gyldighed til en ny servercertifikatperiode.')
     certificate = (x509.CertificateBuilder().subject_name(old_cert.subject).issuer_name(ca.subject)

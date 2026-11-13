@@ -45,7 +45,7 @@ class CertificateSnapshotTest(unittest.TestCase):
         return cert
 
     def test_actual_leaf_and_ca_statuses_are_decoded_and_cached(self):
-        leaf = self.certificate('leaf', 90)
+        leaf = self.certificate('leaf', 400)
         ca = self.certificate('ca', 1)
         snapshot = CertificateSnapshot({'certificate': leaf, 'ca': ca})
         result = snapshot.snapshot()
@@ -60,6 +60,12 @@ class CertificateSnapshotTest(unittest.TestCase):
         replacement.replace(leaf)
         changed = snapshot.snapshot()
         self.assertEqual(changed['certificate']['status'], 'expiring_30_days')
+
+    def test_certificate_within_a_year_raises_the_early_alarm(self):
+        soon = self.certificate('soon', 200)
+        result = CertificateSnapshot({'certificate': soon, 'ca': soon}).snapshot()
+        self.assertEqual(result['certificate']['status'], 'expiring_365_days')
+        self.assertEqual(result['ca']['status'], 'expiring_365_days')
 
     def test_missing_invalid_and_oversized_certificates_are_unavailable(self):
         missing = self.root / 'missing.crt'

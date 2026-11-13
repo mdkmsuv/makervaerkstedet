@@ -135,6 +135,10 @@ def _certificate_state(path, now):
         result['status'] = 'expired'
     elif remaining <= 30 * 86400:
         result['status'] = 'expiring_30_days'
+    elif remaining <= 365 * 86400:
+        # Early alarm: leaf and CA now share a ten-year lifetime, and a CA
+        # change means every pupil computer must be enrolled again.
+        result['status'] = 'expiring_365_days'
     else:
         result['status'] = 'valid'
     return result
