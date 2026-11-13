@@ -1,5 +1,21 @@
 # Elevhub administration fra Windows
 
+## Lokal adgang på elevcomputeren
+
+På den konfigurerede Linux-elevcomputer åbner **Ctrl+Alt+A** det eksisterende
+lokale admin-login, også mens et værksted har fokus. Log ind med den allerede
+oprettede lokale administrators adgangskode. Genvejen opretter ingen konto
+og ændrer ingen adgangskode; lærerens aktive pause spærrer genvejen.
+
+I den lokale grafiske adminsession betyder **Ctrl+Alt+B** det samme som
+**Log ud**: adminsessionen afsluttes, og den eksisterende returvej viser
+elevskærmen igen. Et åbent elevværksted og dets arbejde bevares. Brug elevens
+**Til start** og det normale gem-/afslutningsvalg for at gå til startsiden.
+Den faktiske login- og skærmskiftefunktion skal prøves på en Linux-testmaskine;
+en WSL/Xvfb-test efterviser kun genvejshåndteringen.
+
+## Administration fra Windows
+
 Dobbeltklik på `Open-Elevhub-Administration.cmd`. Computerlisten er som
 standard `ansible/inventory/skole/fra-serveren.py`, der henter de tændte
 elevcomputere fra serveren. Vælg eventuelt en vært, og vælg **CaDoodle** eller

@@ -4,6 +4,7 @@ import json
 import re
 import subprocess
 import threading
+import sys
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -33,6 +34,14 @@ def main():
     root.geometry('720x560')
     root.minsize(620, 540)
     root.protocol('WM_DELETE_WINDOW', root.destroy)
+    # End this authenticated session exactly like Log ud. The tty wrapper then
+    # returns to the still-running pupil session and exits the admin login shell.
+    try:
+        sys.path.insert(0, '/usr/local/lib/elevhub')
+        from admin_shortcuts import GlobalShortcut
+        root.admin_shortcut = GlobalShortcut(root, 'b', root.destroy)
+    except Exception as exc:
+        print(f'Ctrl+Alt+B: {exc}', file=sys.stderr)
     root.configure(bg='#f7f5f2')
     style = ttk.Style(root)
     style.theme_use('clam')

@@ -21,6 +21,7 @@
   ansible.builtin.apt:
     name:
       - python3-tk
+      - python3-xlib
       - xinit
       - matchbox-window-manager
     state: present
