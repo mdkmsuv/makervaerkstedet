@@ -7,6 +7,9 @@ param(
     [string]$StudentSubnet,
     [string]$Machine = 'fbb2',
     [string]$Theme,
+    # Optional private school colours (#rrggbb, lower case). Both or neither.
+    [string]$Brand = '',
+    [string]$BrandDark = '',
     [string]$DataRoot = "$env:ProgramData\ElevhubServer",
     [ValidateRange(1,65535)][int]$PrintBackendPort = 8765,
     [ValidateRange(1,65535)][int]$DesignBackendPort = 8766,
@@ -62,6 +65,27 @@ function Assert-SchoolDataPath([string]$Path) {
     }
 }
 
+function Get-WhiteContrast([string]$Colour) {
+    $luminance = 0.0; $weights = @(0.2126, 0.7152, 0.0722)
+    for ($n = 0; $n -lt 3; $n++) {
+        $value = [Convert]::ToInt32($Colour.Substring(1 + 2 * $n, 2), 16) / 255.0
+        $linear = if ($value -le 0.04045) { $value / 12.92 } else { [Math]::Pow(($value + 0.055) / 1.055, 2.4) }
+        $luminance += $weights[$n] * $linear
+    }
+    return 1.05 / ($luminance + 0.05)
+}
+
+function Assert-SchoolBrandColours([string]$Brand, [string]$BrandDark) {
+    # Where colours are set: both or neither, #rrggbb lower case, and white text >= 4.5:1.
+    if (-not $Brand -and -not $BrandDark) { return }
+    if (-not $Brand -or -not $BrandDark) { throw 'Angiv både Brand og BrandDark, eller ingen af dem.' }
+    foreach ($pair in @(@{name='Brand';value=$Brand}, @{name='BrandDark';value=$BrandDark})) {
+        if ($pair.value -cnotmatch '^#[0-9a-f]{6}\z') { throw "$($pair.name) skal skrives som #rrggbb med små bogstaver, fx #1f5a8c." }
+        $ratio = Get-WhiteContrast $pair.value
+        if ($ratio -lt 4.5) { throw ("{0} er for lys: hvid tekst får kontrast {1}:1, men skal have mindst 4,5:1. Vælg en mørkere farve." -f $pair.name, $ratio.ToString('0.00', [Globalization.CultureInfo]::GetCultureInfo('da-DK'))) }
+    }
+}
+
 function Assert-GenerationCommandCoherence([object]$command, [string]$Root) {
     $expectedExecute = [IO.Path]::GetFullPath((Join-Path $Root 'runtime\python.exe'))
     if ([IO.Path]::GetFullPath([string]$command.Execute) -ine $expectedExecute) { throw 'Generationskommandoet bruger en forkert runtime.' }
@@ -87,6 +111,7 @@ if (-not $RoleIp) { $RoleIp = Ask '3/5 Styreenhedens IPv4-adresse' }
 if (-not $StudentSubnet) { $StudentSubnet = Ask '3/5 Elevsubnet (CIDR)' }
 if (-not $Theme) { $Theme = Ask '4/5 Tema: 1 = Rød, 2 = Gul, 3 = Grøn' '3' }
 if ($Theme -in @('1','red')) { $Theme = 'red' } elseif ($Theme -in @('2','yellow')) { $Theme = 'yellow' } elseif ($Theme -in @('3','green')) { $Theme = 'green' } else { throw 'Vælg 1 (rød), 2 (gul) eller 3 (grøn).' }
+Assert-SchoolBrandColours $Brand $BrandDark
 if (($Role -eq 'makerspace' -or $RemoteLaserStation) -and -not $PSBoundParameters.ContainsKey('Machine') -and -not $CheckOnly -and -not $AcceptInstall) { $Machine = Ask '4/5 Lasermodel: 1 = Beambox II, 2 = HEXA' '1' }
 if ($Machine -in @('1','fbb2')) { $Machine = 'fbb2' } elseif ($Machine -in @('2','fhexa1')) { $Machine = 'fhexa1' } else { throw 'Vælg 1 (Beambox II) eller 2 (HEXA).' }
 if ([string]::IsNullOrWhiteSpace($SchoolName) -or $SchoolName.Length -gt 80 -or @($SchoolName.ToCharArray() | Where-Object { [int][char]$_ -lt 32 -or [int][char]$_ -eq 127 }).Count) { throw 'SchoolName skal være 1-80 tegn uden kontroltegn.' }
@@ -166,7 +191,9 @@ if ($RecoveryBackup) {
     }
 }
 if ($CheckOnly) {
-    Write-Output (@{checkOnly=$true; package=$PackageRoot; school_name=$SchoolName; role=$Role; server=$RoleIp; student_subnet=$StudentSubnet; theme=$Theme; enrollment_port=8774; print_backend_port=$PrintBackendPort; design_backend_port=$DesignBackendPort; teacher_backend_port=$TeacherBackendPort; teacher_port=$TeacherPort; teacher_address=$teacherAddress; remote_laser_station=[bool]$RemoteLaserStation} | ConvertTo-Json -Compress)
+    $checkResult = @{checkOnly=$true; package=$PackageRoot; school_name=$SchoolName; role=$Role; server=$RoleIp; student_subnet=$StudentSubnet; theme=$Theme; enrollment_port=8774; print_backend_port=$PrintBackendPort; design_backend_port=$DesignBackendPort; teacher_backend_port=$TeacherBackendPort; teacher_port=$TeacherPort; teacher_address=$teacherAddress; remote_laser_station=[bool]$RemoteLaserStation}
+    if ($Brand) { $checkResult['brand'] = $Brand; $checkResult['brand_dark'] = $BrandDark }
+    Write-Output ($checkResult | ConvertTo-Json -Compress)
     exit 0
 }
 if (-not $isAdmin) { throw 'Kør opsætningen fra en administratorkonsol.' }
@@ -219,6 +246,13 @@ if ($resumeExisting) {
             $existingProfile.theme -cne $Theme -or $existingProfile.role -cne $Role -or
             $existingProfile.server -cne $RoleIp -or $existingProfile.student_subnet -cne $StudentSubnet) {
             throw 'Resume må ikke ændre skolens navn, rolle, tema eller netværk. Brug den oprindelige opsætning.'
+        }
+        # Resume keeps the recorded profile. Colours given now must match it;
+        # change them later with Manage-School (Skolefarver).
+        $recordedBrand = if ($existingProfile.PSObject.Properties.Name -contains 'brand') { [string]$existingProfile.brand } else { '' }
+        $recordedBrandDark = if ($existingProfile.PSObject.Properties.Name -contains 'brand_dark') { [string]$existingProfile.brand_dark } else { '' }
+        if (($Brand -or $BrandDark) -and ($recordedBrand -cne $Brand -or $recordedBrandDark -cne $BrandDark)) {
+            throw 'Resume må ikke ændre skolefarverne. Brug Skolefarver i skoleadministrationen.'
         }
         foreach ($port in @(@{name='print_backend_port';expected=$PrintBackendPort;default=8765}, @{name='design_backend_port';expected=$DesignBackendPort;default=8766}, @{name='teacher_backend_port';expected=$TeacherBackendPort;default=8767}, @{name='teacher_port';expected=$TeacherPort;default=8780})) {
             $recordedPort = if ($existingProfile.PSObject.Properties.Name -contains $port.name) { [int]$existingProfile.($port.name) } else { $port.default }
@@ -295,6 +329,7 @@ $public = (Get-Content -LiteralPath $publicKey -Raw).Trim(); if ($public -notmat
 $derived = [string](& ssh-keygen.exe -y -f $privateKey 2>$null)
 if ($LASTEXITCODE -ne 0 -or -not $derived -or (($derived -split '\s+')[0..1] -join ' ') -cne (($public -split '\s+')[0..1] -join ' ')) { throw 'Den private og offentlige administrationsnøgle passer ikke sammen.' }
 $profile = [ordered]@{schemaVersion=1;school_name=$SchoolName;theme=$Theme;role=$Role;server=$RoleIp;student_subnet=$StudentSubnet;admin_public_key=$public;print_backend_port=$PrintBackendPort;design_backend_port=$DesignBackendPort;teacher_backend_port=$TeacherBackendPort;teacher_port=$TeacherPort}
+if ($Brand) { $profile['brand'] = $Brand; $profile['brand_dark'] = $BrandDark }
 if ($RemoteLaserStation) {
     $profile['remote_laser_station'] = $true
     $profile['laser_machine'] = $Machine

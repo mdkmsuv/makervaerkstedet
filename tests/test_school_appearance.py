@@ -86,5 +86,45 @@ class SchoolAppearanceTests(unittest.TestCase):
             }), encoding='utf-8')
             self.assertIsNone(school_appearance(data))
 
+    def test_private_school_colours_pass_only_as_a_valid_pair(self):
+        # Synthetic colours; real school values never belong in tests.
+        with tempfile.TemporaryDirectory() as parent:
+            root = Path(parent)
+            data = root / 'data'
+            data.mkdir()
+
+            def read(**colours):
+                (root / 'school.json').write_text(json.dumps({
+                    'school_name': 'Prøveskolen', 'theme': 'yellow', **colours}), encoding='utf-8')
+                return school_appearance(data)
+
+            self.assertEqual(read(brand='#1f5a8c', brand_dark='#143c5e'), {
+                'school_name': 'Prøveskolen', 'theme': 'yellow',
+                'brand': '#1f5a8c', 'brand_dark': '#143c5e'})
+            base = {'school_name': 'Prøveskolen', 'theme': 'yellow'}
+            self.assertEqual(read(), base)
+            for colours in ({'brand': '#1f5a8c'}, {'brand_dark': '#143c5e'},
+                            {'brand': '#1F5A8C', 'brand_dark': '#143c5e'},
+                            {'brand': '#1f5a8c\n', 'brand_dark': '#143c5e'},
+                            {'brand': 'red', 'brand_dark': '#143c5e'},
+                            {'brand': ['#1f5a8c'], 'brand_dark': '#143c5e'}):
+                with self.subTest(colours=colours):
+                    # Invalid or single colours fall back to the theme.
+                    self.assertEqual(read(**colours), base)
+
+    def test_local_manifest_carries_private_school_colours(self):
+        with tempfile.TemporaryDirectory() as parent:
+            root = Path(parent)
+            data = root / 'data'
+            data.mkdir()
+            overlay = root / 'local-appearance'
+            overlay.mkdir()
+            (overlay / 'manifest.json').write_text(json.dumps({
+                'schemaVersion': 1, 'school_name': 'Lokalskolen', 'theme': 'red',
+                'brand': '#1f5a8c', 'brand_dark': '#143c5e'}), encoding='utf-8')
+            self.assertEqual(school_appearance(data), {
+                'school_name': 'Lokalskolen', 'theme': 'red',
+                'brand': '#1f5a8c', 'brand_dark': '#143c5e', 'style': {}})
+
 if __name__ == '__main__':
     unittest.main()

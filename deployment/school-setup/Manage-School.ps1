@@ -1,4 +1,6 @@
-﻿param([string]$PackageRoot, [string]$DataRoot = "$env:ProgramData\ElevhubServer", [switch]$ValidateOnly)
+﻿param([string]$PackageRoot, [string]$DataRoot = "$env:ProgramData\ElevhubServer", [switch]$ValidateOnly,
+  # Private school colours: a local JSON file {"brand":"#rrggbb","brand_dark":"#rrggbb"}.
+  [string]$SchoolColoursFile = '', [switch]$ClearSchoolColours)
 $ErrorActionPreference = 'Stop'
 $global:LASTEXITCODE = 0
 if (-not $PackageRoot) { $PackageRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot) }
@@ -17,6 +19,8 @@ if (-not $ValidateOnly -and -not $isAdmin) {
   $elevationArguments = @('-NoLogo','-NoProfile','-ExecutionPolicy','Bypass','-File',
     (Quote-WindowsArgument $PSCommandPath), '-PackageRoot', (Quote-WindowsArgument $PackageRoot),
     '-DataRoot', (Quote-WindowsArgument $DataRoot))
+  if ($SchoolColoursFile) { $elevationArguments += @('-SchoolColoursFile', (Quote-WindowsArgument ([IO.Path]::GetFullPath($SchoolColoursFile)))) }
+  if ($ClearSchoolColours) { $elevationArguments += '-ClearSchoolColours' }
   $elevated = Start-Process powershell.exe -Verb RunAs -ArgumentList $elevationArguments -Wait -PassThru
   exit $elevated.ExitCode
 }
@@ -186,6 +190,22 @@ function Open-LocalUrl {
   Start-Process $uri.AbsoluteUri
 }
 
+function Set-SchoolColours {
+  # Changes only brand/brand_dark in school.json. Keys, queues, devices and
+  # every other profile field are preserved; the profile ACL is restored.
+  param([string]$ColoursFile, [switch]$Clear)
+  if ($Clear) { Invoke-Enrollment 'colours' @('--clear') }
+  else {
+    if ([string]::IsNullOrWhiteSpace($ColoursFile)) { throw 'Der blev ikke valgt en skolefarvefil.' }
+    $full = [IO.Path]::GetFullPath($ColoursFile.Trim().Trim('"'))
+    if (-not (Test-Path -LiteralPath $full -PathType Leaf)) { throw "Skolefarvefilen findes ikke: $full" }
+    Invoke-Enrollment 'colours' @('--colours-file', $full)
+  }
+  $profilePath = Join-Path $DataRoot 'school.json'
+  & icacls.exe $profilePath /inheritance:r /grant:r '*S-1-5-18:F' '*S-1-5-32-544:F' '*S-1-5-19:R' | Out-Null
+  if ($LASTEXITCODE -ne 0) { throw 'Skoleprofilen kunne ikke beskyttes efter farveændringen.' }
+}
+
 function Get-AdminSnapshot {
   if ($startupMode -eq 'generation-v1') { return Invoke-SchoolAdmin 'inspect' }
   return $null
@@ -200,6 +220,11 @@ if ($ValidateOnly) {
   if ($startupMode -eq 'generation-v1') {
     [ordered]@{dataRoot=$probe.data_root; programRoot=$probe.program_root; installRoot=$PackageRoot; protocol='generation-v1'; revision=$probe.revision} | ConvertTo-Json -Compress
   } else { [ordered]@{dataRoot=$DataRoot; installRoot=$PackageRoot} | ConvertTo-Json -Compress }
+  exit 0
+}
+if ($SchoolColoursFile -or $ClearSchoolColours) {
+  if ($SchoolColoursFile -and $ClearSchoolColours) { throw 'Vælg enten -SchoolColoursFile eller -ClearSchoolColours.' }
+  Set-SchoolColours -ColoursFile $SchoolColoursFile -Clear:$ClearSchoolColours
   exit 0
 }
 while ($true) {
@@ -217,6 +242,7 @@ Write-Host '10. Kontrollér en eksisterende backup'
 Write-Host '11. Gendan backup til en isoleret prøve'
 Write-Host '12. Forny servercertifikat (stop serveren midlertidigt)'
 Write-Host '13. Genstart hele Windows-serveren (kræver bekræftelse)'
+Write-Host '14. Skolefarver: brug skolens egne farver, eller fjern dem'
 Write-Host '0. Afslut'
 $choice = Read-Host 'Vælg'
 try {
@@ -288,6 +314,12 @@ switch ($choice) {
     if(-not(Test-Path -LiteralPath $restartSetup -PathType Leaf) -or -not(Test-Path -LiteralPath $restartHelper -PathType Leaf)){throw 'Denne installation mangler genstartsværktøjet. Opdatér serverprogrammet først.'}
     & $restartSetup -Mode Enable
     & $restartHelper -Mode Local
+  }
+  '14' {
+    Write-Host 'Skolefarverne er private installationsdata: en JSON-fil med brand og brand_dark, fx {"brand":"#1f5a8c","brand_dark":"#143c5e"}.'
+    Write-Host 'Hvid tekst skal have mindst 4,5:1 i kontrast på begge farver. Kun farverne ændres; nøgler, køer og computere bevares.'
+    $answer = Read-Host 'Sti til skolefarvefilen, eller skriv FJERN for at bruge temaets farver igen'
+    if ($answer.Trim() -ceq 'FJERN') { Set-SchoolColours -Clear } else { Set-SchoolColours -ColoursFile $answer }
   }
   default { throw 'Ugyldigt valg.' }
 }

@@ -166,6 +166,24 @@ class TemplateActivation(unittest.TestCase):
         self.assertIn("&lt;Skole&gt;",text)
         self.assertEqual(path.read_bytes(),before)
         self.assertEqual(self.project.read_bytes(),b"synthetic legacy data")
+    def test_school_colours_reach_start_page_survive_update_and_bad_values_fall_back(self):
+        path=self.root/"etc/elevhub/kiosk.json";path.parent.mkdir(parents=True)
+        page=self.root/"usr/local/share/elevhub/start.html"
+        config=M.default_config();config.update(theme="green",brand="#1f5a8c",brand_dark="#143c5e")
+        path.write_text(json.dumps(config));path.chmod(0o644)
+        M.activate(self.root);text=page.read_text()
+        self.assertIn('data-theme="green" style="--brand:#1f5a8c;--deep:#143c5e;--brand-dark:#143c5e"',text)
+        self.assertEqual(text.count("--brand:#1f5a8c"),2,"body and header both carry the school colours")
+        M.activate(self.root)  # an apt update re-renders; the private colours stay in kiosk.json
+        saved=json.loads(path.read_text())
+        self.assertEqual((saved["brand"],saved["brand_dark"]),("#1f5a8c","#143c5e"))
+        for bad in ({"brand":"#1F5A8C","brand_dark":"#143c5e"},{"brand":"#1f5a8c"},{"brand":"red","brand_dark":"#143c5e"},
+                    {"brand":["#1f5a8c"],"brand_dark":"#143c5e"},{}):
+            with self.subTest(bad=bad):
+                config=M.default_config();config.update(theme="green",**bad);path.write_text(json.dumps(config))
+                M.activate(self.root);text=page.read_text()
+                self.assertIn('<body data-theme="green">',text);self.assertNotIn("--brand:",text)
+                self.assertEqual(json.loads(path.read_text()).get("brand"),bad.get("brand"),"bad values are kept, only ignored")
     def test_existing_custom_data_paths_and_session_preferences_survive_activation(self):
         config=M.default_config();config.update(tastatur="de",screen_output="HDMI-1",screen_mode="1920x1080",mesa_gl=True)
         file=self.root/"etc/elevhub/kiosk.json";file.parent.mkdir(parents=True);file.write_text(json.dumps(config))

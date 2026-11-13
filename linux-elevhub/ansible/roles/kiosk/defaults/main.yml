@@ -12,6 +12,11 @@ kiosk_usikker_test: false
 # Neutral elevkatalog-branding. Tilladte værdier er red, yellow og green.
 kiosk_theme: red
 kiosk_school_name: ""
+# Valgfri private skolefarver (#rrggbb med små bogstaver). Begge eller ingen;
+# tomme eller ugyldige værdier betyder, at temaets farver bruges. Sættes kun
+# fra skolens egen tilmelding, aldrig i den offentlige kildekode.
+kiosk_brand: ""
+kiosk_brand_dark: ""
 # Controller paths supplied by provisioning (JSON: computer, token, ui_token; CA.pem).
 # They are intentionally empty here so a secure inventory must set them explicitly.
 kiosk_enhedsfil: ""

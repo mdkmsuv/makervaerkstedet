@@ -19,6 +19,17 @@ import time
 CONFIG = Path('/etc/elevhub-install')
 NAME = re.compile(r'[a-z0-9](?:[a-z0-9-]{0,30}[a-z0-9])?')
 OWN_MOUNTS = set()
+COLOUR = re.compile(r'#[0-9a-f]{6}')
+COLOUR_KEYS = ('brand', 'brand_dark')
+
+
+def valid_colours(data):
+    """Optional private school colours: both valid lower-case hex values, or neither."""
+    present = [key in data for key in COLOUR_KEYS]
+    if not any(present):
+        return True
+    return all(present) and all(isinstance(data[key], str) and COLOUR.fullmatch(data[key])
+                                for key in COLOUR_KEYS)
 
 
 def load_connection(path):
@@ -32,6 +43,8 @@ def load_connection(path):
         raise ValueError('Skolefilen har en ugyldig serveradresse.')
     if data.get('enrollment_port') != 8774 or data.get('theme') not in ('red', 'yellow', 'green'):
         raise ValueError('Skolefilen har en ukendt port eller et ukendt tema.')
+    if not valid_colours(data):
+        raise ValueError('Skolefilen har ugyldige skolefarver.')
     title = data.get('school_name', '')
     if not isinstance(title, str) or not 1 <= len(title) <= 80 or any(ord(c) < 32 for c in title):
         raise ValueError('Skolefilen har et ugyldigt skolenavn.')
@@ -66,6 +79,8 @@ def enroll(connection, computer, code, installation_id, host_key):
     if (data.get('schemaVersion') != 1 or data['settings']['computer'] != computer
             or data['settings']['server'] != connection['server']
             or data['settings'].get('theme') != connection['theme']
+            or any(data['settings'].get(key) != connection.get(key) for key in COLOUR_KEYS)
+            or any((key in data['settings']) != (key in connection) for key in COLOUR_KEYS)
             or data['settings'].get('school_name') != connection['school_name']
             or data['caCertificatePem'].strip() != connection['caCertificatePem'].strip()
             or data['admin_public_key'] != connection['admin_public_key']
@@ -168,7 +183,8 @@ def main(firstboot_path=Path("/usr/local/lib/elevhub-firstboot.py")):
             connection = load_connection(path)
             release_mounts()
             print(f"\nSkole: {connection['school_name']}\nStyreenhed: {connection['server']}\n"
-                  f"Tema: {dict(red='Rød', yellow='Gul', green='Grøn')[connection['theme']]}")
+                  f"Tema: {dict(red='Rød', yellow='Gul', green='Grøn')[connection['theme']]}"
+                  + (' med skolens egne farver' if 'brand' in connection else ''))
             print('Brug kun skolefilen, som læreren har givet dig.')
             print('\n2. Computerens navn og tilmelding\nOpret navnet og en engangskode i styreenhedens administrationsmenu.')
             computer = input('Computerens navn: ').strip().lower()

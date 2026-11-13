@@ -169,5 +169,27 @@ class LokalStatusTest(unittest.TestCase):
         self.assertNotIn('visning', second)
 
 
+class SkolefarverTest(unittest.TestCase):
+    def tearDown(self):
+        ELEVBAELKE.apply_theme('red')
+
+    def test_skolefarver_vinder_over_temaet(self):
+        self.assertEqual(ELEVBAELKE.apply_theme('green', '#1f5a8c', '#143c5e'), ('#1f5a8c', '#143c5e'))
+        self.assertEqual((ELEVBAELKE.BRAND, ELEVBAELKE.BRAND_MOERK), ('#1f5a8c', '#143c5e'))
+
+    def test_uden_skolefarver_er_temaet_uaendret(self):
+        for tema, farver in ELEVBAELKE.THEME_COLORS.items():
+            self.assertEqual(ELEVBAELKE.apply_theme(tema), farver)
+            self.assertEqual(ELEVBAELKE.apply_theme(tema, None, None), farver)
+        self.assertEqual(ELEVBAELKE.apply_theme(None), ELEVBAELKE.THEME_COLORS['red'])
+
+    def test_ugyldige_skolefarver_falder_tilbage_til_temaet(self):
+        for brand, dark in (('#1f5a8c', None), ('#1F5A8C', '#143c5e'), ('blue', '#143c5e'),
+                            ('#1f5a8c', '#143c5e' + chr(10)), (['#1f5a8c'], '#143c5e')):
+            with self.subTest(brand=brand, dark=dark):
+                self.assertEqual(ELEVBAELKE.apply_theme('yellow', brand, dark),
+                                 ELEVBAELKE.THEME_COLORS['yellow'])
+
+
 if __name__ == '__main__':
     unittest.main()

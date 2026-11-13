@@ -149,6 +149,42 @@ async function startFixture() {
       await page.screenshot({path:process.env.KIOSK_REJECTED_SCREENSHOT});
       await page.setViewportSize(before);
     }
+    // Optional private school colours (synthetic values) override the theme on
+    // body and header; absent or invalid colours leave the public theme as is.
+    const rgb = hex => 'rgb(' + [1,3,5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ') + ')';
+    const palette = () => page.evaluate(() => {
+      const css = selector => getComputedStyle(document.querySelector(selector));
+      return {primaryFocused:document.activeElement === document.querySelector('.hero-copy .primary'), active:(document.activeElement.outerHTML || '').slice(0, 120) + ' hash=' + location.hash + ' visible=' + !!document.querySelector('.hero-copy .primary').offsetParent,brand:css('body').getPropertyValue('--brand').trim(), deep:css('body').getPropertyValue('--deep').trim(),
+        header:css('.hub-header').getPropertyValue('--brand').trim(), mark:css('.brand-mark i:nth-child(3)').backgroundColor,
+        heading:css('.hero-copy h1 em').color, button:css('.hero-copy .primary').backgroundColor, focus:css('.hero-copy .primary').outlineColor,
+        message:css('#fejl').borderTopColor, appOpen:css('[data-app] .app-open').color};
+    });
+    const expectPalette = async (brand, deep, label) => {
+      await page.goto(fixture.origin); await waitCount(5);
+      await page.locator('#fejl').filter({hasText:/noget galt med skoleserveren/}).waitFor();
+      // Keyboard focus, so the :focus-visible ring is the one a pupil sees.
+      await page.keyboard.press('Shift'); await page.locator('.hero-copy .primary').focus();
+      const value = await palette();
+      assert.equal(value.primaryFocused, true, label + ': keyboard focus on the primary action; active ' + value.active);
+      assert.deepEqual([value.brand, value.deep, value.header], [brand, deep, brand], label + ': custom properties');
+      for (const key of ['mark','heading','button','focus','message','appOpen']) assert.equal(value[key], rgb(brand), label + ': ' + key);
+    };
+    await expectPalette('#c62b2f', '#8c1d24', 'public red theme without school colours');
+    await set('colours=invalid');
+    await expectPalette('#c62b2f', '#8c1d24', 'invalid school colours fall back to the theme');
+    await set('colours=custom');
+    await expectPalette('#1f5a8c', '#143c5e', 'school colours');
+    if (process.env.KIOSK_SKOLEFARVER_SCREENSHOT) {
+      const before = page.viewportSize();
+      await page.setViewportSize({width:1024,height:688});
+      await page.evaluate(() => { location.hash = ''; scrollTo(0, 0); });
+      await page.keyboard.press('Shift'); await page.locator('.hero-copy .primary').focus();
+      await page.evaluate(() => scrollTo(0, 0));
+      await page.screenshot({path:process.env.KIOSK_SKOLEFARVER_SCREENSHOT});
+      await page.setViewportSize(before);
+    }
+    await set('colours=none'); await page.goto(fixture.origin); await waitCount(5);
+    console.log('manifest browser: school colours, invalid fallback and public theme passed');
     await set('mode=down&catalog=broken'); await waitCount(1);
     // Optional specialist review; default regression needs only the locked Playwright dependency.
     if (process.env.KIOSK_MANIFEST_AXE === '1') {

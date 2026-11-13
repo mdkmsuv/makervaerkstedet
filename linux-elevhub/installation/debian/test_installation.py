@@ -16,9 +16,10 @@ class Installation(unittest.TestCase):
         for name in ("MKV_CORE_DEB","MKV_UPDATER_DEB"):
             if name not in os.environ:raise RuntimeError(name+" is required, not skipped")
             subprocess.run(["dpkg-deb","--extract",os.environ[name],str(self.root)],check=True)
-    def profile(self):
+    def profile(self,**extra):
         folder=self.root/"etc/elevhub-install";folder.mkdir(parents=True,mode=0o700)
         values={"settings.json":json.dumps({"computer":"synthetic-01","server":"10.0.0.2","theme":"green","school_name":"Synthetic"}),"device.json":json.dumps({"computer":"synthetic-01","token":"R"*43,"ui_token":"U"*43}),"ca.crt":"-----BEGIN CERTIFICATE-----\nSYNTHETIC\n-----END CERTIFICATE-----\n","admin.pub":"ssh-ed25519 "+"A"*68}
+        if extra:values["settings.json"]=json.dumps({**json.loads(values["settings.json"]),**extra})
         for name,text in values.items():
             path=folder/name;path.write_text(text);path.chmod(0o600)
     def test_enrollment_activates_extracted_templates_without_root_token_in_browser(self):
@@ -31,6 +32,20 @@ class Installation(unittest.TestCase):
         kiosk=(self.root/"etc/elevhub/kiosk.json").read_text()
         self.assertNotIn("R"*43,html+kiosk);self.assertIn("U"*43,kiosk)
         self.assertIn("https://10.0.0.2:8773/apt/",(self.root/"etc/apt/sources.list.d/makervaerkstedet.sources").read_text())
+    def test_enrollment_carries_school_colours_to_kiosk_config_and_start_page(self):
+        self.extract();self.profile(brand="#1f5a8c",brand_dark="#143c5e")
+        with patch.object(enroll_device,"validator",self.validator):enroll_device.apply_profile(self.root)
+        kiosk=json.loads((self.root/"etc/elevhub/kiosk.json").read_text())
+        self.assertEqual((kiosk["theme"],kiosk["brand"],kiosk["brand_dark"]),("green","#1f5a8c","#143c5e"))
+        html=(self.root/"usr/local/share/elevhub/start.html").read_text()
+        self.assertIn('data-theme="green" style="--brand:#1f5a8c;--deep:#143c5e;--brand-dark:#143c5e"',html)
+    def test_profile_validator_accepts_both_or_no_school_colours(self):
+        validate=self.validator();device=dict(zip(("computer","token","ui_token"),("synthetic-01","R"*43,"U"*43)))
+        ca="-----BEGIN CERTIFICATE-----"+chr(10)+"SYNTHETIC"+chr(10)+"-----END CERTIFICATE-----"+chr(10);key="ssh-ed25519 "+"A"*68
+        base={"computer":"synthetic-01","server":"192.0.2.2","theme":"green"}
+        validate(base,device,ca,key);validate({**base,"brand":"#1f5a8c","brand_dark":"#143c5e"},device,ca,key)
+        for bad in ({"brand":"#1f5a8c"},{"brand_dark":"#143c5e"},{"brand":"#1F5A8C","brand_dark":"#143c5e"},{"brand":"#1f5a8c","brand_dark":None}):
+            with self.subTest(bad=bad),self.assertRaises(ValueError):validate({**base,**bad},device,ca,key)
     def test_existing_different_identity_is_preserved(self):
         self.extract();self.profile();target=self.root/"etc/elevhub/enhed.json";target.parent.mkdir(parents=True);target.write_text('{"computer":"old","token":"KEEP"}');target.chmod(0o600)
         with patch.object(enroll_device,"validator",self.validator),self.assertRaisesRegex(ValueError,"existing_identity"):enroll_device.apply_profile(self.root)

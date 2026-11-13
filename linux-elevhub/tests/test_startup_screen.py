@@ -119,6 +119,35 @@ class StartupScreenTests(unittest.TestCase):
             self.assertIsNone(startup_screen.load_readiness_urls(path))
 
 
+class SchoolColourTests(unittest.TestCase):
+    def colours(self, config):
+        with tempfile.TemporaryDirectory() as directory:
+            path = pathlib.Path(directory) / "kiosk.json"
+            path.write_text(config if isinstance(config, str) else json.dumps(config), encoding="utf-8")
+            try:
+                theme = startup_screen.apply_theme(str(path))
+                return theme, (startup_screen.BRAND, startup_screen.BRAND_DARK)
+            finally:
+                startup_screen.apply_theme(str(path) + ".missing")
+
+    def test_valid_school_colours_win_over_theme(self):
+        self.assertEqual(self.colours({"theme": "green", "brand": "#1f5a8c", "brand_dark": "#143c5e"}),
+                         ("green", ("#1f5a8c", "#143c5e")))
+
+    def test_absent_colours_keep_each_theme(self):
+        for theme, colours in startup_screen.THEME_COLORS.items():
+            self.assertEqual(self.colours({"theme": theme}), (theme, colours))
+
+    def test_invalid_colours_or_file_fall_back_to_theme(self):
+        for extra in ({"brand": "#1f5a8c"}, {"brand": "#1F5A8C", "brand_dark": "#143c5e"},
+                      {"brand": 1, "brand_dark": "#143c5e"}, {"brand": "#1f5a8c", "brand_dark": "#143c5"}):
+            with self.subTest(extra=extra):
+                self.assertEqual(self.colours({"theme": "yellow", **extra}),
+                                 ("yellow", startup_screen.THEME_COLORS["yellow"]))
+        self.assertEqual(self.colours("[1, 2]"), ("red", startup_screen.THEME_COLORS["red"]))
+        self.assertEqual(self.colours("{broken"), ("red", startup_screen.THEME_COLORS["red"]))
+
+
 @unittest.skipUnless(_Xvfb is not None and shutil.which("Xvfb") and sys.platform.startswith("linux"),
                      "private Xvfb is required")
 class PrivateX11Tests(unittest.TestCase):

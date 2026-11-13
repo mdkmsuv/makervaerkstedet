@@ -106,6 +106,40 @@ datamappens forælder. På Linux læses den lokale kioskprofil fra
 `/etc/elevhub/kiosk.json`. Den fælles betydning er skolens navn og tema, mens
 serverrolle, elevnet og enrollment hører til serverprofilen.
 
+### Skolefarver (privat skin)
+
+De tre Bauhaus-temaer `red`, `yellow` og `green` er den offentlige standard og
+ændres ikke. En skole kan derudover bruge sine egne farver med to valgfri felter
+ved siden af `theme`: `brand` og `brand_dark`. Begge skal skrives som `#rrggbb`
+med små bogstaver, og hvid tekst skal have mindst 4,5:1 i kontrast på begge.
+Enten findes begge felter, eller ingen af dem; `theme` er stadig obligatorisk og
+bruges, hvis farverne mangler eller er ugyldige.
+
+Skolens farver er private installationsdata. De må ikke stå i produktkode,
+tests, eksempler eller pakker; brug syntetiske værdier som `#1f5a8c` og
+`#143c5e`. Farverne følger samme vej som `theme`: `school.json` →
+`/api/school-appearance` og lærerpanelet, og `school.json` →
+`school-connection.json` → tilmeldingens `settings` → elevcomputerens
+`/etc/elevhub/kiosk.json`. Siderne bruger dem som `--brand` og `--brand-dark`.
+Flader, som også i de offentlige temaer er røde, bruger `--school-brand` og
+`--school-brand-dark`, som kun sættes, når skolen har egne farver.
+Laserlinjer, fejl- og succesfarver og illustrationer beholder deres farver.
+
+Sådan sættes farverne:
+
+- Ny server: `Setup-School.ps1 -Brand '#rrggbb' -BrandDark '#rrggbb'` eller
+  Windows-installationsprogrammet med `/BRAND=#rrggbb /BRANDDARK=#rrggbb`.
+  Guiden har ingen farveside.
+- Eksisterende server: læg en privat fil, fx
+  `{"brand": "#1f5a8c", "brand_dark": "#143c5e"}`, uden for kildekoden og vælg
+  **14. Skolefarver** i `Manage-School.ps1`, eller kør
+  `Manage-School.ps1 -SchoolColoursFile <fil>`. Skriv `FJERN` i menuen eller
+  brug `-ClearSchoolColours` for at vende tilbage til temaets farver. Kun de to
+  felter i `school.json` ændres; nøgler, køer, computere og resten af profilen
+  bevares. En programopdatering bevarer felterne.
+- Elevcomputere, som allerede er tilmeldt, får de nye farver, når de tilmeldes
+  igen med en ny `school-connection.json`.
+
 ## Separat Windows-LAN og serverstart
 
 Den Windows-server, der står på skolens LAN, konfigureres gennem

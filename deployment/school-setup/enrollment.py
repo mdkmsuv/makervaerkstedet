@@ -37,6 +37,11 @@ HOLD_FILE = '.restore-hold.json'
 REQUEST_SECONDS = 10
 REVOKE_JOURNAL = 'security/enrollment/revoke-device.json'
 MAX_REVOKE_INTENT_BYTES = 2 * 1024
+# Optional private school colours.  They are installation data only and are
+# never part of the public source; readers fall back to the theme.
+COLOUR = re.compile(r'#[0-9a-f]{6}')
+COLOUR_KEYS = ('brand', 'brand_dark')
+MIN_WHITE_CONTRAST = 4.5
 
 class RevokeIntentSuperseded(RuntimeError):
     """Abort this operation after discarding only an obsolete validated intent."""
@@ -310,6 +315,59 @@ def lock_registry(root):
                         fcntl.flock(stream.fileno(), fcntl.LOCK_UN)
 
 
+def brand_colours(data):
+    """Both valid private colours, or {} (single/invalid values are ignored)."""
+    if not isinstance(data, dict):
+        return {}
+    values = [data.get(key) for key in COLOUR_KEYS]
+    if all(isinstance(value, str) and COLOUR.fullmatch(value) for value in values):
+        return dict(zip(COLOUR_KEYS, values))
+    return {}
+
+
+def white_contrast(colour):
+    """WCAG 2 contrast ratio of white text on a #rrggbb colour."""
+    channels = []
+    for index in (1, 3, 5):
+        value = int(colour[index:index + 2], 16) / 255
+        channels.append(value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4)
+    luminance = 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+    return 1.05 / (luminance + 0.05)
+
+
+def validate_brand_colours(value):
+    """Strict check where colours are set: both or neither, hex and contrast."""
+    if not isinstance(value, dict) or set(value) - set(COLOUR_KEYS):
+        raise ValueError('Skolefarverne skal være et JSON-objekt med kun brand og brand_dark.')
+    present = [key in value for key in COLOUR_KEYS]
+    if not any(present):
+        return {}
+    if not all(present):
+        raise ValueError('Angiv både brand og brand_dark, eller ingen af dem.')
+    for key in COLOUR_KEYS:
+        colour = value[key]
+        if not isinstance(colour, str) or not COLOUR.fullmatch(colour):
+            raise ValueError(f'{key} skal skrives som #rrggbb med små bogstaver, fx #1f5a8c.')
+        if white_contrast(colour) < MIN_WHITE_CONTRAST:
+            raise ValueError(f'{key} er for lys: hvid tekst får kontrast '
+                             f'{white_contrast(colour):.2f}:1, men skal have mindst 4,5:1. Vælg en mørkere farve.')
+    return {key: value[key] for key in COLOUR_KEYS}
+
+
+def set_brand_colours(root, value):
+    """Set (or clear with {}) the private colours; every other field is preserved."""
+    colours = validate_brand_colours(value)
+    school(root)
+    path = root / 'school.json'
+    data = read_json(path)
+    updated = {key: item for key, item in data.items() if key not in COLOUR_KEYS}
+    updated.update(colours)
+    if updated != data:
+        # Atomic replace; on Windows the caller re-applies the profile ACL.
+        write_json(path, updated)
+    return colours
+
+
 def school(root):
     data = read_json(root / 'school.json')
     if not isinstance(data, dict) or data.get('schemaVersion') != 1:
@@ -332,7 +390,7 @@ def school(root):
 def connection(root):
     data = school(root)
     return {'schemaVersion': 1, 'kind': 'elevhub-school-connection',
-            'school_name': data['school_name'], 'theme': data['theme'],
+            'school_name': data['school_name'], 'theme': data['theme'], **brand_colours(data),
             'server': data['server'], 'enrollment_port': 8774,
             'caCertificatePem': (root / 'security/ca.crt').read_text(encoding='ascii'),
             'admin_public_key': host_key(data['admin_public_key'])}
@@ -410,7 +468,7 @@ def redeem(root, request, source, now=None):
         write_json(registry_path, registry)
         return {'schemaVersion': 1, 'settings': {'computer': computer,
                 'server': cfg['server'], 'school_name': cfg['school_name'], 'theme': cfg['theme'],
-                'admin_sources': [cfg['server']]},
+                **brand_colours(cfg), 'admin_sources': [cfg['server']]},
                 'device': {'computer': computer, 'token': ticket['token'], 'ui_token': ticket['ui_token']},
                 'caCertificatePem': connection(root)['caCertificatePem'],
                 'admin_public_key': host_key(cfg['admin_public_key'])}
@@ -593,11 +651,14 @@ def _ssh_command_locked(root, computer, now):
 
 def main():
     parser = argparse.ArgumentParser(description='Skolens tilmelding og SSH-administration')
-    parser.add_argument('action', choices=('serve', 'ticket', 'connection', 'ssh', 'check', 'revoke'))
+    parser.add_argument('action', choices=('serve', 'ticket', 'connection', 'ssh', 'check', 'revoke', 'colours'))
     parser.add_argument('--data-root', type=Path, required=True)
     parser.add_argument('--name')
     parser.add_argument('--output', type=Path)
     parser.add_argument('--confirm-name')
+    parser.add_argument('--colours-file', type=Path,
+                        help='Privat JSON-fil med {"brand": "#rrggbb", "brand_dark": "#rrggbb"}')
+    parser.add_argument('--clear', action='store_true', help='Fjern skolefarverne og brug temaets farver')
     args = parser.parse_args()
     assert_not_restored(args.data_root)
     root = plain_path(args.data_root).resolve()
@@ -619,6 +680,23 @@ def main():
             raise ValueError('Bekræft det præcise computernavn med --confirm-name.')
         revoke_device(root, args.name)
         print('Tilmeldingen er fjernet. Opret en ny kode til geninstallation. Elevfiler og køer er bevaret.')
+    elif args.action == 'colours':
+        if bool(args.colours_file) == bool(args.clear):
+            raise ValueError('Vælg enten en skolefarvefil eller --clear.')
+        if args.clear:
+            set_brand_colours(root, {})
+            print('Skolefarverne er fjernet. Temaets farver bruges igen.')
+        else:
+            try:
+                value = read_json(plain_path(args.colours_file))
+            except (OSError, ValueError):
+                raise ValueError('Skolefarvefilen kunne ikke læses som JSON.') from None
+            if not value:
+                raise ValueError('Skolefarvefilen er tom. Brug --clear for at fjerne farverne.')
+            colours = set_brand_colours(root, value)
+            print(f"Skolefarverne er gemt: brand {colours['brand']}, brand_dark {colours['brand_dark']}.")
+        print('Serverens sider bruger farverne ved næste indlæsning. Elevcomputere, som allerede er '
+              'tilmeldt, beholder deres farver, til de tilmeldes igen.')
     elif args.action == 'check':
         ssl.create_default_context(cafile=str(root / 'security/ca.crt'))
         print('Skoleopsætning og CA kan læses.')

@@ -166,6 +166,26 @@ class FullInstallationTests(unittest.TestCase):
             with self.subTest(theme=bad), self.assertRaises(ValueError):
                 firstboot.validate_profile(settings, self.device(), CA, KEY)
 
+    def test_optional_school_colours_are_forwarded_next_to_the_theme(self):
+        manifest = {'files': {'assets/CaDoodle-ApplicationInstall.zip': '0' * 64}}
+        settings = self.profile()
+        settings.update(theme='green')
+        variables = firstboot.make_variables(settings, KEY, manifest)
+        self.assertEqual((variables['kiosk_brand'], variables['kiosk_brand_dark']), ('', ''),
+                         'absent colours keep the public theme')
+        settings.update(brand='#1f5a8c', brand_dark='#143c5e')
+        firstboot.validate_profile(settings, self.device(), CA, KEY)
+        variables = firstboot.make_variables(settings, KEY, manifest)
+        self.assertEqual((variables['kiosk_theme'], variables['kiosk_brand'], variables['kiosk_brand_dark']),
+                         ('green', '#1f5a8c', '#143c5e'))
+        for bad in ({'brand': '#1f5a8c'}, {'brand_dark': '#143c5e'},
+                    {'brand': '#1F5A8C', 'brand_dark': '#143c5e'},
+                    {'brand': '#1f5a8c', 'brand_dark': '#143c5e\n'},
+                    {'brand': 1, 'brand_dark': '#143c5e'}):
+            with self.subTest(colours=bad), self.assertRaises(ValueError):
+                firstboot.validate_profile({**self.profile(), 'theme': 'green', **bad}, self.device(), CA, KEY)
+
+
     def test_onboarding_admin_sources_are_ip_allowlist(self):
         settings = self.profile()
         settings['onboarding'] = True
@@ -291,6 +311,69 @@ class FullInstallationTests(unittest.TestCase):
                     firstboot.main()
             self.assertFalse((state / "installation-complete.json").exists())
 
+
+class OnboardingSchoolColoursTest(unittest.TestCase):
+    """The connection file and the enrolment answer must agree on the colours."""
+
+    def setUp(self):
+        import onboarding
+        self.onboarding = onboarding
+        self.connection = {
+            'schemaVersion': 1, 'kind': 'elevhub-school-connection', 'server': '198.51.100.50',
+            'enrollment_port': 8774, 'theme': 'green', 'school_name': 'Syntetisk skole',
+            'admin_public_key': 'ssh-ed25519 ' + 'A' * 68, 'caCertificatePem': CA,
+            'brand': '#1f5a8c', 'brand_dark': '#143c5e',
+        }
+
+    def load(self, data):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'school-connection.json'
+            path.write_text(json.dumps(data), encoding='utf-8')
+            # The synthetic CA is not a parseable certificate; TLS is not under test here.
+            with mock.patch.object(self.onboarding.ssl, 'create_default_context'):
+                return self.onboarding.load_connection(path)
+
+    def test_connection_file_accepts_both_or_no_colours(self):
+        self.assertEqual(self.load(self.connection)['brand'], '#1f5a8c')
+        plain = {k: v for k, v in self.connection.items() if k not in ('brand', 'brand_dark')}
+        self.assertNotIn('brand', self.load(plain))
+        for bad in ({'brand': None}, {'brand_dark': '#143C5E'}, {'brand': 'blue'}):
+            data = {**self.connection, **bad}
+            with self.subTest(colours=bad), self.assertRaisesRegex(ValueError, 'skolefarver'):
+                self.load(data)
+        half = dict(self.connection)
+        del half['brand_dark']
+        with self.assertRaisesRegex(ValueError, 'skolefarver'):
+            self.load(half)
+
+    def answer(self, **settings):
+        base = {'computer': 'vaerksted-01', 'server': '198.51.100.50', 'theme': 'green',
+                'school_name': 'Syntetisk skole', 'admin_sources': ['198.51.100.50'],
+                'brand': '#1f5a8c', 'brand_dark': '#143c5e'}
+        base.update(settings)
+        return {'schemaVersion': 1, 'settings': {k: v for k, v in base.items() if v is not None},
+                'caCertificatePem': CA, 'admin_public_key': 'ssh-ed25519 ' + 'A' * 68, 'device': {}}
+
+    def enroll(self, connection, answer):
+        response = mock.Mock(status=200)
+        response.read.return_value = json.dumps(answer).encode()
+        transport = mock.Mock()
+        transport.getresponse.return_value = response
+        with mock.patch.object(self.onboarding.ssl, 'create_default_context'), \
+                mock.patch.object(self.onboarding.http.client, 'HTTPSConnection', return_value=transport):
+            return self.onboarding.enroll(connection, 'vaerksted-01', '123456', 'f' * 64, 'ssh-ed25519 AAAA')
+
+    def test_enrolment_answer_must_carry_the_same_colours(self):
+        result = self.enroll(self.connection, self.answer())
+        self.assertEqual(result['settings']['brand_dark'], '#143c5e')
+        plain = {k: v for k, v in self.connection.items() if k not in ('brand', 'brand_dark')}
+        self.enroll(plain, self.answer(brand=None, brand_dark=None))
+        for connection, answer in ((self.connection, self.answer(brand='#1f5a8d')),
+                                   (self.connection, self.answer(brand=None, brand_dark=None)),
+                                   (plain, self.answer())):
+            with self.subTest(answer=answer['settings'].get('brand')), \
+                    self.assertRaisesRegex(ValueError, 'passer ikke'):
+                self.enroll(connection, answer)
 
 if __name__ == "__main__":
     unittest.main()

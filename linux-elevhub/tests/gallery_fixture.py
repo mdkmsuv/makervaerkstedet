@@ -14,9 +14,9 @@ def main():
     if not root.name.startswith('elevhub-gallery-'):
         raise ValueError('Only a dedicated temporary gallery directory is allowed.')
     store = Projektarkiv(root / '.elevhub')
-    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80"><rect x="10" y="10" width="80" height="60" rx="6" fill="#b4121a"/><circle cx="50" cy="40" r="18" fill="white"/></svg>'
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 80"><rect x="10" y="10" width="80" height="60" rx="6" fill="#c62b2f"/><circle cx="50" cy="40" r="18" fill="white"/></svg>'
     for i in range(7):
-        store.save(svg.replace('#b4121a', ['#b4121a', '#387149', '#27638e'][i % 3]).encode(),
+        store.save(svg.replace('#c62b2f', ['#c62b2f', '#387149', '#27638e'][i % 3]).encode(),
                    project=f'{i+1:032x}', name=f'Laserskilt {i+1}', folder='5A · Gruppe 3',
                    kind='laser', filename=f'skilt-{i}.svg', expected=0)
     store.save(svg.replace('<svg ', '<svg data-workshop="vinyl" ').encode(),

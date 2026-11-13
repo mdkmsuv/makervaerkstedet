@@ -9,6 +9,19 @@
     quiet: true
   tags: [kiosk, branding]
 
+# Skolefarver er valgfrie. Ugyldige eller halve værdier stopper ikke
+# installationen; kiosken bruger så blot temaets farver.
+- name: Valgfri skolefarver
+  ansible.builtin.set_fact:
+    kiosk_skolefarver: >-
+      {{ {'brand': kiosk_brand | string, 'brand_dark': kiosk_brand_dark | string}
+         if ((kiosk_brand | default('', true) | string | length == 7)
+             and (kiosk_brand_dark | default('', true) | string | length == 7)
+             and (kiosk_brand | string is match('#[0-9a-f]{6}'))
+             and (kiosk_brand_dark | string is match('#[0-9a-f]{6}')))
+         else {} }}
+  tags: [kiosk, branding]
+
 - name: Serverens adresse er angivet
   ansible.builtin.assert:
     that:
@@ -709,7 +722,7 @@
                   'internet_app': kiosk_internet_app,
                   'theme': kiosk_theme,
                   'school_name': kiosk_school_name | default(''),
-                  'webproxy_required': true} | to_nice_json }}"
+                  'webproxy_required': true} | combine(kiosk_skolefarver | default({})) | to_nice_json }}"
     owner: root
     group: root
     mode: "0644"

@@ -24,6 +24,19 @@ class SetupWizardModelTests(unittest.TestCase):
         string_bool = body.replace('addressConfirmed=$true', "addressConfirmed='True'")
         v=json.loads(self.run_ps(string_bool).stdout); self.assertFalse(v['valid'])
 
+    def test_optional_private_colours_are_validated_and_passed_on(self):
+        base = "$v=@{schoolName='Skolen';deployment='single-computer';component='server';roleIp='192.0.2.10';studentSubnet='192.0.2.0/24';theme='green';machine='fbb2';addressConfirmed=$true;packageRoot='C:\\pkg'%s}; Test-SetupWizardInput -Values $v | ConvertTo-Json -Depth 8 -Compress"
+        v = json.loads(self.run_ps(base % '').stdout)
+        self.assertTrue(v['valid']); self.assertNotIn('Brand', v['parameters']); self.assertNotIn('BrandDark', v['parameters'])
+        v = json.loads(self.run_ps(base % ";brand='#1f5a8c';brandDark='#143c5e'").stdout)
+        self.assertTrue(v['valid']); self.assertEqual((v['parameters']['Brand'], v['parameters']['BrandDark']), ('#1f5a8c', '#143c5e'))
+        self.assertEqual(v['parameters']['Theme'], 'green')
+        for extra, fragment in ((";brand='#1f5a8c'", 'ingen af dem'), (";brand='#1F5A8C';brandDark='#143c5e'", '#rrggbb'),
+                                (";brand='#f2c94c';brandDark='#143c5e'", '4,5:1')):
+            with self.subTest(extra=extra):
+                r = self.run_ps(base % extra); self.assertEqual(r.returncode, 0, r.stderr); v = json.loads(r.stdout)
+                self.assertFalse(v['valid']); self.assertEqual(v['errors'][0]['field'], 'brand'); self.assertIn(fragment, v['errors'][0]['message'])
+
     def test_station_fixture_shape_and_no_powershell_evaluation(self):
         with tempfile.TemporaryDirectory() as d:
             path=Path(d)/'connection.json'; path.write_text(json.dumps({'schemaVersion':1,'kind':'makervaerkstedet-laserstation-connection','school_name':'Skolen','server_url':'https://192.0.2.10:18780','caCertificatePem':'-----BEGIN CERTIFICATE----- fixture -----END CERTIFICATE-----','station_id':'laser-fbb2','machine':'fbb2'}), encoding='utf-8')

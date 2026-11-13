@@ -1,6 +1,6 @@
 # Produktindgang — Makerværkstedet
 
-Arbejdsform og mandat følger [projektrodens AGENTS.md](../AGENTS.md):
+Arbejdsform og mandat følger projektrodens `AGENTS.md` (mappen over denne):
 hovedagenten udvikler selv, højst tre underagenter og UI/UX-review ved alle
 UI-/flowændringer. Den gamle faste agentfordeling gælder ikke længere.
 Denne fil supplerer reglerne og genindfører ikke et generelt installationsforbud.

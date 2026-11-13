@@ -59,6 +59,11 @@ def apply_profile(root=Path("/"),*,trust_runner=None):
     config.update(computer=device["computer"],computer_visning=device["computer"],server=settings["server"],
         hub="https://"+settings["server"]+":8773",protokol="https",ui_token=device["ui_token"],
         theme=settings.get("theme","red"),school_name=settings.get("school_name",""))
+    # Optional private school colours (validated both-or-neither above). A new
+    # enrolment without them returns this computer to the public theme.
+    for key in ("brand","brand_dark"):
+        if key in settings:config[key]=settings[key]
+        else:config.pop(key,None)
     atomic(path,json_bytes(config),0o644)
     atomic(root/"etc/elevhub/ca.pem",ca.encode(),0o644)
     # Root identity is committed last; firstboot can finish activation offline

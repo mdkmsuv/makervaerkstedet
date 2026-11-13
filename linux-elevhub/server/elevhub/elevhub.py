@@ -97,6 +97,7 @@ from school_appearance import (_manifest as _local_appearance,
                                school_appearance as _appearance_public,
                                school_appearance_manifest_present as _appearance_manifest_present,
                                school_appearance_asset,
+                               brand_colours as _brand_colours,
                                render_local_html)
 LOCAL_APPEARANCE_VERSION = 1
 
@@ -718,6 +719,10 @@ class Laerer(Grund):
                 content = content.replace('</head>', '<link rel="stylesheet" href="/school-appearance/website.css"></head>', 1)
             return self.svar(status, content.encode('utf-8'), 'text/html; charset=utf-8')
         brand, deep = palettes[theme]
+        # Private school colours (both or neither) win over the public theme.
+        private = _brand_colours(profile)
+        if private:
+            brand, deep = private['brand'], private['brand_dark']
         content += ('\n:root{--brand:' + brand + ';--brand-dark:' + deep
                     + ';--section:#f3edd6;--pale:#f8f3e4;--ink:#121611;--line:#d8d3c0}\n')
         return self.svar(status, content.encode('utf-8'), 'text/css; charset=utf-8')

@@ -99,6 +99,19 @@ def existing_project_paths(root,user):
                 result[key]=value
     return result
 
+COLOUR=re.compile(r"#[0-9a-f]{6}")
+
+def school_colours(config):
+    """Optional private colours (both or neither). Anything else means the theme.
+
+    A bad colour must never stop the kiosk: it only loses the custom colours.
+    The values stay in kiosk.json untouched, so a later fix needs no re-enrolment.
+    """
+    brand,dark=config.get("brand"),config.get("brand_dark")
+    if isinstance(brand,str) and isinstance(dark,str) and COLOUR.fullmatch(brand) and COLOUR.fullmatch(dark):
+        return brand,dark
+    return "",""
+
 def context(config, root):
     # Explicit projection: even a legacy file with extra credentials cannot pass
     # a root token to the template engine or to the pupil-readable start page.
@@ -136,6 +149,7 @@ def context(config, root):
     school=config.get("school_name","")
     if theme not in {"red","green","yellow"} or not isinstance(school,str) or len(school)>120 or any(ord(c)<32 for c in school):
         raise ActivationError("invalid_appearance")
+    brand,brand_dark=school_colours(config)
     # This variable only controls the optional --ca-file argument in the local
     # design unit. Omitting a missing CA retains Python's normal HTTPS validation.
     ca_available=(root/"etc/elevhub/ca.pem").is_file()
@@ -148,6 +162,7 @@ def context(config, root):
         if not isinstance(config.get(key,""),str) or not re.fullmatch(r"[A-Za-z0-9_.@+-]{0,80}",config.get(key,"")):raise ActivationError("invalid_screen_option")
     return {"inventory_hostname":computer,"kiosk_enhed":{"ui_token":ui}, "kiosk_server":server,
         "kiosk_protokol":"https", "kiosk_hub_port":8773, "kiosk_printvaerksted_port":8770, "kiosk_theme":theme,
+        "kiosk_brand":brand,"kiosk_brand_dark":brand_dark,
         "kiosk_school_name":school,"kiosk_bruger":user,"kiosk_lokale_app_urler":urls,
         "kiosk_app_porte":ports,"kiosk_lokale_apps_enabled":True,"kiosk_webproxy_required":webproxy,
         "kiosk_internet_start":"https://www.google.com/imghp?hl=da&safe=active",

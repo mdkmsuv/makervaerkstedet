@@ -119,6 +119,38 @@ class LocalProjects(unittest.TestCase):
             server.server_close()
             worker.join()
 
+    def test_shelf_stylesheets_follow_optional_school_colours(self):
+        server = make_server(0, self.store)
+        server.kiosk_config = Path(self.temp.name)/'kiosk.json'
+        worker = threading.Thread(target=server.serve_forever, daemon=True)
+        worker.start()
+        def css(path):
+            con = http.client.HTTPConnection('127.0.0.1', server.server_port, timeout=5)
+            try:
+                con.request('GET', '/_elevhub/projekter/'+path)
+                response = con.getresponse()
+                return response.status, response.read().decode()
+            finally:
+                con.close()
+        try:
+            for config in (None, {'theme':'green'}, {'brand':'#1f5a8c'}, {'brand':'#1F5A8C','brand_dark':'#143c5e'}, [1]):
+                with self.subTest(config=config):
+                    if config is not None:
+                        server.kiosk_config.write_text(json.dumps(config))
+                    status, text = css('projekter.css')
+                    self.assertEqual(status, 200)
+                    self.assertIn('--accent:var(--brand,#c62b2f)', text)
+                    self.assertNotIn('--brand:', text, 'absent or invalid colours keep the public red')
+            server.kiosk_config.write_text(json.dumps({'theme':'green','brand':'#1f5a8c','brand_dark':'#143c5e'}))
+            for path in ('projekter.css', 'open.css', 'bridge.css'):
+                with self.subTest(path=path):
+                    self.assertTrue(css(path)[1].endswith(':root{--brand:#1f5a8c;--brand-dark:#143c5e}\n'))
+            self.assertNotIn('--brand:', css('projekter.js')[1])
+        finally:
+            server.shutdown()
+            server.server_close()
+            worker.join()
+
     def test_local_navigation_tracks_project_open_but_not_embedded_picker(self):
         assets = Path(self.temp.name)/'scratch'
         assets.mkdir()

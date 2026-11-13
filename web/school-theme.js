@@ -6,7 +6,18 @@
     const appearance=await response.json();
     if(!appearance||!['red','yellow','green'].includes(appearance.theme)||typeof appearance.school_name!=='string')return;
     // A stored local skin carries its own exact colours and typography.
-    if(!appearance.style)document.documentElement.dataset.schoolTheme=appearance.theme;
+    // A page may pin its public theme (data-school-theme-fixed) and still take private colours.
+    const root=document.documentElement;
+    if(!appearance.style&&!root.hasAttribute('data-school-theme-fixed'))root.dataset.schoolTheme=appearance.theme;
+    // Optional private school colours (both or neither) win over every theme rule.
+    // --school-brand* exist only then, so surfaces that stay red in the public
+    // themes keep exactly that look without private colours.
+    const colour=/^#[0-9a-f]{6}$/;
+    if(typeof appearance.brand==='string'&&typeof appearance.brand_dark==='string'
+       &&colour.test(appearance.brand)&&colour.test(appearance.brand_dark)){
+      for(const name of ['--brand','--school-brand'])root.style.setProperty(name,appearance.brand);
+      for(const name of ['--brand-dark','--school-brand-dark'])root.style.setProperty(name,appearance.brand_dark);
+    }
     document.querySelectorAll('[data-school-name]').forEach(node=>{node.textContent=appearance.school_name;});
     document.querySelectorAll('[data-school-footer]').forEach(node=>{node.textContent=appearance.school_name+' · Makerværkstedet · Udviklet af Mathias Kusk Damgaard · Kreditering: Klostermarksskolen';});
     if(appearance.style&&appearance.style.website_css==='/school-appearance/website.css'){
@@ -41,7 +52,7 @@
     back.href = `http://127.0.0.1:${port}/makervaerkstedet.html`;
     back.textContent = '\u2190 Tilbage til forsiden';
     Object.assign(bar.style, {display: 'flex', justifyContent: 'flex-end', padding: '10px 5%', background: '#fff', borderBottom: '1px solid #e1e1e1'});
-    Object.assign(back.style, {border: '1px solid #c62b2f', borderRadius: '2px', color: '#8c1d24', background: '#fff', padding: '10px 18px', textDecoration: 'none', font: '15px Metrophobic,Helvetica,Arial,sans-serif'});
+    Object.assign(back.style, {border: '1px solid var(--school-brand, #c62b2f)', borderRadius: '2px', color: 'var(--school-brand-dark, #8c1d24)', background: '#fff', padding: '10px 18px', textDecoration: 'none', font: '15px Metrophobic,Helvetica,Arial,sans-serif'});
     bar.append(back);
     document.body.prepend(bar);
   } catch { /* without session storage the button is simply not shown */ }

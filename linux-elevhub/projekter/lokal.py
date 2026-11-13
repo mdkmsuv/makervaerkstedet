@@ -8,6 +8,7 @@ import argparse
 import json
 import logging
 import mimetypes
+import re
 import socket
 import threading
 import uuid
@@ -28,6 +29,30 @@ CSP = ("default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
        "connect-src 'self' blob:; font-src 'self' data:; worker-src 'self' blob:; "
        "frame-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; "
        "frame-ancestors 'self'")
+
+
+KIOSK_CONFIG = Path('/etc/elevhub/kiosk.json')
+SKOLEFARVE_CSS = frozenset({'projekter.css', 'open.css', 'projekt-bridge.css'})
+COLOUR = re.compile(r'#[0-9a-f]{6}')
+
+
+def skolefarver_css(path=KIOSK_CONFIG):
+    """Optional private school colours as CSS variables; empty means the public look.
+
+    Read on each stylesheet request, so a changed kiosk.json applies after a reload.
+    Bad or partial values never break the shelf: the stylesheets keep their fallbacks.
+    """
+    try:
+        if Path(path).stat().st_size > 65536:
+            return b''
+        value = json.loads(Path(path).read_text(encoding='utf-8'))
+        brand, dark = value.get('brand'), value.get('brand_dark')
+    except (OSError, ValueError, AttributeError):
+        return b''
+    if not (isinstance(brand, str) and isinstance(dark, str)
+            and COLOUR.fullmatch(brand) and COLOUR.fullmatch(dark)):
+        return b''
+    return f'\n:root{{--brand:{brand};--brand-dark:{dark}}}\n'.encode('ascii')
 
 
 def student_identity(service):
@@ -104,7 +129,10 @@ class Handler(BaseHTTPRequestHandler):
 
     def fil(self, filename):
         path = HERE / 'web' / filename
-        self.svar(200, path.read_bytes(), mimetypes.guess_type(filename)[0] or 'application/octet-stream')
+        data = path.read_bytes()
+        if filename in SKOLEFARVE_CSS:
+            data += skolefarver_css(getattr(self.server, 'kiosk_config', KIOSK_CONFIG))
+        self.svar(200, data, mimetypes.guess_type(filename)[0] or 'application/octet-stream')
 
     def dispatch(self):
         try:

@@ -18,9 +18,11 @@ sys.path.insert(0, str(ROOT / "administration"))
 from template_activation import APP_URLS
 TEMPLATE_DIR = ROOT / "ansible" / "roles" / "kiosk" / "templates"
 ASSETS = ROOT / "server" / "elevhub" / "web" / "assets"
+# Synthetic school colours only; never a real school's values.
+COLOURS = {"none": ("", ""), "custom": ("#1f5a8c", "#143c5e"), "invalid": ("#1F5A8C", "blue")}
 
 
-def render() -> bytes:
+def render(colours: str = "none") -> bytes:
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=False)
     env.filters["to_json"] = lambda value: json.dumps(value, ensure_ascii=False)
     template = env.get_template("start.html.j2")
@@ -31,6 +33,8 @@ def render() -> bytes:
         inventory_hostname="browser-fixture",
         kiosk_enhed={"ui_token": "fixture-token"},
         kiosk_theme="red",
+        kiosk_brand=COLOURS[colours][0],
+        kiosk_brand_dark=COLOURS[colours][1],
         kiosk_school_name="Testskolen",
         kiosk_lokale_app_urler={**APP_URLS, "projekter": f"http://127.0.0.1:{PORT}/projects/"},
         kiosk_internet_start="https://internet.example.test/",
@@ -67,6 +71,7 @@ def manifests(mode: str) -> list[dict]:
 class Handler(BaseHTTPRequestHandler):
     mode = "down"
     catalog = "installed"
+    colours = "none"
 
     def log_message(self, *_args):
         pass
@@ -90,6 +95,10 @@ class Handler(BaseHTTPRequestHandler):
             query = parse_qs(parsed.query)
             mode = query.get("mode", [self.__class__.mode])[0]
             catalog = query.get("catalog", [self.__class__.catalog])[0]
+            colours = query.get("colours", [self.__class__.colours])[0]
+            if colours not in COLOURS:
+                return self.send(400, b"bad colours")
+            self.__class__.colours = colours
             if mode not in {"down", "closed", "open", "forbidden"} or catalog not in {"installed", "removed", "microbit-removed", "laser-removed", "empty", "broken"}:
                 return self.send(400, b"bad mode")
             self.__class__.mode = mode
@@ -102,7 +111,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(503, b'{"error":"synthetic unreadable manifest"}', "application/json")
             return self.send(200, json.dumps({"apps": manifests(self.__class__.catalog)}).encode(), "application/json")
         if parsed.path in {"/", "/start.html"}:
-            return self.send(200, render(), "text/html; charset=utf-8")
+            return self.send(200, render(self.__class__.colours), "text/html; charset=utf-8")
         if parsed.path.startswith("/assets/"):
             relative = parsed.path.removeprefix("/assets/")
             candidate = (ASSETS / relative).resolve()

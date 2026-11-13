@@ -74,6 +74,70 @@ class EnrollmentTests(unittest.TestCase):
         enrollment.write_json(path, data)
         self.assertEqual(onboarding.load_connection(path)['theme'], 'yellow')
 
+    def test_private_colours_travel_with_the_theme_or_not_at_all(self):
+        # Synthetic colours only; a school's real values are private installation data.
+        colours = {'brand': '#1f5a8c', 'brand_dark': '#143c5e'}
+        enrollment.write_json(self.root / 'school.json', {**self.school, **colours})
+        connection = enrollment.connection(self.root)
+        self.assertEqual({key: connection[key] for key in ('theme', 'brand', 'brand_dark')},
+                         {'theme': 'yellow', **colours})
+        settings = enrollment.redeem(self.root, self.issue(), '192.0.2.20', now=1001)['settings']
+        self.assertEqual({key: settings[key] for key in ('theme', 'brand', 'brand_dark')},
+                         {'theme': 'yellow', **colours})
+        for broken in ({'brand': '#1f5a8c'}, {'brand': '#1F5A8C', 'brand_dark': '#143c5e'},
+                       {'brand': 'blue', 'brand_dark': '#143c5e'}):
+            with self.subTest(broken=broken):
+                enrollment.write_json(self.root / 'school.json', {**self.school, **broken})
+                connection = enrollment.connection(self.root)
+                self.assertEqual(connection['theme'], 'yellow')
+                self.assertNotIn('brand', connection)
+                self.assertNotIn('brand_dark', connection)
+
+    def test_absent_colours_keep_the_previous_connection_shape(self):
+        connection = enrollment.connection(self.root)
+        self.assertEqual(set(connection), {'schemaVersion', 'kind', 'school_name', 'theme', 'server',
+                                           'enrollment_port', 'caCertificatePem', 'admin_public_key'})
+        settings = enrollment.redeem(self.root, self.issue(), '192.0.2.20', now=1001)['settings']
+        self.assertEqual(set(settings), {'computer', 'server', 'school_name', 'theme', 'admin_sources'})
+
+    def test_setting_colours_validates_contrast_and_preserves_profile(self):
+        colours = {'brand': '#1f5a8c', 'brand_dark': '#143c5e'}
+        self.assertEqual(enrollment.set_brand_colours(self.root, colours), colours)
+        self.assertEqual(enrollment.read_json(self.root / 'school.json'), {**self.school, **colours})
+        for value, fragment in (({'brand': '#1f5a8c'}, 'både'),
+                                ({'brand': '#1F5A8C', 'brand_dark': '#143c5e'}, '#rrggbb'),
+                                ({'brand': '#1f5a8c', 'brand_dark': '#143c5e', 'theme': 'red'}, 'kun brand'),
+                                ({'brand': '#f2c94c', 'brand_dark': '#143c5e'}, 'for lys'),
+                                ({'brand': '#1f5a8c', 'brand_dark': '#8a8a8a'}, '4,5:1')):
+            with self.subTest(value=value):
+                with self.assertRaisesRegex(ValueError, fragment):
+                    enrollment.set_brand_colours(self.root, value)
+                self.assertEqual(enrollment.read_json(self.root / 'school.json'), {**self.school, **colours})
+        self.assertEqual(enrollment.set_brand_colours(self.root, {}), {})
+        self.assertEqual(enrollment.read_json(self.root / 'school.json'), self.school)
+        self.assertAlmostEqual(enrollment.white_contrast('#ffffff'), 1.0)
+        self.assertAlmostEqual(enrollment.white_contrast('#000000'), 21.0)
+        # #767676 is the lightest grey that passes 4.5:1 with white text.
+        self.assertGreaterEqual(enrollment.white_contrast('#767676'), 4.5)
+        self.assertLess(enrollment.white_contrast('#777777'), 4.5)
+
+    def test_colours_command_sets_and_clears_only_the_colours(self):
+        source = self.root / 'skolefarver.json'
+        source.write_text(json.dumps({'brand': '#1f5a8c', 'brand_dark': '#143c5e'}), encoding='utf-8')
+        for arguments, expected in ((['--colours-file', str(source)],
+                                     {**self.school, 'brand': '#1f5a8c', 'brand_dark': '#143c5e'}),
+                                    (['--clear'], self.school)):
+            with self.subTest(arguments=arguments), patch.object(
+                    sys, 'argv', ['enrollment.py', 'colours', '--data-root', str(self.root), *arguments]), \
+                    patch('builtins.print'):
+                self.assertEqual(enrollment.main(), 0)
+                self.assertEqual(enrollment.read_json(self.root / 'school.json'), expected)
+        for arguments in ([], ['--clear', '--colours-file', str(source)]):
+            with self.subTest(arguments=arguments), patch.object(
+                    sys, 'argv', ['enrollment.py', 'colours', '--data-root', str(self.root), *arguments]):
+                with self.assertRaises(ValueError):
+                    enrollment.main()
+
     def test_ticket_registers_tokens_and_retry_only_exact_installation(self):
         request = self.issue()
         result = enrollment.redeem(self.root, request, '192.0.2.20', now=1001)

@@ -153,6 +153,21 @@ class PowerControlsTkTest(unittest.TestCase):
             time.sleep(0.01)
         self.fail("Tk state did not reach the expected result")
 
+    def test_confirmation_uses_the_kiosk_accent(self):
+        self.controls.ask("poweroff")
+        self.root.update()
+        self.assertEqual(self.controls.confirm_button.cget("bg"), power_controls.DEFAULT_ACCENT[0])
+        self.controls.cancel()
+        school = power_controls.PowerControls(self.root, self.parent, accent=("#1f5a8c", "#143c5e"))
+        try:
+            school.ask("reboot")
+            self.root.update()
+            self.assertEqual(school.confirm_button.cget("bg"), "#1f5a8c")
+            self.assertEqual(school.confirm_button.cget("activebackground"), "#143c5e")
+            self.assertEqual(school.status.cget("fg"), "#1f5a8c")
+        finally:
+            school.cancel()
+
     def test_opening_and_cancelling_dialog_never_dispatches_power(self):
         with mock.patch.object(power_controls, "request_power") as request:
             self.controls.ask("poweroff")

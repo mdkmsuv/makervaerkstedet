@@ -247,6 +247,22 @@ class LocalAdminUpdateTests(unittest.TestCase):
               patch.object(gui.ttk, 'Button', Widget)):
             gui.main()
 
+    def test_school_colours_follow_kiosk_config_and_bad_values_use_the_theme(self):
+        gui_spec = importlib.util.spec_from_file_location(
+            'local_admin_update_gui_colours', SOURCE.parent / 'elevhub-local-update-gui.py')
+        gui = importlib.util.module_from_spec(gui_spec)
+        gui_spec.loader.exec_module(gui)
+        custom = {'theme': 'green', 'brand': '#1f5a8c', 'brand_dark': '#143c5e'}
+        self.assertEqual(updater._appearance(custom), custom)
+        self.assertEqual(gui.accent(updater._appearance(custom)), ('#1f5a8c', '#143c5e'))
+        self.assertEqual(updater._appearance({'theme': 'green'}), {'theme': 'green'})
+        self.assertEqual(gui.accent({'theme': 'green'}), gui.THEMES['green'])
+        for bad in ({'brand': '#1f5a8c'}, {'brand': '#1F5A8C', 'brand_dark': '#143c5e'},
+                    {'brand': 7, 'brand_dark': '#143c5e'}):
+            with self.subTest(colours=bad):
+                self.assertEqual(updater._appearance({'theme': 'yellow', **bad}), {'theme': 'yellow'})
+                self.assertEqual(gui.accent({'theme': 'yellow', **bad}), gui.THEMES['yellow'])
+
     def test_actual_installed_client_accepts_the_helper_call_signature(self):
         client_path = Path(__file__).resolve().parents[1] / 'ansible/roles/kiosk/files/elevhub_klient.py'
         client_spec = importlib.util.spec_from_file_location('actual_elevhub_client', client_path)

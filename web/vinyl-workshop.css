@@ -20,8 +20,8 @@ body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-tabs button {
 }
 
 body.desktop-studio.vinyl-studio.vinyl-workshop .vinyl-tool-tabs button.active {
-  border-color: #c62b2f;
-  background: #c62b2f;
+  border-color: var(--school-brand,#c62b2f);
+  background: var(--school-brand,#c62b2f);
   color: #fff;
 }
 

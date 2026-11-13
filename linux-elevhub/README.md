@@ -32,6 +32,13 @@ værdi. Inden visning fjernes kontrol-/formattegn, linjeskift samles til enkelt
 mellemrum, og navnet begrænses til 80 tegn. Det ændrer kun den lokale visning;
 det giver ikke skolen en ny adgangs- eller netværksrolle.
 
+Valgfri private skolefarver følger samme vej som `theme`: `brand` og
+`brand_dark` (begge `#rrggbb` med små bogstaver, eller ingen af dem) går fra
+skolefilen og tilmeldingen til `kiosk.json` og erstatter temaets farver på
+startsiden, projekthylden, elevbjælken, opstartsskærmen og sluk-dialogen.
+Ugyldige værdier ignoreres, så temaet bruges. Farverne er skolens egne data og
+står aldrig i kildekoden.
+
 Krediteringen vises separat som **Kreditering: Klostermarksskolen.** og kan
 derfor ikke overskrives af den valgte skoles navn eller tema. Den samme
 kreditering gælder kildekoden og de øvrige udgivelsesdokumenter.

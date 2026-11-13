@@ -8,10 +8,10 @@ html:has(#elevhub) body.desktop-studio>.header{display:none}
 .desktop-studio .brand img{width:28px;height:36px}
 .desktop-studio main{display:flex;flex-direction:column;flex:1;min-height:0;width:100%;max-width:1920px;padding:8px 12px;margin:0 auto;gap:8px}
 .studio-topline{display:flex;align-items:stretch;gap:12px;flex-shrink:0}
-.studio-welcome{display:flex;align-items:center;gap:10px;min-width:310px;flex:1;margin:0;height:48px;background:#fff;border-left:4px solid #c62b2f;overflow:hidden}
+.studio-welcome{display:flex;align-items:center;gap:10px;min-width:310px;flex:1;margin:0;height:48px;background:#fff;border-left:4px solid var(--school-brand,#c62b2f);overflow:hidden}
 .studio-welcome>img{width:48px;height:100%;object-fit:cover}
 .studio-welcome>div{flex:1;min-width:0}
-.studio-kicker{font-size:9px;letter-spacing:1.4px;color:#c62b2f!important;font-weight:bold;margin:0 0 4px!important}
+.studio-kicker{font-size:9px;letter-spacing:1.4px;color:var(--school-brand,#c62b2f)!important;font-weight:bold;margin:0 0 4px!important}
 .studio-welcome .studio-kicker,.studio-intro{display:none}
 .studio-welcome h2{font-size:17px;line-height:1.2;margin:0}
 .studio-ideas{margin:0 8px 0 0!important;min-height:40px;padding:8px!important;font-size:12px!important;white-space:nowrap;border-radius:2px;background:#fff!important;border:1px solid #d7d7d2!important}
@@ -21,7 +21,7 @@ html:has(#elevhub) body.desktop-studio>.header{display:none}
 .desktop-studio .level-bar button{padding:6px 10px;max-width:none;min-width:0;border-radius:2px}
 .desktop-studio .level-bar button strong{font-size:13px;white-space:nowrap}
 .desktop-studio .level-bar button small{display:none}
-.desktop-studio .level-bar button.active{background:#c62b2f;border-color:#c62b2f;color:#fff}
+.desktop-studio .level-bar button.active{background:var(--school-brand,#c62b2f);border-color:var(--school-brand,#c62b2f);color:#fff}
 .desktop-studio .project-bar{flex-shrink:0;min-height:48px;padding:0;gap:10px}
 .desktop-studio .project-name{display:block;min-width:150px}
 .desktop-studio .project-name label{display:none}
@@ -34,12 +34,12 @@ html:has(#elevhub) body.desktop-studio>.header{display:none}
 .desktop-studio .editor{flex:1;min-height:0;height:auto;max-height:none;grid-template-columns:176px minmax(0,1fr) 232px;grid-template-rows:minmax(0,1fr);border:1px solid #d6d0c7;border-radius:2px;box-shadow:none}
 .desktop-studio .tools-panel,.desktop-studio .properties-panel{min-width:0;min-height:0;padding:12px 10px;background:#fff;overflow:auto;scrollbar-gutter:stable}
 .desktop-studio .tools-panel h2,.desktop-studio .properties-panel h2{font-size:14px}
-.desktop-studio .step{background:#f5ecea;color:#c62b2f}
+.desktop-studio .step{background:#f5ecea;color:var(--school-brand,#c62b2f)}
 .desktop-studio .tool-grid{gap:6px;margin:12px 0}
 .desktop-studio .tool{min-height:60px;font-size:12px;gap:4px;border:1px solid #d8d6cd;border-radius:2px;background:#faf9f6}
 .desktop-studio .tool svg{width:25px;height:25px}
 .desktop-studio .tool:hover{background:#f8edeb;border-color:#bd9b93}
-.desktop-studio .tool.active{background:#f8edeb;border:2px solid #c62b2f}
+.desktop-studio .tool.active{background:#f8edeb;border:2px solid var(--school-brand,#c62b2f)}
 .desktop-studio .tool-tip{font-size:12px;padding:8px 0}
 .desktop-studio .drawing-panel{min-height:0;background:#e7e3db}
 .desktop-studio .canvas-toolbar{height:42px;flex-shrink:0;padding:0 8px;background:#fff;border-bottom:1px solid #ddd8d0}
@@ -64,7 +64,7 @@ html:has(#elevhub) body.desktop-studio>.header{display:none}
 .studio-starter-copy strong{display:block;font-size:12px;line-height:1.35;font-weight:600}
 .studio-starter-copy small{display:block;font-size:11px;line-height:1.4;margin-top:4px;color:#666}
 .studio-starter-card:hover{background:#f8edeb;border-color:#bd9b93}
-.studio-starter-card:focus-visible,.starter>button:focus-visible{outline:3px solid #c62b2f;outline-offset:2px}
+.studio-starter-card:focus-visible,.starter>button:focus-visible{outline:3px solid var(--school-brand,#c62b2f);outline-offset:2px}
 .desktop-studio #starter-library{font-size:11px;line-height:1.4;text-align:left;min-height:40px;padding:9px 0;text-decoration:underline;white-space:normal}
 @media(max-width:650px){.studio-starter-list{grid-template-columns:repeat(2,minmax(0,1fr))}.desktop-studio .starter{margin-top:12px}}
 .desktop-studio .vinyl-setup{display:block;margin:12px 0 0;padding:10px 0;border:0;border-top:1px solid #e1e1dd;border-radius:0;background:none}
@@ -90,11 +90,11 @@ html:has(#elevhub) body.desktop-studio>.header{display:none}
 .studio-challenges details{border-bottom:1px solid #ddd7cd;padding:13px 0}
 .studio-challenges summary{cursor:pointer;font-size:17px;color:#333}
 .studio-challenges p{font-size:14px;line-height:1.65;color:#666;padding-top:9px}
-.studio-tip{background:#f4f1eb;padding:13px;border-left:3px solid #c62b2f;font-size:13px}
+.studio-tip{background:#f4f1eb;padding:13px;border-left:3px solid var(--school-brand,#c62b2f);font-size:13px}
 .studio-continue{margin-top:20px}
 .studio-close{position:absolute;right:10px;top:10px;background:#fff;border:1px solid #ddd;width:42px;height:42px;font-size:24px;z-index:1}
-.studio-idea-dialog button:focus-visible,.studio-idea-dialog summary:focus-visible{outline:3px solid #c62b2f;outline-offset:3px}
-.studio-library-grid{padding:28px 32px 32px}.studio-library-head h2{font-size:28px;line-height:1.2;margin:8px 0 18px}.studio-library-filters{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 22px}.studio-library-filters button{border:1px solid #d7d2cb;background:#fff;color:#3b3530;padding:8px 11px;border-radius:2px;font-size:12px}.studio-library-filters button.active{background:#c62b2f;border-color:#c62b2f;color:#fff}.studio-project-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.studio-project-card{display:grid;grid-template-columns:128px minmax(0,1fr);gap:14px;border:1px solid #ddd7cd;background:#fff;padding:12px;min-width:0}.studio-project-card>svg{width:128px;height:96px;background:#f5f1eb;border:1px solid #e7e1d9}.studio-project-copy h3{font-size:17px;line-height:1.2;margin:3px 0 6px}.studio-project-copy>p{font-size:12px;line-height:1.45;margin:4px 0;color:#5f5a55}.studio-project-level{font-size:10px!important;text-transform:uppercase;letter-spacing:.08em;color:#c62b2f!important;font-weight:700}.studio-project-skill{font-style:italic}.studio-project-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.studio-project-actions button{font-size:11px;padding:7px 9px;min-height:34px}.studio-empty{grid-column:1/-1;padding:20px;background:#f5f1eb}.studio-guidance{border:1px solid #ddd7cd;border-left:3px solid #c62b2f;background:#fff;padding:12px;margin:0 0 14px}.studio-guidance h2{font-size:15px!important;margin:0 0 8px}.studio-guidance-objective{font-size:13px;line-height:1.45;margin:0 0 8px}.studio-guidance-steps{border-top:1px solid #e8e3dc;border-bottom:1px solid #e8e3dc;padding:7px 0;margin:7px 0}.studio-guidance-steps summary{cursor:pointer;font-size:12px;font-weight:700}.studio-guidance-steps ol{padding-left:20px;margin:8px 0 3px}.studio-guidance-steps li{font-size:12px;line-height:1.45;margin:4px 0}.studio-guidance-skill,.studio-guidance-challenge{font-size:11px;line-height:1.45;margin:7px 0;color:#5e5953}.studio-guidance-action{font-size:11px;padding:7px 9px;margin:4px 0 8px}.studio-guidance-reflect{display:block;font-size:11px;font-weight:700;line-height:1.4;margin-top:4px}.studio-guidance-reflect textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;resize:vertical;border:1px solid #d7d2cb;padding:7px;font:inherit;font-size:11px;min-height:54px}.studio-guidance-help{font-size:11px;padding:5px 0;margin-top:5px}.studio-guidance[hidden]{display:none}
+.studio-idea-dialog button:focus-visible,.studio-idea-dialog summary:focus-visible{outline:3px solid var(--school-brand,#c62b2f);outline-offset:3px}
+.studio-library-grid{padding:28px 32px 32px}.studio-library-head h2{font-size:28px;line-height:1.2;margin:8px 0 18px}.studio-library-filters{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 22px}.studio-library-filters button{border:1px solid #d7d2cb;background:#fff;color:#3b3530;padding:8px 11px;border-radius:2px;font-size:12px}.studio-library-filters button.active{background:var(--school-brand,#c62b2f);border-color:var(--school-brand,#c62b2f);color:#fff}.studio-project-cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.studio-project-card{display:grid;grid-template-columns:128px minmax(0,1fr);gap:14px;border:1px solid #ddd7cd;background:#fff;padding:12px;min-width:0}.studio-project-card>svg{width:128px;height:96px;background:#f5f1eb;border:1px solid #e7e1d9}.studio-project-copy h3{font-size:17px;line-height:1.2;margin:3px 0 6px}.studio-project-copy>p{font-size:12px;line-height:1.45;margin:4px 0;color:#5f5a55}.studio-project-level{font-size:10px!important;text-transform:uppercase;letter-spacing:.08em;color:var(--school-brand,#c62b2f)!important;font-weight:700}.studio-project-skill{font-style:italic}.studio-project-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}.studio-project-actions button{font-size:11px;padding:7px 9px;min-height:34px}.studio-empty{grid-column:1/-1;padding:20px;background:#f5f1eb}.studio-guidance{border:1px solid #ddd7cd;border-left:3px solid var(--school-brand,#c62b2f);background:#fff;padding:12px;margin:0 0 14px}.studio-guidance h2{font-size:15px!important;margin:0 0 8px}.studio-guidance-objective{font-size:13px;line-height:1.45;margin:0 0 8px}.studio-guidance-steps{border-top:1px solid #e8e3dc;border-bottom:1px solid #e8e3dc;padding:7px 0;margin:7px 0}.studio-guidance-steps summary{cursor:pointer;font-size:12px;font-weight:700}.studio-guidance-steps ol{padding-left:20px;margin:8px 0 3px}.studio-guidance-steps li{font-size:12px;line-height:1.45;margin:4px 0}.studio-guidance-skill,.studio-guidance-challenge{font-size:11px;line-height:1.45;margin:7px 0;color:#5e5953}.studio-guidance-action{font-size:11px;padding:7px 9px;margin:4px 0 8px}.studio-guidance-reflect{display:block;font-size:11px;font-weight:700;line-height:1.4;margin-top:4px}.studio-guidance-reflect textarea{display:block;width:100%;box-sizing:border-box;margin-top:4px;resize:vertical;border:1px solid #d7d2cb;padding:7px;font:inherit;font-size:11px;min-height:54px}.studio-guidance-help{font-size:11px;padding:5px 0;margin-top:5px}.studio-guidance[hidden]{display:none}
 @media(max-width:900px){.studio-project-cards{grid-template-columns:1fr}.studio-project-card{grid-template-columns:112px minmax(0,1fr)}.studio-project-card>svg{width:112px;height:84px}}
 .studio-guidance-all{font-size:11px;padding:5px 0;text-decoration:underline}
 .studio-guidance-objective{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

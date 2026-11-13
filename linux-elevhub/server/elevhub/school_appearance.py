@@ -13,6 +13,9 @@ from functools import lru_cache
 
 LOCAL_APPEARANCE_VERSION = 1
 THEMES = frozenset({'red', 'yellow', 'green'})
+# Optional private school colours override the theme's --brand/--brand-dark.
+# Contrast is enforced where they are set; readers only check the shape.
+BRAND_COLOUR = re.compile(r'#[0-9a-f]{6}')
 MAX_MANIFEST_BYTES = 65536
 MAX_CSS_BYTES = 262144
 MAX_LOGO_BYTES = 4 * 1024 * 1024
@@ -141,6 +144,19 @@ def _metadata(value):
     return name, theme
 
 
+def brand_colours(value):
+    """Return {'brand', 'brand_dark'} when both are valid; otherwise {}.
+
+    Invalid, single or absent colours fall back to the public theme."""
+    if not isinstance(value, dict):
+        return {}
+    brand, dark = value.get('brand'), value.get('brand_dark')
+    if (isinstance(brand, str) and isinstance(dark, str)
+            and BRAND_COLOUR.fullmatch(brand) and BRAND_COLOUR.fullmatch(dark)):
+        return {'brand': brand, 'brand_dark': dark}
+    return {}
+
+
 def _manifest_base(data_folder):
     # An existing but damaged directory must not select release defaults.
     for root in _roots(data_folder):
@@ -163,7 +179,8 @@ def _manifest(data_folder):
         allowed = {'website_css', 'website_css_sha256', 'logo', 'logo_sha256', 'static'}
         if not isinstance(style, dict) or set(style) - allowed:
             raise ValueError('Invalid appearance style')
-        result = {'school_name': name, 'theme': theme, 'style': {}, '_static': {}}
+        result = {'school_name': name, 'theme': theme, **brand_colours(value),
+                  'style': {}, '_static': {}}
         for key, public, suffixes in (
                 ('website_css', '/school-appearance/website.css', {'.css'}),
                 ('logo', '/school-appearance/logo', LOGO_SUFFIXES)):
@@ -196,7 +213,8 @@ def school_appearance_manifest_present(data_folder):
 def school_appearance(data_folder):
     result = _manifest(data_folder)
     if result:
-        return {key: result[key] for key in ('school_name', 'theme', 'style')}
+        return {key: result[key] for key in ('school_name', 'theme', 'brand', 'brand_dark', 'style')
+                if key in result}
     if school_appearance_manifest_present(data_folder):
         return None
     folder = Path(os.path.abspath(data_folder))
@@ -204,7 +222,7 @@ def school_appearance(data_folder):
     try:
         value = json.loads(_bytes(path, MAX_MANIFEST_BYTES))
         name, theme = _metadata(value)
-        return {'school_name': name, 'theme': theme}
+        return {'school_name': name, 'theme': theme, **brand_colours(value)}
     except (OSError, ValueError, TypeError, UnicodeError):
         return None
 

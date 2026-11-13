@@ -66,6 +66,27 @@ function Get-SetupNetworkCandidates {
     @($result)
 }
 
+function Get-SetupWhiteContrast([string]$Colour) {
+    $luminance = 0.0; $weights = @(0.2126, 0.7152, 0.0722)
+    for ($n = 0; $n -lt 3; $n++) {
+        $value = [Convert]::ToInt32($Colour.Substring(1 + 2 * $n, 2), 16) / 255.0
+        $linear = if ($value -le 0.04045) { $value / 12.92 } else { [Math]::Pow(($value + 0.055) / 1.055, 2.4) }
+        $luminance += $weights[$n] * $linear
+    }
+    return 1.05 / ($luminance + 0.05)
+}
+
+function Get-SetupBrandColourError([string]$Brand, [string]$BrandDark) {
+    # Optional private school colours: both or neither, #rrggbb, white text >= 4.5:1.
+    if (-not $Brand -and -not $BrandDark) { return $null }
+    if (-not $Brand -or -not $BrandDark) { return 'Angiv både skolens farve og den mørke skolefarve, eller ingen af dem.' }
+    foreach ($colour in @($Brand, $BrandDark)) {
+        if ($colour -cnotmatch '^#[0-9a-f]{6}\z') { return 'Skolefarver skal skrives som #rrggbb med små bogstaver, fx #1f5a8c.' }
+        if ((Get-SetupWhiteContrast $colour) -lt 4.5) { return "Skolefarven $colour er for lys: hvid tekst skal have mindst 4,5:1 i kontrast. Vælg en mørkere farve." }
+    }
+    return $null
+}
+
 function Test-SetupWizardInput([hashtable]$Values) {
     $errors = @(); $parameters = [ordered]@{}; $entry = $null; $connectionSummary = $null
     $deployment = [string]$Values['deployment']; $component = [string]$Values['component']
@@ -118,13 +139,16 @@ function Test-SetupWizardInput([hashtable]$Values) {
         if (-not ($Values['addressConfirmed'] -is [bool] -and [bool]$Values['addressConfirmed'])) { $errors += [ordered]@{field='addressConfirmed';message='Bekræft, at serveradressen er stabil eller reserveret af IT.'} }
         if ($Values['theme'] -notin @('red','yellow','green')) { $errors += [ordered]@{field='theme';message='Vælg rød, gul eller grøn.'} }
         if ($Values['machine'] -notin @('fbb2','fhexa1')) { $errors += [ordered]@{field='machine';message='Vælg en understøttet maskinprofil.'} }
-        if ($errors.Count -eq 0) { $entry='Setup-School.ps1'; $parameters['PackageRoot']=[string]$Values['packageRoot']; $parameters['SchoolName']=$school; $parameters['Role']=if($deployment -eq 'separate-computers'){'vm'}else{'makerspace'}; $parameters['RoleIp']=$roleIp; $parameters['StudentSubnet']=$subnet; $parameters['Theme']=[string]$Values['theme']; $parameters['Machine']=[string]$Values['machine']; $parameters['AcceptInstall']=$true; if($deployment -eq 'separate-computers'){$parameters['RemoteLaserStation']=$true} }
+        $brand = [string]$Values['brand']; $brandDark = [string]$Values['brandDark']
+        $brandError = Get-SetupBrandColourError $brand $brandDark
+        if ($brandError) { $errors += [ordered]@{field='brand';message=$brandError} }
+        if ($errors.Count -eq 0) { $entry='Setup-School.ps1'; $parameters['PackageRoot']=[string]$Values['packageRoot']; $parameters['SchoolName']=$school; $parameters['Role']=if($deployment -eq 'separate-computers'){'vm'}else{'makerspace'}; $parameters['RoleIp']=$roleIp; $parameters['StudentSubnet']=$subnet; $parameters['Theme']=[string]$Values['theme']; $parameters['Machine']=[string]$Values['machine']; $parameters['AcceptInstall']=$true; if($deployment -eq 'separate-computers'){$parameters['RemoteLaserStation']=$true}; if($brand){$parameters['Brand']=$brand; $parameters['BrandDark']=$brandDark} }
     }
     # Keep the reviewed choices beside the execution plan.  The WPF worker can
     # send these back through this function after the user reviews the summary;
     # it never needs to trust a parameter splat produced by the UI.
     $reviewValues = [ordered]@{}
-    foreach ($key in @('deployment','component','schoolName','roleIp','studentSubnet','theme','machine','addressConfirmed','connectionFile','packageRoot')) {
+    foreach ($key in @('deployment','component','schoolName','roleIp','studentSubnet','theme','brand','brandDark','machine','addressConfirmed','connectionFile','packageRoot')) {
         if ($Values.ContainsKey($key)) { $reviewValues[$key] = $Values[$key] }
     }
     [ordered]@{valid=($errors.Count -eq 0);errors=@($errors);parameters=$parameters;entry=$entry;values=$reviewValues;connectionSummary=$connectionSummary}

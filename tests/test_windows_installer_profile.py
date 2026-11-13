@@ -57,6 +57,37 @@ class InstallerProfileTests(unittest.TestCase):
         for field,bad in [('school_name',''),('machine','unknown'),('server_mode','admin'),('theme','blue'),('role_ip','not-ip')]:
             with self.assertRaises(life.LifecycleError):life.validate_server_profile(dict(value,**{field:bad}))
 
+    def test_private_colours_are_optional_paired_and_readable(self):
+        value={'school_name':'Prøveskolen','server_mode':'makerspace','role_ip':'192.0.2.2',
+               'student_subnet':'192.0.2.0/24','theme':'green','machine':'fbb2'}
+        colours={'brand':'#1f5a8c','brand_dark':'#143c5e'}
+        self.assertEqual(life.validate_server_profile(dict(value,**colours)),dict(value,**colours))
+        for bad,fragment in [({'brand':'#1f5a8c'},'både'),({'brand_dark':'#143c5e'},'både'),
+                             ({'brand':'#1F5A8C','brand_dark':'#143c5e'},'#rrggbb'),
+                             ({'brand':'#ffd400','brand_dark':'#143c5e'},'for lys'),
+                             ({'brand':'#1f5a8c','brand_dark':'#999999'},'4,5:1'),
+                             ({'brand':'','brand_dark':''},'#rrggbb')]:
+            with self.subTest(bad=bad),self.assertRaisesRegex(life.LifecycleError,fragment):
+                life.validate_server_profile(dict(value,**bad))
+        with self.assertRaises(life.LifecycleError):life.validate_server_profile(dict(value,logo='x.png'))
+
+    def test_install_passes_colours_to_setup_school_only_when_present(self):
+        value={'school_name':'Prøveskolen','server_mode':'makerspace','role_ip':'192.0.2.2',
+               'student_subnet':'192.0.2.0/24','theme':'green','machine':'fbb2'}
+        for profile,expected in [(value,None),(dict(value,brand='#1f5a8c',brand_dark='#143c5e'),['-Brand','#1f5a8c','-BrandDark','#143c5e'])]:
+            with self.subTest(profile=profile):
+                native=life.NativeWindows.__new__(life.NativeWindows)
+                native.program=self.root/'absent-program';native.state=self.root/'absent-data'
+                calls=[]
+                native.command=lambda script,*arguments:calls.append(list(arguments))
+                native.health=lambda:None
+                with patch.object(life.Path,'is_file',return_value=True):
+                    native.install_server(self.root/'package',profile)
+                arguments=calls[0]
+                self.assertEqual(arguments[arguments.index('-Theme')+1],'green')
+                if expected is None:self.assertNotIn('-Brand',arguments);self.assertNotIn('-BrandDark',arguments)
+                else:self.assertEqual(arguments[arguments.index('-Brand'):arguments.index('-Brand')+4],expected)
+
     def test_guide_uses_auto_action_danish_labels_and_explicit_profile_pages(self):
         recipe=(ROOT/'windows/inno/Makervaerkstedet.iss').read_text('utf-8')
         self.assertNotIn('ModePage',recipe)
@@ -64,6 +95,9 @@ class InstallerProfileTests(unittest.TestCase):
         for text in ('Skolens opsætning','Rød','Grøn','køpause','RolePage','ThemePage','MachinePage'):
             self.assertIn(text,recipe)
         self.assertNotIn('koepause',recipe)
+        # Private colours come from command-line parameters, never from a wizard page.
+        self.assertIn("{param:BRAND|}",recipe);self.assertIn("{param:BRANDDARK|}",recipe)
+        self.assertNotIn('BrandPage',recipe)
 
     def test_sqlite_backups_include_committed_wal_and_never_restore_later_data(self):
         self.state.mkdir();hub=self.state/'hub';hub.mkdir()

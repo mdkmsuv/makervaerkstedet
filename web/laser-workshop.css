@@ -6,15 +6,15 @@
  * compact studio rules cannot move the canvas or panels underneath it.
  */
 body.desktop-studio.laser-studio.laser-workshop {
-  --laser-burgundy: #c62b2f;
-  --laser-burgundy-dark: #8c1d24;
+  --laser-burgundy: var(--school-brand,#c62b2f);
+  --laser-burgundy-dark: var(--school-brand-dark,#8c1d24);
   --laser-cream: #f3f3f0;
   --laser-panel: #fff;
   --laser-panel-muted: #f7f7f4;
   --laser-line: #d7d7d2;
   --laser-ink: #333;
   --laser-muted: #6a6a65;
-  --laser-focus: #c62b2f;
+  --laser-focus: var(--school-brand,#c62b2f);
   min-width: 0;
   height: 100dvh;
   overflow: hidden;

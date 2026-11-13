@@ -129,7 +129,11 @@ begin
     ServerMode := 'vm'; if RolePage.SelectedValueIndex = 1 then ServerMode := 'makerspace';
     Theme := 'red'; if ThemePage.SelectedValueIndex = 1 then Theme := 'yellow'; if ThemePage.SelectedValueIndex = 2 then Theme := 'green';
     Machine := 'fbb2'; if MachinePage.SelectedValueIndex = 1 then Machine := 'fhexa1';
-    Profile := '{"school_name":' + JSONString(SchoolPage.Values[0]) + ',"role_ip":' + JSONString(SchoolPage.Values[1]) + ',"student_subnet":' + JSONString(SchoolPage.Values[2]) + ',"server_mode":' + JSONString(ServerMode) + ',"theme":' + JSONString(Theme) + ',"machine":' + JSONString(Machine) + '}';
+    Profile := '{"school_name":' + JSONString(SchoolPage.Values[0]) + ',"role_ip":' + JSONString(SchoolPage.Values[1]) + ',"student_subnet":' + JSONString(SchoolPage.Values[2]) + ',"server_mode":' + JSONString(ServerMode) + ',"theme":' + JSONString(Theme) + ',"machine":' + JSONString(Machine);
+    { Optional private school colours from the command line only (/BRAND=#rrggbb /BRANDDARK=#rrggbb); lifecycle.py validates them. }
+    if (ExpandConstant('{param:BRAND|}') <> '') or (ExpandConstant('{param:BRANDDARK|}') <> '') then
+      Profile := Profile + ',"brand":' + JSONString(ExpandConstant('{param:BRAND|}')) + ',"brand_dark":' + JSONString(ExpandConstant('{param:BRANDDARK|}'));
+    Profile := Profile + '}';
 #else
     Profile := '{"connection_file":' + JSONString(ConnectionPage.Values[0]) + '}';
 #endif

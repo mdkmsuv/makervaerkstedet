@@ -53,10 +53,21 @@ THEME_COLORS = {
 }
 
 
-def apply_theme(theme):
-    """Apply the configured accent; malformed values safely use red."""
+FARVE = re.compile(r'#[0-9a-f]{6}')
+
+
+def apply_theme(theme, brand=None, brand_dark=None):
+    """Apply the configured accent; malformed values safely use red.
+
+    Optional private school colours win over the theme when both are valid
+    lower-case #rrggbb values. A bad colour only falls back to the theme.
+    """
     global BRAND, BRAND_MOERK
-    BRAND, BRAND_MOERK = THEME_COLORS.get(theme, THEME_COLORS['red'])
+    if (isinstance(brand, str) and isinstance(brand_dark, str)
+            and FARVE.fullmatch(brand) and FARVE.fullmatch(brand_dark)):
+        BRAND, BRAND_MOERK = brand, brand_dark
+    else:
+        BRAND, BRAND_MOERK = THEME_COLORS.get(theme, THEME_COLORS['red'])
     return BRAND, BRAND_MOERK
 SKRIFT = 'Metrophobic'
 BATTERI_ROOT = '/sys/class/power_supply'
@@ -357,7 +368,7 @@ class Bjaelke:
 
         from power_controls import PowerControls
         self.power = PowerControls(self.rod, ramme, paused=lambda: self.pause_overlay.paused,
-                                   before_power=self.afslut_foer)
+                                   before_power=self.afslut_foer, accent=(BRAND, BRAND_MOERK))
 
         self.batteri = tk.Frame(ramme, bg='white', width=190, height=42)
         self.batteri.pack_propagate(False)
@@ -664,5 +675,5 @@ class Bjaelke:
 if __name__ == '__main__':
     with open('/etc/elevhub/kiosk.json', encoding='utf-8') as f:
         KONF = json.load(f)
-    apply_theme(KONF.get('theme'))
+    apply_theme(KONF.get('theme'), KONF.get('brand'), KONF.get('brand_dark'))
     Bjaelke(KONF).koer()

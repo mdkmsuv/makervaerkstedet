@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 """Small unprivileged Tk interface for fixed local administrator actions."""
 import json
+import re
 import subprocess
 import threading
 import tkinter as tk
@@ -14,6 +15,16 @@ THEMES = {
     'yellow': ('#a36a00', '#704600'),
     'green': ('#28734e', '#1a5037'),
 }
+COLOUR = re.compile(r'#[0-9a-f]{6}')
+
+
+def accent(result):
+    """Brand and darker brand: valid school colours win, otherwise the theme (red)."""
+    brand, dark = result.get('brand'), result.get('brand_dark')
+    if (isinstance(brand, str) and isinstance(dark, str)
+            and COLOUR.fullmatch(brand) and COLOUR.fullmatch(dark)):
+        return brand, dark
+    return THEMES.get(result.get('theme'), THEMES['red'])
 
 
 def main():
@@ -85,7 +96,7 @@ def main():
                 install_ready['value'] = False
             return
         error.set('')
-        brand, darker = THEMES.get(result.get('theme'), THEMES['red'])
+        brand, darker = accent(result)
         style.configure('Accent.TButton', background=brand, foreground='white')
         style.map('Accent.TButton', background=[('active', darker), ('disabled', '#c9a7a7')])
         install_ready['value'] = (

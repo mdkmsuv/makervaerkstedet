@@ -7,6 +7,8 @@ from update_status import STATUS_PATH, blocks_power, current_boot_id, message, r
 
 HELPER = '/usr/local/sbin/elevhub-power'
 ACTIONS = {'poweroff': ('Sluk', 'slukker'), 'reboot': ('Genstart', 'genstarter')}
+# The kiosk passes the configured theme or school colours; this is the public red theme.
+DEFAULT_ACCENT = ('#c62b2f', '#8c1d24')
 
 
 def request_power(action, run=subprocess.run):
@@ -16,8 +18,9 @@ def request_power(action, run=subprocess.run):
 
 
 class PowerControls:
-    def __init__(self, root, parent, paused=lambda: False, before_power=None):
+    def __init__(self, root, parent, paused=lambda: False, before_power=None, accent=DEFAULT_ACCENT):
         import tkinter as tk
+        self.accent, self.accent_dark = accent
         self.tk, self.root, self.paused = tk, root, paused
         self.before_power = before_power
         self.dialog = None
@@ -64,7 +67,7 @@ class PowerControls:
                  'Næste gang starter du på en frisk. Dine gemte filer bliver bevaret.',
                  bg='white', fg='#444444', font=('Metrophobic', 13), justify='left',
                  wraplength=480, anchor='w').pack(fill='x', pady=(14, 18))
-        self.status = tk.Label(frame, text='', bg='white', fg='#b4121a',
+        self.status = tk.Label(frame, text='', bg='white', fg=self.accent,
                                font=('Metrophobic', 12), wraplength=480, justify='left')
         self.status.pack(fill='x')
         choices = tk.Frame(frame, bg='white')
@@ -75,8 +78,8 @@ class PowerControls:
         self.cancel_button.pack(side='left')
         self.confirm_button = tk.Button(choices, text='Ja, ' + label.lower(),
                                        command=lambda: self.confirm(action),
-                                       font=('Metrophobic', 13), bg='#b4121a', fg='white',
-                                       activebackground='#920008', activeforeground='white',
+                                       font=('Metrophobic', 13), bg=self.accent, fg='white',
+                                       activebackground=self.accent_dark, activeforeground='white',
                                        relief='flat', padx=18, pady=10)
         self.confirm_button.pack(side='right')
         dialog.update_idletasks()
@@ -103,7 +106,7 @@ class PowerControls:
         tk.Label(frame, text='Vent med at slukke eller genstarte', bg='white', fg='#222222',
                  font=('Metrophobic', 21), anchor='w').pack(fill='x')
         tk.Label(frame, text=text or 'Opdateringen kører. Lad computeren være tændt.',
-                 bg='white', fg='#b4121a', font=('Metrophobic', 13, 'bold'),
+                 bg='white', fg=self.accent, font=('Metrophobic', 13, 'bold'),
                  justify='left', wraplength=480, anchor='w').pack(fill='x', pady=(14, 18))
         self.cancel_button = tk.Button(frame, text='Luk besked', command=self.cancel,
                                        font=('Metrophobic', 13), bg='#eaeaea', fg='#333333',

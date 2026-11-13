@@ -33,6 +33,7 @@ VERSION = re.compile(
 SHA256 = re.compile(r'^[a-f0-9]{64}$')
 COMPUTER = re.compile(r'^[a-z0-9][a-z0-9-]{0,31}$')
 REQUEST_ID = re.compile(r'^[a-f0-9]{32}$')
+COLOUR = re.compile(r'#[0-9a-f]{6}')
 MAX_JSON = 65536
 MAX_PINS_BYTES = 16 * 1024 * 1024
 MAX_INSTALLER_BYTES = 1024 * 1024
@@ -219,6 +220,16 @@ def _theme(kiosk):
     return value if value in ('red', 'yellow', 'green') else 'red'
 
 
+def _appearance(kiosk):
+    """Theme plus optional private school colours (both valid, or left out)."""
+    result = {'theme': _theme(kiosk)}
+    brand, dark = kiosk.get('brand'), kiosk.get('brand_dark')
+    if (isinstance(brand, str) and isinstance(dark, str)
+            and COLOUR.fullmatch(brand) and COLOUR.fullmatch(dark)):
+        result.update(brand=brand, brand_dark=dark)
+    return result
+
+
 def read_remote_state(paths=PRODUCTION_PATHS, *, client=None):
     kiosk, computer, _token, _username, _ca = _validate_local_config(paths)
     if client is None:
@@ -229,7 +240,7 @@ def read_remote_state(paths=PRODUCTION_PATHS, *, client=None):
         return {
             'installed_version': _installed_version(paths),
             'available': None, 'job': None, 'request': None,
-            'feed_state': 'offline', 'theme': _theme(kiosk),
+            'feed_state': 'offline', **_appearance(kiosk),
             'install_ready': _local_stage_ready(paths, computer),
             'error': str(exc),
         }
@@ -244,7 +255,7 @@ def read_remote_state(paths=PRODUCTION_PATHS, *, client=None):
         'job': response.get('job'),
         'request': response.get('request'),
         'feed_state': response.get('feed_state', 'unknown'),
-        'theme': _theme(kiosk),
+        **_appearance(kiosk),
         'install_ready': _local_stage_ready(paths, computer),
     }
 
@@ -336,7 +347,7 @@ def prepare_update(paths=PRODUCTION_PATHS, *, client=None, request_id_factory=No
     return {'ok': True, 'installed_version': installed,
             'available': candidate, 'job': response.get('job'),
             'request': response.get('request'), 'feed_state': response.get('feed_state', 'unknown'),
-            'theme': _theme(kiosk), 'install_ready': _local_stage_ready(paths, computer)}
+            **_appearance(kiosk), 'install_ready': _local_stage_ready(paths, computer)}
 
 
 def _restore_json(path, existed, value):
@@ -376,7 +387,7 @@ def retry_update(paths=PRODUCTION_PATHS, *, client=None, request_id_factory=None
     return {'ok': True, 'installed_version': _installed_version(paths),
             'available': None, 'job': response.get('job'),
             'request': response.get('request'), 'feed_state': response.get('feed_state', 'unknown'),
-            'theme': _theme(kiosk), 'install_ready': _local_stage_ready(paths, computer)}
+            **_appearance(kiosk), 'install_ready': _local_stage_ready(paths, computer)}
 
 
 def check_update(paths=PRODUCTION_PATHS, *, client=None, request_id_factory=None):

@@ -15,6 +15,7 @@ import ipaddress
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import threading
 import time
@@ -45,20 +46,31 @@ THEME_COLORS = {
     "yellow": ("#a36a00", "#704600"),
     "green": ("#28734e", "#1a5037"),
 }
+COLOUR = re.compile(r"#[0-9a-f]{6}")
 
 
 def apply_theme(path="/etc/elevhub/kiosk.json"):
-    """Apply the configured kiosk accent, with a safe red fallback."""
+    """Apply the configured kiosk accent, with a safe red fallback.
+
+    Optional private school colours (``brand``/``brand_dark``) win over the
+    theme when both are lower-case #rrggbb values; otherwise the theme is used.
+    """
     global BRAND, BRAND_DARK
     theme = "red"
+    config = {}
     try:
         with open(path, encoding="utf-8") as stream:
-            value = json.load(stream).get("theme")
+            config = json.load(stream)
+        value = config.get("theme")
         if value in THEME_COLORS:
             theme = value
     except (OSError, ValueError, TypeError, AttributeError):
-        pass
+        config = {}
     BRAND, BRAND_DARK = THEME_COLORS[theme]
+    brand, dark = config.get("brand"), config.get("brand_dark")
+    if (isinstance(brand, str) and isinstance(dark, str)
+            and COLOUR.fullmatch(brand) and COLOUR.fullmatch(dark)):
+        BRAND, BRAND_DARK = brand, dark
     return theme
 
 

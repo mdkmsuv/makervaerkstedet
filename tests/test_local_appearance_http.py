@@ -160,6 +160,65 @@ class LocalAppearanceHTTPTests(unittest.TestCase):
         finally:
             sys.path.remove(str(hub_root))
 
+    @unittest.skipUnless(sys.platform == 'win32', 'the Windows profile sits beside the data folder')
+    def test_laser_api_returns_private_school_colours_from_profile(self):
+        from app.laser_server import create_server as create_laser_server
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            profile = {'school_name': 'Prøveskolen', 'theme': 'green'}
+            (root / 'school.json').write_text(json.dumps(
+                {**profile, 'brand': '#1f5a8c', 'brand_dark': '#143c5e'}), encoding='utf-8')
+            server = create_laser_server(root / 'data', port=0, code='test-code')
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            try:
+                status, body = get(server.server_port, '/api/school-appearance')
+                self.assertEqual(status, 200)
+                self.assertEqual(json.loads(body), {**profile, 'brand': '#1f5a8c', 'brand_dark': '#143c5e'})
+                (root / 'school.json').write_text(json.dumps({**profile, 'brand': '#1f5a8c'}), encoding='utf-8')
+                status, body = get(server.server_port, '/api/school-appearance')
+                self.assertEqual((status, json.loads(body)), (200, profile))
+            finally:
+                server.shutdown(); server.server_close()
+
+    def test_hub_teacher_css_uses_private_colours_or_theme(self):
+        hub_root = Path(__file__).resolve().parents[1] / 'linux-elevhub' / 'server' / 'elevhub'
+        sys.path.insert(0, str(hub_root))
+        try:
+            import elevhub
+            from tilstand import Laererkode, Tilstand
+            from pause import PauseStore
+            with tempfile.TemporaryDirectory() as folder:
+                root, data = Path(folder), Path(folder) / 'data'
+                data.mkdir()
+                state = Tilstand(str(data), [])
+                server = elevhub.Server(('127.0.0.1', 0), elevhub.Laerer)
+                server.navn, server.tilstand, server.apps = 'laerer', state, []
+                server.kode, server.pause = Laererkode(data), PauseStore(data)
+                threading.Thread(target=server.serve_forever, daemon=True).start()
+                try:
+                    cases = (({'brand': '#1f5a8c', 'brand_dark': '#143c5e'}, '--brand:#1f5a8c;--brand-dark:#143c5e;'),
+                             ({}, '--brand:#28734e;--brand-dark:#1a5037;'),
+                             ({'brand': '#1f5a8c'}, '--brand:#28734e;--brand-dark:#1a5037;'),
+                             ({'brand': '#1F5A8C', 'brand_dark': '#143c5e'}, '--brand:#28734e;--brand-dark:#1a5037;'))
+                    for colours, expected in cases:
+                        with self.subTest(colours=colours):
+                            (root / 'school.json').write_text(json.dumps(
+                                {'school_name': 'Prøveskolen', 'theme': 'green', **colours}), encoding='utf-8')
+                            status, body = get(server.server_port, '/laerer.css')
+                            self.assertEqual(status, 200)
+                            self.assertIn(expected, body.decode('utf-8'))
+                finally:
+                    server.shutdown(); server.server_close()
+        finally:
+            sys.path.remove(str(hub_root))
+
+    def test_theme_script_applies_private_colours_on_the_root(self):
+        script = (Path(__file__).resolve().parents[1] / 'web' / 'school-theme.js').read_text(encoding='utf-8')
+        self.assertIn("/^#[0-9a-f]{6}$/", script)
+        for token in ("'--brand','--school-brand'", "'--brand-dark','--school-brand-dark'",
+                      "data-school-theme-fixed", "root.style.setProperty"):
+            self.assertIn(token, script)
+
 
 if __name__ == '__main__':
     unittest.main()

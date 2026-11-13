@@ -461,6 +461,22 @@ class Integration(unittest.TestCase):
                 profile.write_text('{"school_name":"Test","theme":[]}', encoding='utf-8')
                 self.assertEqual(self.kald('laerer', 'GET', '/')[2], legacy)
 
+    def test_private_school_colours_override_theme_palette_only_as_a_pair(self):
+        # Synthetic colours; real school colours are private installation data.
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            profile = root / 'school.json'
+            with patch.object(self.tilstand, 'mappe', root / 'hub'):
+                for colours, expected in (
+                        ({'brand': '#1f5a8c', 'brand_dark': '#143c5e'}, b'--brand:#1f5a8c;--brand-dark:#143c5e;'),
+                        ({}, b'--brand:#28734e;--brand-dark:#1a5037;'),
+                        ({'brand_dark': '#143c5e'}, b'--brand:#28734e;--brand-dark:#1a5037;'),
+                        ({'brand': 'blue', 'brand_dark': '#143c5e'}, b'--brand:#28734e;--brand-dark:#1a5037;')):
+                    with self.subTest(colours=colours):
+                        profile.write_text(json.dumps({'school_name': 'Test', 'theme': 'green', **colours}),
+                                           encoding='utf-8')
+                        self.assertIn(expected, self.kald('laerer', 'GET', '/laerer.css')[2])
+
     def test_4_laererpanel(self):
         j = {'Content-Type': 'application/json'}
         status, _, data = self.kald('laerer', 'GET', '/api/laerer/session')

@@ -110,9 +110,25 @@ def detect_action(role,program,state):
         raise LifecycleError(message) from None
     return 'update'
 
+def white_contrast(colour):
+    """WCAG 2 contrast ratio of white text on #rrggbb."""
+    linear=[(v/12.92 if v<=0.04045 else ((v+0.055)/1.055)**2.4) for v in (int(colour[i:i+2],16)/255 for i in (1,3,5))]
+    return 1.05/(0.2126*linear[0]+0.7152*linear[1]+0.0722*linear[2]+0.05)
+
+def validate_brand_colours(profile):
+    """Optional private school colours: both or neither, #rrggbb and white text >= 4.5:1."""
+    present=[key in profile for key in ('brand','brand_dark')]
+    if not any(present):return
+    require(all(present),'Angiv både brand og brand_dark, eller ingen af dem.')
+    for key in ('brand','brand_dark'):
+        require(isinstance(profile[key],str) and re.fullmatch(r'#[0-9a-f]{6}',profile[key]),
+            f'{key} skal skrives som #rrggbb med små bogstaver, fx #1f5a8c.')
+        require(white_contrast(profile[key])>=4.5,
+            f'{key} er for lys: hvid tekst skal have mindst 4,5:1 i kontrast. Vælg en mørkere farve.')
+
 def validate_server_profile(profile):
     required={'school_name','server_mode','role_ip','student_subnet','theme','machine'}
-    require(set(profile)==required and profile['server_mode'] in ('vm','makerspace')
+    require(isinstance(profile,dict) and required<=set(profile)<=required|{'brand','brand_dark'} and profile['server_mode'] in ('vm','makerspace')
         and profile['theme'] in ('red','yellow','green') and profile['machine'] in ('fbb2','fhexa1'),
         'Vælg en understøttet serverrolle, farve og lasermodel.')
     require(isinstance(profile['school_name'],str) and 0<len(profile['school_name'].strip())<=80
@@ -120,6 +136,7 @@ def validate_server_profile(profile):
     try:
         ipaddress.IPv4Address(profile['role_ip']);ipaddress.IPv4Network(profile['student_subnet'],strict=False)
     except (ValueError,TypeError):raise LifecycleError('Skriv en gyldig IPv4-adresse og elevnettets CIDR-subnet.') from None
+    validate_brand_colours(profile)
     return profile
 
 def runtime_identity(program,role):
@@ -477,6 +494,7 @@ class NativeWindows:
         require(not self.program.exists() and not self.state.exists(),'install_requires_empty_fixed_roots')
         arguments=['-PackageRoot',package,'-SchoolName',profile['school_name'],'-Role',profile['server_mode'],'-RoleIp',profile['role_ip'],'-StudentSubnet',profile['student_subnet'],'-Theme',profile['theme'],'-Machine',profile['machine'],'-AcceptInstall']
         if profile['server_mode']=='vm':arguments.append('-RemoteLaserStation')
+        if 'brand' in profile:arguments+=['-Brand',profile['brand'],'-BrandDark',profile['brand_dark']]
         self.command(package/'deployment/school-setup/Setup-School.ps1',*arguments)
         require((self.state/'installation-owner.json').is_file(),'installation_receipt_missing')
         self.health()

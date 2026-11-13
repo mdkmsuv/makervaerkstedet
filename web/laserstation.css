@@ -68,10 +68,10 @@
 #photo-preview{width:100%;height:auto;max-height:360px;background:#eaeaea;cursor:crosshair;touch-action:none}
 .corner-mark{fill:#c62b2f;stroke:white;stroke-width:3;pointer-events:none}
 .material-actions,.region-tools{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
-.region-tools button.active{background:#c62b2f;color:white;border-color:#c62b2f}
+.region-tools button.active{background:var(--brand);color:white;border-color:var(--brand)}
 .region-list{list-style:none;margin:10px 0;padding:0;max-height:160px;overflow:auto}
 .region-list li{display:flex;align-items:center;gap:4px;border-top:1px solid #dededb;padding:4px 0}
-.region-list li.selected{border-left:3px solid #c62b2f;padding-left:5px}
+.region-list li.selected{border-left:3px solid var(--brand);padding-left:5px}
 .region-select{flex:1;text-align:left;background:transparent;border:0;font-size:12px;color:#333;min-height:30px;padding:3px;cursor:pointer}
 .bed-wrap{padding:4px 16px 0}
 #bed{width:100%;height:auto;background:#fbfbf9;border-radius:4px;touch-action:none;user-select:none}

@@ -55,6 +55,11 @@ def validate_profile(settings, device, ca, public_key):
     theme = settings.get('theme', 'red')
     if not isinstance(theme, str) or theme not in THEMES:
         raise ValueError('Temaet skal være red, yellow eller green.')
+    # Optional private school colours: both lower-case #rrggbb values, or neither.
+    colours = [settings.get(key) for key in ('brand', 'brand_dark') if key in settings]
+    if colours and (len(colours) != 2 or any(not isinstance(value, str)
+                                             or not re.fullmatch(r'#[0-9a-f]{6}', value) for value in colours)):
+        raise ValueError('Skolefarverne skal være to farver på formen #rrggbb, eller ingen.')
     if 'admin_sources' in settings:
         sources = settings['admin_sources']
         if (not isinstance(sources, list) or not sources
@@ -82,6 +87,9 @@ def make_variables(settings, public_key, manifest, bundle=BUNDLE, config=CONFIG)
         },
         'kiosk_school_name': settings.get('school_name', ''),
         'kiosk_theme': settings.get('theme', 'red'),
+        # Empty strings mean "use the theme"; validate_profile accepted both or neither.
+        'kiosk_brand': settings.get('brand', ''),
+        'kiosk_brand_dark': settings.get('brand_dark', ''),
     }
     # New onboarding profiles explicitly carry the controller allowlist. Keep
     # legacy profiles byte-for-byte compatible by omitting the variable when
