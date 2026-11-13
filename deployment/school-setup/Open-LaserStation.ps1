@@ -32,4 +32,11 @@ if (-not $state) { throw 'Laserstationen svarer ikke endnu. Se stationens logs.'
 if (([string]$state.server).TrimEnd('/') -ne ([string]$config.server).TrimEnd('/')) { throw 'Porten bruges af en station med en anden server.' }
 if ([string]$state.stationId -ne [string]$config.station_id) { throw 'Porten bruges af en anden laserstation.' }
 # The shortcut opens the start page: laser station, 3D print and administration.
-if (-not $NoBrowser) { Start-Process ($url + 'makervaerkstedet.html') }
+# The station is already running here. A session without a desktop (a
+# scheduled or remote installation) cannot open a browser; that must not make
+# a completed installation report failure.
+if (-not $NoBrowser) {
+    $startPage = $url + 'makervaerkstedet.html'
+    try { Start-Process $startPage }
+    catch { Write-Warning ('Laserstationen kører, men browseren kunne ikke åbnes automatisk. Åbn adressen selv i en browser: ' + $startPage) }
+}

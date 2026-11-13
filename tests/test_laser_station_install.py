@@ -563,6 +563,38 @@ Write-Output ('LAUNCHED=' + $global:launched)
         self.assertIn(str(current / 'program/runtime/python.exe'), result.stdout)
         self.assertIn('--install-root "' + str(self.install_root) + '"', result.stdout)
 
+    def test_launcher_without_desktop_session_reports_address_instead_of_failing(self):
+        # A scheduled installation has no desktop: Start-Process on a URL throws.
+        # The station already runs, so the installer must not report failure.
+        powershell = shutil.which('powershell.exe') or shutil.which('pwsh')
+        if not powershell:
+            self.skipTest('PowerShell unavailable')
+        self.fresh()
+        _, current, config, _ = station.active_installation(self.install_root)
+        script = r'''
+function Invoke-RestMethod {
+  param($Uri, $TimeoutSec)
+  [pscustomobject]@{server='__SERVER__';stationId='__ID__'}
+}
+function Start-Process {
+  param($FilePath)
+  throw 'The operation attempted is not supported.'
+}
+try { & '__LAUNCHER__' -InstallPath '__INSTALL__' 3>&1 } catch { Write-Output ('ERROR=' + $_.Exception.Message) }
+'''
+        for key, value in (('__SERVER__', config['server']), ('__ID__', config['station_id']),
+                           ('__LAUNCHER__', ROOT / station.LAUNCHER), ('__INSTALL__', self.install_root)):
+            script = script.replace(key, str(value).replace("'", "''"))
+        harness = self.root / 'no-desktop-test.ps1'
+        harness.write_text(script, encoding='utf-8-sig')
+        result = subprocess.run([powershell, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(harness)],
+                                capture_output=True, text=True, timeout=20)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotIn('ERROR=', result.stdout)
+        # The console wraps a long warning and repeats its prefix on each line.
+        shown = result.stdout.replace('\r', '').replace('\nWARNING: ', '').replace('\n', '')
+        self.assertIn('http://127.0.0.1:' + str(config['port']) + '/makervaerkstedet.html', shown)
+
     def start_real_station(self, *, hold_request=False):
         # Use real station sources and our existing test interpreter. No bundled
         # runtime/build, queue/server connection, Beam Studio or FLUX is started.
