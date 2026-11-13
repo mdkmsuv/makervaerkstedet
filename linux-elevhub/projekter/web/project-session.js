@@ -325,7 +325,9 @@
       say('Nyt projekt · gem med klasse, navn og projektnavn.');
     });
     window.addEventListener('message', e => {
-      if (e.origin === location.origin && e.source === dialog.querySelector('iframe')?.contentWindow && e.data?.type === 'elevhub-open-project') load(e.data.id, e.data.revision || '');
+      if (e.origin !== location.origin || e.source !== dialog.querySelector('iframe')?.contentWindow) return;
+      if (e.data?.type === 'elevhub-open-project') load(e.data.id, e.data.revision || '');
+      else if (e.data?.type === 'elevhub-close-project-picker' && dialog.open && !busy) cancelDialog?.();
     });
     window.addEventListener('keydown', e => {
       if (!(e.ctrlKey || e.metaKey) || !['s', 'o'].includes(e.key.toLowerCase())) return;

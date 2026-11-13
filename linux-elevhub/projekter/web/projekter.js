@@ -93,5 +93,10 @@ $('upload-form').onsubmit=async e=>{e.preventDefault();if(working)return;const f
 refresh();
 let resizeTimer;window.addEventListener('resize',()=>{clearTimeout(resizeTimer);resizeTimer=setTimeout(render,150);});
 document.addEventListener('click',event=>{document.querySelectorAll('.project-menu[open]').forEach(menu=>{if(!menu.contains(event.target))menu.open=false;});});
-document.addEventListener('keydown',event=>{if(event.key==='Escape')document.querySelectorAll('.project-menu[open]').forEach(menu=>{menu.open=false;menu.querySelector('summary').focus();});});
+document.addEventListener('keydown',event=>{
+ if(event.key!=='Escape'||event.defaultPrevented||document.querySelector('dialog[open]'))return;
+ const menus=[...document.querySelectorAll('.project-menu[open]')];
+ if(menus.length){event.preventDefault();menus.forEach(menu=>{menu.open=false;menu.querySelector('summary').focus();});return;}
+ if(picker&&window.parent!==window){event.preventDefault();window.parent.postMessage({type:'elevhub-close-project-picker'},location.origin);}
+});
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
