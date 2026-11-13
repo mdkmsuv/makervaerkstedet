@@ -11,6 +11,7 @@ Arbejdsmapper under 2.0 følger også projektrodens regler.
 | Opgave | Reference |
 |---|---|
 | UI eller brugerflow | [UI/UX-agent](docs/agenter/UI-UX-AGENT.md), relevante [krav](docs/UI-UX-KRAV.md) |
+| Ny app/nyt værksted til elevenhederne | [Sådan laver du en ny app](docs/NY-APP-GUIDE.md) |
 | Arkitektur, kildefiler og testkommandoer | [Agentindgang](docs/AGENTINDGANG.md) |
 | Installation/opdatering og maskinrolle | [Kom godt i gang](docs/KOM-GODT-IGANG.md), [to opsætninger](docs/TO-OPSAETNINGER.md) |
 | Skoleprofil, tema og netværk | [Skoletilpasning](docs/SKOLETILPASNING.md) |

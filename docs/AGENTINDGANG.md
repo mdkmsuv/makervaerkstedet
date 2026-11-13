@@ -39,6 +39,7 @@ maskinadministration og workflows skal fungere med nul elevcomputere.
 | Tilføje en understøttet printer eller en manuel station | Lærerens `/makerspace`-panel. Koden ligger i [makerspace_store.py](../linux-elevhub/server/elevhub/makerspace_store.py) og [makerspace_printers.py](../linux-elevhub/server/elevhub/makerspace_printers.py). |
 | Ændre en arbejdsgang | Lærerens workfloweditor og [makerspace_workflows.py](../linux-elevhub/server/elevhub/makerspace_workflows.py). |
 | Tilføje en ny maskintype | Undersøg den eksisterende adapter og den autoritative kø først. En manuel registrering giver ikke automatisk en hardwaredriver. |
+| Bygge en ny app til elevenhederne | [Sådan laver du en ny app](NY-APP-GUIDE.md) og [Værksteder som apps](APP-PLATFORM.md). |
 | Ændre digitale værksteder | Appskabelonerne i [skoletilpasningen](SKOLETILPASNING.md), [apps.py](../linux-elevhub/server/elevhub/apps.py) og [tilstand.py](../linux-elevhub/server/elevhub/tilstand.py). |
 | Ændre lærerens overblik | [system_overview.py](../linux-elevhub/server/elevhub/system_overview.py) og [web-mappen](../linux-elevhub/server/elevhub/web). |
 | Ændre printerforløbet | [core.py](../app/core.py), [printer_bridge.py](../app/printer_bridge.py) og [printerfrigivelse](PRINTERFRIGIVELSE.md). |
