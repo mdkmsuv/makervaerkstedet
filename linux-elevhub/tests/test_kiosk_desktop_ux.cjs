@@ -6,12 +6,14 @@ const AxeBuilder=require('@axe-core/playwright').default;
 const {spawn}=require('node:child_process');
 const fs=require('node:fs'),path=require('node:path'),os=require('node:os'),assert=require('node:assert/strict');
 const root=path.resolve(__dirname,'../..');
+const realLauncher=process.argv.includes('--real-launcher');
 const output=process.env.KIOSK_UX_OUTPUT||path.join(os.tmpdir(),'mkv-kiosk-desktop-ux');
 const linux=p=>'/mnt/'+p[0].toLowerCase()+p.slice(2).replaceAll('\\','/');
 async function fixture(){
  const windows=process.platform==='win32';
  const script=path.join(__dirname,'kiosk_desktop_fixture.py');
- const child=spawn(windows?'wsl':(process.env.PYTHON||'python3'),windows?['-e','python3','-B',linux(script),linux(root)]:['-B',script,root],{stdio:['pipe','pipe','pipe'],windowsHide:true});
+ const extra=realLauncher?['--real-launcher']:[];
+ const child=spawn(windows?'wsl':(process.env.PYTHON||'python3'),windows?['-e','python3','-B',linux(script),linux(root),...extra]:['-B',script,root,...extra],{stdio:['pipe','pipe','pipe'],windowsHide:true});
  let stderr='';child.stderr.on('data',b=>stderr+=b);
  async function close(){if(!child.pid||child.exitCode!==null||child.signalCode!==null)return;await new Promise(resolve=>{const timer=setTimeout(()=>{child.kill();resolve();},5000);child.once('exit',()=>{clearTimeout(timer);resolve();});child.stdin.end('\n');});}
  let urls;
@@ -26,7 +28,7 @@ async function fixture(){
  let context,page;
  try{context=await browser.newContext({viewport:{width:1366,height:708}});page=await context.newPage();}catch(e){try{await browser.close();}finally{await f.close();}throw e;}
  let finish='completed',finishCalls=0;
- await context.route('http://127.0.0.1:8790/**',async r=>{if(new URL(r.request().url()).pathname==='/apps'){const response=await context.request.get(f.urls.hub+'/apps',{headers:{Authorization:'Bearer fixture-token','X-Elevhub-Computer':'browser-fixture'}});return r.fulfill({response});}finishCalls++;return r.fulfill({status:finish==='error'?503:200,contentType:'application/json',body:JSON.stringify(finish==='error'?{error:'Dit arbejde er stadig åbent. Prøv igen.'}:{id:'a'.repeat(32),state:finish})});});
+ if(!realLauncher)await context.route('http://127.0.0.1:8790/**',async r=>{if(new URL(r.request().url()).pathname==='/apps'){const response=await context.request.get(f.urls.hub+'/apps',{headers:{Authorization:'Bearer fixture-token','X-Elevhub-Computer':'browser-fixture'}});return r.fulfill({response});}finishCalls++;return r.fulfill({status:finish==='error'?503:200,contentType:'application/json',body:JSON.stringify(finish==='error'?{error:'Dit arbejde er stadig åbent. Prøv igen.'}:{id:'a'.repeat(32),state:finish})});});
  page.setDefaultTimeout(7000);
  const snap=async name=>{await page.waitForFunction(()=>[...document.images].filter(img=>{const r=img.getBoundingClientRect();return r.width&&r.height&&r.bottom>0&&r.top<innerHeight;}).every(img=>img.complete),null,{timeout:7000}).catch(()=>{});return page.screenshot({path:path.join(output,name+'.png'),fullPage:false});};
  async function check(name,fn){try{await fn();results.push({name,pass:true});console.log('PASS '+name);}catch(e){results.push({name,pass:false,error:e.message});console.log('FAIL '+name+': '+e.message);await snap('failure-'+results.length).catch(()=>{});}}
@@ -34,28 +36,75 @@ async function fixture(){
  async function home(mode='open'){await page.request.get(f.urls.hub+'/__set?mode='+mode);await page.goto(f.urls.hub);await page.locator('article[data-app="folie"] .app-open').waitFor();}
  async function started(url){await page.goto(url);await page.locator('#project-classroom').fill('5A');await page.locator('#project-student').fill('Testelev');await page.locator('#project-title').fill('Syntetisk skilt');await page.locator('#project-start-confirm').click();}
  try{
+  if(realLauncher){
+   if(process.argv.includes('--project-roundtrip')){
+    for(const kind of ['folie','laser','3dprint'])await check(kind+' saves and reopens geometry from the redesigned shelf',async()=>{
+     await started(f.urls[kind]);
+     if(kind==='3dprint')await page.locator('[data-add="box"]:not([data-mode])').click();
+     else await page.getByRole('button',{name:'Firkant',exact:true}).click();
+     await page.waitForFunction(()=>window.ElevhubProjectAdapter?.hasContent());
+     const geometry=()=>page.evaluate(()=>{
+      const raw=window.ElevhubProjectAdapter.signature(),v=typeof raw==='string'?JSON.parse(raw):raw;
+      // SVG import adds explicit format defaults; compare editable geometry,
+      // dimensions and name, not JSON property order or those defaults.
+      if(v.objects)v.objects=v.objects.map(o=>o.type==='rect'?{...o,rounded:!!o.rounded}:o);
+      return v.state?{name:v.state.name,width:v.state.width,height:v.state.height,items:v.state.items}:v;
+     });
+     const before=await geometry();
+     await page.getByRole('button',{name:/^Gem projekt/}).filter({visible:true}).click();await page.getByText(/Gemt på denne computer/).waitFor();
+     const list=await(await page.request.get(f.urls.projekter+'/_elevhub/projekter/api/list')).json();
+     const project=list.projects.find(p=>p.kind===kind);assert(project);assert.match(project.folder,/5A.*Testelev/);
+     await page.goto(f.urls.projekter);await page.locator('.project[data-id="'+project.id+'"] .open-project').click();
+     await page.waitForURL(f.urls[kind]+'**');
+     await page.waitForFunction(()=>document.getElementById('project-finish-discard')?.offsetParent||!location.search);
+     if(await page.locator('#project-finish-discard').isVisible())await page.locator('#project-finish-discard').click();
+     await page.waitForURL(f.urls[kind]); // Shared loader clears the import query after success.
+     assert.deepEqual(await geometry(),before,'Reopened geometry must equal saved geometry');
+     await snap('reopened-'+kind);
+    });
+    if(results.some(r=>!r.pass))process.exitCode=1;return;
+   }
+   await check('real launcher: shelf returns to canonical home with installed catalogue',async()=>{
+    await page.goto(f.urls.projekter);await page.locator('#home-link').click();await page.waitForURL('http://127.0.0.1:8791/_elevhub/projekter/home');
+    await page.locator('article[data-app="folie"] .app-open').waitFor();assert.equal(await page.locator('#apps > article').count(),6);
+    assert.equal(await page.locator('.sidebar-bottom').count(),0);assert.equal(await page.locator('.brand-title').innerText(),'Makerværkstedet.');await snap('real-returned-home');
+   });
+   await check('closed workshops disappear and return when reopened',async()=>{
+    await page.locator('article[data-app="folie"] .app-open').focus();await page.request.get(f.urls.hub+'/__set?mode=closed');
+    await page.waitForFunction(()=>!document.querySelector('article[data-app="folie"]'));
+    assert.deepEqual(await page.locator('#apps > article').evaluateAll(es=>es.map(e=>e.dataset.app)),['scratch']);
+    assert(await page.locator('#workshops-title').evaluate(e=>e===document.activeElement));await snap('real-closed-workshops');
+    await page.request.get(f.urls.hub+'/__set?mode=open');await page.locator('article[data-app="folie"]').waitFor();assert.equal(await page.locator('#apps > article').count(),6);
+   });
+   for(const kind of ['folie','laser','3dprint'])await check('real launcher: returned home starts '+kind,async()=>{
+    await page.goto(f.urls.projekter);await page.locator('#home-link').click();await page.locator('article[data-app="'+kind+'"] .app-open').click();
+    await page.waitForURL(f.urls[kind]+'**');await page.locator('#project-classroom').waitFor();
+   });
+   await check('real launcher: projects link completes authenticated finish request',async()=>{
+    await page.goto(f.urls.projekter);await page.locator('#home-link').click();await page.locator('.sidebar [data-project-link]').click();await page.locator('#shelf-sidebar').waitFor();
+   });
+   if(results.some(r=>!r.pass))process.exitCode=1;return;
+  }
+  if(process.argv.includes('--entrance-only')){
+   await home();assert.equal(await page.locator('.sidebar').count(),1,'New entrance must have the pupil sidebar');assert.equal(await page.getByRole('link',{name:/Få en idé/}).count(),0);
+   const cards=await page.locator('#apps > article').evaluateAll(es=>es.slice(0,4).map(e=>e.getBoundingClientRect().bottom));assert.equal(cards.length,4);assert(cards.every(bottom=>bottom<=708),'Four main workshops must fit');
+   assert(await page.locator('#workshop-scroll-hint').isVisible());console.log('PASS new student entrance');return;
+  }
   if(process.argv.includes('--axe-only')){await started(f.urls.folie);await audit('folie');assert.deepEqual(axe[0].violations,[],'Folie has remaining axe violations');console.log('PASS Folie axe: no violations');return;}
   await check('launch error after scrolling is visible with recovery',async()=>{await home();finish='error';await page.locator('article[data-app="folie"] .app-open').click();await page.locator('#fejl').filter({hasText:/Prøv igen/}).waitFor();await snap('launch-error');const box=await page.locator('#fejl').boundingBox();assert(box&&box.y>=0&&box.y+box.height<=708,'Error must be wholly inside viewport after scrolled launch: '+JSON.stringify(box));});
   for(const target of ['.app-image','.app-title'])await check('card '+target+' opens actual Folie',async()=>{await home();finish='completed';await page.locator('article[data-app="folie"] '+target).click();await page.waitForURL(f.urls.folie+'**');await page.locator('#project-classroom').waitFor();});
   await check('action error survives status polling; dismiss restores focus; retry succeeds',async()=>{await home();finish='error';await page.locator('article[data-app="folie"] .app-open').click();await page.locator('#fejl').filter({hasText:/Prøv igen/}).waitFor();await page.waitForTimeout(3500);assert(await page.locator('#kiosk-notice').isVisible());await page.locator('#kiosk-dismiss').click();assert(await page.locator('article[data-app="folie"] .app-open').evaluate(e=>e===document.activeElement));assert.equal(await page.locator('#kiosk-notice').isVisible(),false);finish='completed';await page.keyboard.press('Enter');await page.waitForURL(f.urls.folie+'**');});
   for(const size of [{width:1366,height:708},{width:1920,height:1020}])await check('first-row launch buttons visible on initial '+size.width,async()=>{await page.setViewportSize(size);await home();const rows=await page.locator('#apps > article').evaluateAll(cards=>cards.map(c=>({top:c.getBoundingClientRect().top,button:c.querySelector('.app-open').getBoundingClientRect().toJSON()})));const first=rows.filter(c=>Math.abs(c.top-rows[0].top)<2);assert(first.length>0);assert(first.every(c=>c.button.top>=0&&c.button.bottom<=size.height),'first row launch buttons clipped: '+JSON.stringify(first));await snap('home-initial-'+size.width);});
-  await check('ideas retain detail and return focus',async()=>{await home();await page.locator('article[data-app="folie"] .app-about').click();await page.locator('#detail-title').waitFor();assert.match(page.url(),/#vaerksted\/folie/);await page.getByRole('link',{name:/Alle værksteder/}).click();assert(await page.locator('article[data-app="folie"] .app-about').evaluate(e=>e===document.activeElement));await audit('home');await snap('home');});
-  await check('filtered idea return restores visible keyboard focus without changing filter',async()=>{
-   await page.setViewportSize({width:1366,height:708});await home();
-   await page.locator('[data-filter="ide"]').click();
-   const ideaApp=await page.locator('#ticket-link').getAttribute('data-app');
-   assert.equal(await page.locator('article[data-app="'+ideaApp+'"]').count(),0,'Suggested workshop must be outside the active filter');
-   await page.locator('#ticket-link').focus();await page.keyboard.press('Enter');
-   await page.locator('#detail-title').waitFor();
-   const detailOutline=await page.locator('#detail-title').evaluate(e=>({style:getComputedStyle(e).outlineStyle,width:getComputedStyle(e).outlineWidth}));
-   await page.getByRole('link',{name:/Alle værksteder/}).focus();await page.keyboard.press('Enter');
-   await page.waitForFunction(()=>document.getElementById('workshop-detail').hidden);
-   assert(await page.locator('#workshops-title').evaluate(e=>e===document.activeElement),'Focus must return to the visible workshop heading when the original card is filtered out');
-   assert.equal(await page.locator('[data-filter="ide"]').getAttribute('aria-pressed'),'true');
-   const heading=await page.locator('#workshops-title').boundingBox();assert(heading&&heading.y>=0&&heading.y+heading.height<=708);
-   const outline=await page.locator('#workshops-title').evaluate(e=>({style:getComputedStyle(e).outlineStyle,width:getComputedStyle(e).outlineWidth}));
-   assert.equal(outline.style,'solid');assert.equal(outline.width,'3px');assert.deepEqual(detailOutline,outline);
-   await snap('filtered-idea-return-focus');
+  await check('new entrance categories preserve programmes and keyboard controls',async()=>{
+   await home();assert.equal(await page.locator('.sidebar').count(),1);assert.equal(await page.locator('.sidebar-bottom').count(),0);assert.equal(await page.locator('.brand-title').innerText(),'Makerværkstedet.');
+   assert.equal(await page.getByRole('link',{name:/Få en idé/}).count(),0);
+   for(const [category,count] of [['byg',3],['kode',2],['ide',1],['alle',6]]){await page.locator('[data-filter="'+category+'"]').click();assert.equal(await page.locator('#apps > article').count(),count);}
+   await audit('home');await snap('home');
+  });
+  await check('project sidebar uses finish guard and returns through actual HTTP home',async()=>{
+   await home();finish='cancelled';const initial=page.url(),calls=finishCalls;await page.locator('.sidebar [data-project-link]').click();await page.waitForTimeout(300);assert(finishCalls>calls);assert.equal(page.url(),initial);
+   finish='completed';await page.locator('.sidebar [data-project-link]').click();await page.locator('#shelf-sidebar').waitFor();await page.locator('#home-link').click();await page.waitForURL('**/_elevhub/projekter/home');await page.locator('article[data-app="folie"] .app-open').waitFor();assert.equal(await page.locator('#apps > article').count(),6);await snap('returned-home');
+   await page.locator('article[data-app="folie"] .app-open').click();await page.waitForURL(f.urls.folie+'**');await page.locator('#project-classroom').waitFor();
   });
   await check('finish cancellation preserves current page',async()=>{await home();finish='cancelled';const before=page.url(),n=finishCalls;await page.locator('article[data-app="folie"] .app-open').click();await page.waitForTimeout(400);assert(finishCalls>n);assert.equal(page.url(),before);finish='completed';});
   await check('server closure blocks launch at click time',async()=>{await home();await page.request.get(f.urls.hub+'/__set?mode=closed');await page.locator('article[data-app="folie"] .app-open').click();await page.locator('#fejl').filter({hasText:/lærer|ikke åbnes/}).waitFor();assert(page.url().startsWith(f.urls.hub));});

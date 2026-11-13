@@ -7,28 +7,46 @@ const {spawn} = require('node:child_process');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root = path.resolve(__dirname, '../..');
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'elevhub-gallery-'));
-const python = process.env.PYTHON || path.join(root, '.venv/Scripts/python.exe');
-const server = spawn(python, ['-u', path.join(__dirname, 'gallery_fixture.py'), temporary], {windowsHide:true});
+const windows = process.platform==='win32';
+const linux = p=>'/mnt/'+p[0].toLowerCase()+p.slice(2).replaceAll('\\','/');
+const fixture = path.join(__dirname, 'gallery_fixture.py');
+const server = spawn(windows?'wsl':(process.env.PYTHON||'python3'),windows?['-e','python3','-B','-u',linux(fixture),linux(temporary)]:['-B','-u',fixture,temporary],{windowsHide:true});
 let browser;
 async function main() {
  const url = await new Promise((resolve,reject)=>{
   let output='',errors='';const timer=setTimeout(()=>reject(Error('Fixture startup timed out: '+errors)),30000);
   server.stdout.on('data',data=>{output+=data;const line=output.split('\n')[0];try{const value=JSON.parse(line);clearTimeout(timer);resolve(value.url);}catch{}});
   server.stderr.on('data',data=>errors+=data);
+  server.once('error',e=>{clearTimeout(timer);reject(e);});
   server.once('exit',code=>{clearTimeout(timer);reject(Error('Fixture server exited '+code+': '+errors));});
  });
  browser = await chromium.launch({headless:true,channel:'chrome'});
  const page = await browser.newPage({viewport:{width:1366,height:900}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
+ const fontResponses=[];page.on('response',r=>{if(new URL(r.url()).pathname.endsWith('/Manrope.ttf'))fontResponses.push(r.status());});
+ await page.route('**/api/config',async route=>{
+  const response=await route.fetch(),config=await response.json();
+  await route.fulfill({response,json:{...config,home_url:url+'/home-fixture',appearance:{theme:'green',school_name:'Testskolen',brand:'#256348',brand_dark:'#184b34',logo_data:''}}});
+ });
  await page.goto(url);
  await page.locator('.category[data-kind=laser] .project').first().waitFor();
  assert.equal(await page.locator('.category').count(),8);
+ await page.evaluate(()=>document.fonts.ready);
+ assert(await page.evaluate(()=>document.fonts.check('16px Manrope')),'Manrope must be loaded');
+ assert.deepEqual(fontResponses,[200],'Manrope route must return the real font without a 404');
+ assert.equal(await page.locator('body').getAttribute('data-theme'),'green');
+ assert.equal(await page.locator('#school-name').innerText(),'Testskolen');
+ assert.equal(await page.locator('#home-link').getAttribute('href'),url+'/home-fixture');
+ assert(await page.locator('#shelf-sidebar').isVisible());
+ assert(await page.locator('#generic-mark').isVisible());
+ assert(await page.locator('#school-logo').isHidden());
+ assert.equal(await page.locator('.sidebar [aria-current=page]').innerText(),'Find mit projekt');
  const laser=page.locator('.category[data-kind=laser]');
- assert.equal(await laser.locator('.project').count(),4);
+ assert.equal(await laser.locator('.project').count(),3);
  await laser.getByRole('button',{name:'Vis alle 7 i Laser',exact:true}).click();
  assert.equal(await laser.locator('.project').count(),7);
  await laser.getByRole('button',{name:'Vis færre i Laser',exact:true}).click();
- assert.equal(await laser.locator('.project').count(),4);
+ assert.equal(await laser.locator('.project').count(),3);
  const first=laser.locator('.project').first();
  await page.waitForFunction(()=>document.querySelector('.category[data-kind=laser] .project img')?.naturalWidth>0);
  await page.locator('.category[data-kind=andet]').scrollIntoViewIfNeeded();
@@ -42,6 +60,7 @@ async function main() {
  await first.getByRole('button',{name:'Tidligere versioner',exact:true}).click();
  await page.locator('#versions .version').waitFor();assert.match(await page.locator('#versions').innerText(),/Version 1/);
  await page.locator('#close-history').click();
+ await page.waitForFunction(()=>document.activeElement?.matches('.project[data-kind=laser] summary'));
  await page.locator('#search').fill('gruppe 3');assert.equal(await page.locator('.category').count(),1);assert.equal(await page.locator('.project').count(),7);
  await page.locator('#search').fill('findes ikke');assert(await page.locator('#empty-projects').isVisible());
  await page.locator('#clear-search').click();
@@ -72,6 +91,8 @@ async function main() {
   await page.goto(url+'/_elevhub/projekter/?pick='+kind);
   await page.locator('.project').first().waitFor();
   assert.deepEqual(await page.locator('.category').evaluateAll(items=>items.map(item=>item.dataset.kind)),[kind]);
+  assert(await page.locator('#shelf-sidebar').isHidden());
+  assert.equal(await page.locator('body').getAttribute('data-theme'),'red','picker ignores standalone branding');
   assert(await page.locator('#kind').isDisabled());assert(await page.locator('#kind').isHidden());
   assert.match(await page.locator('.results-heading h2').innerText(),/Dine projekter/);
   assert.equal(await page.locator('link[rel=stylesheet]').getAttribute('href'),'projekter.css');
@@ -108,7 +129,7 @@ async function main() {
  await page.getByRole('status').filter({hasText:'Værkstedet kunne ikke genkendes'}).waitFor();
  assert.equal(await page.locator('.project').count(),0);
  assert.deepEqual(errors,[]);
- console.log('PASS: gallery operations, seven scoped workshop pickers with shared CSS, clear-search and selector invariants, native 3D scope, invalid scope, four responsive widths.');
+ console.log('PASS: '+(windows?'WSL Linux':'Linux')+' backend, real Manrope, gallery operations, seven scoped workshop pickers with shared CSS, clear-search and selector invariants, native 3D scope, invalid scope, four responsive widths.');
 }
 main().catch(e=>{console.error(e);process.exitCode=1;}).finally(async()=>{
  if(browser)await browser.close();

@@ -173,7 +173,7 @@ class TemplateActivation(unittest.TestCase):
         path.write_text(json.dumps(config));path.chmod(0o644)
         M.activate(self.root);text=page.read_text()
         self.assertIn('data-theme="green" style="--brand:#1f5a8c;--deep:#143c5e;--brand-dark:#143c5e"',text)
-        self.assertEqual(text.count("--brand:#1f5a8c"),2,"body and header both carry the school colours")
+        self.assertEqual(text.count("--brand:#1f5a8c"),1,"the sidebar inherits the school's colours from body")
         M.activate(self.root)  # an apt update re-renders; the private colours stay in kiosk.json
         saved=json.loads(path.read_text())
         self.assertEqual((saved["brand"],saved["brand_dark"]),("#1f5a8c","#143c5e"))

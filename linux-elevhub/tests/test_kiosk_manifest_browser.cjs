@@ -60,16 +60,18 @@ async function startFixture() {
       await page.setViewportSize(viewport);
       const layout = await page.evaluate(() => ({
         viewport: innerWidth, document: document.documentElement.scrollWidth,
-        actions: [...document.querySelectorAll('.app-actions')].map(actions => {
-          const launch = actions.querySelector('.app-open').getBoundingClientRect();
-          const about = actions.querySelector('.app-about').getBoundingClientRect();
-          return {launchRight:launch.right, aboutLeft:about.left, right:about.right};
+        actions: [...document.querySelectorAll('#apps > article')].map(card => {
+          const button = card.querySelector('.app-open').getBoundingClientRect();
+          const launch = card.querySelector('.launch').getBoundingClientRect();
+          const title = card.querySelector('.app-title').getBoundingClientRect();
+          return {button:button.toJSON(),launch:launch.toJSON(),title:title.toJSON()};
         })
       }));
       assert(layout.document <= layout.viewport, 'menu must fit the real window viewport at ' + viewport.width);
-      for (const actions of layout.actions) {
-        assert(actions.launchRight <= actions.aboutLeft, 'primary action must not overlap the ideas link');
-        assert(actions.right <= layout.viewport, 'rightmost action must remain inside the viewport');
+      assert.equal(layout.actions.length,6,'layout check must exercise every rendered workshop');
+      for (const {button,launch,title} of layout.actions) {
+        assert(button.width>0 && button.left>=0 && button.right<=layout.viewport,'full card button stays inside viewport');
+        for (const target of [launch,title]) assert(target.width>0 && target.left>=button.left && target.right<=button.right && target.top>=button.top && target.bottom<=button.bottom,'title and launch stay inside their full card button');
       }
       if (process.env.KIOSK_MANIFEST_SCREENSHOT) {
         await page.locator('#workshops-title').evaluate(title => {
@@ -81,11 +83,11 @@ async function startFixture() {
     }
     if (process.env.KIOSK_MANIFEST_LAYOUT_ONLY === '1') {
       assert.deepEqual(errors, []);
-      console.log('kiosk manifest layout: 1004x768 and 1366x900 fit without action overlap: OK');
+      console.log('kiosk manifest layout: 1004x768 and 1366x900 fit with visible card titles and launch actions: OK');
       return;
     }
     assert.equal(await page.locator('[data-app=microbit] .app-status').innerText(), 'Kræver internet');
-    await page.waitForFunction(() => document.title !== 'Værkstedet starter');
+    await page.waitForFunction(() => document.title !== 'Makerværkstedet starter');
     await page.locator('[data-app="3dprint"] .app-open').focus();
     const beforeLaunch = hubRequests;
     await page.keyboard.press('Enter');
@@ -96,11 +98,6 @@ async function startFixture() {
     await set('catalog=removed');
     await waitCount(5);
     assert.equal(await page.evaluate(() => document.activeElement.id), 'workshops-title');
-    await set('catalog=installed'); await waitCount(6);
-    await page.locator('[data-app=scratch] .app-about').click();
-    await page.locator('#detail-start').focus();
-    await set('catalog=removed'); await waitCount(5);
-    assert.equal(await page.evaluate(() => document.activeElement.id), 'workshops-title', 'removal also exits focused workshop details');
     await set('catalog=installed'); await waitCount(6);
     console.log('manifest browser: offline removal/reinstall and focus passed');
     await set('catalog=empty'); await waitCount(1);
@@ -149,36 +146,45 @@ async function startFixture() {
       await page.screenshot({path:process.env.KIOSK_REJECTED_SCREENSHOT});
       await page.setViewportSize(before);
     }
-    // Optional private school colours (synthetic values) override the theme on
-    // body and header; absent or invalid colours leave the public theme as is.
+    // Optional school colours apply to actual navigation, launch and focus states.
     const rgb = hex => 'rgb(' + [1,3,5].map(i => parseInt(hex.slice(i, i + 2), 16)).join(', ') + ')';
     const palette = () => page.evaluate(() => {
       const css = selector => getComputedStyle(document.querySelector(selector));
-      return {primaryFocused:document.activeElement === document.querySelector('.hero-copy .primary'), active:(document.activeElement.outerHTML || '').slice(0, 120) + ' hash=' + location.hash + ' visible=' + !!document.querySelector('.hero-copy .primary').offsetParent,brand:css('body').getPropertyValue('--brand').trim(), deep:css('body').getPropertyValue('--deep').trim(),
-        header:css('.hub-header').getPropertyValue('--brand').trim(), mark:css('.brand-mark i:nth-child(3)').backgroundColor,
-        heading:css('.hero-copy h1 em').color, button:css('.hero-copy .primary').backgroundColor, focus:css('.hero-copy .primary').outlineColor,
-        message:css('#fejl').borderTopColor, appOpen:css('[data-app] .app-open').color};
+      const action = document.querySelector('[data-app=laser] .app-open');
+      return {primaryFocused:document.activeElement === action,
+        brand:css('body').getPropertyValue('--brand').trim(), dark:css('body').getPropertyValue('--brand-dark').trim(),
+        sidebar:css('.sidebar').backgroundColor, mark:css('.brand-mark').color,
+        button:css('[data-app=laser] .launch').backgroundColor, focus:css('[data-app=laser] .app-open').outlineColor,
+        focusStyle:css('[data-app=laser] .app-open').outlineStyle, focusWidth:css('[data-app=laser] .app-open').outlineWidth,
+        message:css('#kiosk-notice').borderTopColor, selectedFilter:css('[data-filter][aria-pressed=true]').backgroundColor};
     });
-    const expectPalette = async (brand, deep, label) => {
+    const expectPalette = async (brand, dark, label) => {
       await page.goto(fixture.origin); await waitCount(5);
       await page.locator('#fejl').filter({hasText:/noget galt med skoleserveren/}).waitFor();
-      // Keyboard focus, so the :focus-visible ring is the one a pupil sees.
-      await page.keyboard.press('Shift'); await page.locator('.hero-copy .primary').focus();
+      // Keep the pointer away so keyboard focus and hover are checked separately.
+      await page.mouse.move(0,0);
+      await page.keyboard.press('Shift'); await page.locator('[data-app=laser] .app-open').focus();
       const value = await palette();
-      assert.equal(value.primaryFocused, true, label + ': keyboard focus on the primary action; active ' + value.active);
-      assert.deepEqual([value.brand, value.deep, value.header], [brand, deep, brand], label + ': custom properties');
-      for (const key of ['mark','heading','button','focus','message','appOpen']) assert.equal(value[key], rgb(brand), label + ': ' + key);
+      assert.equal(value.primaryFocused, true, label + ': keyboard focus on the actual workshop card');
+      assert.deepEqual([value.brand, value.dark], [brand, dark], label + ': custom properties');
+      for (const key of ['sidebar','mark','button','focus','message','selectedFilter']) assert.equal(value[key], rgb(brand), label + ': ' + key);
+      assert.equal(value.focusStyle,'solid',label+': visible keyboard focus');
+      assert(parseFloat(value.focusWidth)>=3,label+': substantial keyboard focus outline');
+      assert.equal(await page.locator('[data-app=laser] .availability').innerText(),'Tilgængelig offline',label+': truthful offline status');
+      await page.locator('[data-app=laser] .app-open').hover();
+      assert.equal(await page.locator('[data-app=laser] .launch').evaluate(node=>getComputedStyle(node).backgroundColor),rgb(dark),label+': dark hover button');
+      await page.mouse.move(0,0);
     };
-    await expectPalette('#c62b2f', '#8c1d24', 'public red theme without school colours');
+    await expectPalette('#af1724', '#82101b', 'public red theme without school colours');
     await set('colours=invalid');
-    await expectPalette('#c62b2f', '#8c1d24', 'invalid school colours fall back to the theme');
+    await expectPalette('#af1724', '#82101b', 'invalid school colours fall back to the theme');
     await set('colours=custom');
     await expectPalette('#1f5a8c', '#143c5e', 'school colours');
     if (process.env.KIOSK_SKOLEFARVER_SCREENSHOT) {
       const before = page.viewportSize();
       await page.setViewportSize({width:1024,height:688});
       await page.evaluate(() => { location.hash = ''; scrollTo(0, 0); });
-      await page.keyboard.press('Shift'); await page.locator('.hero-copy .primary').focus();
+      await page.keyboard.press('Shift'); await page.locator('[data-app=laser] .app-open').focus();
       await page.evaluate(() => scrollTo(0, 0));
       await page.screenshot({path:process.env.KIOSK_SKOLEFARVER_SCREENSHOT});
       await page.setViewportSize(before);

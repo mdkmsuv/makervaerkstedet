@@ -10,61 +10,45 @@ class Element {
     this.textContent = ''; this.disabled = false; this.attributes = {};
     this.listeners = {};
   }
-  append(...children) { this.children.push(...children); }
-  replaceChildren(...children) { this.children = children; }
+  append(...children) { for (const child of children) child.parentElement = this; this.children.push(...children); }
+  replaceChildren(...children) { this.children = []; this.append(...children); }
   setAttribute(name, value) { this.attributes[name] = String(value); }
   getAttribute(name) { return this.attributes[name]; }
   addEventListener(name, handler) { this.listeners[name] = handler; }
-  click() { this.listeners.click?.({ preventDefault() {} }); }
+  click() { if (!this.disabled) this.listeners.click?.({ preventDefault() {} }); }
   focus() { this.ownerDocument.activeElement = this; }
-  closest(selector) { return selector === '[data-app]' ? this.appCard || null : null; }
-  querySelectorAll(selector) {
-    if (selector === 'a,button') return this.children.filter(child => ['A', 'BUTTON'].includes(child.tagName));
-    return [];
+  closest(selector) { return selector === '[data-app]' ? (this.dataset.app ? this : this.parentElement?.closest(selector)) || null : null; }
+  querySelector(selector) {
+    for (const child of this.children) {
+      if (selector.startsWith('.') && child.className.split(' ').includes(selector.slice(1))) return child;
+      const found = child.querySelector(selector); if (found) return found;
+    }
+    return null;
   }
-  scrollIntoView() {}
 }
-
 class Document {
   constructor() {
     this.activeElement = new Element('body'); this.activeElement.ownerDocument = this;
-    this.elements = new Map(); this.filters = []; this.discover = []; this.projectLinks = [];
-    for (const id of ['apps', 'empty-filter', 'workshop-count', 'ticket-link', 'shuffle-idea',
-      'ticket-workshop', 'ticket-title', 'ticket-text', 'workshop-detail', 'hub-home',
-      'detail-start', 'detail-model3d', 'detail-access', 'detail-name', 'detail-tag', 'detail-title',
-      'detail-intro', 'detail-tools', 'detail-image', 'detail-steps', 'detail-ideas',
-      'detail-tip-text', 'fejl']) this.add(new Element('div', id));
-    this.elements.get('shuffle-idea').tagName = 'BUTTON';
-    this.elements.get('detail-start').tagName = 'BUTTON';
+    this.elements = new Map(); this.filters = []; this.projectLinks = [];
+    for (const id of ['apps', 'empty-filter', 'workshop-count', 'workshop-scroll-hint', 'workshops-title', 'offline', 'ingen']) this.add(new Element('div', id));
   }
   add(element) { element.ownerDocument = this; this.elements.set(element.id, element); return element; }
   createElement(tag) { const element = new Element(tag); element.ownerDocument = this; return element; }
   getElementById(id) { return this.elements.get(id); }
   querySelectorAll(selector) {
     if (selector === '[data-filter]') return this.filters;
-    if (selector === '[data-discover]') return this.discover;
     if (selector === '[data-project-link]') return this.projectLinks;
     return [];
   }
-  querySelector() { return null; }
 }
-
 const document = new Document();
-document.title = 'Værkstedet · Makerværkstedet';
-const discoverPrint = new Element('button'); discoverPrint.dataset.discover = '3dprint';
-const discoverLaser = new Element('button'); discoverLaser.dataset.discover = 'laser';
-document.discover.push(discoverPrint, discoverLaser);
-const location = { hash: '' };
+const filter = group => { const button=document.createElement('button');button.dataset.filter=group;document.filters.push(button);return button; };
+const allFilter=filter('alle'),buildFilter=filter('byg'),codeFilter=filter('kode');
+const retained = ['folie', 'laser', '3dprint', 'scratch', 'microbit', 'internet'];
+const workshopInfo = Object.fromEntries(retained.map(id=>[id,{name:id,group:['folie','laser','3dprint'].includes(id)?'byg':'kode',short:id,image:id+'.png'}]));
 const context = {
-  console, document, location,
-  window: { CreativeWorkshops: {
-    laser: { name: 'Laser', group: 'byg', tag: 'LASER', image: 'laser.webp', title: 'Laser', intro: 'Laser', tools: 'Laser', tip: 'Tip',
-      steps: [['Tegn', 'Tegn'], ['Vælg', 'Vælg'], ['Se', 'Se']], ideas: [['Laserraket', 'Lav en raket']] },
-    '3dprint': { name: '3D-print', group: 'byg', tag: '3D', image: 'print.webp', title: 'Print', intro: 'Print', tools: 'Print', tip: 'Tip',
-      steps: [['Tegn', 'Tegn'], ['Byg', 'Byg'], ['Print', 'Print']], ideas: [['Spilfigur', 'Lav en figur']] },
-    scratch: { name: 'Scratch', group: 'kode', tag: 'KODE', image: 'scratch.webp', title: 'Scratch', intro: 'Scratch', tools: 'Kode', tip: 'Tip',
-      steps: [['Vælg', 'Vælg'], ['Kod', 'Kod'], ['Test', 'Test']], ideas: [['Spil', 'Lav et spil']] }
-  }, addEventListener() {}, scrollTo() {} },
+  console, document,
+  window: { CreativeWorkshops: workshopInfo, addEventListener() {} },
   LOKALE_APP_URLER: {},
   vis(id, connected) {
     document.getElementById('apps').hidden = id !== 'apps';
@@ -73,89 +57,70 @@ const context = {
     context.connectionState = connected;
   },
   aabn(event, app, model) { context.lastLaunch = {id: app.id, model}; },
-  setTimeout() {}
+  // Layout and focus are exercised by the real browser acceptance tests.
+  requestAnimationFrame() {}, setTimeout() {}
 };
-context.document.add(new Element('div', 'offline'));
-context.document.add(new Element('div', 'ingen'));
-context.connectionState = false;
 const script = fs.readFileSync(path.join(__dirname, '..', 'server', 'elevhub', 'web', 'assets', 'creative-hub.js'), 'utf8')
   .replace(/\nopdater\(\);\s*$/, '');
 vm.runInNewContext("let seneste='',starter=false;" + script, context);
-
 const app = (id, aaben, klar = true) => ({ id, aaben, klar, type: 'vaerksted', navn: id });
-context.tegn([app('3dprint', false), app('laser', true), app('scratch', true)]);
-assert.deepEqual(document.getElementById('apps').children.map(card => card.dataset.app), ['laser', 'scratch']);
+const cards = () => document.getElementById('apps').children;
+const ids = () => cards().map(card=>card.dataset.app);
+const card = id => cards().find(card=>card.dataset.app===id);
+const launch = id => card(id).querySelector('.app-open');
+const status = id => card(id).querySelector('.availability').textContent;
+
+context.tegn([app('3dprint', false), app('scratch', true), app('laser', true)]);
+assert.deepEqual(ids(), ['laser', 'scratch'], 'online catalog follows teacher visibility and pupil order');
 assert.equal(document.getElementById('workshop-count').textContent, '2 værksteder');
-assert.equal(discoverPrint.hidden, true, 'closed discovery entry is hidden');
-assert.equal(discoverLaser.hidden, false, 'open discovery entry remains visible');
-context.routeWorkshop();
-assert.equal(document.title, 'Værkstedet · Makerværkstedet', 'home route uses the startup-ready title');
-const firstIdea = document.getElementById('ticket-title').textContent;
-document.getElementById('shuffle-idea').click();
-assert.notEqual(document.getElementById('ticket-title').textContent, firstIdea, 'idea button still rotates open ideas');
+launch('laser').click();assert.deepEqual(context.lastLaunch,{id:'laser',model:false});
 context.tegn([app('laser', true, false)]);
-assert.equal(document.getElementById('apps').children[0].dataset.app, 'laser', 'not-ready open app remains visible');
-assert.equal(document.getElementById('apps').children[0].children[1].children[3].children[0].disabled, true, 'not-ready app stays unavailable');
-
-location.hash = '#vaerksted/3dprint'; context.routeWorkshop();
-assert.equal(document.getElementById('workshop-detail').hidden, true, 'closed deep link must stay on home');
-location.hash = '#vaerksted/laser'; context.routeWorkshop();
-assert.equal(document.getElementById('workshop-detail').hidden, false, 'open deep link must work');
-assert.equal(document.title, 'Laser · Værkstedet', 'workshop detail gets its own title');
-location.hash = ''; context.routeWorkshop();
-assert.equal(document.title, 'Værkstedet · Makerværkstedet', 'returning home restores the startup-ready title');
-
-context.tegn([app('3dprint', false), app('laser', false), app('scratch', true)]);
-assert.equal(document.getElementById('workshop-detail').hidden, true, 'closing current workshop must leave detail');
-assert.equal(document.getElementById('ticket-link').dataset.app, 'scratch', 'idea link follows open workshops');
+assert.deepEqual(ids(), ['laser'], 'not-ready open app remains visible');
+assert.equal(launch('laser').disabled,true,'not-ready app stays unavailable');
+assert.equal(status('laser'),'Ikke klar endnu');
+context.lastLaunch=null;launch('laser').click();assert.equal(context.lastLaunch,null,'disabled workshop does not launch');
 
 context.tegn([app('3dprint', false), app('laser', false), app('scratch', false)]);
 assert.equal(document.getElementById('ingen').hidden, false, 'no open workshops keeps empty state');
 assert.equal(document.getElementById('offline').hidden, true, 'empty state is not connection error');
 assert.equal(document.getElementById('empty-filter').hidden, true, 'filter empty hint stays hidden without open workshops');
-assert.equal(document.getElementById('shuffle-idea').disabled, true, 'idea chooser disables with no open idea workshops');
-assert.equal(document.getElementById('ticket-link').href, '#workshops');
-
 context.tegn([app('3dprint', true)]);
-assert.deepEqual(document.getElementById('apps').children.map(card => card.dataset.app), ['3dprint'], 'reopening restores card');
-assert.equal(discoverPrint.hidden, false, 'reopening restores discovery entry');
-assert.equal(document.getElementById('ticket-link').dataset.app, '3dprint', 'reopening restores idea entry');
-location.hash = '#vaerksted/3dprint'; context.routeWorkshop();
-// On pupil devices the 3D tile is the 3D drawing workshop; STL upload is not offered.
-assert.equal(document.getElementById('detail-model3d').hidden, true, 'no separate upload/model choice on the device');
-document.getElementById('detail-start').click();
-assert.equal(context.lastLaunch.id, '3dprint');
-assert.equal(context.lastLaunch.model, true, 'the start button opens the 3D drawing workshop');
+assert.deepEqual(ids(), ['3dprint'], 'reopening restores card');
+launch('3dprint').click();assert.deepEqual(context.lastLaunch,{id:'3dprint',model:true},'3D card opens drawing workshop directly');
 context.tegn([app('3dprint', true, false)]);
-assert.equal(document.getElementById('detail-start').disabled, true, 'start follows readiness');
-location.hash = ''; context.routeWorkshop();
+assert.equal(launch('3dprint').disabled,true,'3D launch follows readiness');
+
+context.tegn([app('laser',true),app('scratch',true)]);
+codeFilter.click();assert.deepEqual(ids(),['scratch'],'code filter selects open coding workshops');
+buildFilter.click();assert.deepEqual(ids(),['laser'],'build filter selects open making workshops');
+context.tegn([app('scratch',true)]);assert.equal(document.getElementById('empty-filter').hidden,false,'empty selected group offers filter recovery');
+allFilter.click();assert.deepEqual(ids(),['scratch']);assert.equal(document.getElementById('empty-filter').hidden,true);
 
 context.window.CreativeHub.connection(false, true);
-context.tegn([app('laser', true), app('scratch', true), {...app('microbit', true), requires_internet: true}]);
-assert.deepEqual(document.getElementById('apps').children.map(card => card.dataset.app), ['laser', 'scratch', 'microbit'], 'offline catalog keeps local workshops visible');
-assert.equal(document.getElementById('apps').children[0].children[0].children[1].textContent, 'Tilgængelig offline', 'offline status is explicit');
-assert.equal(document.getElementById('apps').children[0].children[1].children[3].children[0].disabled, false, 'local workshop remains launchable offline');
-const microbitCard = document.getElementById('apps').children[2];
-assert.equal(microbitCard.children[0].children[1].textContent, 'Kræver internet', 'micro:bit declares its external internet dependency');
-assert.equal(microbitCard.children[1].children[3].children[0].disabled, false, 'internet-dependent workshop remains launchable while offline');
+context.tegn([app('scratch', true), {...app('microbit', true), requires_internet: true}, app('laser', true)]);
+assert.deepEqual(ids(), ['laser', 'scratch', 'microbit'], 'offline catalog keeps local workshops visible in pupil order');
+assert.equal(context.connectionState,false,'offline catalog does not claim a server connection');
+assert.equal(status('laser'),'Tilgængelig offline');
+assert.equal(launch('laser').disabled,false,'local workshop remains launchable offline');
+assert.equal(status('microbit'),'Kræver internet','micro:bit declares its external internet dependency');
+assert.equal(launch('microbit').disabled,false,'internet-dependent workshop remains launchable while offline');
 context.tegn([{...app('3dprint', true), offline_unavailable: true}]);
-const printCard = document.getElementById('apps').children[0];
-assert.equal(printCard.children[0].children[1].textContent, 'Kræver serverforbindelse');
-assert.equal(printCard.children[1].children[3].children[0].disabled, true, 'print requires the server offline');
+assert.equal(status('3dprint'),'Kræver serverforbindelse');
+assert.equal(launch('3dprint').disabled,true,'server-dependent workshop remains unavailable offline');
+context.tegn([app('laser',false)]);
+assert.deepEqual(ids(),['laser'],'offline local catalog retains its visibility');
+assert.equal(launch('laser').disabled,true,'offline presentation cannot grant launch permission');
 
 // An older catalog must not bring retired workshops back, including native aliases.
 const retired = ['skolegpt', 'kredsloeb', 'datatraener'];
-const retained = ['3dprint', 'laser', 'folie', 'microbit', 'scratch', 'internet'];
-const stale = [...retained.map(id => app(id, true)), ...retired.map(id => app(id, true)),
+const stale = [...[...retained].reverse().map(id => app(id, true)), ...retired.map(id => app(id, true)),
   {...app('old-alias', true), native_app: 'kredsloeb'}];
 context.window.CreativeHub.connection(true, false);
 context.tegn(stale);
-assert.deepEqual(document.getElementById('apps').children.map(card => card.dataset.app), retained, 'online stale catalog hides retired entries and aliases');
+assert.deepEqual(ids(), retained, 'online stale catalog hides retired entries and aliases');
 context.window.CreativeHub.connection(false, true);
 context.tegn(stale);
-assert.deepEqual(document.getElementById('apps').children.map(card => card.dataset.app), retained, 'offline stale catalog hides retired entries and aliases');
-location.hash = '#vaerksted/kredsloeb'; context.routeWorkshop();
-assert.equal(document.getElementById('workshop-detail').hidden, true, 'retired deep link stays closed');
+assert.deepEqual(ids(), retained, 'offline stale catalog hides retired entries and aliases');
 
 const metadata = fs.readFileSync(path.join(__dirname, '..', 'server', 'elevhub', 'web', 'assets', 'workshops.js'), 'utf8');
 const metadataContext = {window: {}};

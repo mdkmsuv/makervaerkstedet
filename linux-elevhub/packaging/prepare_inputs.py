@@ -189,6 +189,8 @@ def main():
             add(args.public_trust_dir/"makervaerkstedet.gpg","usr/share/makervaerkstedet/trust/makervaerkstedet.gpg","5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f")
             for name in ("apt_client.py","template_activation.py","runtime_checks.py","os_maintenance.py"):
                 add(args.updater_source/"linux-elevhub/administration"/name,"usr/lib/makervaerkstedet/updater/"+name)
+            add(args.updater_source/"app/school_appearance.py","usr/lib/makervaerkstedet/updater/school_appearance.py")
+            add(args.updater_source/"linux-elevhub/projekter/student_appearance.py","usr/lib/makervaerkstedet/updater/student_appearance.py")
             add(args.updater_source/"linux-elevhub/packaging/apt_sandbox.py","usr/lib/makervaerkstedet/updater/apt_sandbox.py")
             add(args.updater_source/"linux-elevhub/installation/debian/bootstrap_existing.py","usr/lib/makervaerkstedet/updater/bootstrap_existing.py")
             add(args.updater_source/"linux-elevhub/administration/README-APT.md","usr/share/doc/"+package+"/README-APT.md")
@@ -208,6 +210,7 @@ def main():
             descriptor=runtime_descriptor(args.output_dir,version)
             add(descriptor,"usr/share/makervaerkstedet/runtime-release.json")
             tree(root / "linux-elevhub/projekter", "usr/local/lib/elevhub/projekter")
+            add(root / "app/school_appearance.py", "usr/local/lib/elevhub/projekter/school_appearance.py")
             tasks = (root / "linux-elevhub/ansible/roles/kiosk/tasks/main.yml").read_text(encoding="utf-8")
             section = tasks.split("    kiosk_lokal_design_filer:\n", 1)[1].split("  block:\n", 1)[0]
             paths = re.findall(r"^      - ([a-zA-Z0-9_./-]+)$", section, re.MULTILINE)

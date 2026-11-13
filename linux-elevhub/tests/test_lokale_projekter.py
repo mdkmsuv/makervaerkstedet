@@ -140,7 +140,9 @@ class LocalProjects(unittest.TestCase):
                     status, text = css('projekter.css')
                     self.assertEqual(status, 200)
                     self.assertIn('--accent:var(--brand,#c62b2f)', text)
-                    self.assertNotIn('--brand:', text, 'absent or invalid colours keep the public red')
+                    # The stylesheet declares its own theme palette; only the
+                    # injected school-colour block must be absent here.
+                    self.assertNotIn(':root{--brand:', text, 'absent or invalid colours keep the public theme')
             server.kiosk_config.write_text(json.dumps({'theme':'green','brand':'#1f5a8c','brand_dark':'#143c5e'}))
             for path in ('projekter.css', 'open.css', 'bridge.css'):
                 with self.subTest(path=path):

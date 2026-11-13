@@ -13,6 +13,9 @@ from urllib.parse import parse_qs, urlsplit
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = 8790
+# All project shelves return to this fixed installed home, including shelves
+# embedded in the other workshop origins. Keep those editor origins untrusted.
+BROWSER_ORIGINS = frozenset({'null', 'http://127.0.0.1:8791'})
 
 
 def installed_apps(root):
@@ -126,8 +129,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Content-Length', str(len(body)))
         self.send_header('Cache-Control', 'no-store')
         self.send_header('X-Content-Type-Options', 'nosniff')
-        if self.headers.get('Origin') == 'null':
-            self.send_header('Access-Control-Allow-Origin', 'null')
+        if self.allowed_origin():
+            self.send_header('Access-Control-Allow-Origin', self.headers['Origin'])
+            self.send_header('Vary', 'Origin')
             self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
             self.send_header('Access-Control-Allow-Headers', 'Authorization, X-Elevhub-Computer, X-Elevhub-Page')
             self.send_header('Access-Control-Allow-Private-Network', 'true')
@@ -135,8 +139,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def allowed_origin(self):
+        origins = self.headers.get_all('Origin', [])
         return (self.headers.get_all('Host', []) == [f'127.0.0.1:{self.server.server_port}']
-                and self.headers.get_all('Origin', []) == ['null'])
+                and len(origins) == 1 and origins[0] in BROWSER_ORIGINS)
 
     def authenticated(self):
         return (self.allowed_origin()

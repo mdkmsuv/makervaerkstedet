@@ -56,12 +56,12 @@ function projectCard(p){
  const b=node('button',picker?'Åbn her':'Åbn projekt →','open-project');b.setAttribute('aria-label',picker?'Åbn her: '+p.name:'Åbn projekt i '+(p.opening?.label||labels[p.kind]||'Filviseren'));b.onclick=()=>open(p);footer.append(b);
  const menu=node('details',undefined,'project-menu'),summary=node('summary','⋯');summary.setAttribute('aria-label','Flere muligheder for '+p.name);menu.append(summary);
  const options=node('div',undefined,'menu-items'),download=node('a','Hent fil','button secondary');download.href=fileUrl(p);download.download=p.filename;options.append(download);
- const versions=node('button','Tidligere versioner','secondary');versions.onclick=()=>{menu.open=false;history(p);};options.append(versions);menu.append(options);footer.append(menu);c.append(footer);
+ const versions=node('button','Tidligere versioner','secondary');versions.onclick=()=>{menu.open=false;history(p);$('history').onclose=()=>summary.isConnected&&summary.focus();};options.append(versions);menu.append(options);footer.append(menu);c.append(footer);
  const expiry=Number(p.expires_at);
  if(Number.isFinite(expiry)&&expiry>0){const days=Math.max(0,Math.ceil((expiry-Date.now()/1000)/86400));const notice=node('p','Slettes '+shortDate(expiry)+(days<=7?' · '+(days===0?'frist udløbet':days===1?'1 dag tilbage':days+' dage tilbage'):''),'project-expiry'+(days<=7?' soon':''));notice.title='Slettes efter 30 dage uden gemte ændringer. Gem en kopi på USB for at beholde projektet.';c.append(notice);}
  return c;
 }
-function rowLimit(){return picker?2:innerWidth>1100?4:innerWidth>760?3:2;}
+function rowLimit(){return picker?2:innerWidth>1100?3:innerWidth>480?2:1;}
 function render(){
  if(invalidScope)return;
  const q=$('search').value.trim().toLocaleLowerCase('da'),kind=scope||$('kind').value;
@@ -83,7 +83,23 @@ function render(){
  $('clear-search').hidden=!available.length;
 }
 $('clear-search').onclick=()=>{$('search').value='';if(!scope)$('kind').value='';render();$('search').focus();};
-async function refresh(){if(invalidScope){$('status').textContent='Værkstedet kunne ikke genkendes. Åbn projektoversigten fra værkstedet igen.';return;}const request=++refreshNumber;try{const [list,config]=await Promise.all([api('list'+(scope?'?workshop='+scope:'')),api('config')]);if(request!==refreshNumber)return;projects=list.projects;apps=config.apps;updateFilters();render();if(list.scan_error)$('status').textContent+=' · '+list.scan_error;}catch(e){if(request===refreshNumber)$('status').textContent=e.message;}}
+function applyAppearance(config){
+ if(parameters.has('pick'))return;
+ const appearance=config.appearance||{},theme=['red','green','yellow'].includes(appearance.theme)?appearance.theme:'red';
+ document.body.dataset.theme=theme;
+ for(const [key,property]of [['brand','--brand'],['brand_dark','--brand-dark']]){
+  const value=appearance[key];
+  if(typeof value==='string'&&/^#[0-9a-f]{6}$/i.test(value))document.body.style.setProperty(property,value);
+  else document.body.style.removeProperty(property);
+ }
+ $('school-name').textContent=appearance.school_name||'Byg, skær, tryk, kod';
+ const logo=typeof appearance.logo_data==='string'&&/^data:image\/(?:png|jpeg|webp|svg\+xml);base64,(?=[a-z0-9+/])(?:[a-z0-9+/]{4})*(?:[a-z0-9+/]{2}==|[a-z0-9+/]{3}=)?$/i.test(appearance.logo_data)?appearance.logo_data:'';
+ $('school-logo').hidden=!logo;$('generic-mark').hidden=Boolean(logo);
+ if(logo)$('school-logo').src=logo;else $('school-logo').removeAttribute('src');
+ const home=typeof config.home_url==='string'?config.home_url:'/_elevhub/projekter/home';
+ $('home-link').href=home;$('brand-home').href=home;
+}
+async function refresh(){if(invalidScope){$('status').textContent='Værkstedet kunne ikke genkendes. Åbn projektoversigten fra værkstedet igen.';return;}const request=++refreshNumber;try{const [list,config]=await Promise.all([api('list'+(scope?'?workshop='+scope:'')),api('config')]);if(request!==refreshNumber)return;projects=list.projects;apps=config.apps;applyAppearance(config);updateFilters();render();if(list.scan_error)$('status').textContent+=' · '+list.scan_error;}catch(e){if(request===refreshNumber)$('status').textContent=e.message;}}
 $('show-upload').onclick=()=>{uploadId=null;$('upload-error').textContent='';$('upload').showModal();};$('cancel-upload').onclick=()=>{if(!working)$('upload').close();};$('close-history').onclick=()=>$('history').close();$('refresh').onclick=refresh;$('search').oninput=$('kind').onchange=render;
 if(parameters.has('pick'))document.body.classList.add('picker');
 if(scope||invalidScope){$('kind').value=scope||'';$('kind').disabled=true;$('kind').closest('label').hidden=true;$('show-upload').hidden=true;}

@@ -44,7 +44,7 @@ HOEJDE = 60
 ANVENDT = '/run/elevhub/anvendt.json'
 APP_VINDUE = '^usr_local_share_elevhub_start[.]html$'  # Chromium --app=file:///.../start.html
 ALMINDELIGT_VINDUE = '^chromium$'      # almindelige browservinduer (internet)
-START_TITEL = 'Værkstedet · Makerværkstedet'   # <title> på startsiden (start.html.j2)
+START_TITEL = 'Makerværkstedet · Værksteder'   # Ready title, shared with startup_screen.py.
 BRAND, BRAND_MOERK, INK, MUTED, LINJE = '#c62b2f', '#8c1d24', '#333333', '#666666', '#e1e1e1'
 THEME_COLORS = {
     'red': ('#c62b2f', '#8c1d24'),
@@ -388,6 +388,11 @@ class Bjaelke:
                                         bg='white', fg=MUTED, activebackground='#f4f3f0', relief='flat', bd=0,
                                         padx=18, cursor='hand2', highlightthickness=0)
             self.admin_knap.pack(side='right', fill='y', padx=(8, 10), pady=8)
+            try:
+                from admin_shortcuts import GlobalShortcut
+                self.admin_shortcut = GlobalShortcut(self.rod, 'a', self.admin_login)
+            except Exception as exc:
+                print(f'Ctrl+Alt+A: {exc}', file=sys.stderr)
 
         self.usb_knap = tk.Button(ramme, text='Tag USB ud', command=self.skub_ud, font=(SKRIFT, 13),
                                   bg='white', fg=INK, activebackground='#f4f3f0', relief='solid', bd=1,
@@ -403,8 +408,9 @@ class Bjaelke:
 
     # --- start og beskeder --------------------------------------------------------------
     def admin_login(self):
-        if self.pause_overlay.paused:
+        if self.pause_overlay.paused or getattr(self, 'admin_login_busy', False):
             return
+        self.admin_login_busy = True
         # This changes only the active console. Projects and the X session stay alive.
         def open_login():
             try:
@@ -412,6 +418,8 @@ class Bjaelke:
                                check=True, capture_output=True, timeout=25)
             except (OSError, subprocess.SubprocessError):
                 self.rod.after(0, lambda: self.besked('Admin-login kunne ikke åbnes.'))
+            finally:
+                self.rod.after(0, lambda: setattr(self, 'admin_login_busy', False))
         threading.Thread(target=open_login, daemon=True).start()
 
     def luk_internetvinduer(self):

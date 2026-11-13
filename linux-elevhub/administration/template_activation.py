@@ -14,9 +14,16 @@ import re
 import secrets
 import shlex
 import socket
+import sys
 import tempfile
 from urllib.parse import urlsplit
 from jinja2 import Environment, StrictUndefined
+
+try:
+    from student_appearance import read_appearance
+except ModuleNotFoundError:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'projekter'))
+    from student_appearance import read_appearance
 
 TEMPLATES = {"start.html.j2": ("usr/local/share/elevhub/start.html", 0o644),
     "kiosk-session.j2": ("usr/local/lib/elevhub/kiosk-session", 0o755),
@@ -149,7 +156,9 @@ def context(config, root):
     school=config.get("school_name","")
     if theme not in {"red","green","yellow"} or not isinstance(school,str) or len(school)>120 or any(ord(c)<32 for c in school):
         raise ActivationError("invalid_appearance")
-    brand,brand_dark=school_colours(config)
+    appearance=read_appearance(root/'etc/elevhub/kiosk.json',config=config,verify=protected)
+    theme,school=appearance['theme'],appearance['school_name']
+    brand,brand_dark=appearance['brand'],appearance['brand_dark']
     # This variable only controls the optional --ca-file argument in the local
     # design unit. Omitting a missing CA retains Python's normal HTTPS validation.
     ca_available=(root/"etc/elevhub/ca.pem").is_file()
@@ -163,7 +172,7 @@ def context(config, root):
     return {"inventory_hostname":computer,"kiosk_enhed":{"ui_token":ui}, "kiosk_server":server,
         "kiosk_protokol":"https", "kiosk_hub_port":8773, "kiosk_printvaerksted_port":8770, "kiosk_theme":theme,
         "kiosk_brand":brand,"kiosk_brand_dark":brand_dark,
-        "kiosk_school_name":school,"kiosk_bruger":user,"kiosk_lokale_app_urler":urls,
+        "kiosk_school_name":school,"kiosk_school_logo":appearance['logo_data'],"kiosk_bruger":user,"kiosk_lokale_app_urler":urls,
         "kiosk_app_porte":ports,"kiosk_lokale_apps_enabled":True,"kiosk_webproxy_required":webproxy,
         "kiosk_internet_start":"https://www.google.com/imghp?hl=da&safe=active",
         "kiosk_startside_mappe":"/usr/local/share/elevhub", "kiosk_tastatur":keyboard,

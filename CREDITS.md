@@ -18,6 +18,20 @@ deres egne licenser, notices, tilladelser og øvrige vilkår.
 De navngivne projektillustrationer i [billedoversigten](web/assets/PUBLIC-ILLUSTRATIONS.md)
 har CC BY 4.0. Ved deling krediteres Makerværkstedet og Klostermarksskolen;
 licenshenvisning og oplysninger om eventuelle billedændringer bevares.
+De fire brugerleverede v2-billeder til Folie, Laser, 3D og Scratch har ikke
+dokumenteret oprindeligt licensgrundlag og får ingen ny licens gennem
+projektets allowlist; se billedoversigtens særskilte provenance.
+
+## Elevindgangens skrifttype
+
+Manrope er leveret i brugerens reference-kit ZIP. Den medfølgende notice
+angiver Copyright 2018 The Manrope Project Authors
+(https://github.com/googlefonts/manrope), SIL Open Font License 1.1.
+Den oprindelige downloadadresse er ikke kendt. Identiske runtime-kopier af
+`Manrope.ttf` og `Manrope-OFL.txt` ligger i `linux-elevhub/projekter/web/` og
+`linux-elevhub/server/elevhub/web/assets/`; begge fontfiler er fastlåst med
+SHA-256 i `publicFonts` i kildeeksportens manifest. Den medfølgende OFL-tekst
+har SHA-256 `58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b`.
 
 ## 3D-værkstedets lokale biblioteker
 

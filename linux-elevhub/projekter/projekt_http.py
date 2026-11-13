@@ -9,11 +9,14 @@ from projektarkiv import TYPES
 from filtyper import association, project_kind
 from project_open import plan, native_request, native_status
 from previews import build_preview
+from student_appearance import read_appearance, KIOSK_CONFIG
+from student_home import serve_home
 
 PREFIX = '/_elevhub/projekter'
 FILES = {'/': 'projekter.html', '/projekter.js': 'projekter.js', '/projekter.css': 'projekter.css',
          '/bridge.js': 'projekt-bridge.js', '/bridge.css': 'projekt-bridge.css',
-         '/open': 'open.html', '/open.js': 'open.js', '/open.css': 'open.css'}
+         '/open': 'open.html', '/open.js': 'open.js', '/open.css': 'open.css',
+         '/Manrope.ttf': 'Manrope.ttf'}
 
 # Only derived images in memory, bounded independently of project sizes. Share
 # the cache across the shelf and embedded pickers; never cache project files.
@@ -77,6 +80,8 @@ def handle(handler):
         if (h.headers.get('Sec-Fetch-Site') == 'cross-site' and
                 h.headers.get('Sec-Fetch-Mode') != 'navigate'):
             raise PermissionError('Åbn projektarkivet fra Elevhub.')
+        if h.command in ('GET','HEAD') and serve_home(h,path):
+            return True
         if path in FILES and h.command in ('GET', 'HEAD'):
             h.fil(FILES[path])
             return True
@@ -106,8 +111,16 @@ def handle(handler):
                 h.svar(200, {'projects': projects, 'local': True,
                              'scan_error': h.server.scanner.error if h.server.scanner else ''})
             elif path == '/api/config':
+                try:
+                    appearance=read_appearance(getattr(h.server,'kiosk_config',KIOSK_CONFIG))
+                except ValueError as error:
+                    h.svar(503, {'error':str(error)})
+                    return True
                 h.svar(200, {'apps': [{'id': a['id'], 'port': a.get('port'), 'type': a.get('type', 'vaerksted')}
-                                     for a in h.server.projekt_apps]})
+                                     for a in h.server.projekt_apps], 'appearance':appearance,
+                             # Always return to the project service origin. Editor
+                             # proxies have their own CSP and are not launcher origins.
+                             'home_url':getattr(h.server,'home_url','http://127.0.0.1:8791'+PREFIX+'/home')})
             elif path == '/api/meta':
                 h.svar(200, store.meta(arg('id')))
             elif path == '/api/preview':

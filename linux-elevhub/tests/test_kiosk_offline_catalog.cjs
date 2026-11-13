@@ -12,5 +12,5 @@ assert.match(start, /if \(app.local_start\) return adresse\(app\)/);
 assert.match(start, /const INTERNET_APP = \{id: 'internet'/);
 assert.match(start, /id="catalog-error"[^>]+role="alert"/);
 assert.match(creative, /connection\(ok,offlineMode=false\)/);
-assert.match(creative, /app\.requires_internet \? 'Kræver internet'/);
+assert.match(creative, /app\.requires_internet\s*\?\s*'Kræver internet'/);
 console.log('kiosk installed offline catalog contract: ok');

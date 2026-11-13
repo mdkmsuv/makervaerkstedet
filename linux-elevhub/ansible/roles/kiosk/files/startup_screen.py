@@ -32,7 +32,7 @@ MAIN_INSTANCE = "usr_local_share_elevhub_start.html"
 MAIN_CLASS = "Chromium"
 BAR_INSTANCE = "elevbjaelke"
 BAR_CLASS = "Elevbjaelke"
-READY_TITLE = "Værkstedet · Makerværkstedet"
+READY_TITLE = "Makerværkstedet · Værksteder"
 BRAND = "#c62b2f"
 BRAND_DARK = "#8c1d24"
 INK = "#000000"
@@ -327,7 +327,7 @@ class StartupScreen:
         self._next_check = 0.0
         self._probe = XWindowProbe(display_name)
         self.root = tk.Tk(className="elevhub-startup-screen")
-        self.root.title("Værkstedet starter")
+        self.root.title("Makerværkstedet starter")
         self.root.configure(bg=LIGHT)
         self.root.overrideredirect(True)
         self.root.wm_attributes("-topmost", True)
@@ -366,7 +366,7 @@ class StartupScreen:
     def _show_failure_theme(self):
         for widget in (self.root, self._outer, self._card, self._canvas, self.actions):
             widget.configure(bg=FAILURE_BG)
-        self.heading.configure(text="Værkstedet starter", bg=FAILURE_BG, fg=INK)
+        self.heading.configure(text="Makerværkstedet starter", bg=FAILURE_BG, fg=INK)
         self.message.configure(bg=FAILURE_BG, fg=MUTED)
 
     def _show_wait_theme(self):

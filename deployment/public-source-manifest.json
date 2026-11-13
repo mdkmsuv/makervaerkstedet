@@ -19,6 +19,16 @@
     "linux-elevhub/administration"
   ],
   "explicitFiles": [
+    "linux-elevhub/server/elevhub/web/assets/workshop-3d-v2.webp",
+    "linux-elevhub/server/elevhub/web/assets/workshop-folie-v2.webp",
+    "linux-elevhub/server/elevhub/web/assets/workshop-laser-v2.webp",
+    "linux-elevhub/server/elevhub/web/assets/workshop-scratch-v2.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-microbit-v2.png",
+    "linux-elevhub/server/elevhub/web/assets/workshop-internet-v2.png",
+    "linux-elevhub/projekter/web/Manrope.ttf",
+    "linux-elevhub/server/elevhub/web/assets/Manrope.ttf",
+    "linux-elevhub/projekter/web/Manrope-OFL.txt",
+    "linux-elevhub/server/elevhub/web/assets/Manrope-OFL.txt",
     ".github/workflows/release.yml",
     ".github/workflows/source-audit.yml",
     ".gitignore",
@@ -747,6 +757,36 @@
       "path": "linux-elevhub/server/elevhub/web/assets/workshop-vinyl-v1.webp",
       "sha256": "11025226efbea61a26e8c14600b3e40eace8adc8c24f337bf9bcfd3d5e03be0c",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-3d-v2.webp",
+      "sha256": "31e42e51a9e49f7efe125812703f97cc37aa12ce3375692601c01ef9c1c7e905",
+      "provenance": "Brugerleveret i denne session til den fælles elevindgang; oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. Ingen ny licens udledes af denne allowlist; se WORKSHOP-IMAGES.md og LICENSE-SCOPE.md."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-folie-v2.webp",
+      "sha256": "7606b4813b95486a750ffc365720f2c047afdebb58588b27d28e3ae67f5c0c13",
+      "provenance": "Brugerleveret i denne session til den fælles elevindgang; oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. Ingen ny licens udledes af denne allowlist; se WORKSHOP-IMAGES.md og LICENSE-SCOPE.md."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-laser-v2.webp",
+      "sha256": "4d0bc18d2bc0015039c01b2e0fe67cde8a69974cf17baef7afe3f2e665f9dae3",
+      "provenance": "Brugerleveret i denne session til den fælles elevindgang; oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. Ingen ny licens udledes af denne allowlist; se WORKSHOP-IMAGES.md og LICENSE-SCOPE.md."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-scratch-v2.png",
+      "sha256": "a984ea8c8f5b91052861137c52ab0d01e7e31e4dad0d0842cfa282774b4e730b",
+      "provenance": "Brugerleveret i denne session til den fælles elevindgang; oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. Ingen ny licens udledes af denne allowlist; se WORKSHOP-IMAGES.md og LICENSE-SCOPE.md."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-microbit-v2.png",
+      "sha256": "7b5dc9a6fd6598e71dcdeb0e92f824128f46fad83638b748a65c28cddb0c7b79",
+      "provenance": "CC-BY-4.0; imagegen-genereret i denne session til den fælles elevindgang; se WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/workshop-internet-v2.png",
+      "sha256": "4427433bbcc921cd9863055280f433394d2f2ce9b86d3a97267ec13df81f69ab",
+      "provenance": "CC-BY-4.0; imagegen-genereret i denne session til den fælles elevindgang; se WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     }
   ],
   "privacyRules": {
@@ -3191,6 +3231,16 @@
       "path": "web/assets/model3d/Metrophobic-Regular.ttf",
       "sha256": "34e4ac3257307c28e6dd14f5d77bb296211f0ddd217607228a5375416ed8ac58",
       "provenance": "Upstream Metrophobic Regular for the 3D editor's text tool; SIL Open Font License retained beside the font (Metrophobic-OFL.txt, font-provenance.json); exact public font bytes pinned and checked by the package builder."
+    },
+    {
+      "path": "linux-elevhub/projekter/web/Manrope.ttf",
+      "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
+      "provenance": "Copied from user-provided reference-kit ZIP; Copyright 2018 The Manrope Project Authors (https://github.com/googlefonts/manrope), SIL Open Font License 1.1 retained in adjacent Manrope-OFL.txt; acquisition URL unknown."
+    },
+    {
+      "path": "linux-elevhub/server/elevhub/web/assets/Manrope.ttf",
+      "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
+      "provenance": "Copied from user-provided reference-kit ZIP; Copyright 2018 The Manrope Project Authors (https://github.com/googlefonts/manrope), SIL Open Font License 1.1 retained in adjacent Manrope-OFL.txt; acquisition URL unknown."
     }
   ]
 }

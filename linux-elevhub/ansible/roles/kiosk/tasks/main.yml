@@ -307,6 +307,14 @@
     - creative-hub.css
     - creative-hub.js
     - workshops.js
+    - Manrope.ttf
+    - Manrope-OFL.txt
+    - workshop-folie-v2.webp
+    - workshop-laser-v2.webp
+    - workshop-3d-v2.webp
+    - workshop-scratch-v2.png
+    - workshop-microbit-v2.png
+    - workshop-internet-v2.png
     - hub-bauhaus-v1.png
     - workshop-3d-bauhaus-v1.png
     - workshop-laser-bauhaus-v1.png
@@ -412,6 +420,27 @@
     - Genindlæs systemd
     - Genstart lokal elevapp-service
   tags: [lokale_apps]
+
+- name: Fælles validering af privat skoleudseende til projektpakken
+  ansible.builtin.copy:
+    src: "{{ kiosk_lokal_package_src }}/../../app/school_appearance.py"
+    dest: "{{ kiosk_lokal_package_dest }}/school_appearance.py"
+    remote_src: "{{ elevhub_firstboot | default(false) | bool }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: kiosk_lokale_apps_enabled | bool
+  notify: Genstart lokal elevapp-service
+  tags: [lokale_apps]
+
+- name: Globale admin-genveje til elevsessionen
+  ansible.builtin.copy:
+    src: admin_shortcuts.py
+    dest: /usr/local/lib/elevhub/admin_shortcuts.py
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Genstart kiosk
 
 - name: Fjern Python-cache fra den installerede lokale projektpakke
   ansible.builtin.find:

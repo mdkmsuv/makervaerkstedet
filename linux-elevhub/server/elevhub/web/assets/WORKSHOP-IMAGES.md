@@ -1,5 +1,28 @@
 # Billeder til hele Værkstedet
 
+## Fælles elevindgang, v2
+
+De seks `workshop-*-v2`-filer bruges på tværs af skolers farvetemaer. De er
+ikke skolelogoer eller private skoleprofiler. Provenance er registreret ved
+integrationen 13. november 2026; den dato er ikke en påstand om, hvornår
+brugerleverede billeder oprindeligt blev fremstillet.
+
+| Filer | Dokumenteret oprindelse og vilkår |
+| --- | --- |
+| `workshop-folie-v2.webp`, `workshop-laser-v2.webp`, `workshop-3d-v2.webp` | Brugerleveret til denne opgave. Oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. |
+| `workshop-scratch-v2.png` | Brugerleveret til denne opgave. Oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. |
+| `workshop-microbit-v2.png`, `workshop-internet-v2.png` | Genereret med imagegen i denne session som fælles illustrationsmateriale. Projektets navngivne egne illustrationer distribueres under CC BY 4.0 med kreditering af Makerværkstedet og Klostermarksskolen. |
+
+Der udledes ingen ny licens for de fire brugerleverede billeder. Projektets
+generelle kode- og illustrationslicenser omlicenserer ikke tredjepartsmedier;
+se [licensafgrænsningen](../../../../../LICENSE-SCOPE.md). Filnavne og nøjagtige
+SHA-256-værdier er fastlåst i
+[`publicImages`](../../../../../deployment/public-source-manifest.json).
+De filspecifikke oprindelige prompts og produktionsværktøjer for
+brugerleverede billeder er ikke kendt og er derfor ikke rekonstrueret her.
+
+## Workshop-serien, v1
+
 Genereret med indbygget imagegen 19. september 2026. Hovedskolens stil. Illustrative scener, ikke faktiske fotografier fra skolen. Billederne er inspiration, ikke byggevejledninger eller tekniske diagrammer.
 
 WebP-filer ligger her i assets. PNG-originaler ligger i output/workshop-redesign/originals.

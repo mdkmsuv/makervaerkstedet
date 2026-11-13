@@ -4,7 +4,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 class Element {
-  constructor(tag, id = '') { this.tagName = tag.toUpperCase(); this.id = id; this.className = ''; this.dataset = {}; this.children = []; this.hidden = false; this.textContent = ''; this.disabled = false; this.attributes = {}; this.listeners = {}; }
+  constructor(tag, id = '') { this.tagName = tag.toUpperCase(); this.id = id; this.className = ''; this.dataset = {}; this.children = []; this.hidden = false; this.textContent = ''; this.disabled = false; this.attributes = {}; this.listeners = {}; this.classList={toggle(){}}; }
   append(...children) { this.children.push(...children); }
   replaceChildren(...children) { this.children = children; }
   setAttribute(name, value) { this.attributes[name] = String(value); }
@@ -13,6 +13,7 @@ class Element {
   closest(selector) { return selector === '[data-app]' ? this.appCard || null : null; }
   querySelectorAll(selector) { return selector === 'a,button' ? this.children.filter(child => ['A', 'BUTTON'].includes(child.tagName)) : []; }
   scrollIntoView() {}
+  querySelector(selector) { for(const child of this.children){if(selector.startsWith('.')&&child.className.split(' ').includes(selector.slice(1)))return child;const nested=child.querySelector(selector);if(nested)return nested;}return null; }
 }
 class Document {
   constructor() {
@@ -27,8 +28,9 @@ class Document {
   querySelector() { return null; }
 }
 const document = new Document();
+for(const id of ['kiosk-notice','kiosk-dismiss','workshop-scroll-hint'])document.add(new Element('div',id));
 document.add(new Element('button', 'detail-model3d'));
-document.title = 'Værkstedet starter';
+document.title = 'Makerværkstedet starter';
 const frames = [];
 const readyTimers = [];
 const location = { hash: '', assign(url) { this.href = url; } };
@@ -37,7 +39,7 @@ for (const id of ['3dprint','laser','folie','microbit','datatraener','skolegpt',
 let fetchImpl = () => Promise.reject({ name: 'TypeError', message: 'offline' });
 const context = {
   console, document, location, URL, AbortController, setTimeout(callback, delay) { if (delay === 500) readyTimers.push(callback); }, clearTimeout() {},
-  requestAnimationFrame(callback) { frames.push(callback); },
+  requestAnimationFrame(callback) { if(callback.name!=='scrollHint')frames.push(callback); },
   fetch(...args) { if (args[0] === 'http://127.0.0.1:8790/apps') return response(manifests); return fetchImpl(...args); },
   window: { CreativeWorkshops: workshops, addEventListener() {}, scrollTo() {}, open() { return null; } },
   SERVER:'192.0.2.1', PROTOKOL:'https', HUB:'https://192.0.2.1:8773', COMPUTER:'test', UI_TOKEN:'ui-token',
@@ -69,18 +71,18 @@ const app = (id, aaben = true) => ({ id, aaben, klar:true, type:'vaerksted', nav
   assert.equal(context.window.CreativeHub.isOffline(), true);
   // Offline boot also releases the start screen, only after the page has painted.
   for (let i = 0; i < 8; i++) await Promise.resolve();
-  assert.equal(document.title, 'Værkstedet starter');
+  assert.equal(document.title, 'Makerværkstedet starter');
   assert.equal(frames.length, 1);
   frames.shift()();
-  assert.equal(document.title, 'Værkstedet starter');
+  assert.equal(document.title, 'Makerværkstedet starter');
   frames.shift()();
-  assert.equal(document.title, 'Værkstedet · Makerværkstedet');
+  assert.equal(document.title, 'Makerværkstedet · Værksteder');
   // An occluded browser can suspend requestAnimationFrame behind the cover.
   // The prepared DOM must still release the cover rather than deadlock.
-  vm.runInNewContext("startupReady = false; document.title = 'Værkstedet starter'; markStartupReady();", context);
+  vm.runInNewContext("startupReady = false; document.title = 'Makerværkstedet starter'; markStartupReady();", context);
   for (let i = 0; i < 8; i++) await Promise.resolve();
   readyTimers.at(-1)();
-  assert.equal(document.title, 'Værkstedet · Makerværkstedet', 'occluded page releases without RAF');
+  assert.equal(document.title, 'Makerværkstedet · Værksteder', 'occluded page releases without RAF');
   fetchImpl = (url) => {
     assert.ok(url.startsWith('http://127.0.0.1:8790/finish'), 'offline launch only finishes the local session');
     return Promise.resolve({ok:true, async json() { return {id:'a'.repeat(32),state:'completed'}; }});
@@ -113,8 +115,8 @@ const app = (id, aaben = true) => ({ id, aaben, klar:true, type:'vaerksted', nav
   fetchImpl = () => Promise.reject({name:'TypeError',message:'offline'});
   await context.window.__start.opdater();
   let scratchCard = cards().find(card=>card.dataset.app==='scratch');
-  assert.equal(scratchCard.children[0].children[1].textContent, 'Kræver serverforbindelse');
-  assert.equal(scratchCard.children[1].children.at(-1).children[0].disabled, true);
+  assert.equal(scratchCard.querySelector('.availability').textContent, 'Kræver serverforbindelse');
+  assert.equal(scratchCard.querySelector('.app-open').disabled, true);
   const beforeBlockedLaunch = location.href;
   await context.window.__start.aabn({preventDefault(){}}, app('scratch'));
   assert.equal(location.href, beforeBlockedLaunch, 'offline:false cannot launch during outage');
@@ -123,7 +125,7 @@ const app = (id, aaben = true) => ({ id, aaben, klar:true, type:'vaerksted', nav
     ? Promise.resolve({ok:true,json:async()=>({id:'a'.repeat(32),state:'completed'})}) : response([app('scratch')]);
   await context.window.__start.opdater();
   scratchCard = cards().find(card=>card.dataset.app==='scratch');
-  assert.equal(scratchCard.children[1].children.at(-1).children[0].disabled, false, 'online teacher-open app remains enabled');
+  assert.equal(scratchCard.querySelector('.app-open').disabled, false, 'online teacher-open app remains enabled');
   await context.window.__start.aabn({preventDefault(){}}, app('scratch'));
   assert.equal(location.href, 'http://127.0.0.1:8792/', 'offline:false may launch online');
   scratchManifest.offline = true;

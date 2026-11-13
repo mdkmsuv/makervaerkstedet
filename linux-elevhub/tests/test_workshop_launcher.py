@@ -28,9 +28,11 @@ class LaunchTests(unittest.TestCase):
     def request(self, method='POST', path='/finish', headers=None, body=None):
         h = {'Origin': 'null', 'Authorization': 'Bearer ' + 't' * 43, 'X-Elevhub-Computer': 'vaerksted-05'}
         h.update(headers or {})
+        h = {key: value for key, value in h.items() if value is not None}
         c = http.client.HTTPConnection('127.0.0.1', self.server.server_port, timeout=3)
         c.request(method, path, body, h)
         r = c.getresponse()
+        self.response_headers = dict(r.getheaders())
         result = r.status, r.read()
         c.close()
         return result
@@ -71,6 +73,61 @@ class LaunchTests(unittest.TestCase):
         headers['Access-Control-Request-Headers'] = 'x-arbitrary-command'
         self.assertEqual(self.request('OPTIONS', headers=headers)[0], 403)
 
+    def test_installed_http_home_preflights_and_authenticates_catalogue_and_finish(self):
+        origin = 'http://127.0.0.1:8791'
+        for path, method in (('/apps', 'GET'), ('/finish', 'POST'), ('/finish/status', 'GET')):
+            with self.subTest(path=path):
+                headers = {'Origin': origin, 'Access-Control-Request-Method': method,
+                           'Authorization': None, 'X-Elevhub-Computer': None,
+                           'Access-Control-Request-Headers': 'authorization,x-elevhub-computer'}
+                self.assertEqual(self.request('OPTIONS', path, headers)[0], 200)
+                self.assertEqual(self.response_headers.get('Access-Control-Allow-Origin'), origin)
+        with tempfile.TemporaryDirectory() as directory:
+            self.server.manifest_root = Path(directory)
+            status, raw = self.request('GET', '/apps', {'Origin': origin})
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(raw), {'apps': []})
+            self.assertEqual(self.response_headers.get('Access-Control-Allow-Origin'), origin)
+        status, raw = self.request(headers={'Origin': origin})
+        self.assertEqual(status, 202)
+        request = json.loads(raw)
+        self.assertEqual(self.response_headers.get('Access-Control-Allow-Origin'), origin)
+        self.assertEqual(self.server.requests.get_nowait(), {'id': request['id'], 'action': '/finish'})
+        status, raw = self.request('GET', '/finish/status?id=' + request['id'], {'Origin': origin})
+        self.assertEqual(status, 200)
+        self.assertEqual(json.loads(raw)['state'], 'pending')
+        self.assertEqual(self.response_headers.get('Access-Control-Allow-Origin'), origin)
+
+    def test_http_home_cannot_bypass_host_token_computer_or_preflight_limits(self):
+        for wrong in ({'Host': 'example.com'}, {'Authorization': 'Bearer wrong'},
+                      {'X-Elevhub-Computer': 'another'}, {'Authorization': None},
+                      {'X-Elevhub-Computer': None}, {'Origin': None}):
+            with self.subTest(wrong=wrong):
+                self.assertEqual(self.request(headers={'Origin': 'http://127.0.0.1:8791', **wrong})[0], 403)
+        headers = {'Origin': 'http://127.0.0.1:8791', 'Access-Control-Request-Method': 'POST',
+                   'Authorization': None, 'X-Elevhub-Computer': None,
+                   'Access-Control-Request-Headers': 'authorization,x-elevhub-computer'}
+        for wrong in ({'Host': 'example.com'}, {'Access-Control-Request-Method': 'DELETE'},
+                      {'Access-Control-Request-Headers': 'x-arbitrary-command'}):
+            with self.subTest(wrong=wrong):
+                self.assertEqual(self.request('OPTIONS', headers={**headers, **wrong})[0], 403)
+        self.assertEqual(self.request('OPTIONS', '/run', headers)[0], 403)
+        self.assertTrue(self.server.requests.empty())
+
+    def test_only_canonical_http_home_origin_is_trusted(self):
+        origins = ['http://localhost:8791', 'https://127.0.0.1:8791',
+                   'http://127.0.0.1:8791/', 'http://127.0.0.1:8791.evil.test',
+                   'http://127.0.0.1:8791@evil.test', 'http://127.0.0.1:87910',
+                   *('http://127.0.0.1:' + str(port) for port in (8790, 8792, 8795, 8796, 8797, 8798))]
+        for origin in origins:
+            with self.subTest(origin=origin):
+                headers = {'Origin': origin, 'Access-Control-Request-Method': 'POST',
+                           'Access-Control-Request-Headers': 'authorization,x-elevhub-computer'}
+                self.assertEqual(self.request('OPTIONS', headers=headers)[0], 403)
+                self.assertNotIn('Access-Control-Allow-Origin', self.response_headers)
+                self.assertEqual(self.request(headers={'Origin': origin})[0], 403)
+        self.assertTrue(self.server.requests.empty())
+
     def test_installed_apps_follow_manifest_removal_without_restart(self):
         with tempfile.TemporaryDirectory() as directory:
             self.server.manifest_root = Path(directory)
@@ -102,6 +159,7 @@ class LaunchTests(unittest.TestCase):
         headers = {'Access-Control-Request-Method':'GET',
                    'Access-Control-Request-Headers':'authorization,x-elevhub-computer'}
         self.assertEqual(self.request('OPTIONS', '/apps', headers)[0], 200)
+        self.assertEqual(self.response_headers.get('Access-Control-Allow-Origin'), 'null')
         self.assertEqual(self.request('POST', '/apps')[0], 404)
 
     def test_finish_is_available_when_teacher_closed_3d_and_has_pollable_status(self):

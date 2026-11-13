@@ -60,6 +60,13 @@ class _Health(http.server.BaseHTTPRequestHandler):
 
 
 class StartupScreenTests(unittest.TestCase):
+    def test_toolbar_recognises_ready_home_but_not_loading_or_editor(self):
+        import elevbjaelke
+        for title, expected in [(startup_screen.READY_TITLE + ' - Chromium', True),
+                                ('Makerværkstedet starter', False), ('Laserværkstedet', False)]:
+            with patch.object(elevbjaelke.subprocess, 'run', return_value=SimpleNamespace(stdout=title)):
+                self.assertEqual(elevbjaelke.Bjaelke.paa_start('synthetic-window'), expected)
+
     def test_update_warning_stays_visible_despite_ready_windows_and_timeout(self):
         for status in ('applying','recovery_required'):
             with self.subTest(status=status):
@@ -226,7 +233,7 @@ class PrivateX11Tests(unittest.TestCase):
             server_thread.start()
             with tempfile.TemporaryDirectory(prefix="startup-screen-test-") as directory:
                 config = self._write_config(directory, server.server_address[1], status=503)
-                root, main, xdisplay = self._windows(title="Værkstedet starter", bar_mapped=False)
+                root, main, xdisplay = self._windows(title="Makerværkstedet starter", bar_mapped=False)
                 process, marker = self._start_screen(config)
                 try:
                     self.assertIsNone(self._pump(root, process, 0.4))
