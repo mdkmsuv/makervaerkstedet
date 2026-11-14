@@ -370,7 +370,11 @@
     "apps/scratch/build/test-adapter.cjs",
     "scripts/build_app_catalog.py",
     "system/linux-elevhub/packaging/base-design-files.json",
-    "system/linux-elevhub/packaging/prepare_app_inputs.py"
+    "system/linux-elevhub/packaging/prepare_app_inputs.py",
+    "system/third_party/boxes.py/documentation/src/burn.svg",
+    "system/third_party/boxes.py/documentation/src/burn2.svg",
+    "system/third_party/boxes.py/documentation/src/overcuts.svg",
+    "system/third_party/boxes.py/tests/data/.gitkeep"
   ],
   "includeExtensions": [
     ".py",
