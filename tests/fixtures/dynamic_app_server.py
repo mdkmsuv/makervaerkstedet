@@ -1,4 +1,9 @@
 """Synthetic generic app, project service and stateless app for browser QA."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 from pathlib import Path
 import sys
@@ -8,7 +13,7 @@ import signal
 import uuid
 
 ROOT=Path(__file__).resolve().parents[2]
-sys.path[:0]=[str(ROOT),str(ROOT/'linux-elevhub/projekter')]
+sys.path[:0]=[str(ROOT),str(source_path('linux-elevhub/projekter', ROOT))]
 from tests.test_app_catalog import descriptor
 from app_host import discover_apps
 from projektarkiv import Projektarkiv

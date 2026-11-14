@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 from PIL import Image
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path[:0] = [str(Path(__file__).resolve().parents[1] / "system"), str(Path(__file__).resolve().parents[1])]
 from app.server import Application, Handler, Server
 
 

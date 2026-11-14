@@ -147,7 +147,7 @@ class SharedTeacherCodeTests(unittest.TestCase):
         (self.root / 'hub').mkdir()
         # The control panel's own class writes the file the services read.
         import sys
-        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'linux-elevhub/server/elevhub'))
+        sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'system/linux-elevhub/server/elevhub'))
         self.addCleanup(sys.path.pop, 0)
         from tilstand import Laererkode
         self.panel = Laererkode(self.root / 'hub')

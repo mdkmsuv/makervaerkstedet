@@ -1,4 +1,9 @@
 """Run the restart helper against local fixtures; never schedule or reboot Windows."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 import os
 from pathlib import Path
@@ -7,7 +12,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
-HELPER = ROOT / 'windows-elevhub/server/server-restart.ps1'
+HELPER = source_path('windows-elevhub/server/server-restart.ps1', ROOT)
 FIXTURE = ROOT / 'tests/fixtures/server_restart_host.ps1'
 PS = Path(os.environ.get('SystemRoot', 'C:/Windows')) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
 

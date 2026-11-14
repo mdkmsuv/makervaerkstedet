@@ -14,18 +14,18 @@ gælder som en yderligere bestemmelse efter GPLv3 afsnit 7(b).
 Skolens navn og tema kan tilpasses uden at fjerne ophavskrediteringen.
 
 Elevhubs eksisterende egne komponenter under `linux-elevhub/` beholder deres
-[MIT-licens](linux-elevhub/LICENSE). Indlejrede tilpasninger af tredjepartskode
+[MIT-licens](system/linux-elevhub/LICENSE). Indlejrede tilpasninger af tredjepartskode
 beholder den pågældende kildes vilkår. Den generelle tekst ovenfor omlicenserer
 ikke tredjepartskode, modelvægte, mediefiler, skolelogoer, varemærker eller
 software hentet under en anden licens. Specifikke notices har forrang for
 den generelle mappeafgrænsning.
 
-Boxes.py beholder GPL-3.0-or-later; se [kildepin og integration](third_party/BOXES-PY-SOURCE.md).
+Boxes.py beholder GPL-3.0-or-later; se [kildepin og integration](system/third_party/BOXES-PY-SOURCE.md).
 Andre komponenter er opført i [licensoversigten](docs/RELEASE-LICENSER.md)
-og [Elevhubs notices](linux-elevhub/THIRD_PARTY.md).
+og [Elevhubs notices](system/linux-elevhub/THIRD_PARTY.md).
 De eksplicit godkendte egne projektillustrationer har CC BY 4.0 med
-Klostermarksskolens kreditering; se [billedafgrænsningen](web/assets/PUBLIC-ILLUSTRATIONS.md)
-og [den fulde tekst](web/assets/CC-BY-4.0.txt). Det gælder kun de navngivne,
+Klostermarksskolens kreditering; se [billedafgrænsningen](system/web/assets/PUBLIC-ILLUSTRATIONS.md)
+og [den fulde tekst](system/web/assets/CC-BY-4.0.txt). Det gælder kun de navngivne,
 checksumfastlåste billeder og omfatter ikke skolelogoet eller private fotos.
 Der følger ikke skolelogoer, elevdata, private konfigurationer eller
 færdige runtime-/modelpakker med den rene kildeeksport.

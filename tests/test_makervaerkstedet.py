@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import http.client
 import json
 from pathlib import Path
@@ -27,7 +32,7 @@ class StartPageTests(unittest.TestCase):
             config = Path(directory) / 'makervaerkstedet.json'
             config.write_text(json.dumps({'print_url': 'http://print.example:8765/laerer',
                                           'admin_url': 'https://server.example:8780/kontrolpanel'}))
-            page, policy = render(ROOT / 'web', config)
+            page, policy = render(source_path('web', ROOT), config)
             self.assertIn('id="login-form"', page)
             self.assertEqual(page.count('id="login-form"'), 1)
             # One start page: laser here, the two teacher pages as links.
@@ -44,13 +49,13 @@ class StartPageTests(unittest.TestCase):
     def test_missing_or_invalid_configuration_is_actionable(self):
         with tempfile.TemporaryDirectory() as directory:
             config = Path(directory) / 'makervaerkstedet.json'
-            page, policy = render(ROOT / 'web', config)
+            page, policy = render(source_path('web', ROOT), config)
             self.assertIn('"printUrl": ""', page)
             self.assertIn('"adminUrl": ""', page)
             self.assertIn("frame-src 'none';", policy)
             for broken in ('{broken', json.dumps({'admin_url': 'javascript:alert(1)'})):
                 config.write_text(broken)
-                page, _ = render(ROOT / 'web', config)
+                page, _ = render(source_path('web', ROOT), config)
                 self.assertIn('skal kontrolleres', page)
                 self.assertIn('"adminUrl": ""', page)
 

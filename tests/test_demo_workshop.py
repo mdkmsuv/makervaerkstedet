@@ -1,4 +1,9 @@
 """Persistent simulation uses authoritative queues, never printer/laser hardware."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import importlib.util
 import json
 import http.client
@@ -139,7 +144,7 @@ class DemoWorkshopTests(unittest.TestCase):
             self.assertFalse(production.simulation)
 
     def test_bootstrap_demo_flag_only_for_complete_explicit_root(self):
-        source = Path(__file__).resolve().parents[1] / 'windows-elevhub/server/bootstrap.py'
+        source = source_path('windows-elevhub/server/bootstrap.py', Path(__file__).resolve().parents[1])
         spec = importlib.util.spec_from_file_location('demo_bootstrap_contract', source)
         bootstrap = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(bootstrap)

@@ -169,6 +169,13 @@ def verify(candidate,expected=None):
 
 def build(source,trusted,target,version):
     source=plain(source);trusted=plain(trusted);target=plain(target)
+    # Only source builds need the repository resolver. Installed maintenance
+    # commands continue to operate on their fixed installed paths.
+    def src(name):return source/name
+    if (source/'REPOSITORY-LAYOUT.json').is_file():
+        spec=importlib.util.spec_from_file_location('_mkv_build_repository',source/'repository.py')
+        layout=importlib.util.module_from_spec(spec);spec.loader.exec_module(layout)
+        def src(name):return layout.source_path(name,source)
     if target.exists(): raise ValueError('Candidate output already exists')
     integrity=read(trusted/'integrity.json')['files'];runtime={}
     for p in (trusted/'runtime').rglob('*'):
@@ -184,8 +191,8 @@ def build(source,trusted,target,version):
     for role in INSTALLS:
         dest=target/role
         for name in ('app','web'):
-            shutil.copytree(source/name,dest/name,ignore=ignore)
-        shutil.copytree(source/'third_party/boxes.py/boxes',dest/'third_party/boxes.py/boxes',ignore=ignore)
+            shutil.copytree(src(name),dest/name,ignore=ignore)
+        shutil.copytree(src('third_party/boxes.py/boxes'),dest/'third_party/boxes.py/boxes',ignore=ignore)
         def runtime_ignore(directory,names):
             excluded=set(ignore(directory,names))
             for name in names:
@@ -196,9 +203,9 @@ def build(source,trusted,target,version):
         shutil.copytree(trusted/'runtime',dest/'runtime',ignore=runtime_ignore)
         shutil.copy2(source/'CREDITS.md',dest/'CREDITS.md')
         if role=='hub':
-            shutil.copytree(source/'linux-elevhub/server/elevhub',dest/'hub',ignore=ignore)
-            shutil.copytree(source/'windows-elevhub/server',dest/'server',ignore=ignore)
-            shutil.copy2(source/'windows-elevhub/server/hub/konfiguration.windows.json',dest/'hub/konfiguration.windows.json')
+            shutil.copytree(src('linux-elevhub/server/elevhub'),dest/'hub',ignore=ignore)
+            shutil.copytree(src('windows-elevhub/server'),dest/'server',ignore=ignore)
+            shutil.copy2(src('windows-elevhub/server/hub/konfiguration.windows.json'),dest/'hub/konfiguration.windows.json')
     files={role:tree(target/role) for role in INSTALLS}
     manifest={'format':FORMAT,'version':version,'created_utc':datetime.now(timezone.utc).isoformat(),'credits':'Klostermarksskolen','trusted_runtime':runtime,'files':files,'appearance_hook':{role:{'schemaVersion':1,'files':{rel:files[role][rel] for rel in APPEARANCE_HOOKS[role]}} for role in INSTALLS}}
     write(target/'candidate.json',manifest);verify(target)

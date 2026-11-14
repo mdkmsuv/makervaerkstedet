@@ -6,7 +6,7 @@ const root=fileURLToPath(new URL('../',import.meta.url));
 const [dependencies=root, source=root] = process.argv.slice(2);
 const require = createRequire(path.join(dependencies, 'package.json'));
 const {build} = require('esbuild');
-const bundle = await build({entryPoints:[path.join(source,'web/model3d/scene.js')],nodePaths:[path.join(dependencies,'node_modules')],bundle:true,platform:'node',format:'esm',write:false});
+const bundle = await build({entryPoints:[path.join(source,'apps/3dprint/web/model3d/scene.js')],nodePaths:[path.join(dependencies,'node_modules')],bundle:true,platform:'node',format:'esm',write:false});
 const {SceneModel,objectMatrix,findFreeSpot,PLATE_SIZE} = await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 const model = new SceneModel(), id=model.add('box'), box={min:[-10,-10,-10],max:[10,10,10]};
 assert.equal(model.data.version,2);

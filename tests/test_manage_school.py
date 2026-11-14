@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 import os
 from pathlib import Path
@@ -188,7 +193,7 @@ class ManageSchoolBindingTest(unittest.TestCase):
         shutil.copytree(fixture.stable, fixed)
         shutil.rmtree(fixed / 'control')
         (fixed / 'server').mkdir()
-        shutil.copy2(ROOT / 'windows-elevhub/server/generation-startup.ps1',
+        shutil.copy2(source_path('windows-elevhub/server/generation-startup.ps1', ROOT),
                      fixed / 'server/generation-startup.ps1')
         control = fixed / 'control'
         control.mkdir()

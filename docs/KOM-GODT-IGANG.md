@@ -135,7 +135,7 @@ ligger på serveren.
 
 ### Linux-elevcomputer eller Linux-elev-VM
 
-Den eksisterende [administrationsvej](../linux-elevhub/administration/README.md)
+Den eksisterende [administrationsvej](../system/linux-elevhub/administration/README.md)
 åbnes med `linux-elevhub/administration/Open-Elevhub-Administration.cmd` fra
 administrationskilderne. Den bruger SSH og Ansible, vælger computerliste og
 tilbyder **Tjek ændringer** efterfulgt af **Anvend opdatering**. Opdateringen omfatter

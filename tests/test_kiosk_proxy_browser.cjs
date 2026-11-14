@@ -38,7 +38,7 @@ function denyProxy() {
 }
 
 function fixtureProcess() {
-  const child = spawn(python, [path.join(root, 'linux-elevhub', 'tests', 'kiosk_browser_fixture.py'), '--port', '0'], { cwd: root, stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true });
+  const child = spawn(python, [path.join(root, 'system', 'linux-elevhub', 'tests', 'kiosk_browser_fixture.py'), '--port', '0'], { cwd: root, stdio: ['ignore', 'pipe', 'inherit'], windowsHide: true });
   let buffer = '';
   const port = new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error('fixture did not announce a port')), 10000);

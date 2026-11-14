@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import errno
 import importlib.util
 import io
@@ -13,7 +18,7 @@ from contextlib import redirect_stdout
 from unittest.mock import patch
 
 REPO_ROOT = Path(__file__).parents[1]
-SERVER_ROOT = REPO_ROOT / 'windows-elevhub' / 'server'
+SERVER_ROOT = source_path('windows-elevhub/server', REPO_ROOT)
 sys.path.insert(0, str(REPO_ROOT))
 from app import process_tree
 

@@ -1,4 +1,9 @@
 """Real embedded-Python generation selection; no installation or network use."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import base64
 import hashlib
 import importlib.util
@@ -26,7 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def resolve_embedded_archive():
     configured = os.environ.get('MKV_TEST_EMBEDDED_PYTHON')
     archive = (Path(configured).expanduser() if configured else
-               ROOT.parent / 'byggeinput/windows/runtime-python/python-3.14.7-embed-amd64.zip')
+               next((p / 'byggeinput/windows/runtime-python/python-3.14.7-embed-amd64.zip' for p in ROOT.parents if (p / 'byggeinput').is_dir()), ROOT.parent / 'byggeinput/windows/runtime-python/python-3.14.7-embed-amd64.zip'))
     if os.name == 'nt' and not archive.is_file():
         raise FileNotFoundError(
             f'Required Windows embedded Python test archive is missing: {archive}. '
@@ -73,7 +78,7 @@ class EmbeddedGenerationTests(unittest.TestCase):
                 f'{tag}.zip\n.\n..\nLib/site-packages\n', encoding='ascii')
             (root / 'app').mkdir()
             for relative in START_FILES:
-                source = ROOT / relative
+                source = source_path(relative, ROOT)
                 target = root / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)
@@ -120,7 +125,7 @@ class EmbeddedGenerationTests(unittest.TestCase):
 
     def _school_data(self):
         data = self.root / 'school data'
-        spec = importlib.util.spec_from_file_location('embedded_test_provision', ROOT / 'windows-elevhub/server/provision.py')
+        spec = importlib.util.spec_from_file_location('embedded_test_provision', source_path('windows-elevhub/server/provision.py', ROOT))
         provision = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(provision)
         # This is a non-privileged temporary fixture.  The real helper still

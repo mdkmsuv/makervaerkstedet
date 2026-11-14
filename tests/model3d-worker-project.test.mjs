@@ -11,15 +11,15 @@ const require=createRequire(path.join(root,'package.json'));
 const {build}=require('esbuild'), {chromium}=require('playwright');
 
 test('project reset clears real worker assets/cache, including before asynchronous startup', {timeout:60000}, async () => {
-  const bundle=await build({entryPoints:[path.join(root,'web/model3d/geometry-worker.js')],bundle:true,platform:'browser',format:'esm',target:'es2022',external:['node:*'],write:false});
+  const bundle=await build({entryPoints:[path.join(root,'apps/3dprint/web/model3d/geometry-worker.js')],bundle:true,platform:'browser',format:'esm',target:'es2022',external:['node:*'],write:false});
   const server=http.createServer(async (request,response) => {
     const route=new URL(request.url,'http://local').pathname;
     response.setHeader('Cache-Control','no-store');
     try {
       if(route==='/') return response.writeHead(200,{'Content-Type':'text/html'}).end('<!doctype html><title>Isolated worker test</title>');
       if(route==='/vendor/model3d-geometry-worker.js') return response.writeHead(200,{'Content-Type':'text/javascript'}).end(bundle.outputFiles[0].contents);
-      const file=route==='/vendor/model3d-manifold.wasm' ? 'web/vendor/model3d-manifold.wasm'
-        : route==='/assets/model3d/Metrophobic-Regular.ttf' ? 'web/assets/model3d/Metrophobic-Regular.ttf' : null;
+      const file=route==='/vendor/model3d-manifold.wasm' ? 'apps/3dprint/web/vendor/model3d-manifold.wasm'
+        : route==='/assets/model3d/Metrophobic-Regular.ttf' ? 'apps/3dprint/web/assets/model3d/Metrophobic-Regular.ttf' : null;
       if(!file) return response.writeHead(404).end();
       // Hold WASM startup long enough for evaluate/reset/evaluate to be queued first.
       if(route.endsWith('.wasm')) await new Promise(resolve=>setTimeout(resolve,250));

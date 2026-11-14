@@ -1,4 +1,9 @@
 """Exact project-parent policy and configuration on real design HTTP surfaces."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 from pathlib import Path
 import tempfile
@@ -14,7 +19,7 @@ from app.project_origins import DEFAULT_PROJECT_ORIGINS
 
 class LaserProjectOriginsTests(unittest.TestCase):
     def test_shared_receiver_legacy_defaults_match_server_defaults_exactly(self):
-        receiver = (Path(__file__).resolve().parents[1] / 'web/project-import.js').read_text(encoding='utf-8')
+        receiver = (source_path('web/project-import.js', Path(__file__).resolve().parents[1])).read_text(encoding='utf-8')
         expected = 'configured===undefined?[' + ','.join(repr(origin) for origin in DEFAULT_PROJECT_ORIGINS) + ']'
         self.assertIn(expected, receiver)
 

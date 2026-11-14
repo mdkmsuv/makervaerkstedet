@@ -1,4 +1,9 @@
 """Pilot startup health checks through the exact PowerShell function, without services."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import base64
 from datetime import datetime, timedelta, timezone
 import hashlib
@@ -24,7 +29,7 @@ from tests import test_generation_embedded as embedded
 
 
 ROOT = Path(__file__).resolve().parents[1]
-STARTER = ROOT / 'linux-elevhub/testmiljoe/vaert/start-server-test.ps1'
+STARTER = source_path('linux-elevhub/testmiljoe/vaert/start-server-test.ps1', ROOT)
 
 
 class _Health(BaseHTTPRequestHandler):
@@ -150,7 +155,7 @@ class GenerationIntegrityProofTests(unittest.TestCase):
             ' print(json.dumps({"locked":own.live,"proof":own.live and '
             'g._child_proof(p,s,sys.argv[3],"print",None)}))\n'
         )
-        env = dict(os.environ, PYTHONPATH=str(ROOT))
+        env = dict(os.environ, PYTHONPATH=str(ROOT / "system"))
         if environment is not None:
             env.update(environment)
         result = subprocess.run([sys._base_executable, '-B', '-c', script, str(self.package),
@@ -340,7 +345,7 @@ class GenerationIntegrityProofTests(unittest.TestCase):
 
     def test_bootstrap_uses_only_live_verified_lease_to_avoid_second_scan(self):
         spec = importlib.util.spec_from_file_location('startup_test_bootstrap',
-                                                     ROOT / 'windows-elevhub/server/bootstrap.py')
+                                                     source_path('windows-elevhub/server/bootstrap.py', ROOT))
         bootstrap = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(bootstrap)
         (self.package / 'runtime').mkdir()
@@ -426,14 +431,14 @@ class GenerationIntegrityProofTests(unittest.TestCase):
             ' with mock.patch.object(g,"_namespace_acl_is_private",return_value=True):\n'
             f'  lease.start_proofs({self.manifest!r})\n'
             f' child=subprocess.Popen([sys._base_executable,"-B","-c",{child_script!r},str(p),str(s),str(out),{self.manifest!r}],'
-            f'env=dict(os.environ,PYTHONPATH={str(ROOT)!r}),stdin=subprocess.DEVNULL,'
+            f'env=dict(os.environ,PYTHONPATH={str(ROOT / 'system')!r}),stdin=subprocess.DEVNULL,'
             'stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)\n'
             " out.with_suffix('.pid').write_text(str(child.pid))\n"
             ' os._exit(0)\n'
         )
         result = subprocess.run([sys._base_executable, '-B', '-c', parent_script,
                                  str(self.package), str(self.stable), str(output)],
-                                cwd=self.root, env=dict(os.environ, PYTHONPATH=str(ROOT)),
+                                cwd=self.root, env=dict(os.environ, PYTHONPATH=str(ROOT / "system")),
                                 capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 0, result.stderr)
         deadline = time.monotonic() + 10

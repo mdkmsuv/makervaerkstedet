@@ -1,10 +1,13 @@
 """Map source guides to the installed layout without publishing dangling links."""
 from pathlib import Path
+import sys
 import re
 import shutil
 from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
+from repository import source_path
 GUIDES = ('KOM-GODT-IGANG.md', 'TO-OPSAETNINGER.md', 'AGENTINDGANG.md', 'SKOLETILPASNING.md', 'MAKERSPACE-ARKITEKTUR.md',
           'RELEASE-LICENSER.md', 'GITHUB-OPDATERINGER.md', 'OPDATERINGSKOE.md',
           'PRINTERFRIGIVELSE.md', 'SERVERKONTROLPANEL.md', 'MAKERSPACE-BACKUP.md',
@@ -42,6 +45,7 @@ deres egne licenser.
 
 
 def _map(relative):
+    if relative.startswith("system/"):relative=relative[7:]
     if relative == 'linux-elevhub/LICENSE':
         return 'licenses/Elevhub-LICENSE.txt'
     if relative in {'web/assets/CC-BY-4.0.txt', 'web/assets/PUBLIC-ILLUSTRATIONS.md'}:
@@ -70,7 +74,7 @@ INSTALLED_MARKDOWN_ROOTS = (
 def render(text, source_relative, output, *, output_relative=None):
     """Keep real installed links; name unbundled source as source-only references."""
     from os.path import relpath
-    source_parent = (ROOT / source_relative).parent
+    source_parent = source_path(source_relative,ROOT).parent
     installed_parent = (output / (output_relative or source_relative)).parent
 
     def rewrite(match):
@@ -97,7 +101,7 @@ def render_installed_markdown(output):
     """Rewrite links in copied first-party Markdown without changing sources."""
     output = Path(output)
     for source_root, output_root in INSTALLED_MARKDOWN_ROOTS:
-        source_base = ROOT / source_root
+        source_base = source_path(source_root.rstrip('/'),ROOT) if source_root else ROOT
         output_base = output / output_root
         if not source_base.is_dir() or not output_base.is_dir():
             continue
@@ -127,9 +131,9 @@ def copy_client_documentation(output):
     (output / 'licenses').mkdir(parents=True, exist_ok=True)
     for relative in ('LICENSE', 'LICENSE-SCOPE.md', 'CREDITS.md'):
         shutil.copyfile(ROOT / relative, output / relative)
-    shutil.copyfile(ROOT / 'linux-elevhub/LICENSE', output / 'licenses/Elevhub-LICENSE.txt')
+    shutil.copyfile(source_path('linux-elevhub/LICENSE', ROOT), output / 'licenses/Elevhub-LICENSE.txt')
     copy_illustration_notices(output)
-    shutil.copyfile(ROOT / 'docs/AGENTINDGANG.md', output / 'docs/AGENTINDGANG.md')
+    shutil.copyfile(source_path('docs/AGENTINDGANG.md', ROOT), output / 'docs/AGENTINDGANG.md')
     (output / 'AGENTS.md').write_text(
         '# Kodeagent på en installeret Makerværksted-elevklient\n\n'
         '**Kreditering: Klostermarksskolen.**\n\n'
@@ -151,7 +155,7 @@ def copy_documentation(output):
     copies = ['CREDITS.md', 'LICENSE', 'LICENSE-SCOPE.md'] + ['docs/' + name for name in GUIDES]
     for relative in copies:
         shutil.copyfile(ROOT / relative, output / relative)
-    shutil.copyfile(ROOT / 'deployment/PACKAGE-README.md', output / 'README.md')
+    shutil.copyfile(source_path('deployment/PACKAGE-README.md', ROOT), output / 'README.md')
     (output / 'AGENTS.md').write_text(
         '# Kodeagent på en installeret Makerværksted-server\n\n'
         '**Kreditering: Klostermarksskolen.**\n\n'
@@ -167,7 +171,7 @@ def copy_documentation(output):
     for relative in copies:
         if relative.endswith('.md'):
             (output / relative).write_text(render((ROOT / relative).read_text(encoding='utf-8'), relative, output), encoding='utf-8')
-    (output / 'README.md').write_text(render((ROOT / 'deployment/PACKAGE-README.md').read_text(encoding='utf-8'),
+    (output / 'README.md').write_text(render((source_path('deployment/PACKAGE-README.md', ROOT)).read_text(encoding='utf-8'),
                                             'deployment/PACKAGE-README.md', output, output_relative='README.md'), encoding='utf-8')
     render_installed_markdown(output)
 
@@ -176,7 +180,7 @@ def copy_illustration_notices(output):
     output = Path(output)
     (output / 'licenses').mkdir(parents=True, exist_ok=True)
     for name in ('CC-BY-4.0.txt', 'PUBLIC-ILLUSTRATIONS.md'):
-        shutil.copyfile(ROOT / 'web/assets' / name, output / 'licenses' / name)
+        shutil.copyfile(source_path('web/assets', ROOT) / name, output / 'licenses' / name)
     notice = output / 'licenses/PUBLIC-ILLUSTRATIONS.md'
     notice.write_text(render(notice.read_text(encoding='utf-8'),
                              'web/assets/PUBLIC-ILLUSTRATIONS.md', output,

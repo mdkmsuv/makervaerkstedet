@@ -3,11 +3,11 @@
 // project session, covered by test_laser_e2_browser.cjs.
 const assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 const {createHash,randomUUID}=require('node:crypto');
-const {startFixture,loadPlaywright}=require('../linux-elevhub/tests/student_journey_fixture.js');
+const {startFixture,loadPlaywright}=require('../system/linux-elevhub/tests/student_journey_fixture.js');
 const {chromium}=loadPlaywright(),root=path.resolve(__dirname,'..');
 (async()=>{
  const report={startedAt:new Date().toISOString(),reason:'Folie uses the exact-origin import configuration used by the shared receiver; verify real saved SVG import and reject another parent.',flows:[],inputs:{},errors:[]};
- const names=['app/project_origins.py','app/server.py','app/laser_server.py','web/laser.html','web/project-import.js','linux-elevhub/tests/student_journey_fixture.py','tests/test_folie_project_import_browser.cjs'];
+ const names=['system/app/project_origins.py','system/app/server.py','system/app/laser_server.py','apps/folie/web/laser.html','system/web/project-import.js','system/linux-elevhub/tests/student_journey_fixture.py','tests/test_folie_project_import_browser.cjs'];
  for(const name of names)report.inputs[name]=createHash('sha256').update(await fs.readFile(path.join(root,name))).digest('hex');
  let fixture,browser;
  try{

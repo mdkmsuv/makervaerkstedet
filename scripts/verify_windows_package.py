@@ -7,11 +7,13 @@ import zipfile
 import sys
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
+from repository import source_path
 parser = argparse.ArgumentParser()
 parser.add_argument('--school', action='store_true', help='Verify the private Klostermarksskolen edition.')
 args = parser.parse_args()
 name = 'Printvaerksted-Klostermarksskolen-0.4.8' if args.school else 'Printvaerksted-Windows-0.4.8'
-archive_path = ROOT / 'dist' / (name + '.zip')
+archive_path = source_path('dist', ROOT) / (name + '.zip')
 prefix = name + '/'
 transfer_name = 'Skolens-printere-privat.json'
 with zipfile.ZipFile(archive_path) as archive:
@@ -31,9 +33,9 @@ with zipfile.ZipFile(archive_path) as archive:
         if index % 1500 == 0:
             print(f'Verified {index}/{len(integrity)} files...', flush=True)
     for folder in ('app', 'web'):
-        for path in (ROOT / folder).rglob('*'):
+        for path in source_path(folder,ROOT).rglob('*'):
             if path.is_file() and '__pycache__' not in path.parts and path.suffix != '.pyc':
-                relative = path.relative_to(ROOT).as_posix()
+                relative = folder+'/'+path.relative_to(source_path(folder,ROOT)).as_posix()
                 assert archive.read(prefix + relative) == path.read_bytes(), relative
     marker = json.loads(archive.read(prefix + 'printvaerksted-package.json'))
     assert (transfer_name in integrity) == args.school
@@ -41,11 +43,11 @@ with zipfile.ZipFile(archive_path) as archive:
     if args.school:
         sys.path.insert(0, str(ROOT))
         from app.installation import read_printer_transfer
-        expected_printers, expected_pins = read_printer_transfer(ROOT / 'dist' / transfer_name)
+        expected_printers, expected_pins = read_printer_transfer(source_path('dist', ROOT) / transfer_name)
         transfer = json.loads(archive.read(prefix + transfer_name))
         from app.camera_transfer import read_camera_transfer
         expected = {'format': 'printvaerksted-printers-v1', 'printers': expected_printers, 'certificates': expected_pins}
-        cameras = read_camera_transfer(json.loads((ROOT / 'dist' / transfer_name).read_text(encoding='utf-8')), expected_printers)
+        cameras = read_camera_transfer(json.loads((source_path('dist', ROOT) / transfer_name).read_text(encoding='utf-8')), expected_printers)
         if cameras:
             expected['cameras'] = cameras
         assert transfer == expected
@@ -67,7 +69,7 @@ with zipfile.ZipFile(archive_path) as archive:
               'sha256_verified_files': len(integrity), 'zip_crc': 'passed',
               'exact_current_app_and_web_source': True, 'printer_settings_included': args.school,
               'printers': printer_names, 'no_queue_or_account_files': True, 'camera_references_included': marker.get('camera_references_included', False), 'components': marker}
-    report_path = ROOT / '.runtime' / ('package-verification-0.4.8-school.json' if args.school else 'package-verification-0.4.8.json')
+    report_path = source_path('.runtime', ROOT) / ('package-verification-0.4.8-school.json' if args.school else 'package-verification-0.4.8.json')
     report = json.loads(report_path.read_text()) if report_path.exists() else {'version': '0.4.8'}
     report['archive'] = result
     report_path.write_text(json.dumps(report, indent=2), encoding='utf-8')

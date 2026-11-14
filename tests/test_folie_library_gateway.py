@@ -3,6 +3,11 @@
 The library is stubbed deliberately: these tests exercise access gates and
 forwarding, never the public SVG catalogue.
 """
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 import socket
 import sys
@@ -14,7 +19,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ELEVHUB = ROOT / 'linux-elevhub' / 'server' / 'elevhub'
+ELEVHUB = source_path('linux-elevhub/server/elevhub', ROOT)
 if str(ELEVHUB) not in sys.path:
     sys.path.insert(0, str(ELEVHUB))
 

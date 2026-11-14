@@ -1,4 +1,9 @@
 """Contract tests for explicit, hash-bound Windows build artifacts."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 
 import importlib.util
 import json
@@ -12,7 +17,7 @@ from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SPEC = importlib.util.spec_from_file_location('windows_build_packages', ROOT / 'windows-elevhub' / 'build_packages.py')
+SPEC = importlib.util.spec_from_file_location('windows_build_packages', source_path('windows-elevhub/build_packages.py', ROOT))
 build_packages = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(build_packages)
 SCHOOL_SPEC = importlib.util.spec_from_file_location('school_package_builder', ROOT / 'scripts' / 'build_school_package.py')
@@ -214,17 +219,6 @@ class WindowsArtifactManifestTests(unittest.TestCase):
                 copied.append((Path(source), Path(target)))
                 if Path(source).is_dir():
                     Path(target).mkdir(parents=True, exist_ok=True)
-                if Path(source) == ROOT / 'web':
-                    # Copy the real receipt-bound 3D assets so the package gate runs.
-                    receipt = ROOT / 'web/vendor/model3d-vendor-manifest.json'
-                    value = json.loads(receipt.read_text(encoding='utf-8'))
-                    names = [receipt.relative_to(ROOT), Path('web/assets/model3d/Metrophobic-Regular.ttf')]
-                    names += [Path('web/vendor') / name for name in value['outputs']]
-                    names += [Path('web/assets/licenses/model3d') / name for name in value['license_sha256']]
-                    for name in names:
-                        destination = output / name
-                        destination.parent.mkdir(parents=True, exist_ok=True)
-                        destination.write_bytes((ROOT / name).read_bytes())
 
             # This test exercises artifact selection/copying. Real runtime
             # ZIP/wheel preflight is covered by test_windows_build_inputs.
@@ -234,6 +228,9 @@ class WindowsArtifactManifestTests(unittest.TestCase):
                  mock.patch.object(build_packages, 'copy_tree', side_effect=record), \
                  mock.patch.object(build_packages.shutil, 'copy2', side_effect=record):
                 build_packages.build_server(output, artifact_manifest=manifest)
+            self.assertTrue(any(source == source_path('web', ROOT) for source, _ in copied))
+            self.assertFalse(any(source.is_relative_to(ROOT / 'apps') for source, _ in copied))
+            self.assertFalse((output / 'web/model3d.html').exists())
 
             sources = {source for source, _ in copied}
             self.assertIn(root / 'server/tools', sources)

@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import importlib.util
 from pathlib import Path
 import shutil
@@ -6,7 +11,7 @@ import unittest
 from scripts import build_simple_feed, build_update_manifest
 
 ROOT=Path(__file__).resolve().parents[1]
-spec=importlib.util.spec_from_file_location('windows_package_builder',ROOT/'windows-elevhub/build_packages.py')
+spec=importlib.util.spec_from_file_location('windows_package_builder',source_path('windows-elevhub/build_packages.py', ROOT))
 windows=importlib.util.module_from_spec(spec);spec.loader.exec_module(windows)
 
 class RetiredWorkshopPayloadTests(unittest.TestCase):
@@ -24,7 +29,7 @@ class RetiredWorkshopPayloadTests(unittest.TestCase):
 
     def test_windows_default_catalog_has_no_retired_workshops(self):
         import json
-        config=json.loads((ROOT/'windows-elevhub/server/hub/konfiguration.windows.json').read_text(encoding='utf-8'))
+        config=json.loads((source_path('windows-elevhub/server/hub/konfiguration.windows.json', ROOT)).read_text(encoding='utf-8'))
         ids={app['id'] for app in config['apps']}
         self.assertFalse({'datatraener','skolegpt','kredsloeb'} & ids)
         self.assertTrue({'scratch','microbit','internet'} <= ids)

@@ -4,6 +4,11 @@ The final Windows integrations are not executed. Temporary paths stand in
 for the newly secured installer directories; release uses actual package,
 TLS, copy, inventory and database code.
 """
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import hashlib
 import json
 import os
@@ -34,7 +39,7 @@ class SchoolRecoveryTests(unittest.TestCase):
         self.addCleanup(self.data.tearDown)
         self.root = self.program.root
         self.package = self.program.program
-        shutil.copy2(program_fixture.ROOT / 'windows-elevhub/server/provision.py', self.package / 'server/provision.py')
+        shutil.copy2(source_path('windows-elevhub/server/provision.py', program_fixture.ROOT), self.package / 'server/provision.py')
         integrity = {'algorithm': 'sha256', 'files': {p.relative_to(self.package).as_posix():
                      hashlib.sha256(p.read_bytes()).hexdigest() for p in self.package.rglob('*')
                      if p.is_file() and p.name not in ('integrity.json', 'makerspace-release.json')}}

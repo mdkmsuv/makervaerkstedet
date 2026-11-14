@@ -1,0 +1,56 @@
+Window.SetBackgroundTopColor(0, 0, 0);
+Window.SetBackgroundBottomColor(0, 0, 0);
+
+prompt_sprite = Sprite();
+answer_sprite = Sprite();
+message_sprite = Sprite();
+
+fun clear_prompts()
+{
+    prompt_sprite.SetOpacity(0);
+    answer_sprite.SetOpacity(0);
+}
+
+fun display_question(prompt, entry)
+{
+    prompt_image = Image.Text(prompt, 0.9, 0.9, 0.9);
+    answer_image = Image.Text(entry, 0.9, 0.9, 0.9);
+    prompt_sprite.SetImage(prompt_image);
+    answer_sprite.SetImage(answer_image);
+    prompt_sprite.SetPosition(
+        (Window.GetWidth() - prompt_image.GetWidth()) / 2,
+        Window.GetHeight() / 2 - prompt_image.GetHeight() - 12,
+        10001);
+    answer_sprite.SetPosition(
+        (Window.GetWidth() - answer_image.GetWidth()) / 2,
+        Window.GetHeight() / 2 + 12,
+        10001);
+    prompt_sprite.SetOpacity(1);
+    answer_sprite.SetOpacity(1);
+}
+
+fun display_password(prompt, bullet_count)
+{
+    bullets = "";
+    for (index = 0; index < bullet_count; index++)
+    {
+        bullets += "*";
+    }
+    display_question(prompt, bullets);
+}
+
+fun display_message(message)
+{
+    message_image = Image.Text(message, 0.9, 0.9, 0.9);
+    message_sprite.SetImage(message_image);
+    message_sprite.SetPosition(
+        (Window.GetWidth() - message_image.GetWidth()) / 2,
+        Window.GetHeight() - message_image.GetHeight() * 2,
+        10001);
+    message_sprite.SetOpacity(1);
+}
+
+Plymouth.SetDisplayQuestionFunction(display_question);
+Plymouth.SetDisplayPasswordFunction(display_password);
+Plymouth.SetDisplayNormalFunction(clear_prompts);
+Plymouth.SetDisplayMessageFunction(display_message);

@@ -1,4 +1,9 @@
 """Exercise the operator facade on real temporary school databases."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 import os
 from pathlib import Path
@@ -102,7 +107,7 @@ class SchoolBackupActiveTests(unittest.TestCase):
         self.addCleanup(code.doCleanups)
         for name in ('school_backup.py', 'installation_backup.py', 'backup_guard.py',
                      'backup_databases.py', 'data_contract.py', 'instance.py', 'generation_relocation.py'):
-            shutil.copy2(embedded.embedded.ROOT / 'app' / name, code.package / 'app' / name)
+            shutil.copy2(source_path('app', embedded.embedded.ROOT) / name, code.package / 'app' / name)
         code._copy_admin_and_reseal()
         code.record['manifest_sha256'] = code.fixture.manifest_sha256
         data = data_fixture.InstallationBackupTests(); data.setUp()

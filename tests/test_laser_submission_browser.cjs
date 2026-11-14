@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const {createHash, randomUUID} = require('node:crypto');
-const {startFixture, loadPlaywright} = require('../linux-elevhub/tests/student_journey_fixture.js');
+const {startFixture, loadPlaywright} = require('../system/linux-elevhub/tests/student_journey_fixture.js');
 const root = path.resolve(__dirname, '..');
 const output = process.env.ELEVHUB_LASER_SUBMISSION_OUTPUT || path.join(root, 'output/maturity-final-20261013/root');
 const {chromium} = loadPlaywright();
@@ -13,8 +13,8 @@ const {chromium} = loadPlaywright();
   const report = {startedAt: new Date().toISOString(),
     reason: 'Real pupil retry after a lost accepted reply, quota feedback and teacher completion freeing capacity',
     flows: [], inputs: {}, errors: []};
-  for (const name of ['app/laser_server.py', 'web/laservaerksted/laser-editor.js', 'web/laservaerksted/index.html',
-    'tests/test_laser_submission_browser.cjs', 'linux-elevhub/tests/student_journey_fixture.py']) {
+  for (const name of ['system/app/laser_server.py', 'apps/laser/web/laservaerksted/laser-editor.js', 'apps/laser/web/laservaerksted/index.html',
+    'tests/test_laser_submission_browser.cjs', 'system/linux-elevhub/tests/student_journey_fixture.py']) {
     report.inputs[name] = createHash('sha256').update(await fs.readFile(path.join(root, name))).digest('hex');
   }
   let fixture, browser, teacher, page;

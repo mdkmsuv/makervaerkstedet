@@ -15,7 +15,7 @@ se [licensens afgrænsning](LICENSE-SCOPE.md). Elevhubs eksisterende MIT-kompone
 beholder sin licens. Tredjepartssoftware og særskilte aktiver beholder
 deres egne licenser, notices, tilladelser og øvrige vilkår.
 
-De navngivne projektillustrationer i [billedoversigten](web/assets/PUBLIC-ILLUSTRATIONS.md)
+De navngivne projektillustrationer i [billedoversigten](system/web/assets/PUBLIC-ILLUSTRATIONS.md)
 har CC BY 4.0. Ved deling krediteres Makerværkstedet og Klostermarksskolen;
 licenshenvisning og oplysninger om eventuelle billedændringer bevares.
 De fire brugerleverede v2-billeder til Folie, Laser, 3D og Scratch har ikke

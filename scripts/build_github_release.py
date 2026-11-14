@@ -24,6 +24,7 @@ import time
 
 ROOT=Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
+from repository import source_path
 from scripts import build_update_manifest as manifest_builder
 
 REPOSITORY=manifest_builder.feed.REPOSITORY
@@ -117,12 +118,12 @@ def _build_linux(source,spec,version,destination,work):
     required={'scratch','matchbox'}
     if set(external)!=required:raise ValueError('linux_external_inputs_incomplete')
     stage=work/'linux-payload';stage.mkdir()
-    tasks=(source/'linux-elevhub/ansible/roles/kiosk/tasks/main.yml').read_text(encoding='utf-8')
+    tasks=source_path('linux-elevhub/ansible/roles/kiosk/tasks/main.yml',source).read_text(encoding='utf-8')
     section=tasks.split('    kiosk_lokal_design_filer:\n',1)[1].split('  block:\n',1)[0]
     design=re.findall(r'^      - ([a-zA-Z0-9_./-]+)$',section,re.MULTILINE)
     if not design:raise ValueError('linux_design_inventory_missing')
     for name in (*LINUX_PATHS,*design):
-        manifest_builder.member_name(name);_copy(source/name,stage/name)
+        manifest_builder.member_name(name);_copy(source_path(name,source),stage/name)
     for key,name in {'scratch':'assets/scratch',
                      'matchbox':'linux-elevhub/kiosk-window-guard/bin/matchbox-window-manager'}.items():
         _copy(external[key]['verified'],stage/name)
@@ -148,16 +149,16 @@ def _build_linux(source,spec,version,destination,work):
 def _build_laser(source,version,destination):
     # Parse the existing literal station allowlist without importing the caller's
     # app package, which may belong to a different checkout on sys.path.
-    tree=ast.parse((source/'app/laser_station_install.py').read_text(encoding='utf-8'))
+    tree=ast.parse(source_path('app/laser_station_install.py',source).read_text(encoding='utf-8'))
     scope={}
     for node in tree.body:
         if isinstance(node,ast.Assign) and any(isinstance(t,ast.Name) and t.id in {'APP_FILES','WEB_FILES'} for t in node.targets):
             exec(compile(ast.Module(body=[node],type_ignores=[]),'<station-allowlist>','exec'),{'__builtins__':{'tuple':tuple}},scope)
     files=sorted(set(scope['APP_FILES']+scope['WEB_FILES']+('CREDITS.md','LICENSE','LICENSE-SCOPE.md')))
-    rows={name:{'sha256':_sha256(source/name),'size':(source/name).stat().st_size} for name in files}
+    rows={name:{'sha256':_sha256(source_path(name,source)),'size':source_path(name,source).stat().st_size} for name in files}
     path=destination/'station-code.zip'
     with zipfile.ZipFile(path,'x',zipfile.ZIP_DEFLATED,compresslevel=6) as archive:
-        for name in files:_zip_write(archive,name,path=source/name)
+        for name in files:_zip_write(archive,name,path=source_path(name,source))
         _zip_write(archive,'manifest.json',data=_json({'format':'makervaerkstedet-station-code-v1','release':version,'files':rows}))
     return path
 

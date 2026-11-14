@@ -186,7 +186,9 @@ class PublicSourceExportTests(unittest.TestCase):
         policy = public_source._load_policy(root)
         files = public_source._collect(root, policy)
         included = {item.relative for item in files}
-        self.assertIn("third_party/boxes.py/LICENSE.txt", included)
-        self.assertNotIn("third_party/boxes.py/documentation/src/static", included)
-        self.assertFalse(any("/build/" in path or "/output/" in path for path in included))
+        self.assertIn('system/third_party/boxes.py/LICENSE.txt', included)
+        self.assertNotIn('system/third_party/boxes.py/documentation/src/static', included)
+        self.assertFalse(any('/output/' in path for path in included))
+        self.assertTrue(all('/build/' not in path or path.startswith('apps/scratch/build/') for path in included))
+        self.assertIn('apps/scratch/build/build-scratch.ps1', included)
 

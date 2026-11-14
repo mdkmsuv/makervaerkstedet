@@ -3,6 +3,11 @@
 All state, school appearance and ports are disposable. No school/hardware client.
 The approved external Scratch build is an input, never modified by this fixture.
 """
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 import hashlib
 import os
@@ -18,7 +23,7 @@ import zlib
 from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
-sys.path[:0] = [str(ROOT), str(ROOT / 'linux-elevhub/projekter')]
+sys.path[:0] = [str(ROOT), str(source_path('linux-elevhub/projekter', ROOT))]
 from app_host import SHARED, discover_apps, uses_gateway
 from projektarkiv import Projektarkiv
 from lokal import make_server, Handler
@@ -78,8 +83,8 @@ def stage_inputs(stage):
         shutil.copy2(ROOT / 'apps' / app_id / 'app.json', folder / 'app.json')
         if app_id == 'scratch':
             supplied = os.environ.get('MKV_INSTALLED_SCRATCH_BUILD')
-            source = Path(supplied) if supplied else ROOT.parents[2] / 'byggeinput/linux/scratch-gui-v15.1.1-local-projects-build'
-            if not (source / 'guistandalone.js').is_file():
+            source = Path(supplied) if supplied else next((p / 'byggeinput/linux/scratch-gui-v15.1.1-local-projects-build' for p in ROOT.parents if (p / 'byggeinput').is_dir()), None)
+            if source is None or not (source / 'guistandalone.js').is_file():
                 raise RuntimeError('Approved Scratch build missing; set MKV_INSTALLED_SCRATCH_BUILD')
             shutil.copytree(source, folder / 'www')
         manifest = json.loads((ROOT / 'apps' / app_id / 'files.json').read_text())
@@ -99,7 +104,7 @@ def stage_inputs(stage):
     # Only assets explicitly owned by core, never mount the entire development web/.
     shared = stage / 'shared'
     for asset in SHARED:
-        source, target = ROOT / 'web' / asset[1:], shared / asset[1:]
+        source, target = source_path('web', ROOT) / asset[1:], shared / asset[1:]
         if source.is_file():
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
@@ -114,7 +119,7 @@ def stage_profile(stage):
         return struct.pack('!I', len(data)) + kind + data + struct.pack('!I', zlib.crc32(kind + data))
     pixels = b''.join(b'\0' + b''.join(bytes((21, 115, 71, 255)) if 6 <= x < 58 and 6 <= y < 42 else bytes((255, 255, 255, 255)) for x in range(64)) for y in range(48))
     logo = b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('!2I5B', 64, 48, 8, 6, 0, 0, 0)) + chunk(b'IDAT', zlib.compress(pixels)) + chunk(b'IEND', b'')
-    font = (ROOT / 'linux-elevhub/server/elevhub/web/assets/Manrope.ttf').read_bytes()
+    font = (source_path('linux-elevhub/server/elevhub/web/assets/Manrope.ttf', ROOT)).read_bytes()
     digest = lambda data: hashlib.sha256(data).hexdigest()
     def managed(data, suffix):
         name = 'managed-' + digest(data) + suffix
@@ -142,7 +147,7 @@ def stage_profile(stage):
 
 
 def stage_home(stage, apps, config):
-    sys.path.insert(0, str(ROOT / 'linux-elevhub/administration'))
+    sys.path.insert(0, str(source_path('linux-elevhub/administration', ROOT)))
     from template_activation import context
     from jinja2 import Environment, StrictUndefined
     installed = stage / 'usr/share/makervaerkstedet'
@@ -158,7 +163,7 @@ def stage_home(stage, apps, config):
     values['kiosk_lokale_app_urler']['projekter'] = config['shelf_url']
     env = Environment(undefined=StrictUndefined, autoescape=False)
     env.filters['to_json'] = lambda value: json.dumps(value, ensure_ascii=True)
-    source = ROOT / 'linux-elevhub/ansible/roles/kiosk/templates/start.html.j2'
+    source = source_path('linux-elevhub/ansible/roles/kiosk/templates/start.html.j2', ROOT)
     home = stage / 'usr/local/share/elevhub/start.html'
     home.parent.mkdir(parents=True)
     home.write_text(env.from_string(source.read_text()).render(**values))
@@ -168,7 +173,7 @@ def stage_home(stage, apps, config):
         'workshop-3d-v2.webp', 'workshop-laser-v2.webp', 'workshop-folie-v2.webp', 'workshop-scratch-v2.png',
         'workshop-microbit-v2.png', 'workshop-internet-v2.png')
     for name in names:
-        shutil.copy2(ROOT / 'linux-elevhub/server/elevhub/web/assets' / name, assets / name)
+        shutil.copy2(source_path('linux-elevhub/server/elevhub/web/assets', ROOT) / name, assets / name)
     return home
 
 

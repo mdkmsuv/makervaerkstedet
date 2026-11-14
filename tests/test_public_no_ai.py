@@ -16,17 +16,17 @@ class PublicNoAiTests(unittest.TestCase):
 
     def test_private_experiments_are_not_distributed(self):
         forbidden = {
-            "app/bed_ai.py", "app/local_ai.py", "app/vision.py",
-            "app/laser_vision.py", "app/laser_vision_client.py", "app/laser_vision_server.py",
-            "app/server_ai_artifact.py", "app/plate_camera_client.py", "app/training_samples.py",
-            "web/camera-batch.js", "web/plate-camera.js",
+            "system/app/bed_ai.py", "system/app/local_ai.py", "system/app/vision.py",
+            "system/app/laser_vision.py", "system/app/laser_vision_client.py", "system/app/laser_vision_server.py",
+            "system/app/server_ai_artifact.py", "system/app/plate_camera_client.py", "system/app/training_samples.py",
+            "system/web/camera-batch.js", "system/web/plate-camera.js",
             "scripts/build_vm_mobile_sam.py", "scripts/setup_laser_vision.py",
             "scripts/install_vm_mobile_sam.ps1", "scripts/vm_vision_bootstrap.py",
             "tests/plate_camera_browser_fixture.py",
         }
         self.assertFalse(self.selected & forbidden)
         self.assertFalse(any(name.startswith("pladekamera/") for name in self.selected))
-        for name in ("app/camera.py", "app/process_tree.py", "app/laser_station.py"):
+        for name in ("system/app/camera.py", "system/app/process_tree.py", "system/app/laser_station.py"):
             self.assertIn(name, self.selected)
 
     def test_retained_python_has_no_imports_of_excluded_modules(self):
@@ -35,7 +35,7 @@ class PublicNoAiTests(unittest.TestCase):
                     "platecam"}
         violations = []
         for item in self.files:
-            if not item.relative.endswith(".py") or item.relative.startswith("third_party/"):
+            if not item.relative.endswith(".py") or item.relative.startswith("system/third_party/"):
                 continue
             for node in ast.walk(ast.parse(item.path.read_text(encoding="utf-8-sig"), filename=item.relative)):
                 if isinstance(node, ast.Import):
@@ -51,8 +51,8 @@ class PublicNoAiTests(unittest.TestCase):
         self.assertEqual(violations, [])
 
     def test_standard_configurations_keep_current_workshops_and_omit_retired_apps(self):
-        for name in ("linux-elevhub/server/elevhub/konfiguration.json",
-                     "windows-elevhub/server/hub/konfiguration.windows.json"):
+        for name in ("system/linux-elevhub/server/elevhub/konfiguration.json",
+                     "system/windows-elevhub/server/hub/konfiguration.windows.json"):
             with self.subTest(name=name):
                 config = json.loads((self.root / name).read_text(encoding="utf-8-sig"))
                 apps = {item["id"]: item for item in config["apps"]}

@@ -36,15 +36,15 @@ maskinadministration og workflows skal fungere med nul elevcomputere.
 | Skolens ønske | Start her |
 |---|---|
 | Navn, tema, rolle eller LAN-opsætning | [Skoletilpasning](SKOLETILPASNING.md) og [Setup-School.ps1](../deployment/school-setup/Setup-School.ps1). |
-| Tilføje en understøttet printer eller en manuel station | Lærerens `/makerspace`-panel. Koden ligger i [makerspace_store.py](../linux-elevhub/server/elevhub/makerspace_store.py) og [makerspace_printers.py](../linux-elevhub/server/elevhub/makerspace_printers.py). |
-| Ændre en arbejdsgang | Lærerens workfloweditor og [makerspace_workflows.py](../linux-elevhub/server/elevhub/makerspace_workflows.py). |
+| Tilføje en understøttet printer eller en manuel station | Lærerens `/makerspace`-panel. Koden ligger i [makerspace_store.py](../system/linux-elevhub/server/elevhub/makerspace_store.py) og [makerspace_printers.py](../system/linux-elevhub/server/elevhub/makerspace_printers.py). |
+| Ændre en arbejdsgang | Lærerens workfloweditor og [makerspace_workflows.py](../system/linux-elevhub/server/elevhub/makerspace_workflows.py). |
 | Tilføje en ny maskintype | Undersøg den eksisterende adapter og den autoritative kø først. En manuel registrering giver ikke automatisk en hardwaredriver. |
 | Bygge en ny app til elevenhederne | [Sådan laver du en ny app](NY-APP-GUIDE.md) og [Værksteder som apps](APP-PLATFORM.md). |
-| Ændre digitale værksteder | Appskabelonerne i [skoletilpasningen](SKOLETILPASNING.md), [apps.py](../linux-elevhub/server/elevhub/apps.py) og [tilstand.py](../linux-elevhub/server/elevhub/tilstand.py). |
-| Ændre lærerens overblik | [system_overview.py](../linux-elevhub/server/elevhub/system_overview.py) og [web-mappen](../linux-elevhub/server/elevhub/web). |
-| Ændre printerforløbet | [core.py](../app/core.py), [printer_bridge.py](../app/printer_bridge.py) og [printerfrigivelse](PRINTERFRIGIVELSE.md). |
-| Ændre laserforløbet | [laser_server.py](../app/laser_server.py), [laser_station.py](../app/laser_station.py) og [laseradapteren](../linux-elevhub/server/elevhub/makerspace_laser_admin.py). |
-| Ændre backup eller versionsskift | [installation_backup.py](../app/installation_backup.py), [generation_transaction.py](../app/generation_transaction.py), [generation_activation.py](../app/generation_activation.py) og [generation_rollback.py](../app/generation_rollback.py). Læs først [opdateringsstatus](MAKERSPACE-OPDATERING.md); tilbageførsel skal bevare aktuelle data. |
+| Ændre digitale værksteder | Appskabelonerne i [skoletilpasningen](SKOLETILPASNING.md), [apps.py](../system/linux-elevhub/server/elevhub/apps.py) og [tilstand.py](../system/linux-elevhub/server/elevhub/tilstand.py). |
+| Ændre lærerens overblik | [system_overview.py](../system/linux-elevhub/server/elevhub/system_overview.py) og [web-mappen](../system/linux-elevhub/server/elevhub/web). |
+| Ændre printerforløbet | [core.py](../system/app/core.py), [printer_bridge.py](../system/app/printer_bridge.py) og [printerfrigivelse](PRINTERFRIGIVELSE.md). |
+| Ændre laserforløbet | [laser_server.py](../system/app/laser_server.py), [laser_station.py](../system/app/laser_station.py) og [laseradapteren](../system/linux-elevhub/server/elevhub/makerspace_laser_admin.py). |
+| Ændre backup eller versionsskift | [installation_backup.py](../system/app/installation_backup.py), [generation_transaction.py](../system/app/generation_transaction.py), [generation_activation.py](../system/app/generation_activation.py) og [generation_rollback.py](../system/app/generation_rollback.py). Læs først [opdateringsstatus](MAKERSPACE-OPDATERING.md); tilbageførsel skal bevare aktuelle data. |
 
 Foretræk en eksisterende indstilling eller lærerfunktion, når den kan løse
 opgaven. Ved en kodeændring skal generator, validering og berørte klienter

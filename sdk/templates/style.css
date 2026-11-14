@@ -1,0 +1,24 @@
+@font-face{font-family:Metrophobic;src:url('/assets/metrophobic-latin.ttf') format('truetype');font-display:swap}
+:root{font-family:Metrophobic,Arial,sans-serif;color:#202522;background:#f5f6f3;font-size:16px;line-height:1.5}
+*{box-sizing:border-box}
+body{margin:0}
+.brand{display:flex;align-items:center;gap:12px;padding:16px 24px;background:#fff;border-bottom:1px solid #d0d5ce}
+.brand-mark{width:24px;height:24px;border:6px solid var(--brand);border-radius:50%}
+main{max-width:760px;margin:28px auto;padding:0 24px}
+.eyebrow{margin:0;color:#505b50;font-size:.9rem}
+h1{font-size:2rem;line-height:1.2;margin:8px 0 20px;overflow-wrap:anywhere}
+form,.work{background:#fff;border:1px solid #cbd2c8;border-radius:8px;padding:24px}
+fieldset{padding:0;border:0;margin:0 0 20px;min-width:0}
+legend,.label{font-size:1.15rem;font-weight:bold;margin-bottom:16px}
+.choice{display:flex;align-items:center;gap:12px;min-height:52px;margin:8px 0;padding:10px 12px;border:1px solid #afb9ac;border-radius:4px;cursor:pointer}
+input[type=radio]{width:22px;height:22px;accent-color:var(--brand);flex-shrink:0}
+button{min-height:44px;padding:10px 20px;font:inherit;font-weight:bold;border:2px solid var(--brand-dark);border-radius:4px;color:#fff;background:var(--brand-dark);cursor:pointer}
+button.secondary{background:#fff;color:var(--brand-dark);margin-left:8px}
+:focus-visible{outline:3px solid var(--brand-dark);outline-offset:4px}
+.choice:focus-within{outline:3px solid var(--brand-dark);outline-offset:3px}
+.feedback{min-height:28px;margin:16px 0 0;font-weight:bold}
+label.label{display:block}
+textarea{display:block;width:100%;min-height:220px;resize:vertical;padding:12px;border:2px solid #7a8676;border-radius:4px;font:inherit;line-height:1.6}
+.hint{color:#465142;margin:8px 0 16px}
+footer{max-width:760px;margin:24px auto;padding:0 24px 24px;font-size:.8rem;color:#505b50}
+@media(max-width:520px){main{margin-top:20px;padding:0 16px}form,.work{padding:16px}h1{font-size:1.6rem}button.secondary{margin-left:0;margin-top:8px}.brand{padding:12px 16px}}

@@ -1,4 +1,9 @@
 """Check scheduled-task battery policy by evaluating the real PS commands in memory."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 
 import json
 import os
@@ -9,7 +14,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-INSTALL = ROOT / 'windows-elevhub' / 'server' / 'install.ps1'
+INSTALL = source_path('windows-elevhub/server/install.ps1', ROOT)
 SETUP = ROOT / 'deployment' / 'school-setup' / 'Setup-School.ps1'
 POWERSHELL = shutil.which('pwsh') or shutil.which('powershell.exe')
 

@@ -1,4 +1,9 @@
 """Real TLS station/teacher gateway/loopback queue checks, without laser hardware."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import http.client
 import json
 from pathlib import Path
@@ -18,7 +23,7 @@ from app.laser_server import Handler as QueueHandler, Inbox, create_server
 from app.laser_station import NotLoggedIn, QueueClient, QueueUnavailable
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'linux-elevhub/server/elevhub'))
+sys.path.insert(0, str(source_path('linux-elevhub/server/elevhub', ROOT)))
 from elevhub import Laerer, Server
 import laser_station_gateway as gateway
 from makerspace_api import MakerspaceService

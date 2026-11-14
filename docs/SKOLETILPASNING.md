@@ -101,7 +101,7 @@ beskrevne kildekontrol dokumenterer arkitekturen og bevaringsflowet; den er
 ikke i sig selv bevis på, at en bestemt skoles tema er aktiveret på live-udstyr.
 
 Linux bruger ikke automatisk Windows-profilen. På Windows læser
-[`app/school_appearance.py`](../app/school_appearance.py) `school.json` fra
+[`app/school_appearance.py`](../system/app/school_appearance.py) `school.json` fra
 datamappens forælder. På Linux læses den lokale kioskprofil fra
 `/etc/elevhub/kiosk.json`. Den fælles betydning er skolens navn og tema, mens
 serverrolle, elevnet og enrollment hører til serverprofilen.
@@ -143,7 +143,7 @@ Sådan sættes farverne:
 ## Separat Windows-LAN og serverstart
 
 Den Windows-server, der står på skolens LAN, konfigureres gennem
-[`windows-elevhub/server/install.ps1`](../windows-elevhub/server/install.ps1).
+[`windows-elevhub/server/install.ps1`](../system/windows-elevhub/server/install.ps1).
 De relevante valg er server-IP, elev-subnet, læreradresse og -port samt
 `PrintBackendPort`, `DesignBackendPort`, `TeacherBackendPort` og eventuelt
 `UseExistingPrintBackend`. Scriptet validerer aktiv IPv4-adresse, subnet,
@@ -152,25 +152,25 @@ en administrator. Under den aktuelle modning arbejder kodeagenten i kildekode
 og isolerede tests; faktisk installation kræver en opgave om den installation.
 
 Den genererede runtime-konfiguration kontrolleres af
-[`windows-elevhub/server/bootstrap.py`](../windows-elevhub/server/bootstrap.py).
+[`windows-elevhub/server/bootstrap.py`](../system/windows-elevhub/server/bootstrap.py).
 Den kræver lokale TLS-filer og register under `security`, validerer
 `konfiguration.json`, og starter de autoritative lokale tjenester med
 datamapperne `printvaerksted`, `designvaerksted` og `hub`. Et separat LAN
 kræver derfor, at adresser og firewallregler stemmer overens i skoleprofilen,
 Windows-installationen og serverens konfiguration.
 
-[`windows-elevhub/server/hub/konfiguration.windows.json`](../windows-elevhub/server/hub/konfiguration.windows.json)
+[`windows-elevhub/server/hub/konfiguration.windows.json`](../system/windows-elevhub/server/hub/konfiguration.windows.json)
 er kilde-skabelonen. Den beskriver blandt andet `backend_ports` og apps med
 `port`, `bagved`, `regler` og standardåben. En skolekonfiguration skal holde
 værkstedsappens backend på loopback og lade serverens LAN-adresse være den
 beskyttede lærer-/Elevhub-adresse. Brug
-[`windows-elevhub/server/provision.py`](../windows-elevhub/server/provision.py)
+[`windows-elevhub/server/provision.py`](../system/windows-elevhub/server/provision.py)
 til enrollmentdata; kopier ikke enrollmentnøgler ind i en generisk pakke.
 
 ## Linux-apps og Windows-apps skal være enige
 
 Linux-kildens tilsvarende appskabelon er
-[`linux-elevhub/server/elevhub/konfiguration.json`](../linux-elevhub/server/elevhub/konfiguration.json).
+[`linux-elevhub/server/elevhub/konfiguration.json`](../system/linux-elevhub/server/elevhub/konfiguration.json).
 Sammenlign app-id, type, åbning som standard, elevport, backend, regler og
 visningsnavn med Windows-skabelonen. Tilføj ikke en app i kun den ene platform:
 Elevhub-klienten kan ellers vise en indgang, som serveren ikke kan levere, eller
@@ -178,7 +178,7 @@ serveren kan åbne en backend, som klienten ikke kender.
 
 `deployment/school-setup/Setup-School.ps1` er skoleopsætning; den er ikke en
 makerspace-appgenerator. Linux' kiosk- og appindgange ligger i
-[`linux-elevhub/ansible/roles/kiosk`](../linux-elevhub/ansible/roles/kiosk),
+[`linux-elevhub/ansible/roles/kiosk`](../system/linux-elevhub/ansible/roles/kiosk),
 mens lærerens værkstedsstatus går gennem Elevhub-serverens eksisterende
 politik. Ved ændringer skal den relevante platformtest udvides, og den anden
 platforms schema kontrolleres.
@@ -187,8 +187,8 @@ platforms schema kontrolleres.
 
 Maskiner og workflows skal oprettes gennem lærerens eksisterende
 Makerværksted-panel og dets domænefunktioner. Brug
-[`makerspace_store.py`](../linux-elevhub/server/elevhub/makerspace_store.py) og
-[`makerspace_workflows.py`](../linux-elevhub/server/elevhub/makerspace_workflows.py)
+[`makerspace_store.py`](../system/linux-elevhub/server/elevhub/makerspace_store.py) og
+[`makerspace_workflows.py`](../system/linux-elevhub/server/elevhub/makerspace_workflows.py)
 som kildekodekontrakt sammen med panellets eksisterende kald. En
 skoletilpasning skal ikke indsætte maskiner eller workflows direkte i SQLite,
 udvide systemet med en ny automatisk driftsklient eller opfinde en parallel kø.
@@ -196,9 +196,9 @@ udvide systemet med en ny automatisk driftsklient eller opfinde en parallel kø.
 En ny maskine kan registreres uden at være understøttet hardware. En driver,
 forbindelse, modelgrænse, fysisk status og adgang til start/frigivelse skal
 fortsat håndhæves af den eksisterende adapter. For Bambu-printere går
-administrationen gennem [`makerspace_printers.py`](../linux-elevhub/server/elevhub/makerspace_printers.py)
+administrationen gennem [`makerspace_printers.py`](../system/linux-elevhub/server/elevhub/makerspace_printers.py)
 til den eksisterende lokale printertjeneste. For laserstationer er
-[`makerspace_laser_admin.py`](../linux-elevhub/server/elevhub/makerspace_laser_admin.py)
+[`makerspace_laser_admin.py`](../system/linux-elevhub/server/elevhub/makerspace_laser_admin.py)
 og den autoritative Inbox-kø relevante; registrering eller workflowbinding er
 ikke bevis på, at en fysisk laser er online.
 

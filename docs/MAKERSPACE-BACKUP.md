@@ -20,7 +20,7 @@ Udviklingskoden i `Manage-School.cmd` har nu tre indgange:
   opstartsspærrer. Dette aktiverer ikke en ny server.
 
 For standardlayoutet oprettes profilen i hukommelsen af
-[`app/school_backup.py`](../app/school_backup.py). Ejerskab, installeret
+[`app/school_backup.py`](../system/app/school_backup.py). Ejerskab, installeret
 tilstand og datarod skal stemme. Manglende køer eller eksterne backends
 udelades ikke: menuen afviser sådanne installationer. Det avancerede
 profilværktøj nedenfor kan beskrive flere datarødder.

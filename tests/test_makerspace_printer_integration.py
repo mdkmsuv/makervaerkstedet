@@ -3,6 +3,11 @@
 The test deliberately uses the real makerspace store/service, loopback HTTP
 handler and bridge.  The driver is a counter-only fake: no printer is touched.
 """
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 
 import json
 from pathlib import Path
@@ -17,7 +22,7 @@ from app.printer_bridge import PrinterBridge
 from app.server import Handler, Server
 from scripts.smoke_slice import cube
 
-ELEVHUB = Path(__file__).parents[1] / "linux-elevhub" / "server" / "elevhub"
+ELEVHUB = source_path('linux-elevhub/server/elevhub', Path(__file__).parents[1])
 if str(ELEVHUB) not in sys.path:
     sys.path.insert(0, str(ELEVHUB))
 from makerspace_api import MakerspaceService  # noqa: E402

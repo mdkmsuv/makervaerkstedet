@@ -19,7 +19,7 @@ import tarfile
 from urllib.parse import quote
 
 ROOT=Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
 from app.app_catalog import validate_app_descriptor,validate_catalog,_unique_pairs
 from app.simple_release import REPOSITORY,MAX_MANIFEST,MAX_ARTIFACT
 

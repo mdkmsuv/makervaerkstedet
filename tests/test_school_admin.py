@@ -1,4 +1,9 @@
 """Embedded active-generation tests for the read-only school-admin entry."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import hashlib
 import json
 import os
@@ -38,7 +43,7 @@ class SchoolAdminActiveTests(unittest.TestCase):
         self._write_selection()
 
     def _copy_admin_and_reseal(self):
-        shutil.copy2(embedded.ROOT / 'app/school_admin.py', self.package / 'app/school_admin.py')
+        shutil.copy2(source_path('app/school_admin.py', embedded.ROOT), self.package / 'app/school_admin.py')
         manifest_path = self.package / 'makerspace-release.json'
         manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
         manifest['files'] = {

@@ -1,4 +1,9 @@
 """Actual Windows DACL probe on synthetic temporary folders; no installation."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import os
 from pathlib import Path
 import subprocess
@@ -60,14 +65,14 @@ Write-Output 'PASS: fixed cache DACL; private/parent DACLs preserved; junction r
             environment['PSModulePath']=str(system_root/'System32/WindowsPowerShell/v1.0/Modules')
             powershell=system_root/'System32/WindowsPowerShell/v1.0/powershell.exe'
             result=subprocess.run([str(powershell),'-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(script),
-                '-Helper',str(ROOT/'windows-elevhub/server/public-apt-cache-acl.ps1'),'-Root',str(root)],
+                '-Helper',str(source_path('windows-elevhub/server/public-apt-cache-acl.ps1', ROOT)),'-Root',str(root)],
                 env=environment,text=True,capture_output=True,timeout=25)
             self.assertEqual(result.returncode,0,result.stdout+result.stderr)
             self.assertIn('PASS: fixed cache DACL',result.stdout)
 
     def test_install_and_upgrade_call_same_fixed_cache_helper(self):
-        install=(ROOT/'windows-elevhub/server/install.ps1').read_text('utf-8')
-        upgrade=(ROOT/'windows/inno/task_control.ps1').read_text('utf-8')
+        install=(source_path('windows-elevhub/server/install.ps1', ROOT)).read_text('utf-8')
+        upgrade=(source_path('windows/inno/task_control.ps1', ROOT)).read_text('utf-8')
         self.assertIn('Set-PublicAptCacheAcl $DataRoot',install)
         self.assertIn("Set-PublicAptCacheAcl (Join-Path $env:ProgramData 'ElevhubServer')",upgrade)
 

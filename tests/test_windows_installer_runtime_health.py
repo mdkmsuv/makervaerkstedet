@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import importlib.util
 import json
 from pathlib import Path
@@ -6,7 +11,7 @@ import unittest
 import uuid
 
 ROOT=Path(__file__).resolve().parents[1]
-spec=importlib.util.spec_from_file_location('installer_runtime_health',ROOT/'windows/inno/lifecycle.py')
+spec=importlib.util.spec_from_file_location('installer_runtime_health',source_path('windows/inno/lifecycle.py', ROOT))
 life=importlib.util.module_from_spec(spec);spec.loader.exec_module(life)
 
 class RuntimeHealthTests(unittest.TestCase):

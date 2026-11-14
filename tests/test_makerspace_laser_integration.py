@@ -4,6 +4,11 @@ The fixture uses the real teacher HTTP handler and the real Inbox workflow
 database.  The station only writes a local BVG; no FLUX process or device is
 started.
 """
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import http.client
 import json
 from pathlib import Path
@@ -16,8 +21,8 @@ import sys
 from app.laser_server import Inbox, create_server
 from app.laser_station import QueueClient, Station
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "linux-elevhub" / "server"))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "linux-elevhub" / "server" / "elevhub"))
+sys.path.insert(0, str(source_path('linux-elevhub/server', Path(__file__).resolve().parents[1])))
+sys.path.insert(0, str(source_path('linux-elevhub/server/elevhub', Path(__file__).resolve().parents[1])))
 from makerspace_api import MakerspaceService  # noqa: E402
 from makerspace_laser_admin import LaserAdministration  # noqa: E402
 from makerspace_store import Conflict  # noqa: E402

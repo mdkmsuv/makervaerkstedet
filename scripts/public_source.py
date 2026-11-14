@@ -514,7 +514,10 @@ def _public_image_map(policy: dict) -> dict[str, str]:
     result = {}
     folded = set()
     roots = ('web/assets/', 'linux-elevhub/server/elevhub/web/assets/',
-             'windows-elevhub/client/web/assets/', 'linux-elevhub/server/kredsloeb/assets/')
+             'windows-elevhub/client/web/assets/', 'linux-elevhub/server/kredsloeb/assets/',
+             'system/web/assets/', 'system/linux-elevhub/server/elevhub/web/assets/',
+             'system/windows-elevhub/client/web/assets/', 'system/linux-elevhub/server/kredsloeb/assets/',
+             'apps/folie/web/assets/', 'apps/3dprint/web/assets/')
     for item in images:
         if not isinstance(item, dict) or set(item) != {'path', 'sha256', 'provenance'}:
             raise ExportError('Ugyldig publicImages-post.')

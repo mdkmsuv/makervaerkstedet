@@ -20,9 +20,11 @@ import tempfile
 import zipfile
 
 ROOT=Path(__file__).resolve().parents[1]
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
+from repository import source_path
 if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
 from scripts import public_source
-_spec=importlib.util.spec_from_file_location('publisher_feed_contract',ROOT/'linux-elevhub/server/elevhub/release_feed.py')
+_spec=importlib.util.spec_from_file_location('publisher_feed_contract',source_path('linux-elevhub/server/elevhub/release_feed.py', ROOT))
 feed=importlib.util.module_from_spec(_spec);_spec.loader.exec_module(feed)
 MARKER='update-package.json'
 TEXT={'.py','.ps1','.cmd','.bat','.js','.css','.html','.json','.md','.txt','.svg','.xml','.yml','.yaml','.sh','.toml','.ini','.conf','.patch'}

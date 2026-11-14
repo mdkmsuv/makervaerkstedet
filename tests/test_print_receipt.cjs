@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 
-const source = fs.readFileSync('web/app.js', 'utf8');
+const source = fs.readFileSync('system/web/app.js', 'utf8');
 const end = source.indexOf('async function poll(){');
 assert(end > 0, 'app.js render functions not found');
 const harness = String.raw`
@@ -60,4 +60,4 @@ const context = {
   CSS: {escape: value => value},
   window: {}, contextNodes,
 };
-vm.runInNewContext(source.slice(0, end) + harness, context, {filename: 'web/app.js'});
+vm.runInNewContext(source.slice(0, end) + harness, context, {filename: 'system/web/app.js'});

@@ -4,6 +4,11 @@ This deliberately composes the established installation-backup fixture and
 checks the data a school would need to recover, rather than repeating the
 individual manifest and SQLite unit tests.
 """
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 from contextlib import closing
 from pathlib import Path
@@ -14,7 +19,7 @@ from unittest.mock import patch
 
 from app.installation_backup import restore, snapshot, verify
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "linux-elevhub" / "server" / "elevhub"))
+sys.path.insert(0, str(source_path('linux-elevhub/server/elevhub', Path(__file__).resolve().parents[1])))
 from tilstand import Laererkode  # noqa: E402
 from makerspace_workflows import templates  # noqa: E402
 

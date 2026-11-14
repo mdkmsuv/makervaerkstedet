@@ -1,12 +1,12 @@
 'use strict';
 // Render the actual teacher entry and APIs. Reports are synthetic, never apt/hardware.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process');
-const root=path.resolve(__dirname,'..'),canonical=path.resolve(root,'../..');
-const {chromium}=require(process.env.PLAYWRIGHT_MODULE||path.join(canonical,'node_modules/playwright'));
-const {AxeBuilder}=require(path.join(canonical,'node_modules/@axe-core/playwright'));
+const root=path.resolve(__dirname,'..');
+const {chromium}=require(process.env.PLAYWRIGHT_MODULE||'playwright');
+const {AxeBuilder}=require('@axe-core/playwright');
 const out=process.env.MKV_BROWSER_REPORT||path.join(root,'output/app-admin-qa');fs.mkdirSync(out,{recursive:true});
 async function main(){
- const python=process.env.MKV_QA_PYTHON||path.join(canonical,'.venv/Scripts/python.exe');
+ const python=process.env.MKV_QA_PYTHON||process.env.PYTHON||(process.platform==='win32'?'python':'python3');
  const child=spawn(python,['-B','-u','tests/fixtures/app_admin_server.py'],{cwd:root,stdio:['ignore','pipe','pipe']});let stderr='',urls,browser;child.stderr.on('data',d=>stderr+=d);
  const ready=new Promise((resolve,reject)=>{let buf='';child.stdout.on('data',d=>{buf+=d;try{resolve(JSON.parse(buf.split('\n')[0]));}catch{}});child.once('exit',code=>reject(Error('Fixture '+code+': '+stderr)));});
  const timer=setTimeout(()=>child.kill(),30000);const results={flows:[],errors:[],axe:[]};

@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import sqlite3
 import shutil
 from pathlib import Path
@@ -11,7 +16,7 @@ from app.backup_databases import protect_restored_database
 from app.core import Queue
 from app.laser_server import Inbox
 import sys
-HUB = Path(__file__).parents[1] / 'linux-elevhub' / 'server' / 'elevhub'
+HUB = source_path('linux-elevhub/server/elevhub', Path(__file__).parents[1])
 sys.path.insert(0, str(HUB))
 from makerspace_api import MakerspaceService  # noqa: E402
 

@@ -1,7 +1,7 @@
 /* Exact parent/source/request handshake against the real bridge source. */
 'use strict';
 const test=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
-const code=fs.readFileSync(path.join(__dirname,'../web/project-import.js'),'utf8');
+const code=fs.readFileSync(path.join(__dirname,'../system/web/project-import.js'),'utf8');
 test('configured parent imports once; alien origins, source, and request cannot import',async()=>{
  const replies=[],files=[]; let listener;
  const parent={postMessage:(data,origin)=>replies.push({data,origin})};

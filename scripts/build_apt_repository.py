@@ -16,7 +16,7 @@ import shutil
 import subprocess
 import sys
 ROOT=Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
 from app.simple_release import DEBIAN_COMPONENTS
 from app.app_catalog import validate_app_descriptor
 from app.app_packages import BASE_PACKAGES, BUILTIN_APPS

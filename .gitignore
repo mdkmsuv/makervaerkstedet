@@ -3,7 +3,8 @@ __pycache__/
 .runtime/
 data/
 node_modules/
-web/vendor/
+system/web/vendor/
+apps/*/web/vendor/
 *.log
 dist/
 /.worktrees/
@@ -16,8 +17,8 @@ output/
 easy/
 fra claude/
 windows-elevhub-test/output/
-windows-elevhub/client/cadoodle/build/
-windows-elevhub/client/native/build/
+system/windows-elevhub/client/cadoodle/build/
+system/windows-elevhub/client/native/build/
 windows-maker-20260922/
 megavaerkstedet-backups/
 **/staging/
@@ -41,10 +42,10 @@ megavaerkstedet-backups/
 **/enheder.json
 **/enrollment.json
 **/ssh-pins.json
-linux-elevhub/ansible/inventory/skole/hosts.yml
-linux-elevhub/ansible/inventory/skole/group_vars/
-linux-elevhub/ansible/inventory/pilot-*/
-linux-elevhub/ansible/inventory/testmiljoe/hosts.yml
-linux-elevhub/ansible/inventory/testmiljoe/group_vars/
+system/linux-elevhub/ansible/inventory/skole/hosts.yml
+system/linux-elevhub/ansible/inventory/skole/group_vars/
+system/linux-elevhub/ansible/inventory/pilot-*/
+system/linux-elevhub/ansible/inventory/testmiljoe/hosts.yml
+system/linux-elevhub/ansible/inventory/testmiljoe/group_vars/
 
 # Dette er kun oprydningsbeskyttelse; .gitignore er ikke en secretscanner.

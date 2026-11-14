@@ -1,4 +1,9 @@
 """Binding tests for the mandatory current-release native simulation receipt."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 from copy import deepcopy
 import json
 from pathlib import Path
@@ -60,7 +65,7 @@ class InstallGateTests(unittest.TestCase):
 
     def test_actual_gate_receipt_is_accepted_by_the_legacy_repository_consumer(self):
         import sys
-        sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'linux-elevhub/packaging'))
+        sys.path.insert(0,str(source_path('linux-elevhub/packaging', Path(__file__).resolve().parents[1])))
         import check_install
         self.assertTrue(callable(getattr(check_install,'simulation_receipt',None)),'Versioned native receipt factory is missing')
         self.receipt=check_install.simulation_receipt(self.receipt['packages'],release_set='legacy',

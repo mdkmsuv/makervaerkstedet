@@ -1,4 +1,9 @@
 """Lifecycle and bounded-shutdown tests for the school enrollment service."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import base64
 import importlib.util
 import json
@@ -25,7 +30,7 @@ def load(name, path):
 
 
 enrollment = load('enrollment_shutdown_contract', ROOT / 'deployment/school-setup/enrollment.py')
-provision = load('enrollment_shutdown_provision', ROOT / 'windows-elevhub/server/provision.py')
+provision = load('enrollment_shutdown_provision', source_path('windows-elevhub/server/provision.py', ROOT))
 
 
 def ssh_key():

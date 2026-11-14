@@ -1,4 +1,9 @@
 """Actual embedded processes share one program/data selection and lifetime lease."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import hashlib
 import json
 import os
@@ -128,9 +133,9 @@ class ActiveGenerationTests(unittest.TestCase):
     def _bootstrap_program(self):
         (self.program / 'server').mkdir()
         for name in ('bootstrap.py', 'provision.py'):
-            shutil.copy2(embedded.ROOT / 'windows-elevhub/server' / name, self.program / 'server' / name)
+            shutil.copy2(source_path('windows-elevhub/server', embedded.ROOT) / name, self.program / 'server' / name)
         for name in ('instance.py', 'backup_guard.py', 'process_tree.py', 'paths.py', 'demo_workshop.py'):
-            shutil.copy2(embedded.ROOT / 'app' / name, self.program / 'app' / name)
+            shutil.copy2(source_path('app', embedded.ROOT) / name, self.program / 'app' / name)
         (self.program / 'hub').mkdir()
         (self.program / 'web').mkdir()
         (self.program / 'hub/elevhub.py').write_text('# not started by --check\n')

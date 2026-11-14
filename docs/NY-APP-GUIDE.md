@@ -1,217 +1,318 @@
 # Sådan laver du en ny app til Makerværkstedet
 
-Guide til en udviklingsagent, der skal bygge et nyt værksted (en webapp) til
-elevenhederne. Skrevet 13. november 2026 ud fra koden på `codex/iso-apps`.
-Retning og begrundelser står i [Værksteder som apps](APP-PLATFORM.md); denne
-guide er arbejdsgangen. Stier er relative til `produkt/`. Guiden bruger ingen
-linjenumre; søg efter de nævnte navne med `rg`.
+Aktuel kildeopdeling, 14. november 2026. Kommandoerne køres fra produktroden,
+som indeholder `REPOSITORY-LAYOUT.json`. `system/` ejer hovedsystemet,
+`apps/<id>/` ejer appens kode og pakkemanifester, og `sdk/` indeholder
+udviklingsskabeloner. Installerede Linux-stier er uændrede. Se også
+[appplatformen](APP-PLATFORM.md) og [udgivelsesprocessen](UDGIVELSESPROCES.md).
 
-Henvisninger ajourført 14. november 2026. **Denne guide beskriver den
-nuværende integration i de fire faste Debian-pakker.** Den ønskede opdeling
-i et hovedsystem og selvstændige tilvalgsapps er endnu ikke gennemført.
-Git-struktur, selvstændige apppakker og tilvalg skal beskrives og bygges som
-én sammenhængende ændring; en flyttet mappe giver ikke i sig selv app-tilvalg.
+En ny app kræver ingen registrering i faste Python-lister, ændring af
+hovedsystemets version eller genbygning af hovedsystemets pakke. Dens
+schema-2-manifest bliver først betroet på en elevenhed gennem det signerede
+katalog og den eksisterende opdateringstjeneste. En lokalt bygget `.deb`
+er en selvstændig byggeprøve; den er ikke en godkendt offentlig udgivelse.
 
-## Det vigtigste først
+## 1. Opret og prøv den mindste app
 
-- **En app er en lokal webside på elevenheden.** Den åbnes fra startsiden
-  «Makerværkstedet · Værksteder» i Chromium på `http://127.0.0.1:<port>/` og skal virke, når
-  skolens server er væk, også efter kold opstart.
-- **Serveren står kun for opdateringer, administration og køer.** En app må
-  ikke hente sin brugerflade, sine data eller sine beregninger fra serveren.
-  Eneste vej til serveren er en aflevering gennem udbakken.
-- **Appen er endnu ikke en pakke, man bare lægger ind.** Pakke pr. app, tom
-  ISO og skolens valg i kontrolpanelet er ikke bygget. En ny app registreres
-  i dag ved kildeændringer de steder, tjeklisten nedenfor nævner, og følger
-  med i `makervaerkstedet-elev`. Lav ikke en ny Debian-pakke uden særskilt
-  aftale; alle pakker er obligatoriske i hver ISO og opdatering.
-- **En app fra andre er et commit i projektets repo**, som gennemgås og
-  godkendes af projektejeren. Der er intet åbent katalog endnu.
+Python 3.13 og Node er udviklingsværktøjer. De statiske skabeloner behøver
+hverken npm-installation, bundling, netværk eller nye konti. Vælg et nyt id
+med små bogstaver, tal og bindestreg og en ledig loopback-port over 1023.
+Port 8790 og 8791 er systemporte; eksisterende apps bruger også egne porte.
 
-## Vælg den enkle vej
+```powershell
+python -B sdk/new_app.py --id plantequiz --name "Plantequiz" --port 8890 --stateless
+python -B sdk/check_app.py --app plantequiz
+python -B sdk/preview.py --app plantequiz
+```
 
-| Behov | Vej | Eksempel |
+Uden `--stateless` eller `--project` vælges samme quiz uden lagring.
+Åbn den udskrevne lokale adresse. Quizzen har et spørgsmål, kan betjenes
+med tastatur og viser både manglende, forkert og korrekt svar. Den
+indsætter ingen projektadapter eller gemmedialog. Svar gemmes ikke.
+
+For en app med gem og genåbn:
+
+```powershell
+python -B sdk/new_app.py --id idebog --name "Min idébog" --port 8891 --project
+python -B sdk/check_app.py --app idebog
+python -B sdk/preview.py --app idebog
+```
+
+Opretteren skriver kun den nye mappe `apps/<id>/` og afviser eksisterende
+mapper, links/junctions, ugyldige identiteter og portkonflikter. Den ændrer
+ikke systemkode, rodfilernes buildkommandoer eller andre apps.
+
+`preview.py` pakker appens filer til en midlertidig mappe, kontrollerer den
+med den rigtige pakkekontrakt og bruger den eksisterende lokale vært,
+temabro og projektbro. Kun loopback-porten i manifestet åbnes. Projektdata
+fra prøven er midlertidige og fjernes ved Ctrl+C. Prøven starter ingen kø,
+opdateringstjeneste eller installation og afviser apps med køcapabilities.
+Den erstatter ikke en installeret prøve med elevbjælke, offline genstart
+og lærerens adgangsstyring.
+
+## 2. Appens egne filer og kontrakt
+
+Opretteren giver følgende filer:
+
+| Fil | Ansvar |
+|---|---|
+| `apps/<id>/app.json` | Deklarativ identitet, version, port, SDK, projektformat og capabilities |
+| `apps/<id>/files.json` | Præcis kilde- og pakkeejerskabsliste |
+| `apps/<id>/web/index.html`, `style.css`, `app.js` | Færdig, lokal brugerflade |
+| `apps/<id>/web/notes-adapter.mjs` | Kun i projektvarianten: typet notesformat og adapter |
+| `apps/<id>/README.md` | Appens lokale kontrol og prøvekommandoer |
+
+Manifestet valideres af `system/app/app_catalog.py`, ikke en kopi af
+reglerne i SDK'et. Pakken hedder `makervaerkstedet-app-<id>`. Projektets
+`kind` er samme id; filendelsen afledes af id'et, uden bindestreger og med
+`.mkv` til sidst. Den faktisk valgte endelse står i manifestet. Kollisioner
+og reserverede formater afvises. Tilføj ikke en ny projekttype til gamle
+faste lister: den installerede descriptor registrerer formatet dynamisk.
+
+`files.json` læser kun appens egen kildemappe. Pakkens programfiler må kun
+ligge under `usr/share/makervaerkstedet/apps/<id>/`. Der følger ingen
+Python-hooks, shellkommandoer, systemd-filer, profiler, nøgler eller
+elevdata med. Kernen importerer ikke appkode.
+
+Bump kun appens `version`, når den ændres. Hold `sdk`, `min_core` og
+capabilities i overensstemmelse med den faktisk brugte kontrakt. Den
+aktuelle SDK-version er 1; nye apps kræver mindst core `2.1.0~`.
+Den offentlige katalogvalidering kontrollerer også pakkeidentitet,
+portkonflikter, projektformater, artefakthash og kildecommit.
+
+## 3. Tema, logo, skrifttype og navigation
+
+`theme-v1` i skabelonens optional capabilities får værten til at indsætte
+`/school-theme.css` og `/school-theme.js`. Værten leverer også
+`/assets/metrophobic-latin.ttf`. Brug `--brand` og `--brand-dark`, og behold
+`data-school-name`, `.brand` og `.brand-mark`, så skolens validerede lokale
+profil kan sætte navn og logo. Medtag ingen skolespecifik profil i appen.
+Det fælles skoletema kan indlæse den godkendte lokale profiltypografi.
+Appens offentlige standard er Metrophobic.
+
+Brug almindelig browsernavigation og elevbjælkens «Til start».
+Et sideskift i projektvarianten går gennem den fælles afslutningsdialog.
+Brug ikke `location.replace` til at omgå den og opret ikke egne elevkonti.
+Sidens titel må ikke begynde med `Makerværkstedet · Værksteder`, som
+identificerer startsiden. Den synlige projektkreditering bevares uafhængigt
+af skolens navn og logo.
+
+## 4. Gem, genåbn og elevskift
+
+For en descriptor med `project` indsætter værten automatisk
+`/_elevhub/projekter/bridge.js`, som bruger den faste projekt- og
+sessionbro. Den venter på `window.ElevhubProjectAdapter`. Skabelonens
+notesadapter viser den fulde kontrakt:
+
+- `type`, `extension`, `name()`, `export()` → Blob,
+  `import(blob, name)` og `reset()`.
+- `validateImport(blob)` afviser fremmede, beskadigede og for store filer,
+  før åbent arbejde ændres.
+- `signature()` er stabil for uændret indhold, `hasContent()` opdager
+  eksisterende arbejde, og `setName()` følger det fælles projektnavn.
+
+Appen validerer sine egne opaque bytes: noter har schema, app-id og tekst.
+Systemet opbevarer og versionerer filerne uden at eksekvere dem. Der er
+ingen automatisk genåbning af den forrige elevs dokument. `reset()` tømmer
+både indhold og navn. Gem ikke elevindhold i localStorage eller cookies.
+
+Projektbroen ejer klasse/navn/projektnavn, gem/åbn, gendannelse og
+`/_elevhub/session/poll`/`ack`. Send ikke `elevhub-project-changed` ved
+hvert tastetryk: det ophæver den eksisterende projektbinding. Brug eventet,
+når appen selv erstatter projektet uden om broen. Skabelonen behøver det
+ikke under almindelig indtastning.
+
+Appens grænse er 1 MiB og 100.000 tegn i noteseksemplet; øg kun inden for
+systemets grænse på 50 MiB. Ugyldig import skal bevare det åbne dokument.
+Prøv også afvisning, gemmefejl, genåbning, elevskift og gendannelse.
+
+## 5. Valgfri aflevering til kø
+
+`sdk/examples/queue.mjs` er et tilvalgseksempel og udfører intet ved
+indlæsning. Kopiér det ind i appens egen `web/`-mappe og deklarér den
+konkrete optional/required capability i `app.json`:
+
+| Capability | Fast lokal route | Data |
 |---|---|---|
-| Statisk webapp uden aflevering | Mappe med `index.html`, serveret af `elevhub-lokal` på egen port | Scratch, micro:bit (`linux-elevhub/projekter/lokal.py`) |
-| Aflevering til laser- eller printkøen | Side i designtjenesten `elevhub-design` | Laser, folie, 3D (`app/laser_local.py`) |
-| Ekstern hjemmeside | Hub-app af typen `web` med `start_url` og præcise `domaener`; ingen lokal kode | MakeCode bag micro:bit |
+| `laser-submit-v1` | `POST /api/laser/submit` | JSON med `elevnavn`, `klasse`, `projekt`, `svg`, `requestId` |
+| `print-job-v1` | `POST /api/jobs` | Binær STL; `X-Filename` og `X-Request-ID` |
 
-Begynd med den statiske vej, hvis du kan. Designtjenesten har faste
-fillister og porte i koden og er dyrere at udvide. En ny afleveringstype
-(andet end `laser-submit` og `print-job`) er en server- og
-sikkerhedsændring og kræver særskilt aftale.
+Hvis `aflevering` sættes, er værdien kun `laser-submit` eller `print-job`
+og skal have den tilsvarende capability. Værten vælger den eksisterende
+lokale gateway. Appen får ingen vilkårlig serveradresse, shelladgang eller
+nye endpoints. Indholdet valideres igen af gatewayen.
 
-## Kontrakter appen skal overholde
+Opret ét `crypto.randomUUID()` ved elevens konkrete aflevering, og genbrug
+samme id ved afklaring/genforsøg af samme aflevering. Automatisk gentagelse
+med nye id'er kan skabe dubletter. Netværksfejl eller ukendt kvittering
+betyder ukendt udfald; behold arbejdet og bed om afklaring.
 
-**Lokalt og offline**
+Eksemplet skelner mellem `202` med `queued: true` («Gemt i udbakken.
+Venter på forbindelse»), en `200`/`201` med kø-id («Modtaget i køen») og
+lærerens efterfølgende fysiske arbejde. Det kalder aldrig en kvittering
+for fysisk færdig. `423` vises som lærerens lukning; afvisning bevarer
+elevens arbejde. Prøv kun med mocks eller aftalt testmiljø. En reel
+laser-/printaflevering er ikke en harmløs SDK-test.
 
-- Alle filer følger med; intet fra CDN. Kræver appen internet, sættes
-  `kraever_internet` til `true` i manifestet, og kortet får mærket «Kræver
-  internet».
-- Tjenesten lytter kun på loopback. `Host` skal være `127.0.0.1:<port>`.
-- Ingen skoledata, nøgler eller navne i koden. Brug syntetiske testdata.
+## 6. Kontrol og selvstændigt byg
 
-**Navigation og afslutning**
+Fra produktroden:
 
-- Sidens `<title>` må ikke begynde med `Makerværkstedet · Værksteder`; den
-  tekst bruger elevbjælken til at genkende startsiden.
-- «Til start» går tilbage i browserhistorikken. Brug ikke
-  `location.replace` væk fra startsiden, og åbn ikke nye vinduer.
-- Gemmer appen arbejde, skal den svare på afslutningsforespørgslen
-  (`/_elevhub/session/poll` og `…/ack`), så eleven får gem/kassér, før
-  bjælken forlader siden. Projektbroen gør det for dig, se næste punkt.
+```powershell
+python -B -m unittest discover -s tests -p test_sdk_template.py -v
+python -B -m unittest discover -s tests -p test_app_catalog.py -v
+python -B -m unittest discover -s tests -p test_app_package_ownership.py -v
+python -B sdk/check_app.py --app idebog
+python -B scripts/public_source.py --check
+```
 
-**Gem og genåbn**
+SDK-testen opretter kun midlertidige apps. Den prøver pakkeejerskab,
+link-/overskrivningsafvisning, opaque import/eksport/reset, rigtige lokale
+HTTP-routes og tema/font/projektbro samt køeksemplets kvitteringer med
+mocks. Den tilføjer ingen sjette indbygget app.
 
-- Definér `window.ElevhubProjectAdapter`, når editoren er klar; broen venter
-  på adapteren. Påkrævet:
-  `type`, `extension`, `name()`, `export()` (Blob eller Promise med Blob), `import(blob, name)` og
-  `reset()`. Forbillede: `linux-elevhub/server/scratch/local-project-adapter.js`.
-- Den lokale HTTP-tjeneste indsætter broen i appens HTML. Kilderne er
-  `linux-elevhub/projekter/web/projekt-bridge.js` og
-  `linux-elevhub/projekter/web/project-session.js`; URL'erne er
-  `/_elevhub/projekter/bridge.js` og `/_elevhub/projekter/session.js`.
-  Den viser den fælles projektdialog med klasse,
-  fornavn og projektnavn, gem/åbn, og en gendannelseskopi hvert 15. sekund.
-- `signature()` er valgfri, men skal være stabil for uændret projektindhold,
-  hvis den bruges. Uden den sammenligner broen de eksporterede bytes.
-  `hasContent()` kan beskytte arbejde, som allerede var åbent ved opstart.
-  `elevhub-project-changed` bruges ved et nyt/erstattet projekt uden om
-  projektbroen; udsend det ikke ved hvert tastetryk, da det ophæver den
-  eksisterende projektbinding. Se den faktiske håndtering i `project-session.js`.
-- `reset()` skal efterlade en tom app til næste elev. Forrige elevs projekt
-  må aldrig åbne af sig selv.
-- Projekter slettes efter 30 dage uden gemte ændringer; højst 50 MiB pr. fil.
-- En ny projekttype skal tilføjes de faste lister i
-  `linux-elevhub/projekter/` (`workshop_sessions.py` `KINDS`,
-  `projektarkiv.py` `TYPES` og `EXTENSIONS`, `filtyper.py`,
-  `project_open.py`, `scanner.py`, `linux-elevhub/projekter/web/projekter.js`).
+De to statiske skabeloner er klar til pakning uden bundling. Eksisterende
+apps med bundling bygger fra deres egne mapper:
 
-En app uden projektlagring er endnu ikke en generel tilvalgsvej i denne
-værkstedsvært: den indsatte projektbro venter på en adapter. Et eksplicit
-fravalg af projektflowet indgår i den planlagte fælles appkontrakt.
+```powershell
+npm run build:laser
+npm run build:model3d
+npm run build
+# En kildeeksport kan genbruge en eksisterende fastlåst node_modules:
+npm run build:model3d -- --dependencies C:/sti/til/node_modules
+npm run build -- --dependencies C:/sti/til/node_modules
+```
 
-**Aflevering til køerne**
+`build:laser` delegerer til `apps/folie/build.mjs`, `build:model3d` til
+`apps/3dprint/build.mjs`, mens `build` bygger systemets viewer og Folie.
+3D-bygget har kilde-/font-/licenskvittering, som pakkegaten kontrollerer.
+`package-lock.json` skal bevares. Scratch har sit eget dokumenterede byg
+under `apps/scratch/build/`.
 
-- Siden sender til sin egen loopback-adresse; den lokale tjeneste
-  videresender til serveren. Appen taler aldrig selv med serveren.
-- `laser-submit`: `POST /api/laser/submit` med JSON
-  `{elevnavn, klasse, projekt, svg, requestId}`. `print-job`:
-  `POST /api/jobs` med binær STL og `X-Request-ID`.
-- Svar **202** `{"queued": true}` betyder «venter på forbindelse».
-  Udbakken sender igen med samme `requestId`. Sig det på skærmen: sendt,
-  venter og fysisk færdig er tre forskellige ting.
-- 423 betyder, at læreren har lukket værkstedet; 400/413 er en afvisning,
-  som eleven skal se som en dansk besked.
+For en statisk skabelon fremstilles én apppakke på Debian 13 amd64/WSL.
+Her er `out/app-idebog` en ny, lokal outputmappe:
 
-**Brugerflade**
+```bash
+python -B system/linux-elevhub/packaging/prepare_app_inputs.py \
+  --source-root "$PWD" --app idebog --output-dir out/app-idebog
+python -B system/linux-elevhub/packaging/build_debian.py \
+  --input-lock out/app-idebog/makervaerkstedet-app-idebog.json \
+  --output out/app-idebog/makervaerkstedet-app-idebog_1.0.0_all.deb
+```
 
-- Følg [UI/UX-kravene](UI-UX-KRAV.md): elever fra 2. klasse, dansk
-  klarsprog, WCAG 2.2 AA, klikmål på 44 × 44 px, tastatur og synligt fokus,
-  intet der kun kan gøres ved at trække.
-- Vurdér ved 1024 × 688 og 1024 × 768. Elevenhedens skærm er lille.
-- Brug skolens tema: `web/school-theme.css` og `web/school-theme.js` giver
-  `--brand` og `--brand-dark`. Skriv ikke egne mærkefarver ind i appen.
-  Skriften er Metrophobic (`web/assets/metrophobic-latin.ttf`).
-- Alle UI-ændringer skal vurderes af en UI/UX-specialist efter
-  [rollekortet](agenter/UI-UX-AGENT.md), i renderet tilstand.
+Det bygger ingen hovedsystempakke og installerer intet. Inputlock og
+`.inputs.json` er byggekvitteringer, ikke skolekonfiguration. En appændring
+må ikke ændre hovedsystemets kildehash eller version. Ved 3D-pakning fra
+frossen kilde kan `prepare_app_inputs.py --vendor-built-from /sti/til/byg`
+pege på de faktiske kilder, som kvitteringen blev bygget fra.
 
-**Licens og kreditering**
+## 7. Signeret katalog og distribution
 
-- Egne dele er GPL-3.0-or-later; `linux-elevhub/` er MIT. Tredjepart
-  beholder egen licens og skal med i [CREDITS.md](../CREDITS.md) og pakkens
-  licensfiler. Se [licensafgrænsningen](../LICENSE-SCOPE.md).
-- Projektets kreditering skal være synlig i appen og må ikke kunne fjernes
-  af skolekonfigurationen.
+Kør kun efter review og konkret udgivelsesmandat. Brug et fastlagt,
+committet kildecommit, uændrede tillidsankre og eksisterende signer.
+Ingen appudvikler behøver at oprette eller eksportere private nøgler.
 
-## Tjekliste: registrér en statisk app
+`build_app_catalog.py` tager følgende præcise inputstruktur. Størrelse og
+SHA256 tages fra den faktisk byggede `.deb`; descriptoren læses fra
+`apps/idebog/app.json`. `source_commit` er 40 små Git-hextegn fra den
+reviewede kilde. Version, sequence og release-tag vælges til udgivelsen;
+sequence må ikke genbruges eller rulles tilbage.
 
-Eksemplet er en app med id `X` og port `P`. Vælg en ledig port i
-8790–8799-området (optaget: 8790–8798) eller en anden over 1024, og brug
-samme `id` alle steder; id'et er små bogstaver, tal og bindestreg.
+```json
+{
+  "schema": 2,
+  "version": "1.0.0",
+  "sequence": 1,
+  "source_commit": "<40 hextegn fra reviewet commit>",
+  "release_tag": "apps-1.0.0",
+  "packages": [{"path": "/absolut/sti/makervaerkstedet-app-idebog_1.0.0_all.deb",
+                "size": 1234, "sha256": "<64 hextegn>",
+                "package": "makervaerkstedet-app-idebog", "version": "1.0.0", "architecture": "all"}],
+  "app_descriptors": ["<erstat med hele objektet fra app.json>"]
+}
+```
 
-1. **Appens filer.** Læg dem i en kildemappe med `index.html`, som de andre
-   lokale apps under `linux-elevhub/server/`. Byggetrin tilføjes i
-   `package.json`, hvis appen skal bundtes.
-2. **Lokal servering.** Tilføj `X: P` til `APPS` i
-   `linux-elevhub/projekter/lokal.py`, og få filerne med i pakken i
-   `linux-elevhub/packaging/prepare_inputs.py` (se hvordan `microbit`
-   medtages).
-3. **Manifest.** Tilføj en række i `APP_MANIFESTS` i samme
-   `prepare_inputs.py`: id, navn, start-URL, `offline`, `aflevering` og
-   `kraever_internet`. Feltreglerne står i
-   `linux-elevhub/projekter/app_manifests.py`.
-4. **Hubbens katalog.** Tilføj appen i
-   `linux-elevhub/server/elevhub/konfiguration.json` og
-   `windows-elevhub/server/hub/konfiguration.windows.json` som type `lokal`
-   med `port` og `lokal_service: true`. Uden den vises kortet kun offline,
-   og læreren kan ikke åbne eller lukke appen.
-5. **Tilladte lokale adresser.** `APP_URLS` og standardportene i
-   `linux-elevhub/administration/template_activation.py`, samt
-   `linux-elevhub/ansible/roles/kiosk/defaults/main.yml` og
-   `linux-elevhub/ansible/roles/kiosk/tasks/main.yml`. Ellers
-   blokerer browserpolitikken siden, når læreren har lukket internettet.
-6. **Chromium-politik.** Porten i `InsecureContentAllowedForUrls` i
-   `linux-elevhub/ansible/roles/kiosk/templates/chromium-politik.json.j2`.
-7. **Klar-kontrol efter opdatering.** `ENDPOINTS` i
-   `linux-elevhub/administration/runtime_checks.py`; en manglende port får
-   opdateringen til at fejle.
-8. **Kortet på startsiden.** Tekst, gruppe (`byg`, `kode` eller `ide`),
-   billede, trin og idéer i
-   `linux-elevhub/server/elevhub/web/assets/workshops.js`. Uden det får
-   appen kun et standardkort uden detaljeside.
-9. **Offentlig kilde.** Nye filer i
-   `deployment/public-source-manifest.json`; kør
-   `python -B scripts/public_source.py --check`.
-10. **Dokumentation.** Opdatér statustabellen i
-    [APP-PLATFORM.md](APP-PLATFORM.md), og tilføj licens i `CREDITS.md`.
+Pladsholderne er dokumentation, ikke gyldige input. Katalogproducenten
+kontrollerer de faktiske native pakkefelter og den pakkede descriptor:
 
-En app i designtjenesten kræver desuden port og sider i
-`app/laser_local.py`, de faste fillister i `app/laser_server.py` og
-`linux-elevhub/ansible/roles/kiosk/tasks/main.yml` (`kiosk_lokal_design_filer`,
-som læses med et regulært udtryk; bevar formatet) og
-`linux-elevhub/ansible/roles/kiosk/templates/elevhub-design.service.j2`.
+```bash
+python -B scripts/build_app_catalog.py \
+  --inputs /privat/byg/catalog-inputs.json --output /privat/byg/catalog.json
+```
 
-## Afprøvning
+Det resultat er endnu usigneret. Den eksisterende udgivelsesvej samler
+basis + én app (`--release-set app`) eller det samlede migrationssæt og
+kører isoleret apt-simulering med de præcise pakker:
 
-Kildelæsning beviser ikke, at appen kan ses, klikkes eller gemmes.
+```bash
+python -B system/linux-elevhub/packaging/build_release.py \
+  --release-set app --input-locks /privat/byg/elev.json /privat/byg/updater.json \
+  /privat/byg/matchbox.json /privat/byg/idebog.json \
+  --output-dir /privat/byg/release --report-dir /privat/byg/reports \
+  --debian-keyring /sti/til/verificeret/debian-archive-keyring.gpg
+```
 
-- **Enhedstests du skal udvide:** `linux-elevhub/tests/test_app_manifests.py`,
-  `test_app_manifest_packages.py` (forventede apps står som fast liste),
-  `test_internetregler.py`, `test_workshop_launcher.py` og, hvis appen
-  gemmer projekter, `test_lokale_projekter.py` og
-  `test_project_opening.py`. På hub-siden
-  `linux-elevhub/server/elevhub/test_vaerksteder.py`.
-- **Startsiden i browser:** `test_kiosk_manifest_browser.cjs`,
-  `test_kiosk_offline_catalog.cjs` og `test_kiosk_offline_reconnect.cjs`.
-- **Kendte fejl:** se `tests/KENDTE-FEJL.txt`, før du tolker en rød test som
-  din egen.
-- **Byg fra den valgte, frosne kilde** i Debian 13 amd64, fx WSL. Følg
-  [pakkernes byggekontrakt](../linux-elevhub/packaging/README.md) og
-  [udgivelsesprocessen](UDGIVELSESPROCES.md): verificerede inputlocks,
-  `build_release.py` og faktisk apt-simulering af de fire præcise pakker.
-  Hjælperen `linux-elevhub/packaging/build_from_source.sh` bygger fra
-  `git archive HEAD`; ikke-committede appfiler kommer ikke med. Hjælperens
-  historiske Scratch-inputnavne skal afstemmes med de verificerede byggeinputs.
-- **Installeret prøve:** installér pakkerne på en ikke-tilmeldt testmaskine
-  og kør forløbet i en rigtig browser ved 1024 × 688: udfyld klasse, navn og
-  projektnavn, lav noget, gem, gå til start, genåbn, og kontrollér at næste
-  elev får tomme felter. Genbrug
-  [udgivelsesprøverne i repoet](../scripts/release_qa/README.md):
-  `install_student_packages.py`, `installed-laser.cjs`, `installed-folie.cjs`
-  og `installed-3d.cjs` under `scripts/release_qa/`. De dækker de eksisterende
-  apps; en ny app skal have et tilsvarende faktisk browserforløb.
-- **Offline:** stop forbindelsen til serveren og gentag forløbet, også
-  efter genstart af enheden. En aflevering skal ende i udbakken og sendes,
-  når serveren er tilbage.
+GPG-signeret apt-repository fremstilles med `scripts/build_apt_repository.py`
+(`--inputs`, `--output`, `--gpg-exe`, `--gpg-sha256`, `--gnupg-home`,
+`--key-fingerprint`, `--receipt`). Inputschema 2 skal binde samme release-set,
+app-descriptors, pakkehashes og den beståede isolerede installationsgate.
+Brug de eksisterende signer-/receipt-værktøjer beskrevet i
+[udgivelsesprocessen](UDGIVELSESPROCES.md); udfyld ikke kvitteringer i hånden.
 
-## Færdig betyder
+Fra Windows bruges det eksisterende DPAPI-beskyttede signer-materiale til
+feed og minisign-katalog. Alle parametre er faktiske stier/hashes fra den
+kontrollerede udgivelse, og outputmapper skal være nye:
 
-- Kortet vises på startsiden både med og uden server, og læreren kan åbne
-  og lukke appen i kontrolpanelet.
-- Gem, «Til start», genåbn og elevskift virker i installeret tilstand.
-- Appen virker efter kold opstart uden server.
-- UI/UX-review er gennemført på den renderede app.
-- Tests, licenser og den offentlige kildekontrol er opdateret.
-- Afleveringen skelner mellem kilde, bygget pakke og testinstallation.
-  Installation på skolens udstyr og publicering kræver egen bestilling.
+```powershell
+python -B scripts/build_simple_feed.py --repo C:/byg/signeret-apt --output C:/byg/feed `
+  --receipt C:/privat/byg/apt-receipt.json --app-catalog C:/privat/byg/catalog.json `
+  --app-catalog-sha256 <katalogets-SHA256> --minisign-exe C:/vaerktoej/minisign.exe `
+  --minisign-sha256 <vaerktoejs-SHA256> --public-key <eksisterende-offentlig-noegle> `
+  --release-tag apps-1.0.0 --sequence <naeste-sequence> --result C:/privat/byg/feed-result.json
+```
+
+Kommandoen kontrollerer apt-receipt, pakke-/katalogbinding og eksisterende
+signaturankre; den publicerer ikke. Publicering til det faste GitHub-feed og
+installation på skolens drift kræver deres konkrete bestilling. Ændr ikke
+repoidentitet, updaterens offentlige nøgle eller tillidsanker for at få en
+lokal app accepteret.
+
+## 8. Lærerens installation, opdatering og fjernelse
+
+I lærerens kontrolpanel vælges **Appkatalog**, en godkendt app, de konkrete
+elevcomputere og **Installér**, **Opdatér** eller **Afinstallér**. Bekræft
+bestillingen. En bestilling er ikke en bekræftet installation; følg
+computernes rapporterede tilstand. Gemte projekter bevares ved fjernelse,
+og et offline apparat venter på forbindelse. Standardsæt gælder nye
+tilmeldte elevenheder, ikke en tavs masseinstallation på eksisterende.
+
+Den faktiske HTTP-kontrakt er `GET /api/admin/apps` og
+`POST /api/admin/apps/order` med lærerlogin, samme Origin og disse felter:
+
+```json
+{"command_id":"<nyt UUID>","expected_revision":12,"devices":["<enheds-id>"],
+ "app_id":"idebog","action":"install","catalog_sha256":"<godkendt kataloghash>"}
+```
+
+Brug `update` eller `remove` for de andre handlinger. Revision, enheder og
+kataloghash hentes fra den aktuelle GET-status. Genbrug samme command-id
+og nøjagtige payload ved **Afklar samme bestilling**; lav ikke blindt en
+ny efter ukendt udfald. Ved 409 hentes frisk status før en ny beslutning.
+`POST /api/admin/apps/defaults` bruger `command_id`, `expected_revision`,
+`catalog_sha256` og listen `apps`. Kataloget accepterer ingen vilkårlig
+apt-pakke eller URL, og elevbrowseren kan ikke udføre lærerordrer.
+
+## Færdigkontrol
+
+Prøv den faktisk renderede app ved 1024 × 688 og 1024 × 768, også med
+tastatur og relevant zoom. Målgruppen skal kunne forstå første handling,
+fejl og næste skridt. Følg [UI/UX-kravene](UI-UX-KRAV.md), synligt fokus,
+44 × 44 px klikmål og dansk klarsprog; få et uafhængigt review efter
+[UI/UX-rollekortet](agenter/UI-UX-AGENT.md).
+
+Afprøv projektvarianten fra navngivning til gem, afslutning, genåbning og
+ny elev med tomme felter. Prøv installeret offline/kold opstart og fejl,
+uden at starte fysisk maskinarbejde. Kontroller licenser og kreditering,
+offentlig kildeallowlist og at ingen skoledata er kommet med. Aflever med
+præcis skelnen mellem kilde, lokal byggeprøve, signeret udgivelse,
+testinstallation og drift. En plan eller grøn kildetest erstatter ingen af dem.

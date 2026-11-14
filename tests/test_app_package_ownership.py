@@ -1,4 +1,9 @@
 """Independent archives cannot claim the base, another app, or pupil data."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import importlib.util
 import json
 import hashlib
@@ -10,7 +15,7 @@ import unittest
 from tests.test_app_catalog import descriptor
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / 'linux-elevhub/packaging'))
+sys.path.insert(0, str(source_path('linux-elevhub/packaging', ROOT)))
 from build_debian import build
 packages = (__import__('app.app_packages', fromlist=['x'])
             if importlib.util.find_spec('app.app_packages') else None)
@@ -74,7 +79,7 @@ class AppOwnershipTests(unittest.TestCase):
             manifest = json.loads((folder/'files.json').read_text())
             self.assertTrue(manifest['files'] or app['id'] == 'scratch')
         self.assertEqual(ids, {'laser', 'folie', '3dprint', 'scratch', 'microbit'})
-        allowlist = json.loads((ROOT/'linux-elevhub/packaging/base-design-files.json').read_text())
+        allowlist = json.loads((source_path('linux-elevhub/packaging/base-design-files.json', ROOT)).read_text())
         app_ui = {'web/laser.html', 'web/laservaerksted', 'web/model3d.html', 'web/model3d.css'}
         self.assertFalse(app_ui.intersection(allowlist))
 

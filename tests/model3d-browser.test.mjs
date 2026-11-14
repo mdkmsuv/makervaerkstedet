@@ -9,8 +9,9 @@ import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
+import {sourcePath} from '../scripts/repository-layout.mjs';
 
-const root = fileURLToPath(new URL('../', import.meta.url)), web = path.join(root, 'web');
+const root = fileURLToPath(new URL('../', import.meta.url)), web = path.join(root, 'apps/3dprint/web');
 const {chromium} = createRequire(path.join(root, 'package.json'))('playwright');
 const types = {'.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.ttf': 'font/ttf', '.svg': 'image/svg+xml', '.json': 'application/json', '.txt': 'text/plain; charset=utf-8'};
 const csp = "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
@@ -25,10 +26,14 @@ test.before(async () => {
     return;
   }
   server = http.createServer(async (request, response) => {
-    const file = path.resolve(web, '.' + decodeURIComponent(new URL(request.url, 'http://x').pathname));
+    const route = new URL(request.url, 'http://x').pathname;
+    // The standalone editor has no project shelf or saved school profile.
+    if (route === '/project-import-config.js') return response.writeHead(200, {'Content-Type':'text/javascript'}).end('window.ElevhubProjectOrigins=[];');
+    if (route === '/api/school-appearance') return response.writeHead(200, {'Content-Type':'application/json'}).end(JSON.stringify({theme:'red',school_name:'Syntetisk QA-skole'}));
+    const file = path.resolve(web, '.' + decodeURIComponent(route));
     if (!file.startsWith(web + path.sep)) { response.writeHead(403).end(); return; }
     try {
-      const body = await readFile(file);
+      const body = await readFile(sourcePath('web/' + path.relative(web, file).split(path.sep).join('/'), root));
       response.writeHead(200, {'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Content-Security-Policy': csp, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store'}).end(body);
     } catch { response.writeHead(404).end(); }
   });

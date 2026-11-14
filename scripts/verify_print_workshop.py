@@ -8,6 +8,8 @@ import tempfile
 import threading
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
+from repository import source_path
 sys.path.insert(0, str(ROOT))
 from app.server import Application, Handler, Server
 from scripts.smoke_slice import cube
@@ -24,7 +26,7 @@ with tempfile.TemporaryDirectory(prefix='elevhub-print-audit-') as folder:
     env = dict(os.environ, PRINT_AUDIT_BASE=f'http://127.0.0.1:{server.server_port}',
                PRINT_AUDIT_TOKEN=server.app.token, PRINT_AUDIT_STL=str(stl))
     try:
-        result = subprocess.run(['node', str(ROOT/'scripts/verify_print_workshop.cjs')], env=env, cwd=ROOT, timeout=120)
+        result = subprocess.run(['node', str(source_path('scripts/verify_print_workshop.cjs', ROOT))], env=env, cwd=ROOT, timeout=120)
     finally:
         server.shutdown()
         runner.join()

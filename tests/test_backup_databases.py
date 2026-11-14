@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 from contextlib import closing
 from pathlib import Path
 import sqlite3
@@ -11,8 +16,8 @@ import app.backup_databases as backup_databases
 from app.core import Queue
 from app.laser_server import Inbox
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'linux-elevhub' / 'server'))
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'linux-elevhub' / 'server' / 'elevhub'))
+sys.path.insert(0, str(source_path('linux-elevhub/server', Path(__file__).resolve().parents[1])))
+sys.path.insert(0, str(source_path('linux-elevhub/server/elevhub', Path(__file__).resolve().parents[1])))
 from makerspace_api import MakerspaceService  # noqa: E402
 
 SVG = '<svg xmlns="http://www.w3.org/2000/svg" data-laservaerksted="1" width="20mm" height="20mm" viewBox="0 0 20 20"><g data-operation="cut"><path data-operation="cut" d="M1 1H19V19H1Z"/></g></svg>'

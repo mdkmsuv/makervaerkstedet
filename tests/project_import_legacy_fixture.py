@@ -6,7 +6,7 @@ import tempfile
 import threading
 from urllib.parse import urlsplit
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path[:0] = [str(Path(__file__).resolve().parents[1] / "system"), str(Path(__file__).resolve().parents[1])]
 from app.laser_server import Handler, create_server
 
 

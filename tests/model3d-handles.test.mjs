@@ -11,7 +11,7 @@ const load = async file => {
   const bundle = await build({entryPoints: [path.join(source, file)], nodePaths: [path.join(dependencies, 'node_modules')], bundle: true, platform: 'node', format: 'esm', write: false});
   return import('data:text/javascript;base64,' + Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 };
-const H = await load('web/model3d/handles.js'), S = await load('web/model3d/scene.js');
+const H = await load('apps/3dprint/web/model3d/handles.js'), S = await load('apps/3dprint/web/model3d/scene.js');
 const checks = [], check = (name, fn) => { fn(); checks.push(name); };
 const box = {min: [-10, -10, -10], max: [10, 10, 10]}, near = (a, b, t = 1e-9) => assert(Math.abs(a - b) < t, `${a} != ${b}`);
 

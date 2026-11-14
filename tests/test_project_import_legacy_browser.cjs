@@ -3,11 +3,11 @@
 // backends. The current Laser editor uses a separate JSON project format.
 const assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 const {spawn}=require('node:child_process'),{createHash}=require('node:crypto');
-const {loadPlaywright}=require('../linux-elevhub/tests/student_journey_fixture.js');
+const {loadPlaywright}=require('../system/linux-elevhub/tests/student_journey_fixture.js');
 const {chromium}=loadPlaywright(),root=path.resolve(__dirname,'..');
 (async()=>{
  const report={startedAt:new Date().toISOString(),reason:'Preserve current HTML/shared receiver on older running backends returning 404 for the config script, with only historical exact parents and authoritative modern config.',flows:[],inputs:{},errors:[]};
- for(const name of ['web/project-import.js','app/project_origins.py','app/laser_server.py','web/laser.html','tests/test_print_project_import.cjs','tests/project_import_legacy_fixture.py','tests/test_project_import_legacy_browser.cjs'])report.inputs[name]=createHash('sha256').update(await fs.readFile(path.join(root,name))).digest('hex');
+ for(const name of ['system/web/project-import.js','system/app/project_origins.py','system/app/laser_server.py','apps/folie/web/laser.html','tests/test_print_project_import.cjs','tests/project_import_legacy_fixture.py','tests/test_project_import_legacy_browser.cjs'])report.inputs[name]=createHash('sha256').update(await fs.readFile(path.join(root,name))).digest('hex');
  let child,browser;let stderr='';
  try{
   child=spawn(path.join(root,'.venv/Scripts/python.exe'),['-B',path.join(__dirname,'project_import_legacy_fixture.py')],{cwd:root,stdio:['pipe','pipe','pipe'],windowsHide:true,env:{...process.env,PYTHONIOENCODING:'utf-8'}});child.stderr.on('data',chunk=>stderr+=chunk);

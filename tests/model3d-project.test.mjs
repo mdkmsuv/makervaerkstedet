@@ -7,7 +7,7 @@ const [dependencies=root, source=root]=process.argv.slice(2);
 const require=createRequire(path.join(dependencies,'package.json'));
 const {build}=require('esbuild');
 async function load(name) {
-  const bundle=await build({entryPoints:[path.join(source,'web/model3d/'+name+'.js')],nodePaths:[path.join(dependencies,'node_modules')],bundle:true,platform:'node',format:'esm',write:false});
+  const bundle=await build({entryPoints:[path.join(source,'apps/3dprint/web/model3d/'+name+'.js')],nodePaths:[path.join(dependencies,'node_modules')],bundle:true,platform:'node',format:'esm',write:false});
   return import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64'));
 }
 const {encodeProject,decodeProject}=await load('project');

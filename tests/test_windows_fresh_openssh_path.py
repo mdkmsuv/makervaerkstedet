@@ -1,7 +1,12 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import importlib.util,os,unittest
 from pathlib import Path
 from unittest.mock import patch
-p=Path(__file__).parents[1]/"windows/inno/lifecycle.py"
+p=source_path('windows/inno/lifecycle.py', Path(__file__).parents[1])
 s=importlib.util.spec_from_file_location("fresh_lifecycle",p);m=importlib.util.module_from_spec(s);s.loader.exec_module(m)
 class FixedPath(unittest.TestCase):
  def test_command_adds_only_fixed_openssh_not_operator_path(self):

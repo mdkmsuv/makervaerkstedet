@@ -21,6 +21,8 @@ import time
 
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
+from repository import source_path
 
 # These are the maintained Python test entry points.  Keep each invocation
 # independent so unittest's import state cannot leak between suites.
@@ -28,18 +30,18 @@ SUITES = (
     ("node-cjs", None, None),
     ("windows-shared", "tests", "test_*.py"),
     ("school-setup", "deployment/school-setup", "test_*.py"),
-    ("windows-server", "windows-elevhub/server/tests", "test_*.py"),
-    ("linux-server", "linux-elevhub/server/elevhub", "test_*.py"),
-    ("linux-client", "linux-elevhub/tests", "test_*.py"),
+    ("windows-server", "system/windows-elevhub/server/tests", "test_*.py"),
+    ("linux-server", "system/linux-elevhub/server/elevhub", "test_*.py"),
+    ("linux-client", "system/linux-elevhub/tests", "test_*.py"),
 )
 
 
 def _standard_cjs_tests() -> list[Path]:
     """Return ordinary CJS fixtures, excluding opt-in browser audits."""
-    paths = list((ROOT / "tests").glob("*.cjs"))
-    paths += list((ROOT / "linux-elevhub" / "tests").glob("*.cjs"))
-    paths += list((ROOT / "linux-elevhub" / "server" / "microbit-controller").glob("test-*.cjs"))
-    paths += list((ROOT / "scripts").glob("test_*.cjs"))
+    paths = list((source_path("tests", ROOT)).glob("*.cjs"))
+    paths += list((source_path("linux-elevhub", ROOT) / "tests").glob("*.cjs"))
+    paths += list(source_path("linux-elevhub/server/microbit-controller",ROOT).glob("test-*.cjs"))
+    paths += list((source_path("scripts", ROOT)).glob("test_*.cjs"))
     return sorted(path for path in paths if path.is_file())
 
 
@@ -81,7 +83,7 @@ def _unittest_summary(result: dict[str, object]) -> str:
 
 
 def _local_python() -> str:
-    candidate = ROOT / ".venv" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    candidate = source_path(".venv", ROOT) / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
     return str(candidate) if candidate.is_file() else sys.executable
 
 

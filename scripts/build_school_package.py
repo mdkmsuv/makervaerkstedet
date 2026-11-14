@@ -2,10 +2,13 @@
 from __future__ import annotations
 import argparse, ast, hashlib, json, shutil, subprocess, sys, zipfile
 from pathlib import Path
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT / 'windows-elevhub'
-SETUP = ROOT / 'deployment' / 'school-setup'
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
+from repository import source_path
+SOURCE = source_path('windows-elevhub', ROOT)
+SETUP = source_path('deployment', ROOT) / 'school-setup'
 VERSION = '0.1.0-school.20261013'
 
 SETUP_FILES = ('Setup-School.ps1', 'Choose-Setup.ps1', 'school-layout.ps1', 'Start.cmd', 'Start-LaserStation.ps1',
@@ -119,7 +122,7 @@ def build(output: Path, role: str, school_name: str, theme: str, archive: bool =
     # Let the guide renderer resolve the actual installer README and commands.
     copy_setup_entrypoints(output)
     copy_documentation(output)
-    migration_note = ROOT / 'deployment' / 'school-setup' / 'LAES-MIG-FOER-INSTALLATION.txt'
+    migration_note = source_path('deployment', ROOT) / 'school-setup' / 'LAES-MIG-FOER-INSTALLATION.txt'
     if migration_note.is_file(): shutil.copy2(migration_note, output / migration_note.name)
     package_marker = json.loads((output / 'elevhub-package.json').read_text(encoding='utf-8'))
     # The server verifier requires its canonical build target; installation

@@ -1,4 +1,9 @@
 """Small real-file installer fixtures; no desktop, certificates, services or LAN."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -318,7 +323,7 @@ class LaserStationInstallTests(unittest.TestCase):
         for name in station.APP_FILES:
             target = selected / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / name, target)
+            shutil.copy2(source_path(name, ROOT), target)
         result = subprocess.run([sys.executable, '-I', '-B', '-c',
                                  'import sys; from pathlib import Path; sys.path.insert(0, sys.argv[1]); '
                                  'import app, app.laser_station, app.laser_station_install; '
@@ -344,7 +349,7 @@ options = {'connection_file': Path(sys.argv[4]), 'plates': Path(sys.argv[5])} if
 if sys.argv[7] == 'Install': options['port'] = int(sys.argv[8])
 installer.install(Path(sys.argv[2]), Path(sys.argv[3]), action=sys.argv[7], **options)
 '''
-        child = subprocess.Popen([sys.executable, '-I', '-B', '-c', code, str(ROOT), str(self.package),
+        child = subprocess.Popen([sys.executable, '-I', '-B', '-c', code, str(ROOT / "system"), str(self.package),
                                   str(self.install_root), str(self.connection), str(self.plates), str(signal), action, str(self.port)],
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
@@ -456,7 +461,7 @@ installer.install(Path(sys.argv[2]), Path(sys.argv[3]), action='Install',
                 connection.write_text(json.dumps({**self.connection_value, 'station_id': 'laser-' + name}), encoding='utf-8')
                 copying = self.root / ('copying-' + name)
                 ready = self.root / ('ready-' + name)
-                child = subprocess.Popen([sys.executable, '-I', '-B', '-c', code, str(ROOT), str(self.package),
+                child = subprocess.Popen([sys.executable, '-I', '-B', '-c', code, str(ROOT / "system"), str(self.package),
                                           str(self.install_root), str(connection), str(self.plates), str(copying),
                                           str(ready), str(release_barrier), str(self.port)],
                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -662,7 +667,7 @@ try { & '__LAUNCHER__' -InstallPath '__INSTALL__' 3>&1 } catch { Write-Output ('
         for name in station.APP_FILES + station.WEB_FILES + (station.LAUNCHER, station.STOP_LAUNCHER):
             target = self.package / name
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / name, target)
+            shutil.copy2(source_path(name, ROOT), target)
         self.seal()
         with socket.socket() as probe:
             probe.bind(('127.0.0.1', 0))

@@ -1,9 +1,29 @@
 # Trust anchors are checked byte for byte on the devices (template_activation.py).
 # Keep their exact bytes; never let Git convert line endings.
 deployment/keys/minisign.pub -text
+# Moving a tree must preserve the committed source bytes. Keep its existing
+# text style; executable shell scripts below still use the explicit LF rule.
+system/** -text
+apps/*/web/** -text
+apps/scratch/build/** -text
+sdk/web/stl-validation.mjs -text
+# Preserve upstream notices and patches byte for byte across source moves.
+**/LICENSE -text
+**/*LICENSE*.txt -text
+**/*MIT.txt -text
+**/*OFL.txt -text
+**/COPYING* -text
+**/NOTICE* -text
+**/CREDITS.txt -text
+**/*.patch -text
+# This unchanged implementation contains the original Clipper license block.
+apps/folie/web/laser-offset.js -text
 # This reviewed third-party license is also a byte-pinned model3d build input.
-web/assets/model3d/Metrophobic-OFL.txt -text
+apps/3dprint/web/assets/model3d/Metrophobic-OFL.txt -text
 # The build receipt also pins the distributed copy of that same license.
-web/assets/licenses/model3d/Metrophobic-OFL.txt -text
+apps/3dprint/web/assets/licenses/model3d/Metrophobic-OFL.txt -text
 # Linux scripts must also run directly from the Windows checkout under WSL.
 *.sh text eol=lf
+# Upstream reStructuredText headings use seven '=' characters as underlines.
+# Use longer real merge markers so those headings are not reported as conflicts.
+*.rst conflict-marker-size=128

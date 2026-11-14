@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import os
 """Program/pause invariants using synthetic files and an explicit fake OS edge."""
 import importlib.util
@@ -10,9 +15,9 @@ import unittest
 import uuid
 from unittest.mock import patch
 ROOT=Path(__file__).resolve().parents[1]
-spec=importlib.util.spec_from_file_location('inno_lifecycle',ROOT/'windows/inno/lifecycle.py')
+spec=importlib.util.spec_from_file_location('inno_lifecycle',source_path('windows/inno/lifecycle.py', ROOT))
 life=importlib.util.module_from_spec(spec);spec.loader.exec_module(life)
-spec=importlib.util.spec_from_file_location('inno_build',ROOT/'windows/inno/build.py')
+spec=importlib.util.spec_from_file_location('inno_build',source_path('windows/inno/build.py', ROOT))
 build=importlib.util.module_from_spec(spec);spec.loader.exec_module(build)
 
 class FakeOS:
@@ -138,10 +143,10 @@ class LifecycleTests(unittest.TestCase):
         exe.write_bytes(b'tampered')
         with self.assertRaisesRegex(life.LifecycleError,'payload_file_hash_mismatch'):life.run(payload,expected,'update')
     def test_role_privilege_separation_is_fixed_in_recipe(self):
-        recipe=(ROOT/'windows/inno/Makervaerkstedet.iss').read_text()
+        recipe=(source_path('windows/inno/Makervaerkstedet.iss', ROOT)).read_text()
         self.assertIn('PrivilegesRequired=admin',recipe);self.assertIn('PrivilegesRequired=lowest',recipe)
         self.assertNotIn('PrivilegesRequiredOverridesAllowed',recipe)
-        source=(ROOT/'windows/inno/lifecycle.py').read_text()
+        source=(source_path('windows/inno/lifecycle.py', ROOT)).read_text()
         self.assertNotIn('assert_idle(',source)
         # The hold is lifted in exactly one place, never the queue's pause flag.
         self.assertEqual(source.count('.release('),1);self.assertIn("self.barrier.release('server')",source)
@@ -154,14 +159,14 @@ class BuilderInputTests(unittest.TestCase):
         for name in required:
             file=package/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(b'synthetic fixture')
         # Keep the real model3d receipt and all hash-bound runtime assets intact.
-        receipt=ROOT/'web/vendor/model3d-vendor-manifest.json'
+        receipt=source_path('web/vendor/model3d-vendor-manifest.json', ROOT)
         model3d=json.loads(receipt.read_text(encoding='utf-8'))
-        names=[receipt.relative_to(ROOT),Path('web/assets/model3d/Metrophobic-Regular.ttf')]
+        names=[Path('web/vendor/model3d-vendor-manifest.json'),Path('web/assets/model3d/Metrophobic-Regular.ttf')]
         names += [Path('web/vendor')/name for name in model3d['outputs']]
         names += [Path('web/assets/licenses/model3d')/name for name in model3d['license_sha256']]
         for name in names:
             target=package/name;target.parent.mkdir(parents=True,exist_ok=True)
-            target.write_bytes((ROOT/name).read_bytes())
+            target.write_bytes(source_path(name.as_posix(), ROOT).read_bytes())
         verifier=self.root/'minisign.exe';verifier.write_bytes(b'synthetic verifier; never executed')
         license_file=self.root/'LICENSE';license_file.write_bytes(b'synthetic license fixture')
         provenance=self.root/'provenance.json';provenance.write_text('{"fixture":true}')
@@ -226,15 +231,15 @@ class BuilderInputTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,error):build.validate(self.value,test_artifact=True)
             path.unlink();del self.value['files'][name]
     def test_windows_payload_keeps_program_helpers_and_excludes_unit_modules(self):
-        spec=importlib.util.spec_from_file_location('windows_distribution_builder',ROOT/'windows-elevhub/build_packages.py')
+        spec=importlib.util.spec_from_file_location('windows_distribution_builder',source_path('windows-elevhub/build_packages.py', ROOT))
         module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
         names=['test_release_import.py','test_retired_apps.py','release_import.py','apps.py','core.py']
-        ignored=module.source_ignore(str(ROOT/'linux-elevhub/server/elevhub'),names)
+        ignored=module.source_ignore(str(source_path('linux-elevhub/server/elevhub', ROOT)),names)
         self.assertTrue({'test_release_import.py','test_retired_apps.py'}<=ignored)
         self.assertFalse({'release_import.py','apps.py','core.py'}&ignored)
 
     def test_windows_neutral_template_no_longer_requests_cadoodle(self):
-        config=json.loads((ROOT/'windows-elevhub/server/hub/konfiguration.windows.json').read_text(encoding='utf-8'))
+        config=json.loads((source_path('windows-elevhub/server/hub/konfiguration.windows.json', ROOT)).read_text(encoding='utf-8'))
         self.assertFalse(any(item.get('id')=='cadoodle' or item.get('native_app')=='cadoodle' for item in config['apps']))
 
 if __name__=='__main__':unittest.main()

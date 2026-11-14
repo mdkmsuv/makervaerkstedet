@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 import hashlib
 import os
@@ -75,7 +80,7 @@ class ServerMaintenanceAclTests(unittest.TestCase):
                 write_protocol(root, 'server')
 
     def test_installer_grants_only_lock_modify_and_protocol_read(self):
-        script = (Path(__file__).parents[1] / 'windows-elevhub' / 'server' / 'install.ps1').read_text(encoding='utf-8')
+        script = (source_path('windows-elevhub/server/install.ps1', Path(__file__).parents[1])).read_text(encoding='utf-8')
         self.assertIn("$instanceLockPath = Join-Path $DataRoot 'instance.lock'", script)
         self.assertIn("$protocolPath = Join-Path $DataRoot 'backup-protocol.json'", script)
         self.assertIn("'*S-1-5-19:M'", script)

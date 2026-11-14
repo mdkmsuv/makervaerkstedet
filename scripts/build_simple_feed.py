@@ -10,7 +10,7 @@ import sys
 from urllib.parse import quote
 import zipfile
 ROOT=Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:sys.path.insert(0,str(ROOT))
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
 from app.simple_feed import ASSET,DESCRIPTOR,verify_descriptor
 from app.simple_release import REPOSITORY,DEBIAN_COMPONENTS,verify_manifest
 from app.app_catalog import validate_catalog,verify_catalog,_unique_pairs

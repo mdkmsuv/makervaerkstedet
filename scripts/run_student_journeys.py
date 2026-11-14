@@ -8,10 +8,13 @@ from datetime import datetime, timezone
 import hashlib
 import json
 from pathlib import Path
+import sys
 import subprocess
 import time
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
+from repository import source_path
 TESTS = ['test_box_through_elevhub.cjs',
          'test_desktop_maker.cjs', 'test_local_projects_browser.cjs',
          'test_project_opening_browser.cjs', 'test_scratch_local_projects.cjs']
@@ -24,7 +27,7 @@ def fingerprint():
                          ('linux-elevhub/server/elevhub/web/assets','*.js'), ('web','*'), ('app','*.py')]:
         files.update(p for p in (ROOT/folder).glob(glob) if p.is_file() and
                      '__pycache__' not in p.parts and p.suffix in ('.js','.py','.html','.css','.json','.txt'))
-    files.update(ROOT/'linux-elevhub/tests'/name for name in TESTS)
+    files.update(source_path('linux-elevhub/tests', ROOT)/name for name in TESTS)
     files.update(ROOT/name for name in ['linux-elevhub/tests/student_journey_fixture.py',
                  'linux-elevhub/tests/student_journey_fixture.js', 'linux-elevhub/tests/kiosk_browser_fixture.py',
                  'linux-elevhub/server/style-workshop.py', 'linux-elevhub/tests/test_workshop_style_assets.py',
@@ -46,7 +49,7 @@ def main():
     parser.add_argument('--test', choices=TESTS, action='append')
     args = parser.parse_args()
     started = datetime.now(timezone.utc).isoformat()
-    out = ROOT/'output/maturity-final-20261013/student'/started.replace(':','-')
+    out = source_path('output/maturity-final-20261013/student', ROOT)/started.replace(':','-')
     out.mkdir(parents=True)
     report = {'startedAt':started, 'reason':args.reason, 'inputSha256':fingerprint(),
               'boundaries':['headless Chromium on Windows; no pupil hardware',
@@ -54,7 +57,7 @@ def main():
                             'MakeCode recognition and offline guidance only; external editor import not exercised'],
               'results':[]}
     for name in args.test or TESTS:
-        command = ['node',str(ROOT/'linux-elevhub/tests'/name)]
+        command = ['node',str(source_path('linux-elevhub/tests', ROOT)/name)]
         start = time.monotonic()
         result = subprocess.run(command,cwd=ROOT,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,
                                 text=True,encoding='utf-8',errors='replace',timeout=360)

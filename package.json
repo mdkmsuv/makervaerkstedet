@@ -2,8 +2,8 @@
   "name": "printvaerksted",
   "private": true,
   "scripts": {
-    "build": "esbuild web/viewer.js --bundle --minify --outfile=web/vendor/viewer.js && npm run build:laser",
-    "build:laser": "esbuild web/laser.js --bundle --minify --outfile=web/vendor/laser.js && esbuild web/laser-trace-worker.js --bundle --minify --outfile=web/vendor/laser-trace-worker.js",
+    "build": "node scripts/build_web.mjs",
+    "build:laser": "node apps/folie/build.mjs",
     "test:beam": "node scripts/probe_beam_studio.mjs",
     "build:model3d": "node scripts/build_model3d_vendor.mjs"
   },

@@ -1,4 +1,9 @@
 """Synthetic installer identity/profile and actual SQLite snapshot invariants."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import importlib.util
 from contextlib import closing
 import json
@@ -10,7 +15,7 @@ import uuid
 from unittest.mock import patch
 
 ROOT=Path(__file__).resolve().parents[1]
-spec=importlib.util.spec_from_file_location('profile_lifecycle',ROOT/'windows/inno/lifecycle.py')
+spec=importlib.util.spec_from_file_location('profile_lifecycle',source_path('windows/inno/lifecycle.py', ROOT))
 life=importlib.util.module_from_spec(spec);spec.loader.exec_module(life)
 
 
@@ -89,7 +94,7 @@ class InstallerProfileTests(unittest.TestCase):
                 else:self.assertEqual(arguments[arguments.index('-Brand'):arguments.index('-Brand')+4],expected)
 
     def test_guide_uses_auto_action_danish_labels_and_explicit_profile_pages(self):
-        recipe=(ROOT/'windows/inno/Makervaerkstedet.iss').read_text('utf-8')
+        recipe=(source_path('windows/inno/Makervaerkstedet.iss', ROOT)).read_text('utf-8')
         self.assertNotIn('ModePage',recipe)
         self.assertIn("+ 'auto' +",recipe)
         for text in ('Skolens opsætning','Rød','Grøn','køpause','RolePage','ThemePage','MachinePage'):

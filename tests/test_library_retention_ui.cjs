@@ -2,7 +2,7 @@
 const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
-const source = fs.readFileSync('web/app.js', 'utf8');
+const source = fs.readFileSync('system/web/app.js', 'utf8');
 const end = source.indexOf('async function poll(){');
 const nodes = new Map();
 const node = id => { const value = {id, value:'', innerHTML:'', textContent:'', hidden:false, disabled:false,
@@ -82,7 +82,7 @@ const run = code => vm.runInNewContext(code, context);
   finish({ok:true,status:200,json:async()=>({files:[{filename:'privat-navn.stl'}]})});
   await pending;
   assert.equal(nodes.get('library-list').innerHTML,'','late response must not expose logged-out teacher data');
-  const html=fs.readFileSync('web/index.html','utf8');
+  const html=fs.readFileSync('system/web/index.html','utf8');
   for(const id of nodes.keys())if(id!=='submit')assert(html.includes('id="'+id+'"'),id+' must exist in delivered UI');
   console.log('teacher library retention UI: OK');
 })().catch(error=>{console.error(error);process.exitCode=1});

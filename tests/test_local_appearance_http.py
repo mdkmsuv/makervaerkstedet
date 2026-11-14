@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import hashlib
 import http.client
 import json
@@ -44,8 +49,8 @@ class LocalAppearanceHTTPTests(unittest.TestCase):
     def test_standalone_hub_ships_the_same_appearance_contract(self):
         root = Path(__file__).resolve().parents[1]
         self.assertEqual(
-            (root / 'app' / 'school_appearance.py').read_bytes(),
-            (root / 'linux-elevhub/server/elevhub/school_appearance.py').read_bytes())
+            source_path('app/school_appearance.py', root).read_bytes(),
+            source_path('linux-elevhub/server/elevhub/school_appearance.py', root).read_bytes())
 
     def test_neutral_html_renderer_inserts_school_identity_without_replacing_credit(self):
         from app.school_appearance import render_local_html
@@ -92,7 +97,7 @@ class LocalAppearanceHTTPTests(unittest.TestCase):
                 self.assertIn(b'/school-appearance/logo', body)
                 status, body = get(server.server_port, '/app.js')
                 self.assertEqual(status, 200)
-                expected = (Path(__file__).resolve().parents[1] / 'web' / 'app.js').read_bytes()
+                expected = (source_path('web/app.js', Path(__file__).resolve().parents[1])).read_bytes()
                 self.assertEqual(hashlib.sha256(body).hexdigest(), hashlib.sha256(expected).hexdigest())
                 status, body = get(server.server_port, '/api/school-appearance')
                 self.assertEqual(status, 200)
@@ -126,7 +131,7 @@ class LocalAppearanceHTTPTests(unittest.TestCase):
                 server.shutdown(); server.server_close()
 
     def test_hub_teacher_http_serves_overlay_and_public_api(self):
-        hub_root = Path(__file__).resolve().parents[1] / 'linux-elevhub' / 'server' / 'elevhub'
+        hub_root = source_path('linux-elevhub/server/elevhub', Path(__file__).resolve().parents[1])
         sys.path.insert(0, str(hub_root))
         try:
             import elevhub
@@ -181,7 +186,7 @@ class LocalAppearanceHTTPTests(unittest.TestCase):
                 server.shutdown(); server.server_close()
 
     def test_hub_teacher_css_uses_private_colours_or_theme(self):
-        hub_root = Path(__file__).resolve().parents[1] / 'linux-elevhub' / 'server' / 'elevhub'
+        hub_root = source_path('linux-elevhub/server/elevhub', Path(__file__).resolve().parents[1])
         sys.path.insert(0, str(hub_root))
         try:
             import elevhub
@@ -220,7 +225,7 @@ class LocalAppearanceHTTPTests(unittest.TestCase):
             sys.path.remove(str(hub_root))
 
     def test_theme_script_applies_private_colours_on_the_root(self):
-        script = (Path(__file__).resolve().parents[1] / 'web' / 'school-theme.js').read_text(encoding='utf-8')
+        script = (source_path('web/school-theme.js', Path(__file__).resolve().parents[1])).read_text(encoding='utf-8')
         self.assertIn("/^#[0-9a-f]{6}$/", script)
         for token in ("'--brand','--school-brand'", "'--brand-dark','--school-brand-dark'",
                       "data-school-theme-fixed", "root.style.setProperty"):

@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 from pathlib import Path
 import importlib.util
 import subprocess
@@ -54,7 +59,7 @@ class BackupShutdownTests(unittest.TestCase):
 
     @staticmethod
     def _load_bootstrap():
-        path = Path(__file__).parents[1] / "windows-elevhub" / "server" / "bootstrap.py"
+        path = source_path('windows-elevhub/server/bootstrap.py', Path(__file__).parents[1])
         spec = importlib.util.spec_from_file_location("backup_shutdown_bootstrap", path)
         module = importlib.util.module_from_spec(spec)
         assert spec.loader is not None

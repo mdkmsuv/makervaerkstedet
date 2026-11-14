@@ -200,7 +200,7 @@ separate station, ikke et ekstra trin efter at stationen allerede er installeret
 | --- | --- | --- |
 | Windows-hovedsystem, med eller uden VM | `START.cmd` og valg A eller B/server | Brug kun en opdateringsvej, som understøtter installationens format. Det flade `school-flat-v1`-layout bruger GitHub-controllerens serveradapter eller `Invoke-SchoolUpdate.ps1`; se [status](MAKERSPACE-OPDATERING.md). |
 | Separat Windows-laserstation fra den nye guide | `START.cmd` og B/lasercomputer, eller `Install-LaserStation.cmd` | Afslut arbejdet, brug **Stop laserstation**, og kør `Update-LaserStation.cmd` fra den nye komplette pakke som samme Windows-bruger. At lukke browserfanen er ikke nok. |
-| Linux-elevcomputer eller Linux-elev-VM | ISO og tilmelding | [SSH-/Ansible-administration](../linux-elevhub/administration/README.md); ISO'en er ikke en opdatering. |
+| Linux-elevcomputer eller Linux-elev-VM | ISO og tilmelding | [SSH-/Ansible-administration](../system/linux-elevhub/administration/README.md); ISO'en er ikke en opdatering. |
 
 En stationsopdatering bevarer skoleforbindelse, certifikat, identitet,
 lasermodel, plader og driverindstillinger. Den vælger først det nye program,

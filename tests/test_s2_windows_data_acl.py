@@ -1,4 +1,9 @@
 """Regression checks for the protected machine installation stop path."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 import os
 import shutil
@@ -93,7 +98,7 @@ class S2WindowsProtectionTests(unittest.TestCase):
             self.assertEqual(requests[0].get_header('Authorization'), 'Bearer teacher-token')
 
     def test_privileged_stop_does_not_try_to_stop_user_demo_data(self):
-        source = (ROOT / 'app/desktop.py').read_text(encoding='utf-8')
+        source = (source_path('app/desktop.py', ROOT)).read_text(encoding='utf-8')
         self.assertIn("modes = ((False, service_port()),) if args.privileged_stop", source)
 
 

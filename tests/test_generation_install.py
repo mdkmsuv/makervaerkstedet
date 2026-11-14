@@ -1,4 +1,9 @@
 """Isolation tests for the first-install generation pointer."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import hashlib
 import importlib.util
 import io
@@ -18,7 +23,7 @@ from tests.test_generation_embedded import ARCHIVE, ARCHIVE_SHA256
 
 ROOT = Path(__file__).resolve().parents[1]
 
-_spec = importlib.util.spec_from_file_location('generation_install_tested', ROOT / 'windows-elevhub/server/generation_install.py')
+_spec = importlib.util.spec_from_file_location('generation_install_tested', source_path('windows-elevhub/server/generation_install.py', ROOT))
 generation_install = importlib.util.module_from_spec(_spec)
 _old_path = sys.path[:]
 _old_bytecode = sys.dont_write_bytecode
@@ -79,7 +84,7 @@ class GenerationInstallTests(unittest.TestCase):
                          'windows-elevhub/server/generation-startup.ps1'):
             target = self.program / relative.split('/', 1)[1]
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / relative, target)
+            shutil.copy2(source_path(relative, ROOT), target)
         runtime = self._runtime_template()
         shutil.copytree(runtime, self.program / 'runtime')
         shutil.copytree(runtime, self.stable / 'runtime')
@@ -87,7 +92,7 @@ class GenerationInstallTests(unittest.TestCase):
                          'app/generation_lock.py'):
             target = self.stable / relative
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(ROOT / relative, target)
+            shutil.copy2(source_path(relative, ROOT), target)
         (self.stable / 'app' / '__init__.py').write_text('', encoding='ascii')
 
         files = {str(path.relative_to(self.program)).replace('\\', '/')

@@ -1,4 +1,9 @@
 """Real package/program manifests must be complete without circular hashes."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import importlib.util
 import json
 from pathlib import Path
@@ -9,7 +14,7 @@ from scripts.build_school_package import digest, write_release_manifest
 from tests import test_release_compatibility as fixtures
 
 ROOT = Path(__file__).resolve().parents[1]
-spec = importlib.util.spec_from_file_location('school_package_verify', ROOT / 'windows-elevhub/server/verify.py')
+spec = importlib.util.spec_from_file_location('school_package_verify', source_path('windows-elevhub/server/verify.py', ROOT))
 verify = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(verify)
 
@@ -27,7 +32,7 @@ class SchoolPackageManifestTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b'')
         (self.program / 'web').mkdir(exist_ok=True)
-        config = ROOT / 'windows-elevhub/server/hub/konfiguration.windows.json'
+        config = source_path('windows-elevhub/server/hub/konfiguration.windows.json', ROOT)
         (self.program / 'hub/konfiguration.windows.json').write_bytes(config.read_bytes())
         (self.program / 'elevhub-package.json').write_text(json.dumps({
             'schemaVersion': 1, 'product': 'Elevhub', 'role': 'server', 'server': None,

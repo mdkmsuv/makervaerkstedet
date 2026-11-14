@@ -1,10 +1,15 @@
 """R3-WIN-1: existing owner component lists and real synthetic SQLite snapshots."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 from contextlib import closing
 import hashlib,importlib.util,json,sqlite3,tempfile,unittest
 from pathlib import Path
 from app.backup_databases import _SCHEMAS
 
-spec=importlib.util.spec_from_file_location('external_backup_lifecycle',Path(__file__).resolve().parents[1]/'windows/inno/lifecycle.py')
+spec=importlib.util.spec_from_file_location('external_backup_lifecycle',source_path('windows/inno/lifecycle.py', Path(__file__).resolve().parents[1]))
 life=importlib.util.module_from_spec(spec);spec.loader.exec_module(life)
 
 class ExternalBackupTests(unittest.TestCase):

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGeometryKernel,exportBinaryStl,GeometryError} from '../web/model3d/geometry.js';
-import {validateSTL} from '../web/stl-validation.mjs';
+import {createGeometryKernel,exportBinaryStl,GeometryError} from '../apps/3dprint/web/model3d/geometry.js';
+import {validateSTL} from '../sdk/web/stl-validation.mjs';
 
 // CI/local callers may supply an already verified package URL; never a network URL.
 const dependency=process.env.MODEL3D_MANIFOLD_MODULE || 'manifold-3d';

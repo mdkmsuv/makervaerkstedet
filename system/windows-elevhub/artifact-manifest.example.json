@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "artifacts": {
+    "server.tools": {
+      "path": "artifacts/server/tools-v1",
+      "version": "tools-v1",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "server.licenses": {
+      "path": "artifacts/server/licenses-v1",
+      "version": "licenses-v1",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "client.scratch": {
+      "path": "artifacts/client/scratch-v1",
+      "version": "scratch-v1",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "client.datatraener": {
+      "path": "artifacts/client/datatraener-v1",
+      "version": "datatraener-v1",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "client.cadoodle": {
+      "path": "artifacts/client/cadoodle-v1",
+      "version": "cadoodle-v1",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "runtime.python": {
+      "path": "inputs/runtime/python-3.14.7",
+      "version": "python-3.14.7-embed-amd64",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "runtime.wheels": {
+      "path": "inputs/runtime/wheels-20261013",
+      "version": "windows-runtime-wheels-20261013",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "client.webview2": {
+      "path": "inputs/client/webview2-verified",
+      "version": "webview2-sdk-and-bootstrap-pinned",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "client.shell": {
+      "path": "inputs/client/elevhub-shell-verified",
+      "version": "elevhub-shell-build-pinned",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "client.circuitjs": {
+      "path": "inputs/client/circuitjs-verified",
+      "version": "circuitjs-source-pinned",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  }
+}

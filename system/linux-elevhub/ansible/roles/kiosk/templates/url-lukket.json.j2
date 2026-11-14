@@ -1,0 +1,22 @@
+{
+  "URLBlocklist": [
+    "*",
+    "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_printvaerksted_port }}/laerer",
+    "chrome://*",
+    "chrome-extension://*",
+    "devtools://*",
+    "view-source:*"
+  ],
+  "URLAllowlist": [
+    "file://{{ kiosk_startside_mappe }}/",
+    "http://127.0.0.1:8790/",
+    "blob:*",
+{% for port in kiosk_app_porte %}
+    "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ port }}/",
+{% endfor %}
+{% if kiosk_lokale_apps_enabled | bool %}
+    {{ kiosk_lokale_app_urler.projekter | tojson }},
+{% endif %}
+    "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_hub_port }}/"
+  ]
+}

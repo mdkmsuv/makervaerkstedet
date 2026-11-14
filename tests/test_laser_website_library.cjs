@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 const {spawn} = require('node:child_process');
 const root = path.resolve(__dirname, '..');
-const {chromium} = require(path.resolve(root, '../../node_modules/playwright'));
+const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 let child, browser, urls, stderr = '';
 const exported = page => page.evaluate(async () => JSON.parse(await (await window.ElevhubProjectAdapter.export()).text()));
 async function main() {

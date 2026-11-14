@@ -11,6 +11,8 @@ import time
 from urllib.request import Request, urlopen
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path[:0]=[str(ROOT),str(ROOT/"system")]
+from repository import source_path
 sys.path.insert(0, str(ROOT))
 from app.process_tree import ProcessTree
 from scripts.smoke_slice import cube
@@ -36,12 +38,12 @@ def main():
     parser.add_argument('--task', required=True)
     args = parser.parse_args()
     install = args.install.resolve()
-    assert install.is_relative_to(ROOT / '.runtime'), 'Only isolated workspace installations may be tested'
+    assert install.is_relative_to(source_path('.runtime', ROOT)), 'Only isolated workspace installations may be tested'
     config = json.loads((install / 'installation.json').read_text(encoding='utf-8-sig'))
     assert config['task_name'] == args.task and args.task.startswith('Printvaerksted-Isolated')
     assert config['port'] not in (8765, 8766)
     data = Path(config['data_root']) / 'school'
-    assert data.is_relative_to(ROOT / '.runtime')
+    assert data.is_relative_to(source_path('.runtime', ROOT))
     python = str(install / 'runtime' / 'python.exe')
     base = f"http://127.0.0.1:{config['port']}"
     token = (data / 'laererkode.txt').read_text().strip()
@@ -131,7 +133,7 @@ def main():
         return eventually(lambda: (h := health()) and h['pid'] != old and h)['pid']
 
     change_machine()
-    fixture = ROOT / 'tests' / 'simulated_service.py'
+    fixture = source_path('tests', ROOT) / 'simulated_service.py'
     code = 'import runpy; runpy.run_path(' + repr(str(fixture)) + ', run_name="__main__")'
     with (data / 'simulator.log').open('ab') as output:
         supervisor = subprocess.Popen([python, '-c', code, '--supervisor'], cwd=install, stdout=output,
@@ -198,7 +200,7 @@ def main():
     report['simulated_start_commands'] = len(sends())
     report['simulated_distinct_jobs_started'] = len(set(sends()))
     report['reboot_before_login_still_pending'] = True
-    output = ROOT / '.runtime' / 'autostart-verification-0.4.3.json'
+    output = source_path('.runtime', ROOT) / 'autostart-verification-0.4.3.json'
     output.write_text(json.dumps(report, indent=2), encoding='utf-8')
     print(json.dumps(report), flush=True)
 

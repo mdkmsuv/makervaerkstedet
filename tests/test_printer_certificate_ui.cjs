@@ -21,7 +21,7 @@ const window={teacherSessionReady:true,teacherPrinterApi:async(path,body)=>{
   return {ok:true};
 }};
 const context={window,console,document:{getElementById:get,createElement:tag=>new Node(tag)},crypto:{randomUUID:()=> '01234567-89ab-cdef-0123-456789abcdef'},confirm:()=>true};
-vm.runInNewContext(fs.readFileSync('web/printer-settings.js','utf8'),context);
+vm.runInNewContext(fs.readFileSync('system/web/printer-settings.js','utf8'),context);
 const tick=()=>new Promise(resolve=>setImmediate(resolve));
 const walk=node=>[node,...node.children.flatMap(walk)];
 function click(button){for(const fn of get('printer-settings-list').listeners.click||[])fn({target:{closest:selector=>{

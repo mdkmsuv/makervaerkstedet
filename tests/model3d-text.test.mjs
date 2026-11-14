@@ -1,9 +1,9 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import crypto from 'node:crypto';
-import {createGeometryKernel,exportBinaryStl} from '../web/model3d/geometry.js';
-import {validateSTL} from '../web/stl-validation.mjs';
+import {createGeometryKernel,exportBinaryStl} from '../apps/3dprint/web/model3d/geometry.js';
+import {validateSTL} from '../sdk/web/stl-validation.mjs';
 const {default:Module}=await import(process.env.MODEL3D_MANIFOLD_MODULE||'manifold-3d');
 const {parse}=await import(process.env.MODEL3D_OPENTYPE_MODULE||'opentype.js/dist/opentype.mjs');
-const bytes=fs.readFileSync(process.env.MODEL3D_FONT_FILE||new URL('../web/assets/model3d/Metrophobic-Regular.ttf',import.meta.url));
+const bytes=fs.readFileSync(process.env.MODEL3D_FONT_FILE||new URL('../apps/3dprint/web/assets/model3d/Metrophobic-Regular.ttf',import.meta.url));
 assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),'34e4ac3257307c28e6dd14f5d77bb296211f0ddd217607228a5375416ed8ac58');
 const font=parse(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)),wasm=await Module();wasm.setup();
 const kernel=createGeometryKernel(wasm,{fonts:{'mkv-sans':font}}),I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];

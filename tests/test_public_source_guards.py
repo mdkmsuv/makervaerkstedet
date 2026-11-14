@@ -148,10 +148,10 @@ class PublicSourceGuardTests(unittest.TestCase):
                          'scripts/school_server_update/update.py',
                          'scripts/school_server_update/Invoke-SchoolUpdate.ps1',
                          'scripts/school_server_update/Repair-SchoolRuntimeAccess.ps1',
-                         'windows-elevhub/build_packages.py', 'scripts/package_documentation.py',
-                         'third_party/boxes.py/boxes/scripts/boxes_main.py',
-                         'linux-elevhub/kiosk-window-guard/matchbox-close-guard.patch',
-                         'web/assets/Three-MIT.txt'):
+                         'system/windows-elevhub/build_packages.py', 'scripts/package_documentation.py',
+                         'system/third_party/boxes.py/boxes/scripts/boxes_main.py',
+                         'system/linux-elevhub/kiosk-window-guard/matchbox-close-guard.patch',
+                         'system/web/assets/Three-MIT.txt'):
             self.assertIn(relative, paths)
         for name in source.SOURCE_ARCHIVES:
-            self.assertIn('linux-elevhub/kiosk-window-guard/matchbox-source/' + name, paths)
+            self.assertIn('system/linux-elevhub/kiosk-window-guard/matchbox-source/' + name, paths)

@@ -1,4 +1,9 @@
 """Actual teacher HTTP routes with synthetic publisher/device reports only."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import hashlib
 import json
 from pathlib import Path
@@ -8,7 +13,7 @@ import threading
 import uuid
 
 ROOT=Path(__file__).resolve().parents[2]
-sys.path[:0]=[str(ROOT),str(ROOT/'linux-elevhub/server/elevhub')]
+sys.path[:0]=[str(ROOT),str(source_path('linux-elevhub/server/elevhub', ROOT))]
 import elevhub
 import test_app_admin as domain
 from app import app_catalog

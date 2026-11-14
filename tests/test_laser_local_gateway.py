@@ -4,6 +4,11 @@ test_laser_local.py bruger laser_server direkte som server. Her går
 afleveringen gennem den rigtige Indgang med regler.laser og lærerens
 åbn/luk-tilstand, præcis som på skolen.
 """
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import json
 import sys
 import tempfile
@@ -14,7 +19,7 @@ import uuid
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-ELEVHUB = ROOT / 'linux-elevhub' / 'server' / 'elevhub'
+ELEVHUB = source_path('linux-elevhub/server/elevhub', ROOT)
 if str(ELEVHUB) not in sys.path:
     sys.path.insert(0, str(ELEVHUB))
 

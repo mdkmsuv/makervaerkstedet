@@ -13,8 +13,8 @@ class PublicSourceScopeTests(unittest.TestCase):
         policy = public_source._load_policy(root)
         selected = {item.relative for item in public_source._collect(
             root, policy, content_checks=False)}
-        self.assertFalse(any(p.startswith("third_party/boxes.py/examples/") for p in selected))
-        self.assertNotIn("third_party/boxes.py/tests/test_svg.py", selected)
+        self.assertFalse(any(p.startswith('system/third_party/boxes.py/examples/') for p in selected))
+        self.assertNotIn('system/third_party/boxes.py/tests/test_svg.py', selected)
         for path in (
             "LASER-KAMERA-AI-RESEARCH.md",
             "LASER-RESEARCH.md",
@@ -22,19 +22,19 @@ class PublicSourceScopeTests(unittest.TestCase):
             "docs/MODNINGSPLAN.md",
             "docs/TESTOVERBLIK.md",
             "docs/KRITISK-GENNEMGANG-2026-10-19.md",
-            "linux-elevhub/CLAUDE.md",
-            "linux-elevhub/LANCERINGSRAPPORT.md",
-            "linux-elevhub/cadoodle/kloster/research/cad-learning-sources.md",
+            'system/linux-elevhub/CLAUDE.md',
+            'system/linux-elevhub/LANCERINGSRAPPORT.md',
+            'system/linux-elevhub/cadoodle/kloster/research/cad-learning-sources.md',
             "scripts/start-local-makerspace.ps1",
             "scripts/prepare_windows_qa_storage.ps1",
             "scripts/megavaerkstedet_update.py",
             "scripts/update-megavaerkstedet.ps1",
-            "linux-elevhub/NETVAERK.md",
-            "linux-elevhub/laererpanel/README.md",
+            'system/linux-elevhub/NETVAERK.md',
+            'system/linux-elevhub/laererpanel/README.md',
         ):
             self.assertNotIn(path, selected)
         for path in (
-            "app/laser_server.py", "app/school_appearance.py",
+            'system/app/laser_server.py', 'system/app/school_appearance.py',
             "scripts/build_github_release.py",
             "scripts/school_server_update/update.py",
             "AGENTS.md", "LICENSE", "CREDITS.md", "LICENSE-SCOPE.md",

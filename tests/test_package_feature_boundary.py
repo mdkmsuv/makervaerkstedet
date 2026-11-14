@@ -1,4 +1,9 @@
 """Distributable packages exclude private development features and runtimes."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import importlib.util
 import inspect
 import json
@@ -11,7 +16,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def load(name, relative):
-    spec = importlib.util.spec_from_file_location(name, ROOT / relative)
+    spec = importlib.util.spec_from_file_location(name, source_path(relative, ROOT))
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module

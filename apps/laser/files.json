@@ -2,7 +2,7 @@
   "schema": 1,
   "files": [
     {
-      "source": "web/laservaerksted",
+      "source": "apps/laser/web/laservaerksted",
       "path": "usr/share/makervaerkstedet/apps/laser/www/laservaerksted",
       "tree": true
     }

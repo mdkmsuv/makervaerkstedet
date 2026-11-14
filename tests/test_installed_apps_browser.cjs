@@ -6,8 +6,7 @@ const fs = require('node:fs');
 const {spawn} = require('node:child_process');
 const {createHash} = require('node:crypto');
 const root = path.resolve(__dirname, '..');
-const canonical = path.resolve(root, '../..');
-const {chromium} = require(process.env.PLAYWRIGHT_MODULE || path.join(canonical, 'node_modules/playwright'));
+const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const report = {startedAt: new Date().toISOString(), scope: process.env.MKV_INSTALLED_APP_FILTER || 'all-five-installed-apps', flows: [], projectFlows: [], failures: [], errors: [], missing: [], console: [], responses: [], appearance: []};
 let child, browser, urls, stderr = '';
 
@@ -61,7 +60,7 @@ async function appearance(page, id, isApp = true) {
   assert(state.fonts.some(font => /Manrope|SchoolProfile/.test(font.family) && font.status === 'loaded'), 'Selected school font must actually load');
   const fontURL = state.resources.find(url=>/\/school-profile-assets\/managed-[a-f0-9]{64}\.ttf$/.test(url)) || state.resources.find(url=>/Manrope\.ttf/.test(url)); assert(fontURL, 'Rendered UI must retrieve the bundled Manrope font');
   const bytes = await page.request.get(fontURL); assert.equal(bytes.status(),200);
-  const expected = createHash('sha256').update(fs.readFileSync(path.join(root,'linux-elevhub/server/elevhub/web/assets/Manrope.ttf'))).digest('hex');
+  const expected = createHash('sha256').update(fs.readFileSync(path.join(root,'system/linux-elevhub/server/elevhub/web/assets/Manrope.ttf'))).digest('hex');
   assert.equal(createHash('sha256').update(await bytes.body()).digest('hex'),expected, 'Loaded UI font is the pinned native Manrope bytes');
   if (isApp) {
     const logo = await page.request.get(new URL('/school-appearance/logo',page.url()).href); assert.equal(logo.status(),200); assert.match(logo.headers()['content-type'],/^image\/png/);
@@ -137,7 +136,7 @@ async function run(id, flow) {
 
 async function launcherAndShelf() {
   const context = await newContext();
-  for (const [id,url] of [['start',urls.home],['shelf',urls.shelf]]) {
+  for (const [id,url] of [['start',urls['home']],['shelf',urls.shelf]]) {
     const page = await context.newPage();
     diagnostics(page,id);
     try {

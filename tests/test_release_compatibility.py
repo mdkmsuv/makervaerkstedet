@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import hashlib
 import json
 from pathlib import Path
@@ -49,11 +54,11 @@ class ReleaseCompatibilityTests(unittest.TestCase):
 
     def _source_cohort(self):
         program = self.root / 'source-cohort'
-        for source in (ROOT / 'app').rglob('*.py'):
+        for source in (source_path('app', ROOT)).rglob('*.py'):
             target = program / source.relative_to(ROOT)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
-        hub_source = ROOT / 'linux-elevhub' / 'server' / 'elevhub'
+        hub_source = source_path('linux-elevhub/server/elevhub', ROOT)
         for source in hub_source.glob('*.py'):
             if not source.name.startswith('test_'):
                 target = program / 'hub' / source.name
@@ -61,7 +66,7 @@ class ReleaseCompatibilityTests(unittest.TestCase):
                 shutil.copy2(source, target)
         bootstrap = program / 'server' / 'bootstrap.py'
         bootstrap.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(ROOT / 'windows-elevhub' / 'server' / 'bootstrap.py', bootstrap)
+        shutil.copy2(source_path('windows-elevhub/server/bootstrap.py', ROOT), bootstrap)
         enrollment = program / 'deployment/school-setup/enrollment.py'
         enrollment.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(ROOT / 'deployment/school-setup/enrollment.py', enrollment)

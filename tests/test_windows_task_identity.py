@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import base64
 import json
 from pathlib import Path
@@ -7,7 +12,7 @@ import unittest
 import uuid
 
 ROOT=Path(__file__).resolve().parents[1]
-SCRIPT=ROOT/'windows/inno/task_control.ps1'
+SCRIPT=source_path('windows/inno/task_control.ps1', ROOT)
 
 def powershell(script):
     value=base64.b64encode(script.encode('utf-16le')).decode()

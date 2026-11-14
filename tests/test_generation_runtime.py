@@ -1,3 +1,8 @@
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import hashlib
 import json
 import os
@@ -26,11 +31,11 @@ class GenerationRuntimeTests(unittest.TestCase):
         self.temp.cleanup()
 
     def _make_fixture(self):
-        launcher = ROOT / 'app' / 'generation_runtime.py'
+        launcher = source_path('app/generation_runtime.py', ROOT)
         for root in (self.package, self.stable):
             (root / 'app').mkdir(parents=True)
             for relative in START_FILES:
-                source = ROOT / relative
+                source = source_path(relative, ROOT)
                 target = root / relative
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(source, target)

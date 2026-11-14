@@ -3,12 +3,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {parse} from 'opentype.js/dist/opentype.mjs';
-import {createGeometryKernel, exportBinaryStl} from '../web/model3d/geometry.js';
+import {createGeometryKernel, exportBinaryStl} from '../apps/3dprint/web/model3d/geometry.js';
 
 const dependency = process.env.MODEL3D_MANIFOLD_MODULE || 'manifold-3d';
 assert.ok(!/^https?:/.test(dependency));
 const {default: Module} = await import(dependency), wasm = await Module(); wasm.setup();
-const bytes = await readFile(new URL('../web/assets/model3d/Metrophobic-Regular.ttf', import.meta.url));
+const bytes = await readFile(new URL('../apps/3dprint/web/assets/model3d/Metrophobic-Regular.ttf', import.meta.url));
 const font = parse(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength));
 const fresh = createGeometryKernel(wasm, {fonts: {'mkv-sans': font}}), cached = createGeometryKernel(wasm, {fonts: {'mkv-sans': font}, cache: 6});
 const scene = (objects, roots) => ({format: 'makervaerkstedet-3d', version: 2, units: 'mm', plate: {w: 180, d: 180}, objects, roots});

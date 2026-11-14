@@ -1,4 +1,9 @@
 """The installer's exact fixed-module copy must load without source fallback."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import importlib.util
 import json
 import os
@@ -22,12 +27,12 @@ class SchoolTLSRuntimeTests(unittest.TestCase):
             script = r'''
 $ErrorActionPreference='Stop'
 $tokens=$null; $errors=$null
-$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $env:TLS_SOURCE_ROOT 'windows-elevhub/server/install.ps1'),[ref]$tokens,[ref]$errors)
+$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $env:TLS_SOURCE_ROOT 'system/windows-elevhub/server/install.ps1'),[ref]$tokens,[ref]$errors)
 if($errors.Count){throw 'Installer parse failure'}
 $nodes=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Copy-FixedAdministrativeAppFiles'},$true))
 if($nodes.Count -ne 1){throw 'Expected one fixed-runtime copy branch'}
 Invoke-Expression $nodes[0].Extent.Text
-Copy-FixedAdministrativeAppFiles -ProgramRoot $env:TLS_SOURCE_ROOT -InstallRoot $env:TLS_RUNTIME_ROOT -IntegrityManifest ([pscustomobject]@{files=[pscustomobject]@{}})
+Copy-FixedAdministrativeAppFiles -ProgramRoot (Join-Path $env:TLS_SOURCE_ROOT 'system') -InstallRoot $env:TLS_RUNTIME_ROOT -IntegrityManifest ([pscustomobject]@{files=[pscustomobject]@{}})
 @(Get-ChildItem -LiteralPath (Join-Path $env:TLS_RUNTIME_ROOT 'app') -File | ForEach-Object {$_.Name}) | ConvertTo-Json -Compress
 '''
             result = subprocess.run([POWERSHELL, '-NoProfile', '-NonInteractive', '-Command', script],
@@ -35,7 +40,7 @@ Copy-FixedAdministrativeAppFiles -ProgramRoot $env:TLS_SOURCE_ROOT -InstallRoot 
                 capture_output=True, text=True, timeout=30)
             self.assertEqual(result.returncode, 0, result.stderr)
             copied = set(json.loads(result.stdout))
-            spec = importlib.util.spec_from_file_location('tls_provision_contract', ROOT / 'windows-elevhub/server/provision.py')
+            spec = importlib.util.spec_from_file_location('tls_provision_contract', source_path('windows-elevhub/server/provision.py', ROOT))
             provision = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(provision)
             self.assertEqual(copied, provision.FIXED_APP)

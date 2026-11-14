@@ -3,32 +3,34 @@
   "project": "Makerværkstedet",
   "credit": "Kreditering: Klostermarksskolen.",
   "sourceRoots": [
-    "app",
-    "web",
-    "linux-elevhub/server",
-    "linux-elevhub/projekter",
-    "linux-elevhub/ansible",
-    "linux-elevhub/tests",
-    "windows-elevhub/server",
+    "system/app",
+    "system/web",
+    "system/linux-elevhub/server",
+    "system/linux-elevhub/projekter",
+    "system/linux-elevhub/ansible",
+    "system/linux-elevhub/tests",
+    "system/windows-elevhub/server",
     "tests",
-    "third_party/boxes.py",
-    "linux-elevhub/installation",
-    "linux-elevhub/backup",
-    "linux-elevhub/kiosk-window-guard",
+    "system/third_party/boxes.py",
+    "system/linux-elevhub/installation",
+    "system/linux-elevhub/backup",
+    "system/linux-elevhub/kiosk-window-guard",
     "deployment/school-setup",
-    "linux-elevhub/administration"
+    "system/linux-elevhub/administration",
+    "apps",
+    "sdk"
   ],
   "explicitFiles": [
-    "linux-elevhub/server/elevhub/web/assets/workshop-3d-v2.webp",
-    "linux-elevhub/server/elevhub/web/assets/workshop-folie-v2.webp",
-    "linux-elevhub/server/elevhub/web/assets/workshop-laser-v2.webp",
-    "linux-elevhub/server/elevhub/web/assets/workshop-scratch-v2.png",
-    "linux-elevhub/server/elevhub/web/assets/workshop-microbit-v2.png",
-    "linux-elevhub/server/elevhub/web/assets/workshop-internet-v2.png",
-    "linux-elevhub/projekter/web/Manrope.ttf",
-    "linux-elevhub/server/elevhub/web/assets/Manrope.ttf",
-    "linux-elevhub/projekter/web/Manrope-OFL.txt",
-    "linux-elevhub/server/elevhub/web/assets/Manrope-OFL.txt",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-3d-v2.webp",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-folie-v2.webp",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-laser-v2.webp",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-scratch-v2.png",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-microbit-v2.png",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-internet-v2.png",
+    "system/linux-elevhub/projekter/web/Manrope.ttf",
+    "system/linux-elevhub/server/elevhub/web/assets/Manrope.ttf",
+    "system/linux-elevhub/projekter/web/Manrope-OFL.txt",
+    "system/linux-elevhub/server/elevhub/web/assets/Manrope-OFL.txt",
     ".github/workflows/release.yml",
     ".github/workflows/source-audit.yml",
     ".gitignore",
@@ -77,86 +79,86 @@
     "docs/agenter/UI-UX-AGENT.md",
     "docs/UDGIVELSESPROCES.md",
     "docs/WINDOWS-INNO-INSTALLATION.md",
-    "linux-elevhub/LAERERVEJLEDNING.md",
-    "linux-elevhub/LICENSE",
-    "linux-elevhub/README.md",
-    "linux-elevhub/SIKKERHED.md",
-    "linux-elevhub/THIRD_PARTY.md",
-    "linux-elevhub/administration/README-APT.md",
-    "linux-elevhub/administration/README.md",
-    "linux-elevhub/ansible/README.md",
-    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-admin-return.py",
-    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-admin-session.sh",
-    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-admin-xsession.sh",
-    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-local-update-gui.py",
-    "linux-elevhub/ansible/roles/adminkonto/files/elevhub-local-update.py",
-    "linux-elevhub/ansible/roles/adminkonto/tasks/update-interface.yml",
-    "linux-elevhub/ansible/roles/adminkonto/templates/admin-bash-profile.j2",
-    "linux-elevhub/ansible/roles/kiosk/files/update_status.py",
-    "linux-elevhub/backup/README.md",
-    "linux-elevhub/docs/MICROBIT-USB.md",
-    "linux-elevhub/docs/PROJEKTAABNING.md",
-    "linux-elevhub/docs/SKAERMPAUSE-API.md",
-    "linux-elevhub/installation/README.md",
-    "linux-elevhub/installation/debian/OVERGANG-OG-VEDLIGEHOLDELSE.md",
-    "linux-elevhub/installation/debian/README.md",
-    "linux-elevhub/installation/windows/README.md",
-    "linux-elevhub/kiosk-window-guard/README.md",
-    "linux-elevhub/kiosk-window-guard/matchbox-patched/matchbox-window-manager/COPYING",
-    "linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512-2.debian.tar.xz",
-    "linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512-2.dsc",
-    "linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512.orig.tar.xz",
-    "linux-elevhub/packaging/README.md",
-    "linux-elevhub/packaging/apt_sandbox.py",
-    "linux-elevhub/packaging/build_debian.py",
-    "linux-elevhub/packaging/build_from_source.sh",
-    "linux-elevhub/packaging/build_release.py",
-    "linux-elevhub/packaging/check_install.py",
-    "linux-elevhub/packaging/prepare_inputs.py",
-    "linux-elevhub/packaging/systemd/makervaerkstedet-apt-update.service",
-    "linux-elevhub/packaging/systemd/makervaerkstedet-apt-update.timer",
-    "linux-elevhub/packaging/systemd/makervaerkstedet-firstboot.service",
-    "linux-elevhub/packaging/updater-pins.json",
-    "linux-elevhub/projekter/README.md",
-    "linux-elevhub/projekter/web/Metrophobic-OFL.txt",
-    "linux-elevhub/projekter/web/metrophobic.ttf",
-    "linux-elevhub/server/README.md",
-    "linux-elevhub/server/elevhub/device_updates.py",
-    "linux-elevhub/server/elevhub/test_device_updates.py",
-    "linux-elevhub/server/elevhub/web/assets/Metrophobic-OFL.txt",
-    "linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md",
-    "linux-elevhub/server/elevhub/web/assets/favicon.svg",
-    "linux-elevhub/server/elevhub/web/assets/hub-bauhaus-v1.png",
-    "linux-elevhub/server/elevhub/web/assets/hub-workbench-v1.webp",
-    "linux-elevhub/server/elevhub/web/assets/maker-rover-v1.webp",
-    "linux-elevhub/server/elevhub/web/assets/metrophobic-latin.ttf",
-    "linux-elevhub/server/elevhub/web/assets/workshop-3d-bauhaus-v1.png",
-    "linux-elevhub/server/elevhub/web/assets/workshop-3d-card.png",
-    "linux-elevhub/server/elevhub/web/assets/workshop-code-bauhaus-v1.png",
-    "linux-elevhub/server/elevhub/web/assets/workshop-code-v1.webp",
-    "linux-elevhub/server/elevhub/web/assets/workshop-ideas-bauhaus-v1.png",
-    "linux-elevhub/server/elevhub/web/assets/workshop-ideas-v1.webp",
-    "linux-elevhub/server/elevhub/web/assets/workshop-laser-bauhaus-v1.png",
-    "linux-elevhub/server/elevhub/web/assets/workshop-laser-v1.webp",
-    "linux-elevhub/server/elevhub/web/assets/workshop-microbit-bauhaus-v1.png",
-    "linux-elevhub/server/elevhub/web/assets/workshop-microbit-v1.webp",
-    "linux-elevhub/server/elevhub/web/assets/workshop-vinyl-bauhaus-v1.png",
-    "linux-elevhub/server/elevhub/web/assets/workshop-vinyl-v1.webp",
-    "linux-elevhub/server/scratch/CREDITS.txt",
-    "linux-elevhub/server/scratch/README.md",
-    "linux-elevhub/server/sikkerhed/README.md",
-    "linux-elevhub/testmiljoe/README.md",
-    "linux-elevhub/testmiljoe/vaert/byg-usb-iso.sh",
-    "linux-elevhub/testmiljoe/vaert/lav-usb-stik.ps1",
-    "linux-elevhub/testmiljoe/vaert/start-server-test.ps1",
-    "linux-elevhub/testmiljoe/vaert/test-start-server-test.ps1",
-    "linux-elevhub/testmiljoe/vm/preseed-usb.skabelon.cfg",
-    "linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
-    "linux-elevhub/tests/test_local_admin_update_helper.py",
-    "mkv2/__init__.py",
-    "mkv2/control_plane/__init__.py",
-    "mkv2/control_plane/maintenance.py",
-    "mkv2/control_plane/validation.py",
+    "system/linux-elevhub/LAERERVEJLEDNING.md",
+    "system/linux-elevhub/LICENSE",
+    "system/linux-elevhub/README.md",
+    "system/linux-elevhub/SIKKERHED.md",
+    "system/linux-elevhub/THIRD_PARTY.md",
+    "system/linux-elevhub/administration/README-APT.md",
+    "system/linux-elevhub/administration/README.md",
+    "system/linux-elevhub/ansible/README.md",
+    "system/linux-elevhub/ansible/roles/adminkonto/files/elevhub-admin-return.py",
+    "system/linux-elevhub/ansible/roles/adminkonto/files/elevhub-admin-session.sh",
+    "system/linux-elevhub/ansible/roles/adminkonto/files/elevhub-admin-xsession.sh",
+    "system/linux-elevhub/ansible/roles/adminkonto/files/elevhub-local-update-gui.py",
+    "system/linux-elevhub/ansible/roles/adminkonto/files/elevhub-local-update.py",
+    "system/linux-elevhub/ansible/roles/adminkonto/tasks/update-interface.yml",
+    "system/linux-elevhub/ansible/roles/adminkonto/templates/admin-bash-profile.j2",
+    "system/linux-elevhub/ansible/roles/kiosk/files/update_status.py",
+    "system/linux-elevhub/backup/README.md",
+    "system/linux-elevhub/docs/MICROBIT-USB.md",
+    "system/linux-elevhub/docs/PROJEKTAABNING.md",
+    "system/linux-elevhub/docs/SKAERMPAUSE-API.md",
+    "system/linux-elevhub/installation/README.md",
+    "system/linux-elevhub/installation/debian/OVERGANG-OG-VEDLIGEHOLDELSE.md",
+    "system/linux-elevhub/installation/debian/README.md",
+    "system/linux-elevhub/installation/windows/README.md",
+    "system/linux-elevhub/kiosk-window-guard/README.md",
+    "system/linux-elevhub/kiosk-window-guard/matchbox-patched/matchbox-window-manager/COPYING",
+    "system/linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512-2.debian.tar.xz",
+    "system/linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512-2.dsc",
+    "system/linux-elevhub/kiosk-window-guard/matchbox-source/matchbox-window-manager_1.2.2+git20200512.orig.tar.xz",
+    "system/linux-elevhub/packaging/README.md",
+    "system/linux-elevhub/packaging/apt_sandbox.py",
+    "system/linux-elevhub/packaging/build_debian.py",
+    "system/linux-elevhub/packaging/build_from_source.sh",
+    "system/linux-elevhub/packaging/build_release.py",
+    "system/linux-elevhub/packaging/check_install.py",
+    "system/linux-elevhub/packaging/prepare_inputs.py",
+    "system/linux-elevhub/packaging/systemd/makervaerkstedet-apt-update.service",
+    "system/linux-elevhub/packaging/systemd/makervaerkstedet-apt-update.timer",
+    "system/linux-elevhub/packaging/systemd/makervaerkstedet-firstboot.service",
+    "system/linux-elevhub/packaging/updater-pins.json",
+    "system/linux-elevhub/projekter/README.md",
+    "system/linux-elevhub/projekter/web/Metrophobic-OFL.txt",
+    "system/linux-elevhub/projekter/web/metrophobic.ttf",
+    "system/linux-elevhub/server/README.md",
+    "system/linux-elevhub/server/elevhub/device_updates.py",
+    "system/linux-elevhub/server/elevhub/test_device_updates.py",
+    "system/linux-elevhub/server/elevhub/web/assets/Metrophobic-OFL.txt",
+    "system/linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md",
+    "system/linux-elevhub/server/elevhub/web/assets/favicon.svg",
+    "system/linux-elevhub/server/elevhub/web/assets/hub-bauhaus-v1.png",
+    "system/linux-elevhub/server/elevhub/web/assets/hub-workbench-v1.webp",
+    "system/linux-elevhub/server/elevhub/web/assets/maker-rover-v1.webp",
+    "system/linux-elevhub/server/elevhub/web/assets/metrophobic-latin.ttf",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-3d-bauhaus-v1.png",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-3d-card.png",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-code-bauhaus-v1.png",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-code-v1.webp",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-ideas-bauhaus-v1.png",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-ideas-v1.webp",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-laser-bauhaus-v1.png",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-laser-v1.webp",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-microbit-bauhaus-v1.png",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-microbit-v1.webp",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-vinyl-bauhaus-v1.png",
+    "system/linux-elevhub/server/elevhub/web/assets/workshop-vinyl-v1.webp",
+    "apps/scratch/build/CREDITS.txt",
+    "apps/scratch/build/README.md",
+    "system/linux-elevhub/server/sikkerhed/README.md",
+    "system/linux-elevhub/testmiljoe/README.md",
+    "system/linux-elevhub/testmiljoe/vaert/byg-usb-iso.sh",
+    "system/linux-elevhub/testmiljoe/vaert/lav-usb-stik.ps1",
+    "system/linux-elevhub/testmiljoe/vaert/start-server-test.ps1",
+    "system/linux-elevhub/testmiljoe/vaert/test-start-server-test.ps1",
+    "system/linux-elevhub/testmiljoe/vm/preseed-usb.skabelon.cfg",
+    "system/linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
+    "system/linux-elevhub/tests/test_local_admin_update_helper.py",
+    "system/mkv2/__init__.py",
+    "system/mkv2/control_plane/__init__.py",
+    "system/mkv2/control_plane/maintenance.py",
+    "system/mkv2/control_plane/validation.py",
     "package-lock.json",
     "package.json",
     "requirements-dev.txt",
@@ -165,7 +167,7 @@
     "scripts/autostart.ps1",
     "scripts/build_apt_repository.py",
     "scripts/build_github_release.py",
-    "scripts/build_model3d_vendor.mjs",
+    "apps/3dprint/build.mjs",
     "scripts/build_school_package.py",
     "scripts/build_simple_feed.py",
     "scripts/build_update_manifest.py",
@@ -280,75 +282,95 @@
     "tests_v2/test_model3d_review.cjs",
     "tests_v2/test_simple_update_ui.cjs",
     "tests_v2/visual-baseline.json",
-    "third_party/BOXES-PY-SOURCE.md",
-    "third_party/boxes.py/.github/ISSUE_TEMPLATE/bug_report.md",
-    "third_party/boxes.py/.github/ISSUE_TEMPLATE/new--box--generator-or-feature.md",
-    "third_party/boxes.py/CODE_OF_CONDUCT.md",
-    "third_party/boxes.py/CONTRIBUTING.rst",
-    "third_party/boxes.py/LICENSE.txt",
-    "third_party/boxes.py/README.rst",
-    "third_party/boxes.py/documentation/src/CONTRIBUTING.rst",
-    "third_party/boxes.py/documentation/src/README.rst",
-    "third_party/boxes.py/documentation/src/api_architecture.rst",
-    "third_party/boxes.py/documentation/src/api_arguments.rst",
-    "third_party/boxes.py/documentation/src/api_burn.rst",
-    "third_party/boxes.py/documentation/src/api_drawing.rst",
-    "third_party/boxes.py/documentation/src/api_edges.rst",
-    "third_party/boxes.py/documentation/src/api_examples.rst",
-    "third_party/boxes.py/documentation/src/api_existing_parts.rst",
-    "third_party/boxes.py/documentation/src/api_generator.rst",
-    "third_party/boxes.py/documentation/src/api_navigation.rst",
-    "third_party/boxes.py/documentation/src/api_parts.rst",
-    "third_party/boxes.py/documentation/src/apidoc.rst",
-    "third_party/boxes.py/documentation/src/boxes.rst",
-    "third_party/boxes.py/documentation/src/faq.rst",
-    "third_party/boxes.py/documentation/src/generators.rst",
-    "third_party/boxes.py/documentation/src/give_back.rst",
-    "third_party/boxes.py/documentation/src/index.rst",
-    "third_party/boxes.py/documentation/src/install.rst",
-    "third_party/boxes.py/documentation/src/install/macos.rst",
-    "third_party/boxes.py/documentation/src/install/windows.rst",
-    "third_party/boxes.py/documentation/src/modules.rst",
-    "third_party/boxes.py/documentation/src/usermanual.rst",
-    "third_party/boxes.py/inkex/inkscape.txt",
-    "third_party/boxes.py/po/readme.txt",
-    "third_party/boxes.py/scripts/boxes_example.ipynb",
-    "web/assets/CC-BY-4.0.txt",
-    "web/assets/Clipper-LICENSE.txt",
-    "web/assets/ImageTracer-UNLICENSE.txt",
-    "web/assets/MAKER-IMAGES.md",
-    "web/assets/Metrophobic-OFL.txt",
-    "web/assets/OpenType-MIT.txt",
-    "web/assets/PUBLIC-ILLUSTRATIONS.md",
-    "web/assets/Paper-MIT.txt",
-    "web/assets/SOURCES.md",
-    "web/assets/Three-MIT.txt",
-    "web/assets/licenses/model3d/Metrophobic-OFL.txt",
-    "web/assets/licenses/model3d/manifold-3d-LICENSE.txt",
-    "web/assets/licenses/model3d/opentype-LICENSE.txt",
-    "web/assets/licenses/model3d/three-LICENSE.txt",
-    "web/laservaerksted/OPENTYPE-LICENSE.txt",
-    "web/laservaerksted/PAPER-LICENSE.txt",
-    "web/assets/maker-game-piece-v1.webp",
-    "web/assets/maker-hero-v1.webp",
-    "web/assets/maker-pencil-pot-v1.webp",
-    "web/assets/maker-rover-v1.webp",
-    "web/assets/metrophobic-latin.ttf",
-    "web/assets/model3d/Metrophobic-OFL.txt",
-    "web/assets/model3d/Metrophobic-Regular.ttf",
-    "web/assets/workshop-3d-bauhaus-v1.png",
-    "web/assets/workshop-laser-v1.webp",
-    "web/assets/workshop-vinyl-v1.webp",
-    "web/favicon.svg",
-    "windows-elevhub/artifact-manifest.example.json",
-    "windows-elevhub/build_packages.py",
-    "windows-elevhub/server/README.md",
-    "windows/inno/Makervaerkstedet.iss",
-    "windows/inno/Test-InstallOnVm.ps1",
-    "windows/inno/build.py",
-    "windows/inno/lifecycle.py",
-    "windows/inno/prepare_inputs.py",
-    "windows/inno/task_control.ps1"
+    "system/third_party/BOXES-PY-SOURCE.md",
+    "system/third_party/boxes.py/.github/ISSUE_TEMPLATE/bug_report.md",
+    "system/third_party/boxes.py/.github/ISSUE_TEMPLATE/new--box--generator-or-feature.md",
+    "system/third_party/boxes.py/CODE_OF_CONDUCT.md",
+    "system/third_party/boxes.py/CONTRIBUTING.rst",
+    "system/third_party/boxes.py/LICENSE.txt",
+    "system/third_party/boxes.py/README.rst",
+    "system/third_party/boxes.py/documentation/src/CONTRIBUTING.rst",
+    "system/third_party/boxes.py/documentation/src/README.rst",
+    "system/third_party/boxes.py/documentation/src/api_architecture.rst",
+    "system/third_party/boxes.py/documentation/src/api_arguments.rst",
+    "system/third_party/boxes.py/documentation/src/api_burn.rst",
+    "system/third_party/boxes.py/documentation/src/api_drawing.rst",
+    "system/third_party/boxes.py/documentation/src/api_edges.rst",
+    "system/third_party/boxes.py/documentation/src/api_examples.rst",
+    "system/third_party/boxes.py/documentation/src/api_existing_parts.rst",
+    "system/third_party/boxes.py/documentation/src/api_generator.rst",
+    "system/third_party/boxes.py/documentation/src/api_navigation.rst",
+    "system/third_party/boxes.py/documentation/src/api_parts.rst",
+    "system/third_party/boxes.py/documentation/src/apidoc.rst",
+    "system/third_party/boxes.py/documentation/src/boxes.rst",
+    "system/third_party/boxes.py/documentation/src/faq.rst",
+    "system/third_party/boxes.py/documentation/src/generators.rst",
+    "system/third_party/boxes.py/documentation/src/give_back.rst",
+    "system/third_party/boxes.py/documentation/src/index.rst",
+    "system/third_party/boxes.py/documentation/src/install.rst",
+    "system/third_party/boxes.py/documentation/src/install/macos.rst",
+    "system/third_party/boxes.py/documentation/src/install/windows.rst",
+    "system/third_party/boxes.py/documentation/src/modules.rst",
+    "system/third_party/boxes.py/documentation/src/usermanual.rst",
+    "system/third_party/boxes.py/inkex/inkscape.txt",
+    "system/third_party/boxes.py/po/readme.txt",
+    "system/third_party/boxes.py/scripts/boxes_example.ipynb",
+    "system/web/assets/CC-BY-4.0.txt",
+    "apps/folie/web/assets/Clipper-LICENSE.txt",
+    "apps/folie/web/assets/ImageTracer-UNLICENSE.txt",
+    "system/web/assets/MAKER-IMAGES.md",
+    "system/web/assets/Metrophobic-OFL.txt",
+    "apps/folie/web/assets/OpenType-MIT.txt",
+    "system/web/assets/PUBLIC-ILLUSTRATIONS.md",
+    "apps/folie/web/assets/Paper-MIT.txt",
+    "system/web/assets/SOURCES.md",
+    "system/web/assets/Three-MIT.txt",
+    "apps/3dprint/web/assets/licenses/model3d/Metrophobic-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/manifold-3d-LICENSE.txt",
+    "apps/3dprint/web/assets/licenses/model3d/opentype-LICENSE.txt",
+    "apps/3dprint/web/assets/licenses/model3d/three-LICENSE.txt",
+    "apps/laser/web/laservaerksted/OPENTYPE-LICENSE.txt",
+    "apps/laser/web/laservaerksted/PAPER-LICENSE.txt",
+    "system/web/assets/maker-game-piece-v1.webp",
+    "system/web/assets/maker-hero-v1.webp",
+    "system/web/assets/maker-pencil-pot-v1.webp",
+    "system/web/assets/maker-rover-v1.webp",
+    "system/web/assets/metrophobic-latin.ttf",
+    "apps/3dprint/web/assets/model3d/Metrophobic-OFL.txt",
+    "apps/3dprint/web/assets/model3d/Metrophobic-Regular.ttf",
+    "system/web/assets/workshop-3d-bauhaus-v1.png",
+    "system/web/assets/workshop-laser-v1.webp",
+    "apps/folie/web/assets/workshop-vinyl-v1.webp",
+    "system/web/favicon.svg",
+    "system/windows-elevhub/artifact-manifest.example.json",
+    "system/windows-elevhub/build_packages.py",
+    "system/windows-elevhub/server/README.md",
+    "system/windows/inno/Makervaerkstedet.iss",
+    "system/windows/inno/Test-InstallOnVm.ps1",
+    "system/windows/inno/build.py",
+    "system/windows/inno/lifecycle.py",
+    "system/windows/inno/prepare_inputs.py",
+    "system/windows/inno/task_control.ps1",
+    "REPOSITORY-LAYOUT.json",
+    "repository.py",
+    "scripts/repository-layout.mjs",
+    "scripts/build_web.mjs",
+    "scripts/build_model3d_vendor.mjs",
+    "scripts/export_build_source.py",
+    "apps/3dprint/validate_build.py",
+    "apps/folie/build.mjs",
+    "scripts/web-build-receipt.mjs",
+    "scripts/validate_web_build.py",
+    "apps/scratch/build/build-playground.cjs",
+    "apps/scratch/build/build-scratch.ps1",
+    "apps/scratch/build/dependency.patch",
+    "apps/scratch/build/download-library-assets.ps1",
+    "apps/scratch/build/local-project-adapter.js",
+    "apps/scratch/build/smoke-test.ps1",
+    "apps/scratch/build/test-adapter.cjs",
+    "scripts/build_app_catalog.py",
+    "system/linux-elevhub/packaging/base-design-files.json",
+    "system/linux-elevhub/packaging/prepare_app_inputs.py"
   ],
   "includeExtensions": [
     ".py",
@@ -538,48 +560,48 @@
     "**/source-baseline.json",
     "**/ssh-pins.json",
     "**/verification-*.json",
-    "app/bed_ai.py",
-    "app/laser_vision.py",
-    "app/laser_vision_client.py",
-    "app/laser_vision_server.py",
-    "app/local_ai.py",
-    "app/plate_camera_client.py",
-    "app/server_ai_artifact.py",
-    "app/training_samples.py",
-    "app/vision.py",
+    "system/app/bed_ai.py",
+    "system/app/laser_vision.py",
+    "system/app/laser_vision_client.py",
+    "system/app/laser_vision_server.py",
+    "system/app/local_ai.py",
+    "system/app/plate_camera_client.py",
+    "system/app/server_ai_artifact.py",
+    "system/app/training_samples.py",
+    "system/app/vision.py",
     "deployment/laser-usb/**",
     "deployment/public-source-manifest.json",
     "deployment/quality-update-20261011/**",
     "docs/CLAUDE-*.md",
     "docs/LOKAL-PILOT-*.md",
     "docs/OPRYDNING-*.md",
-    "linux-elevhub/NETVAERK.md",
-    "linux-elevhub/ansible/inventory/pilot-20260919/**",
-    "linux-elevhub/ansible/inventory/skole/group_vars/**",
-    "linux-elevhub/ansible/inventory/skole/hosts.yml",
-    "linux-elevhub/ansible/inventory/testmiljoe/**",
-    "linux-elevhub/kiosk-window-guard/bin/matchbox-window-manager",
-    "linux-elevhub/kiosk-window-guard/matchbox-patched/debian/S64matchbox-window-manager",
-    "linux-elevhub/kiosk-window-guard/matchbox-source/**",
-    "linux-elevhub/laererpanel/README.md",
-    "linux-elevhub/tests/test_black_boot_20261006.py",
-    "linux-elevhub/tests/test_cadoodle_prewarm_update.py",
-    "linux-elevhub/tests/test_cadoodle_queue_flow.py",
-    "linux-elevhub/tests/test_cadoodle_queue_remote.py",
-    "linux-elevhub/tests/test_cadoodle_queue_runner.py",
-    "linux-elevhub/tests/test_cadoodle_start_update.py",
-    "linux-elevhub/tests/test_power_queue.py",
-    "linux-elevhub/tests/test_project_finish_update.py",
-    "linux-elevhub/tests/test_quality_update.py",
-    "linux-elevhub/tests/test_r10_update.py",
-    "linux-elevhub/tests/test_workshop_entry_queue.py",
-    "linux-elevhub/tests/verify_project_finish_package.py",
-    "linux-elevhub/updates/**",
-    "linux-elevhub/updates/cadoodle-queue/**",
-    "linux-elevhub/updates/full-release-20261020/**",
-    "linux-elevhub/updates/power-queue/**",
-    "linux-elevhub/updates/svg-library-queue/**",
-    "linux-elevhub/updates/workshop-entry-queue/**",
+    "system/linux-elevhub/NETVAERK.md",
+    "system/linux-elevhub/ansible/inventory/pilot-20260919/**",
+    "system/linux-elevhub/ansible/inventory/skole/group_vars/**",
+    "system/linux-elevhub/ansible/inventory/skole/hosts.yml",
+    "system/linux-elevhub/ansible/inventory/testmiljoe/**",
+    "system/linux-elevhub/kiosk-window-guard/bin/matchbox-window-manager",
+    "system/linux-elevhub/kiosk-window-guard/matchbox-patched/debian/S64matchbox-window-manager",
+    "system/linux-elevhub/kiosk-window-guard/matchbox-source/**",
+    "system/linux-elevhub/laererpanel/README.md",
+    "system/linux-elevhub/tests/test_black_boot_20261006.py",
+    "system/linux-elevhub/tests/test_cadoodle_prewarm_update.py",
+    "system/linux-elevhub/tests/test_cadoodle_queue_flow.py",
+    "system/linux-elevhub/tests/test_cadoodle_queue_remote.py",
+    "system/linux-elevhub/tests/test_cadoodle_queue_runner.py",
+    "system/linux-elevhub/tests/test_cadoodle_start_update.py",
+    "system/linux-elevhub/tests/test_power_queue.py",
+    "system/linux-elevhub/tests/test_project_finish_update.py",
+    "system/linux-elevhub/tests/test_quality_update.py",
+    "system/linux-elevhub/tests/test_r10_update.py",
+    "system/linux-elevhub/tests/test_workshop_entry_queue.py",
+    "system/linux-elevhub/tests/verify_project_finish_package.py",
+    "system/linux-elevhub/updates/**",
+    "system/linux-elevhub/updates/cadoodle-queue/**",
+    "system/linux-elevhub/updates/full-release-20261020/**",
+    "system/linux-elevhub/updates/power-queue/**",
+    "system/linux-elevhub/updates/svg-library-queue/**",
+    "system/linux-elevhub/updates/workshop-entry-queue/**",
     "pladekamera/**",
     "scripts/README-VM-MobileSAM.md",
     "scripts/build_laser_usb.py",
@@ -633,16 +655,16 @@
     "tests/test_training_samples.py",
     "tests/test_vision_memory.py",
     "tests/test_windows_quality_update.py",
-    "third_party/boxes.py/documentation/src/install/log-wsl-win11.txt",
-    "third_party/boxes.py/documentation/src/static",
-    "third_party/boxes.py/examples",
-    "third_party/boxes.py/examples/**",
-    "third_party/boxes.py/scripts/boxes",
-    "third_party/boxes.py/scripts/boxes_proxy.py",
-    "third_party/boxes.py/scripts/boxesserver",
-    "third_party/boxes.py/tests/test_svg.py",
-    "web/camera-batch.js",
-    "web/plate-camera.js",
+    "system/third_party/boxes.py/documentation/src/install/log-wsl-win11.txt",
+    "system/third_party/boxes.py/documentation/src/static",
+    "system/third_party/boxes.py/examples",
+    "system/third_party/boxes.py/examples/**",
+    "system/third_party/boxes.py/scripts/boxes",
+    "system/third_party/boxes.py/scripts/boxes_proxy.py",
+    "system/third_party/boxes.py/scripts/boxesserver",
+    "system/third_party/boxes.py/tests/test_svg.py",
+    "system/web/camera-batch.js",
+    "system/web/plate-camera.js",
     "tests/plate_camera_browser_fixture.py"
   ],
   "requiredDocs": [
@@ -662,142 +684,142 @@
   },
   "publicImages": [
     {
-      "path": "web/assets/maker-hero-v1.webp",
+      "path": "system/web/assets/maker-hero-v1.webp",
       "sha256": "ceed9777346d1b223060da67db55d65cbabd7492a1ac8f5c72cb4e633a22d585",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "web/assets/maker-game-piece-v1.webp",
+      "path": "system/web/assets/maker-game-piece-v1.webp",
       "sha256": "956a79f281b768d928af28d3b469b8d802f5b2b89d9f8a5ca02ab0665a7bf10c",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "web/assets/maker-pencil-pot-v1.webp",
+      "path": "system/web/assets/maker-pencil-pot-v1.webp",
       "sha256": "b2b746ebf760cbdb4705a56a08403ed2d64ba7224be46e1d266dff7b91c40259",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "web/assets/maker-rover-v1.webp",
+      "path": "system/web/assets/maker-rover-v1.webp",
       "sha256": "1fa21da5a1fe9898113db90aa7c192e42f59e0c2a6ba8d6233e7141c22f3055d",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "web/assets/workshop-laser-v1.webp",
+      "path": "system/web/assets/workshop-laser-v1.webp",
       "sha256": "03a13d732a03cf01c2196c1a4fa563b1c6e52d6c06d4251bfe01c91708614d5e",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "web/assets/workshop-vinyl-v1.webp",
+      "path": "apps/folie/web/assets/workshop-vinyl-v1.webp",
       "sha256": "11025226efbea61a26e8c14600b3e40eace8adc8c24f337bf9bcfd3d5e03be0c",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "web/assets/workshop-3d-bauhaus-v1.png",
+      "path": "system/web/assets/workshop-3d-bauhaus-v1.png",
       "sha256": "31a12b16cc5576e17e3893bd7430e4d8ef543bd6c96de6e8c254eba31b74d593",
       "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/hub-bauhaus-v1.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/hub-bauhaus-v1.png",
       "sha256": "3cfc14e3339400208b25d4d2140b49fb0f0670edc482f808362fb1cc09c54232",
       "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/hub-workbench-v1.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/hub-workbench-v1.webp",
       "sha256": "803949d4c61c48a15e58df822faa554023aa2c619341a89464c407aa438f4f54",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/maker-rover-v1.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/maker-rover-v1.webp",
       "sha256": "1fa21da5a1fe9898113db90aa7c192e42f59e0c2a6ba8d6233e7141c22f3055d",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt makerbillede; se web/assets/MAKER-IMAGES.md og SOURCES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-3d-bauhaus-v1.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-3d-bauhaus-v1.png",
       "sha256": "31a12b16cc5576e17e3893bd7430e4d8ef543bd6c96de6e8c254eba31b74d593",
       "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-3d-card.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-3d-card.png",
       "sha256": "52b728e0b25008f0adefb9e17c9f1431623926a191f11258c0b77dec7df8def7",
       "provenance": "CC-BY-4.0; afledning af maker-rover-v1.webp til native Tk, uden nyt billedindhold; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-code-bauhaus-v1.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-code-bauhaus-v1.png",
       "sha256": "73ec2622051cca64c0d8dfbc8824025308fe9f92d69a790450fea4df1ade27f2",
       "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-code-v1.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-code-v1.webp",
       "sha256": "f07b880c5bed9bd42cc5d563bb01a1526e75de22c9b04fb0701bb0fdb5bcf77f",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-ideas-bauhaus-v1.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-ideas-bauhaus-v1.png",
       "sha256": "2f14630f2a31defe7f3aabeda5f1bd68e646f64ef49d532e4ee3a062954abc39",
       "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-ideas-v1.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-ideas-v1.webp",
       "sha256": "ba20f0045e306c12a5596bcd3cad4dab690d7639ec3acd7abeb77ddd3bb0b1fe",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-laser-bauhaus-v1.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-laser-bauhaus-v1.png",
       "sha256": "20b581a96850c0fb5f5edfec07b35cd15aa49ff6955fae733f810a980e2dfa8d",
       "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-laser-v1.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-laser-v1.webp",
       "sha256": "03a13d732a03cf01c2196c1a4fa563b1c6e52d6c06d4251bfe01c91708614d5e",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-microbit-bauhaus-v1.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-microbit-bauhaus-v1.png",
       "sha256": "faec910372d8a7ccf930c3b42907983de908f5e20e4bae417059fdd3aac7732b",
       "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-microbit-v1.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-microbit-v1.webp",
       "sha256": "3fc410867f0df82510b21276e3e91a916c328aa455fc86bbebcd1e36f6e7db0d",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-vinyl-bauhaus-v1.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-vinyl-bauhaus-v1.png",
       "sha256": "cadabcea0277339416748ec53829d08e544de9f242d80c5cf3731bb343e52dd8",
       "provenance": "CC-BY-4.0; eksisterende geometrisk Bauhaus-illustration; filspecifik prompt og genereringsdato er ikke bevaret, så ingen genereringsdetaljer infereres; visuelt kontrolleret uden personer eller logoer; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-vinyl-v1.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-vinyl-v1.webp",
       "sha256": "11025226efbea61a26e8c14600b3e40eace8adc8c24f337bf9bcfd3d5e03be0c",
       "provenance": "CC-BY-4.0; imagegen-genereret illustrativt workshopbillede; se linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-3d-v2.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-3d-v2.webp",
       "sha256": "31e42e51a9e49f7efe125812703f97cc37aa12ce3375692601c01ef9c1c7e905",
       "provenance": "Brugerleveret i denne session til den fælles elevindgang; oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. Ingen ny licens udledes af denne allowlist; se WORKSHOP-IMAGES.md og LICENSE-SCOPE.md."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-folie-v2.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-folie-v2.webp",
       "sha256": "7606b4813b95486a750ffc365720f2c047afdebb58588b27d28e3ae67f5c0c13",
       "provenance": "Brugerleveret i denne session til den fælles elevindgang; oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. Ingen ny licens udledes af denne allowlist; se WORKSHOP-IMAGES.md og LICENSE-SCOPE.md."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-laser-v2.webp",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-laser-v2.webp",
       "sha256": "4d0bc18d2bc0015039c01b2e0fe67cde8a69974cf17baef7afe3f2e665f9dae3",
       "provenance": "Brugerleveret i denne session til den fælles elevindgang; oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. Ingen ny licens udledes af denne allowlist; se WORKSHOP-IMAGES.md og LICENSE-SCOPE.md."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-scratch-v2.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-scratch-v2.png",
       "sha256": "a984ea8c8f5b91052861137c52ab0d01e7e31e4dad0d0842cfa282774b4e730b",
       "provenance": "Brugerleveret i denne session til den fælles elevindgang; oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. Ingen ny licens udledes af denne allowlist; se WORKSHOP-IMAGES.md og LICENSE-SCOPE.md."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-microbit-v2.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-microbit-v2.png",
       "sha256": "7b5dc9a6fd6598e71dcdeb0e92f824128f46fad83638b748a65c28cddb0c7b79",
       "provenance": "CC-BY-4.0; imagegen-genereret i denne session til den fælles elevindgang; se WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/workshop-internet-v2.png",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-internet-v2.png",
       "sha256": "4427433bbcc921cd9863055280f433394d2f2ce9b86d3a97267ec13df81f69ab",
       "provenance": "CC-BY-4.0; imagegen-genereret i denne session til den fælles elevindgang; se WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
     }
@@ -820,13 +842,13 @@
     ],
     "reviewedExceptions": [
       {
-        "path": "web/laservaerksted/paper-core.min.js",
+        "path": "apps/laser/web/laservaerksted/paper-core.min.js",
         "lineSha256": "bf459531fe9d1d10bf4bd1140f2af033c037824a80484466e7f2822ace69d521",
         "category": "network.local-hostname",
         "reason": "Minified Paper.js property access to an internal flag; not a host name."
       },
       {
-        "path": "app/discovery.py",
+        "path": "system/app/discovery.py",
         "lineSha256": "872da3b536c611c8467debc126f2415761a2c5cedf18aa2aa3640a8fb85715e5",
         "category": "network.public-ip",
         "reason": "Standard SSDP multicast protocol constant; not a school endpoint."
@@ -868,511 +890,511 @@
         "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-regler.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-regler.py",
         "lineSha256": "1d140ea4c93a3f7e0c0c27fc8915e18692803229c7e89cc14e09329ce9f22165",
         "category": "network.private-ip",
         "reason": "Standard IANA private/link-local network definitions required by firewall policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-regler.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-regler.py",
         "lineSha256": "1d140ea4c93a3f7e0c0c27fc8915e18692803229c7e89cc14e09329ce9f22165",
         "category": "network.public-ip",
         "reason": "Standard IANA private/link-local network definitions required by firewall policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-regler.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-regler.py",
         "lineSha256": "0becd7287fa8b7a59ec6bc643e8e61af095fb7f7135fcd9a99ab5e02f59adf10",
         "category": "network.private-ip",
         "reason": "Standard IANA private/link-local network definitions required by firewall policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
         "lineSha256": "15d284356228e929cee0143eee89c8ed7d7d176219b677eeefb28223ec5f7317",
         "category": "network.private-ip",
         "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
         "lineSha256": "15d284356228e929cee0143eee89c8ed7d7d176219b677eeefb28223ec5f7317",
         "category": "network.public-ip",
         "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
         "lineSha256": "68df95725a7028bc3c7a8c710441f270c7ba58ab2a771352ddd491380f025d56",
         "category": "network.private-ip",
         "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
         "lineSha256": "39392c73faf3ca7fdc971ab536da2b4f8584636c2d786f4b1d287cc5c6a947db",
         "category": "network.private-ip",
         "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
         "lineSha256": "3236cd9fe0b64f14095db14a661ba1bd113b03b172e004075ab67c991a36aa83",
         "category": "network.private-ip",
         "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
         "lineSha256": "3236cd9fe0b64f14095db14a661ba1bd113b03b172e004075ab67c991a36aa83",
         "category": "network.public-ip",
         "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
         "lineSha256": "188e8e91a2e65b81fbd82b3d59d1ffbbab02797eaf7800a85b26c531699469f8",
         "category": "network.private-ip",
         "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
         "lineSha256": "7f84f525ac255d9d50b7de2fbba67acc25ca773c82e167dd11ddbdfaad30e148",
         "category": "network.private-ip",
         "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/elevhub-webproxy.py",
         "lineSha256": "7f84f525ac255d9d50b7de2fbba67acc25ca773c82e167dd11ddbdfaad30e148",
         "category": "network.public-ip",
         "reason": "Standard IANA special-use network ranges required by SSRF rejection policy."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/test_release_version.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/test_release_version.py",
         "lineSha256": "b59c3836bca42e25b1f5393c303610a56a6fe875b1eefd6efbd32376cbd879e6",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/files/test_release_version.py",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/files/test_release_version.py",
         "lineSha256": "b59c3836bca42e25b1f5393c303610a56a6fe875b1eefd6efbd32376cbd879e6",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/tasks/main.yml",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/tasks/main.yml",
         "lineSha256": "03a56623876ce0756614f7521915c6a4441de1f93f2a9ba83238c7ffea1e166e",
         "category": "credential.literal",
         "reason": "Repeated-character placeholder credentials used only when no device file is configured."
       },
       {
-        "path": "linux-elevhub/ansible/roles/kiosk/tasks/main.yml",
+        "path": "system/linux-elevhub/ansible/roles/kiosk/tasks/main.yml",
         "lineSha256": "49d2a3de18ed16f45f7eaa948f94ef5951f022102346371bfbb4b99253bf34aa",
         "category": "credential.literal",
         "reason": "Repeated-character placeholder credentials used only when no device file is configured."
       },
       {
-        "path": "linux-elevhub/kiosk-window-guard/matchbox-patched/matchbox-window-manager/configure",
+        "path": "system/linux-elevhub/kiosk-window-guard/matchbox-patched/matchbox-window-manager/configure",
         "lineSha256": "c6a277a0ae84c40a414843ce37f5675c84848a3d3ae33895f5ed669641b4a6e8",
         "category": "network.public-ip",
         "reason": "Upstream C11 specification section reference, not a network address."
       },
       {
-        "path": "linux-elevhub/server/README.md",
+        "path": "system/linux-elevhub/server/README.md",
         "lineSha256": "4c71f630b218bdd0000108d51ac5afedf17546bfe097ad60d2f09e1faeaa1940",
         "category": "network.public-ip",
         "reason": "Standard SSDP multicast group documented for printer discovery, not school topology."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "path": "system/linux-elevhub/server/elevhub/test_elevhub.py",
         "lineSha256": "beabef6ef8ba4b9240eb7459afa96a0a9c8657d722ee90aedc6cc495b49809a9",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "path": "system/linux-elevhub/server/elevhub/test_elevhub.py",
         "lineSha256": "cbdc5568cf4d4cc266b99ffb396dd532abadc3dbc43743571b770c8e1962f822",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "path": "system/linux-elevhub/server/elevhub/test_elevhub.py",
         "lineSha256": "91de9d979f929a9a7ded1e2ad993c96e99b0fa4933bec8a3243619a655e20c00",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "path": "system/linux-elevhub/server/elevhub/test_elevhub.py",
         "lineSha256": "6b49fab3d280003c1b0133e4717a1e2de6439b7278f18e1286895d4258b7e68f",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "path": "system/linux-elevhub/server/elevhub/test_elevhub.py",
         "lineSha256": "c620d53743d999f3b08a14d20fc6943a5bb911464707a98a8d6534a7c3d8d6e8",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "path": "system/linux-elevhub/server/elevhub/test_elevhub.py",
         "lineSha256": "722bb6ceea158f1bded633db52e33ce6bf663de89ad7a380ee97bfaacf17ce64",
         "category": "network.public-ip",
         "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "path": "system/linux-elevhub/server/elevhub/test_elevhub.py",
         "lineSha256": "49bf8cbdd14d1e92d2d2855edf464d4776a04b2a7a64d553bbbed163f2a3457e",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "path": "system/linux-elevhub/server/elevhub/test_elevhub.py",
         "lineSha256": "ad7d86ba3ffaff181ce9d1a42efe224a325cfc9a140dbf2c409f2de808816ccf",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_elevhub.py",
+        "path": "system/linux-elevhub/server/elevhub/test_elevhub.py",
         "lineSha256": "0f33ebb1c6ba6cfa78de59765bd1e7a40ad38bfec76eb7bb3cc7e2ffb1f028c3",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "path": "system/linux-elevhub/server/elevhub/test_lukning.py",
         "lineSha256": "eb95935154451ba67a676d7edee2b20abe0f6865e7f51198f4c6b08f2d597610",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "path": "system/linux-elevhub/server/elevhub/test_lukning.py",
         "lineSha256": "0de4222a7f56bec5cdac00f6223ca2c1998fa3aa18ec4f47d0f65b338a8c7e6c",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "path": "system/linux-elevhub/server/elevhub/test_lukning.py",
         "lineSha256": "bb9d0ef03b62df9fdbf8e359ab29c3147c2c0256fbd2b417c0d67385adedbee0",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "path": "system/linux-elevhub/server/elevhub/test_lukning.py",
         "lineSha256": "68114bdcf0f90a1aa9e2eca6efcebb8e24d1040d14ac26fafdfc23e855084944",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "path": "system/linux-elevhub/server/elevhub/test_lukning.py",
         "lineSha256": "43d468416b749a3f9d4d0c3a0b47f676eef9134dd8cd7f8968f3f408c50e9187",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "path": "system/linux-elevhub/server/elevhub/test_lukning.py",
         "lineSha256": "d7ef91144b9f044022ec8d39654f8e6f15eb9adbd344ac8d00395678c40a1479",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "path": "system/linux-elevhub/server/elevhub/test_lukning.py",
         "lineSha256": "643a2cafb329b45c1c309e26d5d846a1427e9bb48232ac297c1bbb9cfefe9a88",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_lukning.py",
+        "path": "system/linux-elevhub/server/elevhub/test_lukning.py",
         "lineSha256": "643a2cafb329b45c1c309e26d5d846a1427e9bb48232ac297c1bbb9cfefe9a88",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_makerspace_laser_admin.py",
+        "path": "system/linux-elevhub/server/elevhub/test_makerspace_laser_admin.py",
         "lineSha256": "39ac2c057fe16170352f23874176023893887c2b2bb46db0682c88615fd7b5d6",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_makerspace_printer_workflows.py",
+        "path": "system/linux-elevhub/server/elevhub/test_makerspace_printer_workflows.py",
         "lineSha256": "5d88be9be246bc288b83d9deb67040997afd5e78f6cc0125a1213ae88bec3a2a",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_makerspace_printer_workflows.py",
+        "path": "system/linux-elevhub/server/elevhub/test_makerspace_printer_workflows.py",
         "lineSha256": "1084761e349c90b4b9d899d13df8f89b031d793777c0271d14284b7852158a1d",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "path": "system/linux-elevhub/server/elevhub/test_makerspace_printers.py",
         "lineSha256": "6e3d70856cb9a2010618573835f823c8b4be4ec8265dcd6f60ddbcd6fc28fbd8",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "path": "system/linux-elevhub/server/elevhub/test_makerspace_printers.py",
         "lineSha256": "c4d23eedceec4b59cce897a0938ed2aaf644ce893a824dfef8dbd1eab8378377",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "path": "system/linux-elevhub/server/elevhub/test_makerspace_printers.py",
         "lineSha256": "6b840e31708233bc03c02729c68e16a369f75751b6c6a4f8c5ca816ad3d3e024",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "path": "system/linux-elevhub/server/elevhub/test_makerspace_printers.py",
         "lineSha256": "87d0ae4f9c7ea6f9fd26d8ac4331c54f277d58374497d01a527b353abb45d3e4",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_makerspace_printers.py",
+        "path": "system/linux-elevhub/server/elevhub/test_makerspace_printers.py",
         "lineSha256": "6ff8365210a3f2f8a336ea8a581e9329a81b21348a00fb407cc18ca35630ce7b",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_opret_sikkerhed.py",
+        "path": "system/linux-elevhub/server/elevhub/test_opret_sikkerhed.py",
         "lineSha256": "dcbef01571c4d129ccff719de08b3979b00886e5a48865ac2666b1cfafb0a93f",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_system_overview.py",
+        "path": "system/linux-elevhub/server/elevhub/test_system_overview.py",
         "lineSha256": "ff037802d68ad8024ebf22286f65ff7261a7f309c447129caae34972558e5eb6",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_system_overview.py",
+        "path": "system/linux-elevhub/server/elevhub/test_system_overview.py",
         "lineSha256": "cfd9c5795232ff6dc6d8e888edbad3470161e57f3b070ba22f1ff9aacf2980f3",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/server/elevhub/test_vaerksteder.py",
+        "path": "system/linux-elevhub/server/elevhub/test_vaerksteder.py",
         "lineSha256": "5a2371473f046bd3b063d6bfa2bce8b6c12cdc411d6a045ee62a15e3861c44a0",
         "category": "network.local-hostname",
         "reason": "Synthetic host/program-property fixture used to test local host rejection or parsing."
       },
       {
-        "path": "linux-elevhub/server/elevhub/web/makerspace.html",
+        "path": "system/linux-elevhub/server/elevhub/web/makerspace.html",
         "lineSha256": "c6daca9ca3e06c588678ec9ce19a5de018738eed3f3c1b5930788948975a9b73",
         "category": "network.private-ip",
         "reason": "Generic printer IPv4 input placeholder; no prefilled or saved school endpoint."
       },
       {
-        "path": "linux-elevhub/testmiljoe/vaert/start-server-test.ps1",
+        "path": "system/linux-elevhub/testmiljoe/vaert/start-server-test.ps1",
         "lineSha256": "71e0b037b882360f5e3cf0494ccd667f2aa468859d891e8f122fd9097059edfd",
         "category": "network.private-ip",
         "reason": "Documentation of unspecified service binds in the isolated test harness."
       },
       {
-        "path": "linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
+        "path": "system/linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
         "lineSha256": "537b0e1e80c546c79723412e89a128a6d7cbd2224a0c558a5b3d9a11de3afc56",
         "category": "network.private-ip",
         "reason": "Generic private IP/netmask and public DNS examples in installation template; not school data."
       },
       {
-        "path": "linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
+        "path": "system/linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
         "lineSha256": "a89c39136803932ac90d5c192f85aeaa0a7d00848c66215cc6b5260eeaa7f37f",
         "category": "network.private-ip",
         "reason": "Generic private IP/netmask and public DNS examples in installation template; not school data."
       },
       {
-        "path": "linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
+        "path": "system/linux-elevhub/testmiljoe/vm/preseed.skabelon.cfg",
         "lineSha256": "807e088fcea0734f0d512b2996d2d81d535d2b0c839236e5f020eaa57ca1e4dc",
         "category": "network.public-ip",
         "reason": "Generic private IP/netmask and public DNS examples in installation template; not school data."
       },
       {
-        "path": "linux-elevhub/tests/controleer_nft_linux.py",
+        "path": "system/linux-elevhub/tests/controleer_nft_linux.py",
         "lineSha256": "ae478592dd0d1d427ff878883c640bea2728e9005855f119c0785492dc874c58",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/tests/controleer_nft_linux.py",
+        "path": "system/linux-elevhub/tests/controleer_nft_linux.py",
         "lineSha256": "f05b582d1931d1d7a52a068dff055b1569c8573a32e19e5d904e54b3c1643297",
         "category": "inventory.mac",
         "reason": "Synthetic locally administered MAC used by isolated Linux network policy test."
       },
       {
-        "path": "linux-elevhub/tests/controleer_nft_linux.py",
+        "path": "system/linux-elevhub/tests/controleer_nft_linux.py",
         "lineSha256": "7932e234cf34ceb56ef11d43e34211992ab7c6ce3e7208652f26269cb94d43eb",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/tests/test_admin_login.py",
+        "path": "system/linux-elevhub/tests/test_admin_login.py",
         "lineSha256": "d5d3359bf4d99153ec27b42d3bb3e46999e509d0bb923c188bafe4872ef23f49",
         "category": "secret.password-hash",
         "reason": "Synthetic shadow-format mock or repeated-character test hash; no real password material."
       },
       {
-        "path": "linux-elevhub/tests/test_elevbjaelke_status.py",
+        "path": "system/linux-elevhub/tests/test_elevbjaelke_status.py",
         "lineSha256": "c276d364c8dd3543792d2b9ed7853c4e5975a2dbfea6624a58369d091bb3d6e0",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_elevbjaelke_status.py",
+        "path": "system/linux-elevhub/tests/test_elevbjaelke_status.py",
         "lineSha256": "c276d364c8dd3543792d2b9ed7853c4e5975a2dbfea6624a58369d091bb3d6e0",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_elevbjaelke_status.py",
+        "path": "system/linux-elevhub/tests/test_elevbjaelke_status.py",
         "lineSha256": "c276d364c8dd3543792d2b9ed7853c4e5975a2dbfea6624a58369d091bb3d6e0",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_elevbjaelke_status.py",
+        "path": "system/linux-elevhub/tests/test_elevbjaelke_status.py",
         "lineSha256": "c276d364c8dd3543792d2b9ed7853c4e5975a2dbfea6624a58369d091bb3d6e0",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_full_installation.py",
+        "path": "system/linux-elevhub/tests/test_full_installation.py",
         "lineSha256": "8026e96eb4e1e5a8c29d7b10cb985edc15abb1d0f5d28bfc3858706445a94013",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_full_installation.py",
+        "path": "system/linux-elevhub/tests/test_full_installation.py",
         "lineSha256": "71aada3f50e390debcf276d7d1446dfe345809dd46a643f117e8c03fd611886e",
         "category": "secret.password-hash",
         "reason": "Synthetic shadow-format mock or repeated-character test hash; no real password material."
       },
       {
-        "path": "linux-elevhub/tests/test_full_installation.py",
+        "path": "system/linux-elevhub/tests/test_full_installation.py",
         "lineSha256": "26f9b78451af8a9d5784f5d8d4a8f26fab08b7e6c5012c6d3840dfd9dbf1c02e",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_full_installation.py",
+        "path": "system/linux-elevhub/tests/test_full_installation.py",
         "lineSha256": "27bbbec4e2c0528594a1d0e5d9155690a85db134994b9cb057e80d3700b1fead",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_full_installation.py",
+        "path": "system/linux-elevhub/tests/test_full_installation.py",
         "lineSha256": "0af5c867922502d315f5432afcf1be0f96d20cb765dee38458b7ce18d6db955e",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_full_installation.py",
+        "path": "system/linux-elevhub/tests/test_full_installation.py",
         "lineSha256": "0753b8b18db0210a04887cae8c0552d7642964850b5ffde3104dabfda69a140f",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_full_installation.py",
+        "path": "system/linux-elevhub/tests/test_full_installation.py",
         "lineSha256": "a0975107aea6596b4975066949df40504efe779565144f1f8aa31153a9965ced",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_internetregler.py",
+        "path": "system/linux-elevhub/tests/test_internetregler.py",
         "lineSha256": "c3bcd7cfe670ecc4f519ab245ae526f3bc727a69d1d45649015ec99c6f479778",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_inventar_fra_serveren.py",
+        "path": "system/linux-elevhub/tests/test_inventar_fra_serveren.py",
         "lineSha256": "8a3bbed220bceca2c353e908e999df1cb8fc14abe0a1e2588cf511ece37f429b",
         "category": "network.public-ip",
         "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
       },
       {
-        "path": "linux-elevhub/tests/test_inventar_fra_serveren.py",
+        "path": "system/linux-elevhub/tests/test_inventar_fra_serveren.py",
         "lineSha256": "3845557ddfa63a051fc0896edc4154059dd841c568eb1661153caec9d2054f31",
         "category": "personal.local-home",
         "reason": "Synthetic teacher/account path fixture used to verify relocation or shell quoting."
       },
       {
-        "path": "linux-elevhub/tests/test_inventar_fra_serveren.py",
+        "path": "system/linux-elevhub/tests/test_inventar_fra_serveren.py",
         "lineSha256": "2a168a826f49fe21afb703719cab63a9f328fea2450e5829fe78b757d7a533c8",
         "category": "personal.local-home",
         "reason": "Synthetic teacher/account path fixture used to verify relocation or shell quoting."
       },
       {
-        "path": "linux-elevhub/tests/test_inventar_fra_serveren.py",
+        "path": "system/linux-elevhub/tests/test_inventar_fra_serveren.py",
         "lineSha256": "2f0c93f2246e1a809eb94133af86b9173035ef246c30588677de18337271d73f",
         "category": "personal.local-home",
         "reason": "Synthetic teacher/account path fixture used to verify relocation or shell quoting."
       },
       {
-        "path": "linux-elevhub/tests/test_kiosk_offline_reconnect.cjs",
+        "path": "system/linux-elevhub/tests/test_kiosk_offline_reconnect.cjs",
         "lineSha256": "983a41bda4d8eda1ba83ed0df36e08ffad8e3515b1cbe525d8ca4fb80e0ef0a6",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_kiosk_proxy_policy.py",
+        "path": "system/linux-elevhub/tests/test_kiosk_proxy_policy.py",
         "lineSha256": "7fc16a6f49d1aae2407fb66bf365c08ca543b80bf9257f0b39921346ce82832c",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_klient_sikkerhed.py",
+        "path": "system/linux-elevhub/tests/test_klient_sikkerhed.py",
         "lineSha256": "fe63ed37e9f1bd63814ae9b190e810bedb2acf7fcb3ee8c179310e47c6867c7a",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_klient_sikkerhed.py",
+        "path": "system/linux-elevhub/tests/test_klient_sikkerhed.py",
         "lineSha256": "ad58d07c1702905bb2de64d3ac5b34d04e058941a82ffb15dc8b3c056d1b33e8",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_klient_sikkerhed.py",
+        "path": "system/linux-elevhub/tests/test_klient_sikkerhed.py",
         "lineSha256": "44ef24583dc9888ae43b9e04ae600a520df29465f4fca1ad09f2658d053210d8",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_makerspace_printers.cjs",
+        "path": "system/linux-elevhub/tests/test_makerspace_printers.cjs",
         "lineSha256": "b5e83cf59c99d0762933610d00af9b9fcdc2a43b3734f88ae3078cb51cd867ff",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/tests/test_makerspace_printers.cjs",
+        "path": "system/linux-elevhub/tests/test_makerspace_printers.cjs",
         "lineSha256": "575871ad931598a663c5728dea494abb90a34b99e65024f680d3ad0a07c664ab",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/tests/test_makerspace_printers.cjs",
+        "path": "system/linux-elevhub/tests/test_makerspace_printers.cjs",
         "lineSha256": "b43dbe805a1af2542cc051b1a6c2c6921dc0bc63db2592496ee3ea097143a1c0",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/tests/test_startup_screen.py",
+        "path": "system/linux-elevhub/tests/test_startup_screen.py",
         "lineSha256": "1699d2682549ec35009241ad55e27cbc4060348d00809f31ac388200c3d6ff25",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/tests/test_webproxy.py",
+        "path": "system/linux-elevhub/tests/test_webproxy.py",
         "lineSha256": "35b9144d6eaa747ba5f281418e182d9ee00894f83e03634ff05ae4655fe78ac4",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/tests/test_webproxy.py",
+        "path": "system/linux-elevhub/tests/test_webproxy.py",
         "lineSha256": "ad32544f0bd68a54972027f88224cda29baedfe130c174fa5b71524cc8499a72",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "linux-elevhub/tests/test_workshop_launcher.py",
+        "path": "system/linux-elevhub/tests/test_workshop_launcher.py",
         "lineSha256": "94796f53280938cb94403fa650265571c0d579a9689de96cd4ec53c544b48fd1",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "linux-elevhub/tests/test_workshop_launcher.py",
+        "path": "system/linux-elevhub/tests/test_workshop_launcher.py",
         "lineSha256": "94796f53280938cb94403fa650265571c0d579a9689de96cd4ec53c544b48fd1",
         "category": "credential.literal",
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
@@ -1948,115 +1970,115 @@
         "reason": "Synthetic credential or rejection counterexample in an isolated test fixture."
       },
       {
-        "path": "third_party/boxes.py/boxes/generators/beequeentransportbox.py",
+        "path": "system/third_party/boxes.py/boxes/generators/beequeentransportbox.py",
         "lineSha256": "0c575159c437985d995fe358866dd6f00ab639724f0305f3537df0d41aec9ad7",
         "category": "inventory.mac",
         "reason": "Upstream colon-separated geometric segment dimensions; not a MAC address."
       },
       {
-        "path": "third_party/boxes.py/boxes/scripts/boxes_generator.py",
+        "path": "system/third_party/boxes.py/boxes/scripts/boxes_generator.py",
         "lineSha256": "11de4d3de7125bbd5ad4f61a16a3da6379aff1aa4817f8460279abf4c2a1b294",
         "category": "network.public-ip",
         "reason": "Upstream SVG namespace identifier contains a dotted standards version; not an endpoint."
       },
       {
-        "path": "third_party/boxes.py/boxes/scripts/boxes_generator.py",
+        "path": "system/third_party/boxes.py/boxes/scripts/boxes_generator.py",
         "lineSha256": "fc51590cc1cdabebc1995880e2707b35a43c54615d822de18f0b15a526f1de9a",
         "category": "network.public-ip",
         "reason": "Upstream SVG namespace identifier contains a dotted standards version; not an endpoint."
       },
       {
-        "path": "third_party/boxes.py/boxes/svgmerge.py",
+        "path": "system/third_party/boxes.py/boxes/svgmerge.py",
         "lineSha256": "255c68e259830e8605cb06abc6a75d2494b5260b21bcc7c3e301ffee4865b895",
         "category": "network.public-ip",
         "reason": "Upstream SVG namespace identifier contains a dotted standards version; not an endpoint."
       },
       {
-        "path": "third_party/boxes.py/boxes/svgmerge.py",
+        "path": "system/third_party/boxes.py/boxes/svgmerge.py",
         "lineSha256": "26228895f2634fe7c209f06e9f507ccb51995c53643ad4159d489f3abe9a7f1b",
         "category": "network.public-ip",
         "reason": "Upstream SVG namespace identifier contains a dotted standards version; not an endpoint."
       },
       {
-        "path": "third_party/boxes.py/documentation/src/install/macos.rst",
+        "path": "system/third_party/boxes.py/documentation/src/install/macos.rst",
         "lineSha256": "bc15b0c0c42c3a342b2502760bcbf4042a88dbda75c0752da71ac5f2a81b7fda",
         "category": "personal.local-home",
         "reason": "Public upstream macOS installation traceback example; unrelated to school users."
       },
       {
-        "path": "third_party/boxes.py/documentation/src/install/macos.rst",
+        "path": "system/third_party/boxes.py/documentation/src/install/macos.rst",
         "lineSha256": "4266f3504d0504ef58de99e73c125800fde8bf5c1c93e0539c9479de1fb47b46",
         "category": "personal.local-home",
         "reason": "Public upstream macOS installation traceback example; unrelated to school users."
       },
       {
-        "path": "third_party/boxes.py/documentation/src/install/macos.rst",
+        "path": "system/third_party/boxes.py/documentation/src/install/macos.rst",
         "lineSha256": "57a692279c84bda9b685a3bb8cc305912b05e9e3cce00457e46439825065253a",
         "category": "personal.local-home",
         "reason": "Public upstream macOS installation traceback example; unrelated to school users."
       },
       {
-        "path": "web/assets/Clipper-LICENSE.txt",
+        "path": "apps/folie/web/assets/Clipper-LICENSE.txt",
         "lineSha256": "66adf47a1fbf48632968cd3cf1ddbf19a7114cb27344bef7fab68adba4fe60c0",
         "category": "network.public-ip",
         "reason": "Upstream Javascript Clipper software version retained in licensing notice."
       },
       {
-        "path": "web/index.html",
+        "path": "system/web/index.html",
         "lineSha256": "650ca37436dcd342c6ad4b346ee93a6f48fed07ddb400fce6b0f5a40a38a6706",
         "category": "network.private-ip",
         "reason": "Generic printer IPv4 input placeholder; no prefilled or saved school endpoint."
       },
       {
-        "path": "web/laser-offset.js",
+        "path": "apps/folie/web/laser-offset.js",
         "lineSha256": "66adf47a1fbf48632968cd3cf1ddbf19a7114cb27344bef7fab68adba4fe60c0",
         "category": "network.public-ip",
         "reason": "Upstream Javascript Clipper software version retained in licensing notice."
       },
       {
-        "path": "windows-elevhub/server/install.ps1",
+        "path": "system/windows-elevhub/server/install.ps1",
         "lineSha256": "393bde32d031890e9353317dee0fa1ed43dc6003b2678b246c1959b13ada9371",
         "category": "network.private-ip",
         "reason": "Generic subnet validation example; not a default or saved school endpoint."
       },
       {
-        "path": "windows-elevhub/server/setup.manifest",
+        "path": "system/windows-elevhub/server/setup.manifest",
         "lineSha256": "4945e838c61df49b9b741c61fe67b312f3b81241dd5734cd7def69779fad7a3a",
         "category": "network.private-ip",
         "reason": "Windows assemblyIdentity version metadata; not an IP address."
       },
       {
-        "path": "windows-elevhub/server/tests/test_installer_resume_behavior.py",
+        "path": "system/windows-elevhub/server/tests/test_installer_resume_behavior.py",
         "lineSha256": "5c9d494f7279e7f54a2c4f8c157142a1d6390595dd7e4cfb5e856e9521928a3e",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "windows-elevhub/server/tests/test_installer_resume_behavior.py",
+        "path": "system/windows-elevhub/server/tests/test_installer_resume_behavior.py",
         "lineSha256": "d6bd3bdd849bdc46382546a57a25c6371f3649872c52dd50d2b7a09478599333",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "windows-elevhub/server/tests/test_installer_resume_behavior.py",
+        "path": "system/windows-elevhub/server/tests/test_installer_resume_behavior.py",
         "lineSha256": "1e57abfe6e79b1b5395305656e08817e257782a727f799e86edde84ca7d6fe5a",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "windows-elevhub/server/tests/test_installer_tls_provision.py",
+        "path": "system/windows-elevhub/server/tests/test_installer_tls_provision.py",
         "lineSha256": "de7801b63bbf59a7a12c6fde81fafcbaedba1805c4bf1c8f31a9af8d780c2739",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "windows-elevhub/server/tests/test_installer_tls_provision.py",
+        "path": "system/windows-elevhub/server/tests/test_installer_tls_provision.py",
         "lineSha256": "f0715b2ec0adb8561d8c785ba3cb8b759a695c6acba47b015d5d1aca49da4c9a",
         "category": "network.private-ip",
         "reason": "Synthetic private-network fixture in an isolated test; no school endpoint."
       },
       {
-        "path": "windows-elevhub/server/tests/test_server_role_selection_privacy.py",
+        "path": "system/windows-elevhub/server/tests/test_server_role_selection_privacy.py",
         "lineSha256": "4b786c4387d3746a73f8b4929c05e79031c27a896e7f227913223fd6c558fa60",
         "category": "network.public-ip",
         "reason": "Synthetic public-network or firmware-version fixture used to test acceptance/rejection."
@@ -2974,67 +2996,67 @@
         "reason": "Pinned upstream psutil documentation illustrates Linux socket-address decoding with an example address; no school endpoint or runtime configuration."
       },
       {
-        "path": "linux-elevhub/installation/debian/test_installation.py",
+        "path": "system/linux-elevhub/installation/debian/test_installation.py",
         "lineSha256": "9c87c1cf5a8be856fde87b479342357171215ab6e83865a54f05962ef103fda8",
         "category": "credential.literal",
         "reason": "Synthetic installer test fixture: repeated-letter or placeholder tokens for a made-up computer; no real device credential."
       },
       {
-        "path": "linux-elevhub/installation/debian/test_installation.py",
+        "path": "system/linux-elevhub/installation/debian/test_installation.py",
         "lineSha256": "9c87c1cf5a8be856fde87b479342357171215ab6e83865a54f05962ef103fda8",
         "category": "network.private-ip",
         "reason": "Synthetic installer test fixture: generic example server address for a made-up school; not a school endpoint."
       },
       {
-        "path": "linux-elevhub/installation/debian/test_installation.py",
+        "path": "system/linux-elevhub/installation/debian/test_installation.py",
         "lineSha256": "1095e53c8ab2ed689fb69a853d3dd9c90dc7c2e559acd6c9d454ff705e2263ea",
         "category": "network.private-ip",
         "reason": "Synthetic installer test fixture: generic example server address for a made-up school; not a school endpoint."
       },
       {
-        "path": "linux-elevhub/installation/debian/test_installation.py",
+        "path": "system/linux-elevhub/installation/debian/test_installation.py",
         "lineSha256": "39c5f5ecbc6bcef0d9ca16238347758ac221e0d3f3745125046fb43852574a05",
         "category": "credential.literal",
         "reason": "Synthetic installer test fixture: repeated-letter or placeholder tokens for a made-up computer; no real device credential."
       },
       {
-        "path": "linux-elevhub/tests/test_apt_client.py",
+        "path": "system/linux-elevhub/tests/test_apt_client.py",
         "lineSha256": "eb5e3a683f40b829747b6c9a30df02ec9ec5c1f1f09f804d4d269907afae4aa4",
         "category": "credential.literal",
         "reason": "Synthetic updater test fixture: repeated-letter token for a made-up computer; no real device credential."
       },
       {
-        "path": "linux-elevhub/tests/test_bootstrap_existing.py",
+        "path": "system/linux-elevhub/tests/test_bootstrap_existing.py",
         "lineSha256": "ffc824a935be61091b8386dd24d5763b75173edc6128fe0e69f60560dfc4685e",
         "category": "credential.literal",
         "reason": "Synthetic bootstrap test fixture: repeated-letter tokens and school.example host; no real device credential."
       },
       {
-        "path": "linux-elevhub/tests/test_bootstrap_existing.py",
+        "path": "system/linux-elevhub/tests/test_bootstrap_existing.py",
         "lineSha256": "27a975d29635fe5a1d47ddf09f1128c2fc71bdf22c4eda2fc1f6ed168c9daf73",
         "category": "credential.literal",
         "reason": "Synthetic bootstrap test fixture: repeated-letter tokens and school.example host; no real device credential."
       },
       {
-        "path": "linux-elevhub/tests/test_debian_packages.py",
+        "path": "system/linux-elevhub/tests/test_debian_packages.py",
         "lineSha256": "bc9a23573b30dfceb98d930f3f999656acc79cc462f6713f07a9ccff677f454b",
         "category": "personal.local-home",
         "reason": "List of package paths the builder must reject, using the generic pupil account name; not a personal home directory."
       },
       {
-        "path": "linux-elevhub/tests/test_template_activation.py",
+        "path": "system/linux-elevhub/tests/test_template_activation.py",
         "lineSha256": "6875c82ba92bca6ec68473c6808fa54947d12aa4aeb800dd670f3ae5728df469",
         "category": "credential.literal",
         "reason": "Synthetic activation test fixture: placeholder token text proving the root token is not exposed; no real credential."
       },
       {
-        "path": "linux-elevhub/tests/test_template_activation.py",
+        "path": "system/linux-elevhub/tests/test_template_activation.py",
         "lineSha256": "c18910fbd39e3ee75183d7724b87022fe00275c297a2fc09ddfc59e95ad3bd35",
         "category": "credential.literal",
         "reason": "Synthetic activation test fixture: placeholder token text proving the root token is not exposed; no real credential."
       },
       {
-        "path": "linux-elevhub/tests/test_template_activation.py",
+        "path": "system/linux-elevhub/tests/test_template_activation.py",
         "lineSha256": "b6a22ad5d0e4d5165717bb670ccf69a6ec2b4d173433d1936cada647d78a3a4b",
         "category": "credential.literal",
         "reason": "Synthetic activation test fixture: placeholder token text proving the root token is not exposed; no real credential."
@@ -3052,13 +3074,13 @@
         "reason": "Four-part Windows file version in a test fixture; not a network address."
       },
       {
-        "path": "web/model3d/view.js",
+        "path": "apps/3dprint/web/model3d/view.js",
         "lineSha256": "e6dbaa67cd998341a9d99051810a748d65c85a9098669d35a718ab393f8db61c",
         "category": "network.local-hostname",
         "reason": "JavaScript property for the default camera view in the 3D editor; not a hostname."
       },
       {
-        "path": "windows/inno/Makervaerkstedet.iss",
+        "path": "system/windows/inno/Makervaerkstedet.iss",
         "lineSha256": "e84f0ef8565800182bac6d703229687f862bcc7b79e44d0ca2f63a4e19b2fcb3",
         "category": "network.private-ip",
         "reason": "Generic example of the subnet format in the installer wizard label; no installed value."
@@ -3226,32 +3248,32 @@
   },
   "publicFonts": [
     {
-      "path": "linux-elevhub/projekter/web/metrophobic.ttf",
+      "path": "system/linux-elevhub/projekter/web/metrophobic.ttf",
       "sha256": "545588c2926a7021f750026765e1f6ec99ced69122d98a1284598d4614fd040e",
       "provenance": "Existing upstream Metrophobic font; SIL Open Font License and required notices retained beside project assets; exact public font bytes pinned."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/metrophobic-latin.ttf",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/metrophobic-latin.ttf",
       "sha256": "545588c2926a7021f750026765e1f6ec99ced69122d98a1284598d4614fd040e",
       "provenance": "Existing upstream Metrophobic font; SIL Open Font License and required notices retained beside project assets; exact public font bytes pinned."
     },
     {
-      "path": "web/assets/metrophobic-latin.ttf",
+      "path": "system/web/assets/metrophobic-latin.ttf",
       "sha256": "545588c2926a7021f750026765e1f6ec99ced69122d98a1284598d4614fd040e",
       "provenance": "Existing upstream Metrophobic font; SIL Open Font License and required notices retained beside project assets; exact public font bytes pinned."
     },
     {
-      "path": "web/assets/model3d/Metrophobic-Regular.ttf",
+      "path": "apps/3dprint/web/assets/model3d/Metrophobic-Regular.ttf",
       "sha256": "34e4ac3257307c28e6dd14f5d77bb296211f0ddd217607228a5375416ed8ac58",
       "provenance": "Upstream Metrophobic Regular for the 3D editor's text tool; SIL Open Font License retained beside the font (Metrophobic-OFL.txt, font-provenance.json); exact public font bytes pinned and checked by the package builder."
     },
     {
-      "path": "linux-elevhub/projekter/web/Manrope.ttf",
+      "path": "system/linux-elevhub/projekter/web/Manrope.ttf",
       "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
       "provenance": "Copied from user-provided reference-kit ZIP; Copyright 2018 The Manrope Project Authors (https://github.com/googlefonts/manrope), SIL Open Font License 1.1 retained in adjacent Manrope-OFL.txt; acquisition URL unknown."
     },
     {
-      "path": "linux-elevhub/server/elevhub/web/assets/Manrope.ttf",
+      "path": "system/linux-elevhub/server/elevhub/web/assets/Manrope.ttf",
       "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
       "provenance": "Copied from user-provided reference-kit ZIP; Copyright 2018 The Manrope Project Authors (https://github.com/googlefonts/manrope), SIL Open Font License 1.1 retained in adjacent Manrope-OFL.txt; acquisition URL unknown."
     }

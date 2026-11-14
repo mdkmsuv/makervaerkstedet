@@ -1,7 +1,7 @@
 // Every shape in the palette is a closed solid that fills its 20 mm box, also when it is used as a hole.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {createGeometryKernel, exportBinaryStl} from '../web/model3d/geometry.js';
+import {createGeometryKernel, exportBinaryStl} from '../apps/3dprint/web/model3d/geometry.js';
 
 const dependency = process.env.MODEL3D_MANIFOLD_MODULE || 'manifold-3d';
 assert.ok(!/^https?:/.test(dependency));

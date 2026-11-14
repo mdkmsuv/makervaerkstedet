@@ -21,7 +21,7 @@ class PublicSourceAssetTests(unittest.TestCase):
 
     def test_schema_pins_existing_non_logo_runtime_assets(self):
         self.assertEqual(len(self.items), 28, 'New public assets require an explicit allowlist review')
-        required = {'linux-elevhub/server/elevhub/web/assets/workshop-' + name for name in (
+        required = {'system/linux-elevhub/server/elevhub/web/assets/workshop-' + name for name in (
             'folie-v2.webp', 'laser-v2.webp', '3d-v2.webp', 'scratch-v2.png',
             'microbit-v2.png', 'internet-v2.png')}
         self.assertTrue(required <= set(self.by_path), required - set(self.by_path))
@@ -51,7 +51,7 @@ class PublicSourceAssetTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             parent = Path(tmp)
             root, policy = _tree(parent)
-            relative = 'web/assets/' + Path(item['path']).name
+            relative = 'system/web/assets/' + Path(item['path']).name
             candidate = root / relative
             candidate.parent.mkdir(parents=True)
             candidate.write_bytes(original)
@@ -78,39 +78,39 @@ class PublicSourceAssetTests(unittest.TestCase):
                 public_source._read_source(path, 1024, pin)
 
     def test_school_logo_cannot_be_added_as_a_public_illustration(self):
-        item = dict(self.items[0], path='web/assets/klostermarksskolen-logo.png')
+        item = dict(self.items[0], path='system/web/assets/klostermarksskolen-logo.png')
         policy = dict(self.policy, explicitFiles=self.policy['explicitFiles'] + [item['path']], publicImages=[item])
         with self.assertRaisesRegex(public_source.ExportError, 'skolelogo'):
             public_source._public_image_map(policy)
 
     def test_runtime_reference_set_is_allowlisted(self):
         expected = {
-            "web/assets/maker-hero-v1.webp",
-            "web/assets/maker-game-piece-v1.webp",
-            "web/assets/maker-pencil-pot-v1.webp",
-            "web/assets/maker-rover-v1.webp",
-            "web/assets/workshop-laser-v1.webp",
-            "web/assets/workshop-vinyl-v1.webp",
-            "web/assets/workshop-3d-bauhaus-v1.png",
-            "linux-elevhub/server/elevhub/web/assets/hub-bauhaus-v1.png",
-            "linux-elevhub/server/elevhub/web/assets/workshop-3d-card.png",
+            'system/web/assets/maker-hero-v1.webp',
+            'system/web/assets/maker-game-piece-v1.webp',
+            'system/web/assets/maker-pencil-pot-v1.webp',
+            'system/web/assets/maker-rover-v1.webp',
+            'system/web/assets/workshop-laser-v1.webp',
+            'apps/folie/web/assets/workshop-vinyl-v1.webp',
+            'system/web/assets/workshop-3d-bauhaus-v1.png',
+            'system/linux-elevhub/server/elevhub/web/assets/hub-bauhaus-v1.png',
+            'system/linux-elevhub/server/elevhub/web/assets/workshop-3d-card.png',
         }
         self.assertTrue(expected.issubset(self.by_path))
 
     def test_windows_pupil_client_is_outside_supported_source_manifest(self):
         manifest_text = (self.root / "deployment/public-source-manifest.json").read_text(encoding="utf-8")
-        self.assertNotIn("windows-elevhub/client", manifest_text)
-        self.assertFalse(any(item["path"].startswith("windows-elevhub/client/") for item in self.items))
+        self.assertNotIn('system/windows-elevhub/client', manifest_text)
+        self.assertFalse(any(item["path"].startswith('system/windows-elevhub/client/') for item in self.items))
 
     def test_license_and_provenance_document_are_exported(self):
-        license_path = self.root / "web/assets/CC-BY-4.0.txt"
-        document = self.root / "web/assets/PUBLIC-ILLUSTRATIONS.md"
+        license_path = self.root / 'system/web/assets/CC-BY-4.0.txt'
+        document = self.root / 'system/web/assets/PUBLIC-ILLUSTRATIONS.md'
         self.assertTrue(license_path.is_file())
         self.assertIn("Attribution 4.0 International", license_path.read_text(encoding="utf-8"))
         text = document.read_text(encoding="utf-8")
         self.assertIn("Klostermarksskolen", text)
         self.assertIn("filspecifikke prompt og genereringsdato er ikke bevaret", text)
-        self.assertTrue({"web/assets/PUBLIC-ILLUSTRATIONS.md", "web/assets/CC-BY-4.0.txt"}.issubset(
+        self.assertTrue({'system/web/assets/PUBLIC-ILLUSTRATIONS.md', 'system/web/assets/CC-BY-4.0.txt'}.issubset(
             {item.relative for item in public_source._collect(self.root, self.policy)}
         ))
 

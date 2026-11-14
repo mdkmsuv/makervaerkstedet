@@ -1,4 +1,9 @@
 """Regression tests for portable, hash-bound Windows package inputs."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 
 import importlib.util
 import json
@@ -13,7 +18,7 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 SPEC = importlib.util.spec_from_file_location(
-    'windows_build_packages_inputs', ROOT / 'windows-elevhub' / 'build_packages.py')
+    'windows_build_packages_inputs', source_path('windows-elevhub/build_packages.py', ROOT))
 build_packages = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(build_packages)
 

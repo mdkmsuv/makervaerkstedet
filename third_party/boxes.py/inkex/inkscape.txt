@@ -1,1 +1,0 @@
-Inkscape .inx files get generated here.

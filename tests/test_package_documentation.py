@@ -1,4 +1,9 @@
 """Check real installed guides using a tiny program layout, never build binaries."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 from pathlib import Path
 import tempfile
 import unittest
@@ -13,12 +18,12 @@ class PackageDocumentationTests(unittest.TestCase):
             (output / 'hub').mkdir()
             (output / 'hub/makerspace_store.py').write_text('# fixture')
             (output / 'server').mkdir()
-            source_server_readme = docs.ROOT / 'windows-elevhub/server/README.md'
+            source_server_readme = source_path('windows-elevhub/server/README.md', docs.ROOT)
             source_before = source_server_readme.read_bytes()
             (output / 'server/README.md').write_bytes(source_before)
             (output / 'web/assets').mkdir(parents=True)
             (output / 'web/assets/PUBLIC-ILLUSTRATIONS.md').write_bytes(
-                (docs.ROOT / 'web/assets/PUBLIC-ILLUSTRATIONS.md').read_bytes())
+                (source_path('web/assets/PUBLIC-ILLUSTRATIONS.md', docs.ROOT)).read_bytes())
             (output / 'deployment/school-setup').mkdir(parents=True)
             (output / 'deployment/school-setup/Setup-School.ps1').write_text('# fixture')
             docs.copy_documentation(output)
@@ -37,7 +42,7 @@ class PackageDocumentationTests(unittest.TestCase):
                     self.assertTrue((path.parent / parsed.path).exists(), f'{path.relative_to(output)} -> {target}')
             self.assertEqual((output / 'LICENSE').read_bytes(), (docs.ROOT / 'LICENSE').read_bytes())
             self.assertEqual((output / 'licenses/CC-BY-4.0.txt').read_bytes(),
-                             (docs.ROOT / 'web/assets/CC-BY-4.0.txt').read_bytes())
+                             (source_path('web/assets/CC-BY-4.0.txt', docs.ROOT)).read_bytes())
 
     def test_external_and_source_only_links(self):
         with tempfile.TemporaryDirectory() as folder:

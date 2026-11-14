@@ -11,7 +11,7 @@ const path = require('node:path');
 const root = path.resolve(__dirname, '..');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const python = process.env.ELEVHUB_TEST_PYTHON || process.env.PYTHON || path.join(root, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python');
-const fixture = spawn(python, ['-B', '-u', path.join(root, 'linux-elevhub/tests/finish_fixture.py')], {
+const fixture = spawn(python, ['-B', '-u', path.join(root, 'system/linux-elevhub/tests/finish_fixture.py')], {
   stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: {...process.env, PYTHONIOENCODING: 'utf-8'}
 });
 let fixtureErrors = '', browser, page;

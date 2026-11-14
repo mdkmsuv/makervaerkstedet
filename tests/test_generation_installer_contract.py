@@ -32,7 +32,7 @@ class GenerationInstallerContractTests(unittest.TestCase):
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
 $tokens=$null; $errors=$null
-$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $env:SOURCE_ROOT 'windows-elevhub/server/install.ps1'),[ref]$tokens,[ref]$errors)
+$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $env:SOURCE_ROOT 'system/windows-elevhub/server/install.ps1'),[ref]$tokens,[ref]$errors)
 if($errors.Count){ throw 'Parse failure' }
 $catches=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.CatchClauseAst] -and $n.Extent.Text -match 'Installationsdata er bevaret' },$true))
 if($catches.Count -ne 1){throw 'Expected one final rollback handler'}
@@ -50,11 +50,11 @@ try { try { throw 'readiness sentinel' } catch { Invoke-Expression $body.Substri
                 self.assertEqual(before, {p.name: p.read_bytes() for p in data.iterdir()})
 
     def test_usb_enrollment_rejects_generation_before_side_effects(self):
-        for relative in ('windows-elevhub/server/launchers/enroll.ps1',):
+        for relative in ('system/windows-elevhub/server/launchers/enroll.ps1',):
             value = self.run_ps(r'''
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
-. (Join-Path $env:SOURCE_ROOT 'windows-elevhub/server/generation-startup.ps1')
+. (Join-Path $env:SOURCE_ROOT 'system/windows-elevhub/server/generation-startup.ps1')
 $tokens=$null; $errors=$null
 $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $env:SOURCE_ROOT $env:GUARD_SOURCE),[ref]$tokens,[ref]$errors)
 if($errors.Count){throw 'Parse failure'}
@@ -72,9 +72,9 @@ try { Invoke-Expression $nodes[0].Extent.Text } catch { $rejected=$true }
         value = self.run_ps(r'''
 $ErrorActionPreference='Stop'
 Set-StrictMode -Version Latest
-. (Join-Path $env:SOURCE_ROOT 'windows-elevhub/server/generation-startup.ps1')
+. (Join-Path $env:SOURCE_ROOT 'system/windows-elevhub/server/generation-startup.ps1')
 $tokens=$null; $errors=$null
-$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $env:SOURCE_ROOT 'windows-elevhub/server/install.ps1'),[ref]$tokens,[ref]$errors)
+$ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $env:SOURCE_ROOT 'system/windows-elevhub/server/install.ps1'),[ref]$tokens,[ref]$errors)
 if($errors.Count){throw 'Parse failure'}
 $commands=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.CommandAst] -and $n.GetCommandName() -eq 'Get-GenerationCommand' -and $n.Extent.Text -notmatch "'--check'" },$true))
 if($commands.Count -ne 2){throw 'Expected task and rollback command'}

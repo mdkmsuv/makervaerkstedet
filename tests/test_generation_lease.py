@@ -1,4 +1,9 @@
 """Bounded PowerShell/embedded-runtime tests for the shared generation lease."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
+from repository import source_path, repo_root
 import hashlib
 import json
 import os
@@ -11,7 +16,7 @@ from app.generation_lock import GenerationLock
 from tests import test_generation_embedded as embedded
 
 
-HELPER = embedded.ROOT / 'windows-elevhub/server/generation-startup.ps1'
+HELPER = source_path('windows-elevhub/server/generation-startup.ps1', embedded.ROOT)
 POWERSHELL = shutil.which('powershell.exe') or shutil.which('pwsh')
 
 
