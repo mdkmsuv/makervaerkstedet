@@ -9,6 +9,8 @@ import tempfile
 import unittest
 from app import simple_release as release
 from app import simple_feed as feed
+from app import app_catalog
+from tests.test_app_catalog import envelope
 
 @unittest.skipUnless(os.environ.get('MKV_MINISIGN_EXE') and os.environ.get('MKV_MINISIGN_SHA256'), 'approved standalone minisign and pin not supplied')
 class ActualMinisignTests(unittest.TestCase):
@@ -37,6 +39,14 @@ class ActualMinisignTests(unittest.TestCase):
     def test_actual_sign_verify_exact_bytes(self):
         raw,sig=self.sign();verified=release.verify_manifest(raw,sig,**self.kw)
         self.assertEqual(verified['_manifest_sha256'],hashlib.sha256(raw).hexdigest())
+    def test_actual_catalog_signature_and_byte_tampering(self):
+        self.value=envelope()
+        raw,sig=self.sign()
+        kw={key:self.kw[key] for key in ('minisign_exe','minisign_sha256','public_key','repository')}
+        verified=app_catalog.verify_catalog(raw,sig,**kw)
+        self.assertEqual(verified['apps'][0]['descriptor']['package'],'makervaerkstedet-app-noter')
+        with self.assertRaisesRegex(release.ReleaseVerificationError,'invalid_signature'):
+            app_catalog.verify_catalog(raw+b' ',sig,**kw)
     def test_actual_signature_rejects_modified_bytes(self):
         raw,sig=self.sign()
         with self.assertRaisesRegex(release.ReleaseVerificationError,'invalid_signature'):release.verify_manifest(raw+b' ',sig,**self.kw)
