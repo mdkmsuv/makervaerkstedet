@@ -4,7 +4,7 @@ const {spawn} = require('node:child_process');
 const path = require('node:path');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '..');
-const fixture = spawn(path.join(root,'.venv','Scripts','python.exe'), ['-X','utf8','-u',path.join(__dirname,'plate_camera_browser_fixture.py')], {windowsHide:true,stdio:['pipe','pipe','pipe']});
+const fixture = spawn(path.join(root,'.venv','Scripts','python.exe'), ['-X','utf8','-u',path.join(__dirname,'manual_camera_browser_fixture.py')], {windowsHide:true,stdio:['pipe','pipe','pipe']});
 let stderr=''; fixture.stderr.on('data', chunk => {stderr+=chunk;});
 let browser;
 const connection = new Promise((resolve,reject)=>{
