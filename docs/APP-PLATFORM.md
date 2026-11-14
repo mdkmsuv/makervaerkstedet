@@ -5,7 +5,9 @@ med værkstederne på elevenhederne. Den beskriver også, hvad der findes nu,
 og i hvilken rækkefølge resten bygges. Noten er ikke en udgivelse. Hvert trin
 følger [udgivelsesprocessen](UDGIVELSESPROCES.md).
 
-Statusafgrænsning ajourført 14. november: pakke pr. app, centralt valg af
+Statusafgrænsning ajourført 14. november: opdeling i hovedsystem og selvstændige
+tilvalgsapps er fastholdt af brugeren, men er endnu ikke gennemført i Git eller
+installationsmodellen. Pakke pr. app, centralt valg af
 installerede apps og en tom grund-ISO er fortsat mål. De nuværende fire
 Debian-pakker indeholder installerede app-manifester. En designretning her
 er ikke dokumentation for en færdig installation. Den private projektrod har
@@ -35,8 +37,8 @@ den fælles `LEVERANCE.md` med aktuelle kandidater og prøver.
 | Laserværkstedet | Ny lokal editor i `web/laservaerksted/`. Fælles metadata, `.laser.json`, hylde/direkte genåbning og fortsæt/gem/kassér er afprøvet i faktisk Chrome; UI/UX-review ved 1024×688. | Samlet elev-/lærerforløb i den valgte nye installation. Kompatibilitet med gamle laserprojekter er fravalgt ved overgangen til 2.0. |
 | Laser-udbakke | `laser_local` validerer lokalt med `clean_svg`, gemmer i `/var/lib/elevhub-design/udbakke` ved manglende forbindelse, svarer 202 og sender igen hvert 30. s med samme `requestId`. | Visning i editoren af, hvor mange afleveringer der venter. |
 | Folieværkstedet | Fælles projektflow i den fortsat understøttede SVG-editor (`web/laser.html`, serveret på `/folie.html`) samt SVG-download. Gem/genåbn er også efterprøvet lokalt 14. november. | Eksport og sikker USB-fjernelse på en installeret elevcomputer. |
-| 3D-værkstedet | Lokal port 8798, STL-import og vedvarende print-udbakke. Fælles metadata, redigerbare `.mkv3d`, revisioner og ren næste elev. Gem/genåbn af redigerbar geometri er efterprøvet lokalt 14. november. | Ny ISO med de senere kildeændringer og WebGL-prøve på elevhardware. Den generiske ISO fra 13. november kunne ikke tegne 3D i Hyper-V, men viste fejlen synligt. Ældre prøvefladers succes er ikke et bestået bevis for denne ISO. |
-| Installeret app-katalog | Fem manifester i de eksisterende core- og Scratch-pakker. Autentificeret lokal `GET /apps` læser dem ved hvert kald; startsiden bruger kataloget både online og offline og bevarer lærerens aktuelle lukning. Faktisk WSL-opgradering, Scratch-fjernelse/geninstallation uden kataloggenstart og bevarelse af profil, CA, projekter og ventende print er afprøvet. Renderede browserprøver og UI/UX-review er udført. | Første grafiske opstart er nu afprøvet i lokal Hyper-V. Signeret udgivelse og appopdeling mangler. |
+| 3D-værkstedet | Lokal port 8798, STL-import og vedvarende print-udbakke. Fælles metadata, redigerbare `.mkv3d`, revisioner og ren næste elev. Gem/genåbn efter tjenestegenstart består i den installerede WSL-kandidat fra 14. november. Ny ISO er bygget, signeret, installeret og bootet i test-VM; ISO-prøven dækker offlineindgang og Laser, ikke 3D. | WebGL/3D på fysisk elevhardware. Den tidligere ISO fra 13. november kunne ikke tegne 3D i Hyper-V, men viste fejlen synligt. WSL- og VM-prøver beviser ikke fysisk GPU-understøttelse. |
+| Installeret app-katalog | Fem manifester i de eksisterende core- og Scratch-pakker. Autentificeret lokal `GET /apps` læser dem ved hvert kald; startsiden bruger kataloget både online og offline og bevarer lærerens aktuelle lukning. Faktisk WSL-opgradering, Scratch-fjernelse/geninstallation uden kataloggenstart og bevarelse af profil, CA, projekter og ventende print er afprøvet. Renderede browserprøver og UI/UX-review er udført. Grafisk opstart og en ny lokalt signeret kandidat er afprøvet. | Offentlig udgivelse og appopdeling mangler. Et installeret katalog er ikke selvstændige tilvalgsapps. |
 | App-pakker | Fire faste Debian-pakker; bygge-, installations- og opdateringskode læser samme `DEBIAN_COMPONENTS` i `app/simple_release.py`. | Pakke pr. app, skolens valg og tom produkt-ISO. |
 
 ## App-pakken

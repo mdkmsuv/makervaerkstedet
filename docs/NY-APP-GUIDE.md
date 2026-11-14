@@ -6,6 +6,12 @@ Retning og begrundelser står i [Værksteder som apps](APP-PLATFORM.md); denne
 guide er arbejdsgangen. Stier er relative til `produkt/`. Guiden bruger ingen
 linjenumre; søg efter de nævnte navne med `rg`.
 
+Henvisninger ajourført 14. november 2026. **Denne guide beskriver den
+nuværende integration i de fire faste Debian-pakker.** Den ønskede opdeling
+i et hovedsystem og selvstændige tilvalgsapps er endnu ikke gennemført.
+Git-struktur, selvstændige apppakker og tilvalg skal beskrives og bygges som
+én sammenhængende ændring; en flyttet mappe giver ikke i sig selv app-tilvalg.
+
 ## Det vigtigste først
 
 - **En app er en lokal webside på elevenheden.** Den åbnes fra startsiden
@@ -57,19 +63,33 @@ sikkerhedsændring og kræver særskilt aftale.
 
 **Gem og genåbn**
 
-- Definér `window.ElevhubProjectAdapter`, før broen indlæses. Påkrævet:
-  `type`, `extension`, `name()`, `export()` (Blob), `import(blob, name)` og
+- Definér `window.ElevhubProjectAdapter`, når editoren er klar; broen venter
+  på adapteren. Påkrævet:
+  `type`, `extension`, `name()`, `export()` (Blob eller Promise med Blob), `import(blob, name)` og
   `reset()`. Forbillede: `linux-elevhub/server/scratch/local-project-adapter.js`.
-- Broen (`bridge.js`, `web/project-session.js`) indsættes automatisk i
-  appens HTML. Den viser dialogen «Hvad vil du arbejde på?» med klasse,
+- Den lokale HTTP-tjeneste indsætter broen i appens HTML. Kilderne er
+  `linux-elevhub/projekter/web/projekt-bridge.js` og
+  `linux-elevhub/projekter/web/project-session.js`; URL'erne er
+  `/_elevhub/projekter/bridge.js` og `/_elevhub/projekter/session.js`.
+  Den viser den fælles projektdialog med klasse,
   fornavn og projektnavn, gem/åbn, og en gendannelseskopi hvert 15. sekund.
+- `signature()` er valgfri, men skal være stabil for uændret projektindhold,
+  hvis den bruges. Uden den sammenligner broen de eksporterede bytes.
+  `hasContent()` kan beskytte arbejde, som allerede var åbent ved opstart.
+  `elevhub-project-changed` bruges ved et nyt/erstattet projekt uden om
+  projektbroen; udsend det ikke ved hvert tastetryk, da det ophæver den
+  eksisterende projektbinding. Se den faktiske håndtering i `project-session.js`.
 - `reset()` skal efterlade en tom app til næste elev. Forrige elevs projekt
   må aldrig åbne af sig selv.
 - Projekter slettes efter 30 dage uden gemte ændringer; højst 50 MiB pr. fil.
 - En ny projekttype skal tilføjes de faste lister i
   `linux-elevhub/projekter/` (`workshop_sessions.py` `KINDS`,
   `projektarkiv.py` `TYPES` og `EXTENSIONS`, `filtyper.py`,
-  `project_open.py`, `scanner.py`, `web/projekter.js`).
+  `project_open.py`, `scanner.py`, `linux-elevhub/projekter/web/projekter.js`).
+
+En app uden projektlagring er endnu ikke en generel tilvalgsvej i denne
+værkstedsvært: den indsatte projektbro venter på en adapter. Et eksplicit
+fravalg af projektflowet indgår i den planlagte fælles appkontrakt.
 
 **Aflevering til køerne**
 
@@ -128,10 +148,11 @@ samme `id` alle steder; id'et er små bogstaver, tal og bindestreg.
    og læreren kan ikke åbne eller lukke appen.
 5. **Tilladte lokale adresser.** `APP_URLS` og standardportene i
    `linux-elevhub/administration/template_activation.py`, samt
-   `ansible/roles/kiosk/defaults/main.yml` og `tasks/main.yml`. Ellers
+   `linux-elevhub/ansible/roles/kiosk/defaults/main.yml` og
+   `linux-elevhub/ansible/roles/kiosk/tasks/main.yml`. Ellers
    blokerer browserpolitikken siden, når læreren har lukket internettet.
 6. **Chromium-politik.** Porten i `InsecureContentAllowedForUrls` i
-   `ansible/roles/kiosk/templates/chromium-politik.json.j2`.
+   `linux-elevhub/ansible/roles/kiosk/templates/chromium-politik.json.j2`.
 7. **Klar-kontrol efter opdatering.** `ENDPOINTS` i
    `linux-elevhub/administration/runtime_checks.py`; en manglende port får
    opdateringen til at fejle.
@@ -147,8 +168,9 @@ samme `id` alle steder; id'et er små bogstaver, tal og bindestreg.
 
 En app i designtjenesten kræver desuden port og sider i
 `app/laser_local.py`, de faste fillister i `app/laser_server.py` og
-`ansible/roles/kiosk/tasks/main.yml` (`kiosk_lokal_design_filer`, som læses
-med et regulært udtryk; bevar formatet) og `elevhub-design.service.j2`.
+`linux-elevhub/ansible/roles/kiosk/tasks/main.yml` (`kiosk_lokal_design_filer`,
+som læses med et regulært udtryk; bevar formatet) og
+`linux-elevhub/ansible/roles/kiosk/templates/elevhub-design.service.j2`.
 
 ## Afprøvning
 
@@ -164,14 +186,21 @@ Kildelæsning beviser ikke, at appen kan ses, klikkes eller gemmes.
   `test_kiosk_offline_catalog.cjs` og `test_kiosk_offline_reconnect.cjs`.
 - **Kendte fejl:** se `tests/KENDTE-FEJL.txt`, før du tolker en rød test som
   din egen.
-- **Byg pakkerne** i WSL Debian som root med
-  `linux-elevhub/packaging/build_from_source.sh`; den bygger fra
-  `git archive HEAD`, så commit først.
+- **Byg fra den valgte, frosne kilde** i Debian 13 amd64, fx WSL. Følg
+  [pakkernes byggekontrakt](../linux-elevhub/packaging/README.md) og
+  [udgivelsesprocessen](UDGIVELSESPROCES.md): verificerede inputlocks,
+  `build_release.py` og faktisk apt-simulering af de fire præcise pakker.
+  Hjælperen `linux-elevhub/packaging/build_from_source.sh` bygger fra
+  `git archive HEAD`; ikke-committede appfiler kommer ikke med. Hjælperens
+  historiske Scratch-inputnavne skal afstemmes med de verificerede byggeinputs.
 - **Installeret prøve:** installér pakkerne på en ikke-tilmeldt testmaskine
   og kør forløbet i en rigtig browser ved 1024 × 688: udfyld klasse, navn og
   projektnavn, lav noget, gem, gå til start, genåbn, og kontrollér at næste
-  elev får tomme felter. Scripts til det ligger ikke i repoet, men i
-  leverancemappen (`install-student-test.py`, `test-installed-*.cjs`).
+  elev får tomme felter. Genbrug
+  [udgivelsesprøverne i repoet](../scripts/release_qa/README.md):
+  `install_student_packages.py`, `installed-laser.cjs`, `installed-folie.cjs`
+  og `installed-3d.cjs` under `scripts/release_qa/`. De dækker de eksisterende
+  apps; en ny app skal have et tilsvarende faktisk browserforløb.
 - **Offline:** stop forbindelsen til serveren og gentag forløbet, også
   efter genstart af enheden. En aflevering skal ende i udbakken og sendes,
   når serveren er tilbage.
