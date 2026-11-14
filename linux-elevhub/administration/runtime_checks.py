@@ -4,6 +4,8 @@ import re
 import time
 import uuid
 import urllib.request
+from pathlib import Path
+import sys
 
 class RuntimeCheckError(ValueError):
     pass
@@ -29,7 +31,7 @@ def read_health(url):
     if not 0<len(raw)<=16384:raise RuntimeCheckError("runtime_health_size")
     return json.loads(raw)
 
-def check_once(core_version,call,read=read_health):
+def check_once(core_version,call,read=read_health,*,apps=None):
     if not isinstance(core_version,str) or re.fullmatch(r"[0-9][A-Za-z0-9.+:~\-]{0,127}",core_version) is None:
         raise RuntimeCheckError("runtime_core_version_required")
     pids={}
@@ -39,14 +41,29 @@ def check_once(core_version,call,read=read_health):
         if values.get("ActiveState")!="active" or not values.get("MainPID","").isdigit() or int(values["MainPID"])<=0:
             raise RuntimeCheckError("runtime_service_inactive")
         pids[service]=int(values["MainPID"])
+    endpoints=ENDPOINTS
+    try:
+        from app_catalog import compare_versions
+    except ModuleNotFoundError:
+        from app.app_catalog import compare_versions
+    if apps is not None or compare_versions(core_version,'2.1.0~')>=0:
+        modules=Path('/usr/local/lib/elevhub/projekter')
+        if not (modules/'app_host.py').is_file():modules=Path(__file__).resolve().parents[1]/'projekter'
+        sys.path.insert(0,str(modules))
+        from app_host import discover_apps,runtime_endpoints
+        apps=discover_apps(strict=False) if apps is None else apps
+        endpoints=runtime_endpoints(apps)
     instances={}
-    for port,path,service,app in ENDPOINTS:
+    for port,path,service,app in endpoints:
         value=read("http://127.0.0.1:"+str(port)+path)
         if (not isinstance(value,dict) or value.get("release_id")!=core_version
                 or value.get("service")!=service or type(value.get("pid")) is not int
                 or value["pid"]!=pids[service] or value.get("local") is not True
                 or (app is not None and value.get("app")!=app)):
             raise RuntimeCheckError("runtime_identity_mismatch")
+        expected=next((a for a in apps or [] if a['id']==app),None)
+        if expected is not None and value.get('app_version')!=expected['version']:
+            raise RuntimeCheckError('runtime_app_version_mismatch')
         try:instance=str(uuid.UUID(value.get("runtime_instance")))
         except (ValueError,TypeError,AttributeError):raise RuntimeCheckError("runtime_instance_invalid") from None
         if service in instances and instances[service]!=instance:
@@ -54,10 +71,10 @@ def check_once(core_version,call,read=read_health):
         instances[service]=instance
     return {"core_version":core_version,"services":instances}
 
-def wait_ready(core_version,call,*,read=read_health,timeout=30,clock=time.monotonic,sleep=time.sleep):
+def wait_ready(core_version,call,*,read=read_health,timeout=30,clock=time.monotonic,sleep=time.sleep,apps=None):
     deadline=clock()+timeout
     while True:
-        try:return check_once(core_version,call,read)
+        try:return check_once(core_version,call,read,apps=apps)
         except (RuntimeCheckError,OSError,ValueError) as error:
             if clock()>=deadline:
                 raise RuntimeCheckError(str(error) if isinstance(error,RuntimeCheckError) else "runtime_endpoint_unavailable") from error

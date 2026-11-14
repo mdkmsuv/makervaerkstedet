@@ -1,3 +1,6 @@
+{% if kiosk_modular_apps | default(false) %}
+{{ kiosk_lokale_app_urler | tojson }}
+{% else %}
 {
   "3dprint": "http://127.0.0.1:{{ kiosk_lokal_design_model3d_port | default(8798) }}/model3d.html",
 {% if kiosk_lokal_design_enabled | bool %}
@@ -8,3 +11,4 @@
   "folie": "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_folievaerksted_port | default(8772) }}/folie.html"
 {% endif %}
 }
+{% endif %}

@@ -17,7 +17,8 @@ def identifier(value):
 
 
 class WorkshopSessions:
-    def __init__(self, clock=time.monotonic):
+    def __init__(self, clock=time.monotonic, *, kinds=None):
+        self.kinds=set(KINDS if kinds is None else kinds)
         self.clock = clock
         self.lock = threading.RLock()
         self.clients = {}
@@ -26,7 +27,7 @@ class WorkshopSessions:
     def poll(self, data):
         client = identifier(data.get('client'))
         kind = data.get('kind')
-        if kind not in KINDS or type(data.get('dirty')) is not bool:
+        if kind not in self.kinds or type(data.get('dirty')) is not bool:
             raise ValueError('Ugyldigt værksted.')
         with self.lock:
             self.clients[client] = {'kind': kind, 'dirty': data['dirty'],

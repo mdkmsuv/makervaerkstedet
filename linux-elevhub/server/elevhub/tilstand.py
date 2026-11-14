@@ -48,7 +48,7 @@ class Tilstand:
     def __init__(self, mappe, apps, ur=time.time):
         self.mappe = Path(mappe)
         self.mappe.mkdir(parents=True, exist_ok=True)
-        self.apps = apps                      # liste af app-konfigurationer i visningsorden
+        self.apps = list(apps)                # liste af app-konfigurationer i visningsorden
         self.vaerksteder = {a['id'] for a in apps
                            if a.get('type', 'vaerksted') != 'browser'
                            and a.get('luk_ved_genstart') is not True}
@@ -68,7 +68,10 @@ class Tilstand:
         # Gemte lærer-valg vinder over standarden. Manglende valg bruger
         # standard_aaben; ugyldige værdier starter lukket, så "false" aldrig
         # bliver sand via bool().
-        aabne = {}
+        # A catalog app may be discovered after configuration has loaded. Keep
+        # its saved choice until the signed catalog has supplied its metadata.
+        aabne = {key:value for key,value in gemte_aabne.items()
+                 if isinstance(key,str) and re.fullmatch(r'[a-z0-9][a-z0-9-]{0,63}',key) and type(value) is bool}
         opstart_aendrede = aabne_fejl
         for app in apps:
             app_id = app['id']
@@ -99,7 +102,9 @@ class Tilstand:
         if not isinstance(gemte_frister, dict):
             gemte_frister = {}
             opstart_aendrede = True
-        frister = {}
+        frister = {key:value for key,value in gemte_frister.items()
+                   if key in aabne and key not in {app['id'] for app in apps}
+                   and type(value) in (int,float) and math.isfinite(value) and value>0}
         nu = self.ur()
         for app_id in self.vaerksteder:
             if aabne[app_id]:
@@ -133,6 +138,28 @@ class Tilstand:
         self.antal_gemt = len(self.computere)
 
     # --- apps -------------------------------------------------------------
+    def include_app_descriptors(self, descriptors):
+        """Extend teacher lesson controls from a verified app catalog."""
+        from urllib.parse import urlsplit
+        with self.laas:
+            known={app['id'] for app in self.apps}
+            additions=[app for app in descriptors if app['id'] not in known]
+            if not additions:return
+            aabne,frister=dict(self.aabne),dict(self.lukket_indtil)
+            for app in additions:
+                app_id=app['id'];self.vaerksteder.add(app_id)
+                aabne.setdefault(app_id,True)
+                if not aabne[app_id]:
+                    deadline=frister.get(app_id,self.ur()+VAERKSTED_LUKNING_SEKUNDER)
+                    if deadline<=self.ur():aabne[app_id]=True;frister.pop(app_id,None)
+                    else:frister[app_id]=deadline
+            # Publish disk intent before changing the visible app list.
+            self._gem_valg(aabne,frister)
+            for app in additions:
+                self.apps.append({'id':app['id'],'navn':app['navn'],'beskrivelse':app['description'],
+                    'kategori':app['category'],'type':'lokal','lokal_service':True,'klar':True,
+                    'port':urlsplit(app['start']).port,'start_url':app['start']})
+
     def _gem_valg(self, aabne, frister):
         """Kald under låsen. Aktiv politik ændres først efter vellykket disk-write."""
         version = self.version + 1
@@ -144,7 +171,7 @@ class Tilstand:
                 c.pop('gaa_hjem_venter', None)
 
     def _lokale_apps_status(self, local_apps):
-        if not isinstance(local_apps, list) or len(local_apps) > 32:
+        if not isinstance(local_apps, list) or len(local_apps) > 128:
             raise ValueError('Ugyldig status for lokale apps.')
         ready = {}
         for app in local_apps:
@@ -179,7 +206,7 @@ class Tilstand:
     def saet(self, aendringer):
         """aendringer: {app_id: bool}. Returnerer den nye version."""
         with self.laas:
-            ukendte = set(aendringer) - set(self.aabne)
+            ukendte = set(aendringer) - {app['id'] for app in self.apps}
             if ukendte:
                 raise KeyError(', '.join(sorted(ukendte)))
             if any(type(v) is not bool for v in aendringer.values()):

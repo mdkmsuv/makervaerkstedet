@@ -58,6 +58,7 @@ from update_admin import UpdateAdministration, handle as updates_request
 from release_feed import ReleaseFeed, ReleaseFeedRunner, handle as release_feed_request
 from device_updates import DeviceUpdates
 from simple_updates import SimpleUpdates, handle as simple_updates_request
+from app_admin_http import handle as app_admin_request, APP_LIMIT, PROFILE_LIMIT
 from simple_update_import import UpdateImporter
 from server_restart import status as server_restart_status, request as server_restart_request
 
@@ -85,6 +86,9 @@ LAERER_FILER = {'/': 'kontrolpanel.html', '/kontrolpanel': 'kontrolpanel.html', 
                 '/makerspace.css': 'makerspace.css',
                 '/laerer.css': 'laerer.css', '/laerer.js': 'laerer.js',
                 '/update-admin.js': 'update-admin.js',
+                '/app-admin.js': 'app-admin.js', '/app-admin.css': 'app-admin.css',
+                '/school-profile.js': 'school-profile.js',
+                '/assets/Manrope.ttf': 'assets/Manrope.ttf',
                 '/system-overview.js': 'system-overview.js',
                 '/system-overview.css': 'system-overview.css',
                 '/favicon.svg': 'assets/favicon.svg', '/favicon.ico': 'assets/favicon.svg',
@@ -593,6 +597,8 @@ class Hub(Grund):
         if laengde:
             self.close_connection = True
         sti = ren_sti(self.path)
+        if app_admin_request(self, sti):
+            return
         if simple_updates_request(self, sti):
             return
         if sti == '/api/enhed/politik':
@@ -610,12 +616,14 @@ class Hub(Grund):
     do_HEAD = do_GET
 
     def do_POST(self):
+        sti = ren_sti(self.path)
         try:
-            laengde = self.kropslaengde(MAKS_JSON)
+            laengde = self.kropslaengde(APP_LIMIT if sti == '/api/device/apps' else MAKS_JSON)
         except Kropsfejl as fejl:
             self.close_connection = True
             return self.svar(fejl.status, {'error': fejl.besked}, ekstra=self.CORS)
-        sti = ren_sti(self.path)
+        if app_admin_request(self, sti, laengde):
+            return
         if simple_updates_request(self, sti, length=laengde):
             return
         if sti == '/api/enhed/opdatering':
@@ -762,6 +770,8 @@ class Laerer(Grund):
         if laengde:
             self.close_connection = True
         sti = ren_sti(self.path)
+        if app_admin_request(self, sti):
+            return
         if simple_updates_request(self, sti):
             return
         if sti == '/api/health':
@@ -809,7 +819,7 @@ class Laerer(Grund):
                 for computer in oversigt.get('computere', []):
                     computer['pause_ack'] = self.server.pause.acknowledgement(computer.get('navn', ''))
             for a in oversigt['apps']:
-                konf = next(k for k in self.server.apps if k['id'] == a['id'])
+                konf = next((k for k in self.server.tilstand.apps if k['id'] == a['id']), {})
                 laererside = konf.get('laererside', '')
                 note = konf.get('laererside_note', '')
                 # A Host header is supplied by the caller and must not become
@@ -837,7 +847,8 @@ class Laerer(Grund):
     def do_POST(self):
         sti = ren_sti(self.path)
         try:
-            laengde = self.kropslaengde(MAKS_JSON)
+            limit = PROFILE_LIMIT if sti == '/api/admin/school-profile' else APP_LIMIT if sti.startswith('/api/admin/apps/') else MAKS_JSON
+            laengde = self.kropslaengde(limit)
             if laser_station_request(self, sti, laengde):
                 return
         except Kropsfejl as fejl:
@@ -859,6 +870,8 @@ class Laerer(Grund):
                 self.close_connection = True
             return self.svar(415, {'error': 'Forkert indholdstype.'})
         try:
+            if app_admin_request(self, sti, laengde):
+                return
             d = self.laes_json(laengde)
             if simple_updates_request(self, sti, d, laengde):
                 return
@@ -1058,7 +1071,7 @@ def run(args):
             if type_ == 'vaerksted':
                 s.regel, s.bagved = REGLER[app['regler']], adresse(app['bagved'])
                 if app['id'] in ('laser', 'folie'):
-                    s.svg_library = Library()
+                    s.svg_library = Library(cache_dir=args.data / 'svg-library' / app['id'])
         hub = Server((konf['elev_adresse'], konf['hub_port']), Hub, tls=tls)
         servere.append(hub)
         hub.navn, hub.tilstand, hub.pause = 'hub', tilstand, pause
@@ -1068,6 +1081,10 @@ def run(args):
         if konf.get('simple_updates') is not None:
             service = SimpleUpdates(args.data, konf['simple_updates'], basis, enheder)
             hub.simple_updates = laerer.simple_updates = service
+            from app_admin import AppAdmin
+            service.app_admin = AppAdmin(service)
+            service.app_admin.catalog_observer = tilstand.include_app_descriptors
+            service.app_admin.overview()
             if service.config.get('source') is not None:
                 simple_runner = service.source_worker = UpdateImporter(service)
         laerer.navn, laerer.tilstand, laerer.kode, laerer.apps, laerer.pause = 'laerer', tilstand, kode, konf['apps'], pause

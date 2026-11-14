@@ -1,6 +1,7 @@
 """Public app input locks and explicit release sets. Never installs software."""
 from __future__ import annotations
 import hashlib
+import importlib.util
 import json
 from pathlib import Path, PurePosixPath
 
@@ -10,6 +11,15 @@ BASE_PACKAGES = frozenset(('makervaerkstedet-elev', 'makervaerkstedet-updater',
                            'makervaerkstedet-matchbox'))
 LEGACY_PACKAGES = BASE_PACKAGES | {'makervaerkstedet-scratch'}
 BUILTIN_APPS = frozenset(('laser', 'folie', '3dprint', 'scratch', 'microbit'))
+
+
+def build_gate(app_id):
+    """Publisher build gates, never imported by the school runtime/updater."""
+    if app_id!='3dprint':return None
+    source=Path(__file__).resolve().parents[1]/'apps/3dprint/validate_build.py'
+    spec=importlib.util.spec_from_file_location('_mkv_model3d_build_gate',source)
+    module=importlib.util.module_from_spec(spec);spec.loader.exec_module(module)
+    return module
 
 
 def owned_path(descriptor, target):
@@ -41,8 +51,10 @@ def validate_spec(spec):
     return descriptor
 
 
-def prepare(source_root, descriptor, manifest, stage, *, scratch_lock=None):
+def prepare(source_root, descriptor, manifest, stage, *, scratch_lock=None,vendor_built_from=None):
     descriptor = validate_app_descriptor(descriptor)
+    gate=build_gate(descriptor['id'])
+    if gate is not None:gate.validate_model3d_bundle(source_root,vendor_built_from)
     if type(manifest) is not dict or set(manifest) != {'schema', 'files'} or type(manifest['schema']) is not int or manifest['schema'] != 1 or type(manifest['files']) is not list:
         raise ValueError('invalid_app_file_manifest')
     source_root, stage = Path(source_root).resolve(), Path(stage)
@@ -76,8 +88,12 @@ def prepare(source_root, descriptor, manifest, stage, *, scratch_lock=None):
     if scratch_lock is not None:
         if descriptor['id'] != 'scratch' or scratch_lock['package'] != 'makervaerkstedet-scratch':
             raise ValueError('invalid_scratch_input_lock')
+        legacy_targets=set()
         for item in scratch_lock['files']:
+            if item['path'].casefold() in legacy_targets:raise ValueError('duplicate_scratch_input_path')
+            legacy_targets.add(item['path'].casefold())
             if item['path'] == 'usr/share/makervaerkstedet/apps/scratch/app.json': continue
+            if item['path'] in files:continue  # Explicit reviewed app wrapper wins over the old bundled wrapper.
             add(item['source'], item['path'], item['mode'], item['sha256'])
     if not files: raise ValueError('empty_app_package')
     stage.mkdir(parents=True, exist_ok=True)

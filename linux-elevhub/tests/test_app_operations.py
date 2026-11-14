@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 from types import SimpleNamespace
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -27,8 +28,13 @@ class NativeBoundary:
         self.calls.append('install');self.version=self.target
         self.state='incomplete' if self.break_apply else 'installed'
         if self.break_apply: raise ValueError('dpkg_manual_repair_required')
+    def install_app(self,files,descriptor):self.install(files,False)
+    def app_matches(self,descriptor):return self.state=='installed' and self.version==descriptor['version']
+    def app_absent(self,descriptor):return self.state=='absent'
+    def preflight_app(self,descriptor,*,removed=False):return []
     def remove_app(self, descriptor): self.calls.append('remove');self.version=None;self.state='absent'
     def activate(self, core): self.calls.append('activate')
+    def activate_app(self,core,descriptor,*,removed=False):self.activate(core)
 
 
 class AppOperationsTests(unittest.TestCase):
@@ -70,6 +76,31 @@ class AppOperationsTests(unittest.TestCase):
         self.offer.update(job_id='d'*32,revision=3,action='install')
         self.assertEqual(self.run_job()['state'],'succeeded')
 
+    def test_terminal_install_and_remove_cannot_undo_a_newer_action(self):
+        first=copy.deepcopy(self.offer);self.run_job()
+        self.offer.update(job_id='b'*32,revision=2,action='remove');self.run_job()
+        self.runner.execute(first,self.catalog,core_version='2.1.0~20261114.1')
+        self.assertEqual(self.native.state,'absent')
+        self.offer.update(job_id='d'*32,revision=3,action='install');self.run_job()
+        self.runner.execute(dict(first,job_id='e'*32),self.catalog,core_version='2.1.0~20261114.1')
+        self.assertEqual(self.native.calls.count('install'),2)
+
+    def test_historical_remove_can_resume_after_other_app_accepts_newer_catalog(self):
+        self.run_job()
+        newer=envelope();newer['sequence']=2;newer['apps']=[];newer['_manifest_sha256']='d'*64
+        from app_catalog import accept_catalog
+        self.runner.ledger['highwater']=accept_catalog(newer,self.runner.ledger['highwater']);self.runner.save()
+        self.offer.update(job_id='b'*32,revision=2,action='remove')
+        self.assertEqual(self.run_job()['state'],'succeeded')
+        self.assertEqual(self.runner.ledger['highwater']['sequence'],2)
+
+    def test_manifest_mismatch_and_remaining_manifest_cannot_report_success(self):
+        self.native.app_matches=lambda _:False
+        self.assertEqual(self.run_job()['code'],'app_installed_manifest_mismatch')
+        self.native.app_absent=lambda _:False
+        self.offer.update(job_id='b'*32,revision=2,action='remove')
+        self.assertEqual(self.run_job()['code'],'app_removal_incomplete')
+
     def test_interrupted_dpkg_is_durable_repair_and_never_reported_as_removed(self):
         self.native.break_apply=True
         result=self.run_job();self.assertEqual(result['code'],'dpkg_manual_repair_required')
@@ -83,6 +114,7 @@ class AppOperationsTests(unittest.TestCase):
         self.offer['action']='update'
         self.assertEqual(self.run_job()['code'],'app_not_installed')
         self.native.state='installed';self.native.version='9.0'
+        self.offer.update(job_id='b'*32,revision=2)
         self.assertEqual(self.run_job()['code'],'app_downgrade_rejected')
 
     def test_simulated_removal_must_remove_only_the_selected_app(self):
@@ -107,6 +139,21 @@ class AppOperationsTests(unittest.TestCase):
         self.assertEqual(len(native.argv),1)
         self.assertIn('--simulate',native.argv[0]);self.assertNotIn('purge',native.argv[0])
 
+    def test_native_preflight_rejects_installed_port_or_format_conflict(self):
+        import apt_client
+        self.assertTrue(callable(getattr(apt_client.Commands,'preflight_app',None)),'Installed-set preflight is missing')
+        root=self.root/'apps';folder=root/'alpha';folder.mkdir(parents=True)
+        from tests.test_app_catalog import descriptor
+        class Inventory(apt_client.Commands):
+            def app_inventory(inner,apps):return [{'id':app['id'],'package':app['package'],'state':'installed','version':app['version']} for app in apps]
+        native=Inventory([],app_root=root)
+        existing=descriptor('alpha',8799,project=False)
+        (folder/'app.json').write_text(json.dumps(existing))
+        with self.assertRaisesRegex(ValueError,'app_port_conflict'):native.preflight_app(self.catalog['apps'][0]['descriptor'])
+        existing=descriptor('alpha',8800)
+        (folder/'app.json').write_text(json.dumps(existing))
+        with self.assertRaisesRegex(ValueError,'app_project_format_conflict'):native.preflight_app(self.catalog['apps'][0]['descriptor'])
+
     def test_bad_catalog_download_is_reported_and_survives_lost_poll_response(self):
         class Transport:
             fail=False
@@ -123,5 +170,54 @@ class AppOperationsTests(unittest.TestCase):
         legacy.transport.fail=True
         with self.assertRaises(OSError):operations.AppClient(legacy).tick()
         self.assertEqual(len(operations.AppClient(legacy).executor.ledger['outbox']),1)
+
+    def test_corrupt_installed_metadata_is_reported_without_blocking_other_jobs(self):
+        self.run_job()
+        root=self.root/'apps';folder=root/'noter';folder.mkdir(parents=True)
+        (folder/'app.json').write_text('{broken')
+        class Transport:
+            body=None
+            def poll_apps(inner,body):inner.body=body;return {'schema':1,'jobs':[]}
+        self.native.installed=lambda:[{'component':'studentcore','version':'2.1.0~20261114.1'},
+                                     {'component':'updater','version':'1.1.0~20261114.1'}]
+        legacy=SimpleNamespace(state=self.root,commands=self.native,transport=Transport())
+        self.assertTrue('manifest_root' in __import__('inspect').signature(operations.AppClient).parameters,'App inventory isolation is missing')
+        operations.AppClient(legacy,manifest_root=root).tick()
+        self.assertEqual(legacy.transport.body['issues'],[{'app_id':'noter','code':'installed_manifest_invalid'}])
+        self.assertEqual(legacy.transport.body['installed'][0]['state'],'incomplete')
+
+    def test_terminal_poll_replay_and_reject_cannot_turn_success_into_failure(self):
+        self.run_job()
+        class OfflineCatalog:
+            def poll_apps(inner,body):return {'schema':1,'jobs':[dict(self.offer)]}
+            def get(inner,path,limit):raise OSError('offline')
+        self.native.installed=lambda:[{'component':'studentcore','version':'2.1.0~20261114.1'},
+                                     {'component':'updater','version':'1.1.0~20261114.1'}]
+        legacy=SimpleNamespace(state=self.root,commands=self.native,transport=OfflineCatalog())
+        client=operations.AppClient(legacy);client.tick()
+        self.assertEqual(client.executor.ledger['jobs']['a'*32]['phase'],'complete')
+        self.assertEqual(client.executor.reject(self.offer,OSError('offline'))['state'],'succeeded')
+        self.assertTrue(all(item['state']=='succeeded' for item in client.executor.ledger['outbox']))
+        self.assertEqual(self.native.calls.count('install'),1)
+
+    def test_crash_after_install_resumes_same_verified_job_across_other_catalog(self):
+        original=self.native.activate_app
+        self.native.activate_app=lambda *a,**kw:(_ for _ in ()).throw(SystemExit('power loss'))
+        with self.assertRaises(SystemExit):self.run_job()
+        self.assertEqual(self.runner.ledger['jobs']['a'*32]['phase'],'installed')
+        newer=copy.deepcopy(self.catalog);newer.update(sequence=2,_manifest_sha256='d'*64)
+        from app_catalog import accept_catalog
+        self.runner.ledger['highwater']=accept_catalog(newer,self.runner.ledger['highwater']);self.runner.save()
+        self.native.activate_app=original
+        self.runner=operations.Executor(self.root,self.native)
+        self.assertEqual(self.run_job()['state'],'succeeded')
+        self.assertEqual(self.native.calls.count('install'),1)
+        self.assertEqual(self.runner.ledger['highwater']['sequence'],2)
+
+    def test_no_download_space_rejects_before_package_refresh_or_apply(self):
+        with patch.object(operations.shutil,'disk_usage',return_value=SimpleNamespace(free=0)):
+            self.assertEqual(self.run_job()['code'],'insufficient_download_space')
+        self.assertNotIn('refresh',self.native.calls)
+        self.assertNotIn('install',self.native.calls)
 
 if __name__=='__main__':unittest.main()

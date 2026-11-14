@@ -70,6 +70,8 @@ class HTTPS:
         if body is not None:
             require(path in (API,'/api/device/apps'),"fixed_poll_path_required")
             headers.update({"Authorization":"Bearer "+self.token,"X-Elevhub-Computer":self.computer})
+        elif path == '/api/device/school-profile' or re.fullmatch(r'/api/device/school-profile/assets/[a-f0-9]{64}\.(?:png|ttf|css|svg|jpg|jpeg|webp|woff|woff2|otf|ico)',path):
+            headers.update({"Authorization":"Bearer "+self.token,"X-Elevhub-Computer":self.computer})
         data=None if body is None else json_bytes(body)
         if data is not None:headers["Content-Type"]="application/json"
         with self.opener.open(urllib.request.Request(self.origin+path,data=data,headers=headers,method="GET" if body is None else "POST"),timeout=30) as response:
@@ -106,7 +108,7 @@ def apt_options(origin,ca,source=Path("/etc/apt/sources.list.d/makervaerkstedet.
 
 class Commands:
     """Fixed argv only; installers are never invoked by tests using this adapter."""
-    def __init__(self,options=None):self.options=options
+    def __init__(self,options=None,*,app_root=Path('/usr/share/makervaerkstedet/apps')):self.options=options;self.app_root=app_root
     def apt(self,*,system_dependencies=False):
         require(self.options is not None,"verified_apt_source_required")
         options=self.options
@@ -163,6 +165,72 @@ class Commands:
         simulated=self.call([*args,'--simulate','remove',app['package']])
         removal_plan(simulated,app)
         self.call([*args,'remove',app['package']])
+    def app_matches(self,descriptor):
+        from app_catalog import validate_app_descriptor
+        app=validate_app_descriptor(descriptor)
+        path=plain(self.app_root/app['id']/'app.json')
+        if not path.is_file():return False
+        protected(path)
+        if path.stat().st_size>16384:return False
+        try:return validate_app_descriptor(strict_json(path.read_bytes()))==app
+        except ValueError:return False
+    def app_absent(self,descriptor):
+        from app_catalog import validate_app_descriptor
+        app=validate_app_descriptor(descriptor)
+        return not plain(self.app_root/app['id']/'app.json').exists()
+    def preflight_app(self,descriptor,*,removed=False):
+        from app_operations import installed_descriptors
+        from app_catalog import validate_app_descriptor
+        app=validate_app_descriptor(descriptor);others=[]
+        for existing in installed_descriptors(self.app_root,issues=[]):
+            if existing['id']==app['id']:continue
+            inventory=self.app_inventory([existing])[0]
+            if inventory['state']=='absent':continue
+            if not removed:
+                require(urlsplit(existing['start']).port!=urlsplit(app['start']).port,'app_port_conflict')
+                a,b=app['project'],existing['project']
+                require(a is None or b is None or (a['kind']!=b['kind'] and a['extension']!=b['extension']),'app_project_format_conflict')
+            others.append(existing)
+        # Preserve the set of currently responsive apps across the shared service
+        # restart. Already broken apps are reported separately by inventory.
+        from concurrent.futures import ThreadPoolExecutor
+        from runtime_checks import read_health
+        def ready(existing):
+            from app_catalog import GATEWAY_CAPABILITIES
+            caps=existing['capabilities'];network=bool(existing['aflevering']) or any(c in GATEWAY_CAPABILITIES for c in caps['required']+caps['optional'])
+            path='/api/runtime/health' if network else '/_elevhub/health'
+            try:
+                value=read_health('http://127.0.0.1:'+str(urlsplit(existing['start']).port)+path)
+                if not isinstance(value,dict):return False
+                return value.get('app')==existing['id'] and value.get('app_version')==existing['version'] and value.get('local') is True
+            except (OSError,ValueError):return False
+        with ThreadPoolExecutor(max_workers=16) as pool:
+            self.app_survivors=[existing for existing,ok in zip(others,pool.map(ready,others)) if ok]
+        return self.app_survivors
+    def install_app(self,files,descriptor):
+        from app_archive import inspect_deb
+        from app_operations import install_plan
+        require(len(files)==1,'one_app_archive_required')
+        archive=inspect_deb(files[0],descriptor)
+        volumes={}
+        for key,allocation in archive['allocation'].items():
+            if not allocation['files'] and not allocation['directories']:continue
+            target=self.app_root if key=='app' else Path('/usr/local/share/elevhub/apps/scratch')
+            probe=plain(target)
+            while not probe.exists():probe=probe.parent
+            volume=probe.stat().st_dev;stats=os.statvfs(probe)
+            # Include block rounding, directory entries and dpkg's temporary
+            # copies, not merely compressed download bytes.
+            estimate=allocation['bytes']+(allocation['files']+allocation['directories'])*stats.f_frsize
+            item=volumes.setdefault(volume,{'path':probe,'bytes':0})
+            item['bytes']+=2*estimate
+        for item in volumes.values():
+            require(shutil.disk_usage(item['path']).free>=item['bytes']+128*1024**2,'insufficient_install_space')
+        args=[*self.apt(),'--yes','--no-remove','--no-install-recommends','--reinstall',
+              '-o','APT::Get::AutomaticRemove=false','-o','Dpkg::Options::=--force-confold']
+        targets=[str(path) for path in files]
+        install_plan(self.call([*args,'--simulate','install',*targets]),descriptor)
+        self.call([*args,'install',*targets])
     def download(self,artifact,directory):
         before=set(directory.glob("*.deb"))
         self.call([*self.apt(),"download",artifact["package"]+"="+version(artifact["version"])],cwd=directory)
@@ -195,14 +263,23 @@ class Commands:
             args=[*self.apt(system_dependencies=True),*flags]
             self.call([*args,"--simulate","install",*targets])
         self.call([*args,"install",*targets])
-    def activate(self,core_version):
+    def activate_app(self,core_version,descriptor,*,removed=False):
+        app={**descriptor,'port':urlsplit(descriptor['start']).port}
+        survivors=[{**item,'port':urlsplit(item['start']).port} for item in getattr(self,'app_survivors',[])]
+        return self.activate(core_version,apps=survivors+([] if removed else [app]))
+    def activate(self,core_version,*,apps=None):
         # Use the newly installed activator after self-update, including its
         # publisher keyring pin, rather than stale imported process code.
         self.call(["/usr/bin/python3","-B",str(Path(__file__).with_name("template_activation.py"))])
         # Fixed local services; no physical printer/laser/Beam Studio operation.
         self.call(["/usr/bin/systemctl","daemon-reload"])
-        self.call(["/usr/bin/systemctl","try-restart","elevhub-lokal.service","elevhub-design.service","getty@tty1.service"])
-        try:wait_ready(core_version,lambda argv:self.call(argv,timeout=5))
+        from app_catalog import compare_versions
+        if compare_versions(core_version,'2.1.0~')>=0:
+            self.call(["/usr/bin/systemctl","enable","--now","elevhub-svg-library.service"])
+        self.call(["/usr/bin/systemctl","try-restart","elevhub-lokal.service","elevhub-design.service","elevhub-regler.service","getty@tty1.service"])
+        try:
+            if apps is None:wait_ready(core_version,lambda argv:self.call(argv,timeout=5))
+            else:wait_ready(core_version,lambda argv:self.call(argv,timeout=5),apps=apps)
         except (RuntimeCheckError,subprocess.TimeoutExpired) as error:raise UpdateError(str(error) if isinstance(error,RuntimeCheckError) else "runtime_service_timeout") from error
 
 
@@ -373,6 +450,8 @@ def main():
         try:fcntl.flock(handle,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:raise UpdateError("updater_already_running")
         result=client.tick()
+        from school_profile_sync import sync as sync_school_profile
+        result['school_profile']=sync_school_profile(client.transport)
         from app_operations import AppClient
         result['apps']=AppClient(client).tick()
         print(json.dumps(result))

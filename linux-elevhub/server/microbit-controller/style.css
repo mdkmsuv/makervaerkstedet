@@ -1,2 +1,12 @@
-html,body,#editor { width:100%; height:100%; margin:0; border:0; }
-#editor { display:block; }
+html,body { width:100%; height:100%; margin:0; border:0; }
+body { display:flex; flex-direction:column; box-sizing:border-box; font:16px/1.4 system-ui,sans-serif; }
+#editor { display:block; width:100%; flex:1 1 auto; min-height:0; border:0; }
+.school-identity { flex:0 0 auto; min-height:48px; display:flex; align-items:center; justify-content:space-between; gap:16px; padding:4px 16px; background:#fff; color:#30343a; border-bottom:2px solid var(--school-brand,#c62b2f); }
+.school-identity .brand { display:flex; align-items:center; gap:12px; min-width:0; }
+.school-identity [data-school-name] { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.school-identity h1 { margin:0; font-size:16px; flex-shrink:0; }
+[hidden] { display:none!important; }
+
+/* The controller is a flex shell: a wrapping project bar takes its actual height. */
+html body.elevhub-project-ready { padding-top:0!important; }
+body #elevhub-project-bar { position:static; height:auto; min-height:54px; box-sizing:border-box; flex:0 0 auto; }

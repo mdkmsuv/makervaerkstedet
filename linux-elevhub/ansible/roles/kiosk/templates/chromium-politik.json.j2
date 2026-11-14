@@ -24,6 +24,11 @@
 {% for port in kiosk_app_porte %}
     "{{ kiosk_protokol }}://{{ kiosk_server }}:{{ port }}"{{ "," if not loop.last else "" }}
 {% endfor %}
+{% if kiosk_modular_apps | default(false) %}
+{% for port in kiosk_installed_ports %}
+    ,"http://127.0.0.1:{{ port }}/"
+{% endfor %}
+{% else %}
 {% if kiosk_lokale_apps_enabled | bool %}
     ,"http://127.0.0.1:8791/"
     ,"http://127.0.0.1:8792/"
@@ -35,6 +40,7 @@
     ,"http://127.0.0.1:{{ kiosk_lokal_design_laser_port }}/"
     ,"http://127.0.0.1:{{ kiosk_lokal_design_folie_port }}/"
     ,"http://127.0.0.1:{{ kiosk_lokal_design_model3d_port | default(8798) }}/"
+{% endif %}
 {% endif %}
   ],
   "AllowFileSelectionDialogs": true,

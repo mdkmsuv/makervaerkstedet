@@ -12,31 +12,38 @@ export function installLaserLibrary({insert,notify,vinyl=false}) {
   const $ = id=>document.getElementById(id), button=$('library-button');
   if (!button) return;
   const api=vinyl?'/api/folie/library':'/api/laser/library';
+  const capabilities=window.ElevhubApp?.capabilities;
+  const direct=Boolean(capabilities&&[...capabilities.required,...capabilities.optional].includes('svg-library-v1'));
   const operation=vinyl?'skærelinjer':'gravering';
   if(vinyl)$('library-intro').textContent='Vælg et motiv fra Skoleværkstedet. Det tilføjes som skærelinjer på måtten. Din tegning bliver bevaret.';
   const dialog=$('library-dialog'), grid=$('library-grid'), message=$('library-status');
+  const retry=document.createElement('button');retry.type='button';retry.className='secondary';retry.textContent='Prøv biblioteket igen';retry.hidden=true;message.after(retry);
+  const source=document.createElement('p');source.id='library-source-status';source.setAttribute('role','status');source.setAttribute('aria-live','polite');source.hidden=!direct;message.before(source);
+  function sourceStatus(payload){if(!direct)return;source.textContent=payload.cache_state==='stale'?'Gemte motiver fra Skoleværkstedets hjemmeside. Nye motiver kræver forbindelse.':payload.cache_state==='empty'?'Skoleværkstedets hjemmeside · motiverne er ikke hentet på denne computer endnu.':'Motiver fra Skoleværkstedets hjemmeside. Hentede motiver kan bruges uden net.';}
+  function unavailable(error){if(!direct)return;source.textContent='Biblioteket er ikke tilgængeligt lige nu. Din tegning er bevaret.';if(dialog.open){message.textContent=error.name==='TimeoutError'?'Biblioteket svarer ikke. Prøv igen.':error.message;retry.hidden=false;$('library-page').textContent='Biblioteket kunne ikke hentes';$('library-prev').disabled=$('library-next').disabled=true;}}
   let enabled=false, version=null, revision=0, controller=new AbortController(), items=[], page=0;
   const urls=new Set();
   function revoke() {
     enabled=false;version=null;revision++;controller.abort();controller=new AbortController();
-    button.hidden=true;grid.replaceChildren();items=[];
+    button.hidden=!direct;grid.replaceChildren();items=[];
     for(const url of urls)URL.revokeObjectURL(url);urls.clear();
-    if(dialog.open)dialog.close();
+    if(dialog.open&&!direct)dialog.close();
   }
   async function request(path) {
-    const response=await fetch(path,{cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(10000)])});
+    const response=await fetch(path,{cache:'no-store',signal:AbortSignal.any([controller.signal,AbortSignal.timeout(direct?22000:10000)])});
     const payload=await response.json();
     if(!response.ok)throw Error(payload.error||'Biblioteket kunne ikke hentes.');
+    sourceStatus(payload);
     return payload;
   }
   async function gate() {
     try {
       const payload=await request(api+'/status');
       if(payload.enabled!==true || !Number.isSafeInteger(payload.version))throw Error(vinyl?'Folie er lukket.':'Laser er lukket.');
-      if(version!==null&&version!==payload.version)revoke();
+      if(!direct&&version!==null&&version!==payload.version)revoke();
       enabled=true;version=payload.version;button.hidden=false;
       return payload.version;
-    } catch(error) {revoke();throw error;}
+    } catch(error) {revoke();unavailable(error);throw error;}
   }
   async function add(item, cardButton) {
     cardButton.disabled=true;
@@ -77,16 +84,19 @@ export function installLaserLibrary({insert,notify,vinyl=false}) {
     for(let n=0;n<3;n++)(async()=>{while(previews.length){await showPreview(...previews.shift());}})();
   }
   button.onclick=async()=>{
+    if(direct&&!dialog.open)dialog.showModal();retry.hidden=true;
     try {
-      await gate();const run=revision;message.textContent='Henter figurer…';dialog.showModal();
+      await gate();const run=revision;message.textContent='Henter figurer…';if(!dialog.open)dialog.showModal();
       const payload=await request(api);
-      if(!enabled||run!==revision||payload.version!==version)return;
+      if(!enabled||run!==revision||!direct&&payload.version!==version)return;
+      if(direct){if(!Number.isSafeInteger(payload.version)||payload.enabled!==true)throw Error('Bibliotekets svar kunne ikke læses.');version=payload.version;}
       items=payload.items;page=0;
       const categories=[...new Set(items.map(item=>item.category))].sort((a,b)=>a.localeCompare(b,'da'));
       $('library-category').replaceChildren(new Option('Alle kategorier',''),...categories.map(category=>new Option(category,category)));
-      message.textContent='Figurer tilføjes til din tegning som '+operation+'.';render();$('library-search').focus();
-    }catch(error){message.textContent=error.message;notify(error.message,true);}
+      message.textContent=(direct?(payload.cache_state==='stale'?'Gemte motiver fra Skoleværkstedets hjemmeside. Nye motiver kræver forbindelse. ':'Motiver fra Skoleværkstedets hjemmeside. '):'')+'Figurer tilføjes til din tegning som '+operation+'.';render();$('library-search').focus();
+    }catch(error){message.textContent=error.name==='TimeoutError'?'Biblioteket svarer ikke. Din tegning er bevaret. Prøv igen.':error.message;retry.hidden=!direct;notify(message.textContent,true);}
   };
+  retry.onclick=()=>button.onclick();
   $('library-search').oninput=$('library-category').onchange=()=>{page=0;render();};
   $('library-prev').onclick=()=>{page--;render();};$('library-next').onclick=()=>{page++;render();};
   dialog.addEventListener('close',()=>{for(const url of urls)URL.revokeObjectURL(url);urls.clear();grid.replaceChildren();});

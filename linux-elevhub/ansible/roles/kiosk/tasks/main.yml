@@ -655,6 +655,22 @@
         daemon_reload: true
       when: not ansible_check_mode
 
+    - name: Tjeneste til hjemmesidens SVG-bibliotek
+      ansible.builtin.template:
+        src: elevhub-svg-library.service.j2
+        dest: /etc/systemd/system/elevhub-svg-library.service
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Start hjemmesidens SVG-bibliotek med vedvarende cache
+      ansible.builtin.systemd_service:
+        name: elevhub-svg-library
+        enabled: true
+        state: started
+        daemon_reload: true
+      when: not ansible_check_mode
+
 - name: Det lokale designværksted er slået fra
   ansible.builtin.systemd_service:
     name: elevhub-design

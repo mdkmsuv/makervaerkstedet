@@ -20,6 +20,7 @@ from projekt_http import handle, PREFIX
 from scanner import Scanner
 from project_open import workshop_urls
 from workshop_sessions import WorkshopSessions, handle_session
+from app_host import discover_apps,asset,uses_gateway
 
 HERE = Path(__file__).resolve().parent
 APPS = {'scratch': 8792, 'microbit': 8797}
@@ -161,14 +162,35 @@ class Handler(BaseHTTPRequestHandler):
                 self.svar(405, {'error': 'Denne handling findes ikke.'})
             elif path == '/_elevhub/metrophobic.ttf':
                 self.fil('metrophobic.ttf')
-            elif path == '/_elevhub/health':
+            elif path in ('/_elevhub/health','/api/runtime/health'):
                 self.svar(200, {'local': True, 'app': self.server.app,
+                               'app_version':(getattr(self.server,'descriptor',None) or {}).get('version'),
                                'apps': self.server.projekt_apps,
                                'navigation': self.server.navigation.read(), **self.server.runtime_health})
             elif path == '/favicon.ico':
                 self.svar(204, b'')
             elif self.server.app == 'projekter':
                 self.svar(302, b'', extra={'Location': PREFIX+'/'})
+            elif getattr(self.server,'descriptor',None) is not None:
+                try:
+                    from app.school_appearance import school_appearance,school_appearance_asset,school_appearance_manifest_present,render_local_html
+                except ModuleNotFoundError:
+                    from school_appearance import school_appearance,school_appearance_asset,school_appearance_manifest_present,render_local_html
+                appearance=school_appearance(self.server.data_root)
+                if appearance is None and school_appearance_manifest_present(self.server.data_root):
+                    self.svar(503,{'error':'Den lokale skoleprofil kunne ikke valideres.'});return
+                if path=='/api/school-appearance':
+                    self.svar(200,appearance or {'theme':'red','school_name':''});return
+                overlay=school_appearance_asset(self.server.data_root,path.rsplit('/',1)[-1] if path.startswith('/school-appearance/') else path)
+                if overlay is not None:
+                    self.svar(200,*overlay);return
+                result=asset(self.server.descriptor,path,self.server.shared_assets)
+                if result is None:self.svar(404,{'error':'Filen findes ikke på denne computer.'})
+                else:
+                    if document:self.server.navigation.visit(self.server.app)
+                    data,mime=result
+                    if mime=='text/html':data=render_local_html(data,appearance)
+                    self.svar(200,data,mime)
             else:
                 # No directory listing, source escaping, symlinks or project-root mounts.
                 root = self.server.assets
@@ -193,11 +215,15 @@ class Handler(BaseHTTPRequestHandler):
     do_GET = do_HEAD = do_POST = do_PUT = do_DELETE = dispatch
 
 
-def make_server(port, store, scanner=None, app='projekter', assets=None, apps=None, navigation=None, workshops=None, sessions=None, runtime=None):
+def make_server(port, store, scanner=None, app='projekter', assets=None, apps=None, navigation=None, workshops=None, sessions=None, runtime=None,descriptor=None,data_root=Path('/etc/elevhub'),shared_root=None):
     server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
     server.daemon_threads = True
     server.projekter, server.scanner, server.app = store, scanner, app
     server.assets = Path(assets).resolve() if assets else None
+    server.descriptor=descriptor
+    server.data_root=Path(data_root)
+    server.kiosk_config=server.data_root/'kiosk.json'
+    server.shared_assets=Path(shared_root) if shared_root is not None else HERE.parent/'designvaerksted/web' if HERE.parent.name=='elevhub' else HERE.parents[1]/'web'
     server.runtime_health = dict(runtime) if runtime is not None else student_identity("elevhub-lokal")
     server.projekt_apps = apps or []
     server.navigation = navigation or Navigation()
@@ -211,6 +237,7 @@ def main():
     parser.add_argument('--projects', type=Path, default=Path.home()/'Projekter')
     parser.add_argument('--state', type=Path)
     parser.add_argument('--apps-root', type=Path, default=Path('/usr/local/share/elevhub/apps'))
+    parser.add_argument('--manifest-root',type=Path,default=Path('/usr/share/makervaerkstedet/apps'))
     parser.add_argument('--port', type=int, default=8791)
     parser.add_argument('--only-projects', action='store_true')
     parser.add_argument('--workshop-config', type=Path)
@@ -218,23 +245,25 @@ def main():
     logging.basicConfig(level=logging.INFO, format='%(asctime)s %(message)s')
     # One bad workshop address must not take Scratch, Kredsløb, Datatræner and
     # the project shelf down with it; only "open in workshop" is then disabled.
+    installed=[] if args.only_projects else discover_apps(args.manifest_root,args.apps_root,strict=False)
     try:
-        workshops = workshop_urls(args.workshop_config)
+        workshops = workshop_urls(args.workshop_config,installed)
     except (OSError, ValueError) as error:
         logging.error('Værkstedsadresser kunne ikke læses (%s); projekter åbnes kun som visning.', error)
         workshops = {}
-    store = Projektarkiv(args.state or args.projects/'.elevhub')
+    store = Projektarkiv(args.state or args.projects/'.elevhub',apps=installed)
     scanner = Scanner(args.projects, store)
-    apps = [] if args.only_projects else [{'id': app, 'port': port} for app, port in APPS.items()
-                                         if (args.apps_root/app/'index.html').is_file()]
+    apps = installed
     servers, stop = [], threading.Event()
     navigation = Navigation()
-    sessions = WorkshopSessions()
+    sessions = WorkshopSessions(kinds={app['project']['kind'] for app in apps if app.get('project')})
     runtime = student_identity("elevhub-lokal")
     try:
         servers.append(make_server(args.port, store, scanner, apps=apps, navigation=navigation, workshops=workshops, sessions=sessions, runtime=runtime))
         for app in apps:
-            servers.append(make_server(app['port'], store, scanner, app['id'], args.apps_root/app['id'], apps, navigation, workshops, sessions, runtime))
+            if not uses_gateway(app):
+                try:servers.append(make_server(app['port'], store, scanner, app['id'], app['assets'], apps, navigation, workshops, sessions, runtime,descriptor=app))
+                except OSError:logging.error('App %s kunne ikke starte; basis fortsætter.',app['id'])
         for server in servers:
             threading.Thread(target=server.serve_forever, daemon=True).start()
         threading.Thread(target=scanner.run, args=(stop,), daemon=True).start()

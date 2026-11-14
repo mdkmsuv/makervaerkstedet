@@ -300,6 +300,15 @@
     .library-card .insert-label { color:var(--brand); font-size:13px; font-weight:700; }
     .library-empty { grid-column:1/-1; padding:32px; text-align:center; background:#f7f7f7; }
     #libraryStatus { min-height:24px; margin:0 0 12px; color:var(--text); font-size:14px; }
+    .library-source { padding:10px 12px; margin-bottom:14px; border:1px solid var(--line); border-radius:5px; background:var(--brand-soft); }
+    .library-source p { margin:0 0 8px; font-size:14px; }
+    .library-pages { display:flex; align-items:center; justify-content:center; gap:12px; margin-top:16px; }
+    @media (max-width:600px) {
+      .library-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .library-filters { grid-template-columns:minmax(0,1fr); }
+      .library-card { min-width:0; overflow-wrap:anywhere; padding:10px; }
+      .library-card svg { max-width:100%; height:auto; aspect-ratio:1; }
+    }
     .drawing-object path { vector-effect:non-scaling-stroke; }
 
     .work-zone {
@@ -1073,10 +1082,11 @@
   <dialog id="libraryDialog" aria-labelledby="libraryTitle">
     <div class="dialog-shell">
       <header class="dialog-header">
-        <div><h2 id="libraryTitle">SVG-bibliotek</h2><p>12 motiver. Din tegning bliver bevaret.</p></div>
+        <div><h2 id="libraryTitle">SVG-bibliotek</h2><p>Vælg et motiv, og tegn videre på din tegning.</p></div>
         <button class="button icon-only" id="closeLibraryButton" type="button" aria-label="Luk SVG-bibliotek">×</button>
       </header>
       <div class="dialog-body">
+        <div class="library-source" id="librarySource" hidden><p id="librarySourceStatus" role="status" aria-live="polite"></p><button class="button" id="retryLibraryButton" type="button">Prøv igen</button></div>
         <div class="library-filters">
           <label for="librarySearch">Søg efter et motiv<input id="librarySearch" type="search" placeholder="Fx kat, blomst eller raket" maxlength="80"></label>
           <label for="libraryCategory">Kategori<select id="libraryCategory"><option value="">Alle kategorier</option><option>Dyr</option><option>Natur</option><option>Rum</option><option>Hobby</option></select></label>
@@ -1084,6 +1094,7 @@
         </div>
         <p id="libraryStatus" role="status" aria-live="polite"></p>
         <div class="library-grid" id="libraryGrid" aria-label="Motiver i SVG-biblioteket"></div>
+        <div class="library-pages" id="libraryPages" hidden><button class="button" id="libraryPrevious" type="button">Forrige</button><span id="libraryPageStatus"></span><button class="button" id="libraryNext" type="button">Næste</button></div>
       </div>
       <footer class="dialog-footer"><button class="button primary" id="finishLibraryButton" type="button">Tegn videre</button></footer>
     </div>

@@ -58,5 +58,17 @@ class InstallGateTests(unittest.TestCase):
         spec={'schema':1,'packages':self.packages,'test_repository':True,'install_gate':self.record()}
         self.reject_before_signing(spec,'debian_archive_keyring_pin_mismatch')
 
+    def test_actual_gate_receipt_is_accepted_by_the_legacy_repository_consumer(self):
+        import sys
+        sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'linux-elevhub/packaging'))
+        import check_install
+        self.assertTrue(callable(getattr(check_install,'simulation_receipt',None)),'Versioned native receipt factory is missing')
+        self.receipt=check_install.simulation_receipt(self.receipt['packages'],release_set='legacy',
+            isolated_paths=44,apt_config_sha256='b'*64,debian_keyring_sha256=apt.DEBIAN13_KEYRING_SHA256)
+        self.assertEqual(apt.validate_install_gate(self.record(),self.packages),self.record()['sha256'])
+        modern=check_install.simulation_receipt({},release_set='base',isolated_paths=44,
+            apt_config_sha256='b'*64,debian_keyring_sha256=apt.DEBIAN13_KEYRING_SHA256)
+        self.assertEqual((modern['schema'],modern['release_set']),(2,'base'))
+
 
 if __name__=='__main__':unittest.main()

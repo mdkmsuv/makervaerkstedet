@@ -12,8 +12,8 @@ import {cleanLearning} from './laser-geometry.js';
 import {appendLibraryItems,installLaserLibrary} from './laser-library.js';
 
 const $=id=>document.getElementById(id);
-const VINYL=location.pathname==='/folie.html';
-const MANAGED=!!document.getElementById('elevhub');
+const VINYL=window.ElevhubApp?.id==='folie'||location.pathname==='/folie.html';
+const MANAGED=!!window.ElevhubApp||!!document.getElementById('elevhub');
 const LASER_BED={width:600,height:375};
 const STORAGE=VINYL?'kloster-folievaerksted-v1':'kloster-laservaerksted-v1';
 const PENDING_PROJECT='kloster-designvaerksted-open-project';

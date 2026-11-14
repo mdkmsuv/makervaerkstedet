@@ -8,7 +8,7 @@ import {readStl} from './stl-import.js';
 import {readSvg} from './svg-import.js';
 import {encodeProject, decodeProject} from './project.js';
 const $ = id => document.getElementById(id), model = new SceneModel();
-const managed = Boolean(document.getElementById('elevhub'));
+const managed = Boolean(window.ElevhubApp || document.getElementById('elevhub'));
 const labels = {box: 'Kasse', cylinder: 'Cylinder', sphere: 'Kugle', cone: 'Kegle', wedge: 'Kile', tube: 'Rør', roof: 'Tag', halfsphere: 'Halvkugle', pyramid: 'Pyramide', star: 'Stjerne', heart: 'Hjerte', text: 'Tekst', mesh: 'Hentet figur', group: 'Samlet figur'};
 const colorNames = ['Rød', 'Orange', 'Gul', 'Grøn', 'Blå', 'Lilla', 'Lyserød', 'Hvid', 'Sort'];
 const status = text => { $('status').textContent = text; }, round = value => Math.round(value * 100) / 100;

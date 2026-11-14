@@ -69,6 +69,11 @@ def revoke_device_updates(hub_data: Path, computer: str, *, revoked_token_sha256
         for table in ('desired', 'bindings'):
             if table in tables:
                 changed = bool(db.execute('DELETE FROM ' + table + ' WHERE device=?', (computer,)).rowcount) or changed
+        for table in ('reports', 'apps_reports', 'apps_enrolled'):
+            if table in tables:
+                changed = bool(db.execute('DELETE FROM ' + table + ' WHERE device=?', (computer,)).rowcount) or changed
+        if 'apps_jobs' in tables:
+            changed = bool(db.execute("UPDATE apps_jobs SET state='superseded',code='device_revoked' WHERE device=? AND state='queued'", (computer,)).rowcount) or changed
         if changed:
             db.execute('UPDATE meta SET revision=revision+1 WHERE id=1')
         db.commit()
@@ -189,6 +194,8 @@ class SimpleUpdates:
         verifier = self.release_verifier()
         verified, errors = {}, []
         for entry in entries:
+            if isinstance(entry, dict) and entry.get('component') == 'app-catalog':
+                continue  # Schema2 is independently verified by AppAdmin.
             try:
                 manifest = plain(self.base / entry['manifest'])
                 signature = plain(self.base / entry['signature'])

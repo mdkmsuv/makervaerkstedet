@@ -11,14 +11,17 @@ DEFAULT_WORKSHOPS = {'3dprint': 'http://127.0.0.1:8798/model3d.html',
                      'folie': 'http://127.0.0.1:8766/folie.html'}
 
 
-def workshop_urls(path=None):
-    values = json.loads(Path(path).read_text(encoding='utf-8-sig')) if path else dict(DEFAULT_WORKSHOPS)
-    if not isinstance(values, dict) or set(values) - set(DEFAULT_WORKSHOPS):
+def workshop_urls(path=None,apps=None):
+    allowed=DEFAULT_WORKSHOPS if apps is None else {'projekter':'http://127.0.0.1:8791/',**{a['id']:a['start'] for a in apps}}
+    values = json.loads(Path(path).read_text(encoding='utf-8-sig')) if path else dict(allowed)
+    if not isinstance(values, dict) or set(values) - set(allowed):
         raise ValueError('Ugyldige værkstedsadresser.')
     for value in values.values():
         url = urlsplit(value)
         if url.scheme not in ('http', 'https') or not url.hostname or url.username or url.password or url.query or url.fragment:
             raise ValueError('Ugyldig værkstedsadresse.')
+    if apps is not None and any(value!=allowed[key] for key,value in values.items()):
+        raise ValueError('Ugyldige lokale værkstedsadresser.')
     return values
 
 
@@ -37,7 +40,7 @@ def validate_mkv3d(data):
 
 
 def plan(server, meta, data, revision=None):
-    route = association(meta['filename'], meta['kind'], data)
+    route = association(meta['filename'], meta['kind'], data,server.projekt_apps)
     program = route['program']
     if program == '3dprint':
         if route['extension'] == '.mkv3d':
@@ -45,7 +48,10 @@ def plan(server, meta, data, revision=None):
         else:
             validate_stl(data)
     result = {'project': meta, **route}
-    if program in ('scratch', 'kredsloeb', 'datatraener', 'microbit'):
+    dynamic=next((a for a in server.projekt_apps if a['id']==program and a.get('project')),None)
+    if dynamic and program not in ('scratch','microbit','laser','folie','3dprint'):
+        result.update(mode='local',port=dynamic['port'])
+    elif program in ('scratch', 'kredsloeb', 'datatraener', 'microbit'):
         app = next((a for a in server.projekt_apps if a['id'] == program), None)
         if not app:
             raise ValueError(route['label'] + ' er ikke installeret på denne computer.')

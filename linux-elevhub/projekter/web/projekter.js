@@ -3,9 +3,9 @@ const $=id=>document.getElementById(id), BASE='/_elevhub/projekter/api/';
 const labels={'3dprint':'3D-værksted',laser:'Laser',folie:'Folie',scratch:'Scratch',stl:'3D-filer (STL m.fl.)',microbit:'micro:bit',datatraener:'Datatræneren (ældre projekter)',kredsloeb:'Kredsløb (ældre projekter)',andet:'Andre filer'};
 const parameters=new URL(location.href).searchParams;
 const requestedPicker=parameters.get('pick');
-const picker=Object.hasOwn(labels,requestedPicker)?requestedPicker:null;
+const picker=/^[a-z0-9][a-z0-9-]{0,63}$/.test(requestedPicker||'')?requestedPicker:null;
 const requestedScope=parameters.has('pick')?requestedPicker:parameters.get('workshop');
-const scope=Object.hasOwn(labels,requestedScope)?requestedScope:null;
+const scope=/^[a-z0-9][a-z0-9-]{0,63}$/.test(requestedScope||'')?requestedScope:null;
 const invalidScope=(parameters.has('pick')||parameters.has('workshop'))&&!scope;
 const categoryOrder=['3dprint','stl','laser','folie','scratch','microbit','kredsloeb','datatraener','andet'];
 const expanded=new Set();
@@ -79,13 +79,15 @@ function render(){
  }));
  $('status').textContent=matches.length+(matches.length===1?' projekt':' projekter');
  $('empty-projects').hidden=matches.length>0;
- $('empty-title').textContent=available.length?'Ingen projekter passer til din søgning.':scope?'Ingen gemte projekter i '+labels[scope]+' endnu':'Ingen gemte projekter endnu';
+ $('empty-title').textContent=available.length?'Ingen projekter passer til din søgning.':scope?'Ingen gemte projekter i '+(labels[scope]||scope)+' endnu':'Ingen gemte projekter endnu';
  $('empty-text').textContent=available.length?(scope?'Prøv projektets navn, klasse eller fornavn.':'Prøv projektets navn, jeres gruppe eller et andet værksted.'):(scope?'Gem dit første projekt i værkstedet. Så dukker det op her.':'Gem et projekt i værkstedet, eller brug knappen “Gem en fil”.');
  $('clear-search').textContent=scope?'Ryd søgning':'Vis alle projekter';
  $('clear-search').hidden=!available.length;
 }
 $('clear-search').onclick=()=>{$('search').value='';if(!scope)$('kind').value='';render();$('search').focus();};
 function applyAppearance(config){
+ const font={manrope:'Manrope,Arial,sans-serif',metrophobic:'Metrophobic,Arial,sans-serif'}[config.appearance?.font];
+ if(font)document.body.style.fontFamily=font;else document.body.style.removeProperty('font-family');
  if(parameters.has('pick'))return;
  const appearance=config.appearance||{},theme=['red','green','yellow'].includes(appearance.theme)?appearance.theme:'red';
  document.body.dataset.theme=theme;
@@ -101,11 +103,11 @@ function applyAppearance(config){
  const home=typeof config.home_url==='string'?config.home_url:'/_elevhub/projekter/home';
  $('home-link').href=home;$('brand-home').href=home;
 }
-async function refresh(){if(invalidScope){$('status').textContent='Værkstedet kunne ikke genkendes. Åbn projektoversigten fra værkstedet igen.';return;}const request=++refreshNumber;try{const [list,config]=await Promise.all([api('list'+(scope?'?workshop='+scope:'')),api('config')]);if(request!==refreshNumber)return;projects=list.projects;apps=config.apps;applyAppearance(config);updateFilters();render();if(list.scan_error)$('status').textContent+=' · '+list.scan_error;}catch(e){if(request===refreshNumber)$('status').textContent=e.message;}}
+async function refresh(){if(invalidScope){$('status').textContent='Værkstedet kunne ikke genkendes. Åbn projektoversigten fra værkstedet igen.';return;}const request=++refreshNumber;try{const [list,config]=await Promise.all([api('list'+(scope?'?workshop='+scope:'')),api('config')]);if(request!==refreshNumber)return;projects=list.projects;apps=config.apps;for(const app of apps){if(app.project&&!labels[app.id]){labels[app.id]=app.navn;categoryOrder.splice(categoryOrder.length-1,0,app.id);}}applyAppearance(config);if(scope){document.title=(labels[scope]||scope)+' · Dine projekter';document.querySelector('.results-heading h2').textContent='Dine projekter · '+(labels[scope]||scope);document.querySelector('header h1').textContent='Dine projekter · '+(labels[scope]||scope);}updateFilters();render();if(list.scan_error)$('status').textContent+=' · '+list.scan_error;}catch(e){if(request===refreshNumber)$('status').textContent=e.message;}}
 $('show-upload').onclick=()=>{uploadId=null;$('upload-error').textContent='';$('upload').showModal();};$('cancel-upload').onclick=()=>{if(!working)$('upload').close();};$('close-history').onclick=()=>$('history').close();$('refresh').onclick=refresh;$('search').oninput=$('kind').onchange=render;
 if(parameters.has('pick'))document.body.classList.add('picker');
 if(scope||invalidScope){$('kind').value=scope||'';$('kind').disabled=true;$('kind').closest('label').hidden=true;$('show-upload').hidden=true;}
-if(scope){document.title=labels[scope]+' · Dine projekter';document.querySelector('.results-heading h2').textContent='Dine projekter · '+labels[scope];document.querySelector('header h1').textContent='Dine projekter · '+labels[scope];document.querySelector('header>div>p:last-child').textContent='Find et projekt fra dette værksted, og byg videre.';}
+if(scope){document.title=(labels[scope]||scope)+' · Dine projekter';document.querySelector('.results-heading h2').textContent='Dine projekter · '+(labels[scope]||scope);document.querySelector('header h1').textContent='Dine projekter · '+(labels[scope]||scope);document.querySelector('header>div>p:last-child').textContent='Find et projekt fra dette værksted, og byg videre.';}
 $('file').onchange=()=>{const f=$('file').files[0];uploadId=null;if(f&&!$('name').value)$('name').value=f.name.replace(/\.(projekt\.svg|\w+)$/,'');$('svg-workshop').hidden=!f||!/\.svg$/i.test(f.name);};
 $('upload-form').onsubmit=async e=>{e.preventDefault();if(working)return;const file=$('file').files[0];if(!file||file.size>50*1024*1024){$('upload-error').textContent='Vælg en fil på højst 50 MB.';return;}working=true;$('upload-submit').disabled=true;uploadId ||= crypto.randomUUID().replaceAll('-','');try{const params=new URLSearchParams({id:uploadId,name:$('name').value,folder:$('folder').value,kind:/\.svg$/i.test(file.name)?$('upload-kind').value:'andet',filename:file.name,expected:0});await api('save?'+params,{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Elevhub-Project':'1'},body:file});$('upload').close();$('upload-form').reset();$('svg-workshop').hidden=true;uploadId=null;await refresh();}catch(e){$('upload-error').textContent=e.message;}finally{working=false;$('upload-submit').disabled=false;}};
 refresh();

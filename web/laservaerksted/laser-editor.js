@@ -893,21 +893,228 @@
     });
   }
 
+  const appCapabilities = window.ElevhubApp?.capabilities;
+  const websiteLibrary = (Array.isArray(appCapabilities) ? appCapabilities :
+    [...(appCapabilities?.required || []), ...(appCapabilities?.optional || [])]).includes("svg-library-v1");
+  const librarySourceUrl = "https://xn--skolevrkstedet-5ib.dk/svg-bibliotek/";
+  let websiteItems = null;
+  let websiteVersion = null;
+  let websitePage = 0;
+  let websiteGeneration = 0;
+  let websiteLoad = 0;
+  let websiteLoading = false;
+  let websiteTimer = null;
+  const websiteControllers = new Set();
+  const previewControllers = new Set();
+  const websiteGeometry = new Map();
+
+  function libraryIsOpen() { return document.querySelector("#libraryDialog").open; }
+
+  async function libraryRequest(endpoint, previews = false) {
+    const controller = new AbortController();
+    const controllers = previews ? previewControllers : websiteControllers;
+    controllers.add(controller);
+    const timeout = setTimeout(() => controller.abort(), 22000);
+    try {
+      const response = await fetch(`/api/laser/library${endpoint}`, { signal: controller.signal, cache: "no-store" });
+      if (!response.ok) throw new Error("Biblioteket kunne ikke hentes. Prøv igen.");
+      const data = await response.json();
+      if (data.enabled !== true || !Number.isSafeInteger(data.version) || data.version < 0 || data.source_url !== librarySourceUrl) {
+        throw new Error("Biblioteket er ikke tilgængeligt. Prøv igen.");
+      }
+      return data;
+    } catch (error) {
+      if (controller.signal.aborted) throw new Error("Bibliotekets hentning blev afbrudt. Prøv igen.");
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+      controllers.delete(controller);
+    }
+  }
+
+  function showLibrarySource(data, unavailable = false) {
+    const lastSuccess = data?.last_success && new Date(data.last_success);
+    const date = lastSuccess && Number.isFinite(lastSuccess.getTime()) ? ` Sidst hentet ${lastSuccess.toLocaleString("da-DK")}.` : "";
+    const message = unavailable ? "Forbindelsen til biblioteket mangler. Allerede viste motiver bliver bevaret. Prøv igen." :
+      data.cache_state === "stale" ? "Viser gemte motiver. Nye motiver kunne ikke hentes. Prøv igen." :
+      data.cache_state === "ready" ? "Motiverne er hentet og gemt på denne computer." : "Der er endnu ingen gemte motiver. Henter biblioteket…";
+    document.querySelector("#librarySourceStatus").textContent = `Kilde: skoleværkstedet.dk · ${message}${date}`;
+    document.querySelector("#retryLibraryButton").hidden = !unavailable && data.cache_state === "ready";
+  }
+
+  function cancelLibraryRequests() {
+    websiteLoad += 1;
+    websiteGeneration += 1;
+    websiteLoading = false;
+    clearTimeout(websiteTimer);
+    for (const controller of [...websiteControllers, ...previewControllers]) controller.abort();
+  }
+
+  async function refreshWebsiteLibrary(force = false) {
+    if (!websiteLibrary || !libraryIsOpen() || websiteLoading) return;
+    websiteLoading = true;
+    const load = ++websiteLoad;
+    const retryHadFocus = document.activeElement === document.querySelector("#retryLibraryButton");
+    clearTimeout(websiteTimer);
+    document.querySelector("#retryLibraryButton").disabled = true;
+    try {
+      const status = await libraryRequest("/status");
+      if (load !== websiteLoad || !libraryIsOpen()) return;
+      showLibrarySource(status);
+      if (force || websiteItems === null || status.version !== websiteVersion) {
+        const data = await libraryRequest("");
+        if (load !== websiteLoad || !libraryIsOpen()) return;
+        if (!Array.isArray(data.items) || data.items.length > 5000 || data.items.some(item =>
+          !item || !/^[a-f0-9]{64}$/.test(item.id) || typeof item.title !== "string" || !item.title.trim() || item.title.length > 200 ||
+          typeof item.category !== "string" || item.category.length > 200)) throw new Error("Bibliotekets liste kunne ikke læses. Prøv igen.");
+        websiteItems = data.items;
+        // Catalogue fetch can populate an initially empty cache (version 0→1).
+        websiteVersion = data.version;
+        websiteGeometry.clear();
+        showLibrarySource(data);
+        const select = document.querySelector("#libraryCategory");
+        const selected = select.value;
+        select.replaceChildren(new Option("Alle kategorier", ""), ...[...new Set(websiteItems.map(item => item.category))].sort((a,b) => a.localeCompare(b,"da")).map(name => new Option(name,name)));
+        select.value = [...select.options].some(option => option.value === selected) ? selected : "";
+        renderLibrary();
+      }
+    } catch (error) {
+      if (load !== websiteLoad || !libraryIsOpen()) return;
+      showLibrarySource(null, true);
+      document.querySelector("#libraryStatus").textContent = `${error.message} Din tegning er bevaret.`;
+      if (!websiteItems) renderLibrary();
+    } finally {
+      if (load === websiteLoad) {
+        websiteLoading = false;
+        document.querySelector("#retryLibraryButton").disabled = false;
+        if (retryHadFocus && document.querySelector("#retryLibraryButton").hidden &&
+          [document.body,document.querySelector("#retryLibraryButton")].includes(document.activeElement)) document.querySelector("#librarySearch").focus();
+        if (libraryIsOpen()) websiteTimer = setTimeout(() => refreshWebsiteLibrary(), 15000);
+      }
+    }
+  }
+
+  function svgNumbers(value) {
+    const values = String(value).match(/[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g) || [];
+    if (String(value).replace(/[-+]?(?:\d*\.\d+|\d+\.?\d*)(?:[eE][-+]?\d+)?/g, "").replace(/[\s,]/g, "") || values.some(value => !Number.isFinite(Number(value)) || Math.abs(Number(value)) > 100000)) throw new Error("Motivet indeholder ugyldige mål.");
+    return values.map(Number);
+  }
+
+  function svgTransform(value) {
+    const matrix = new paperScope.Matrix();
+    let rest = value || "";
+    while (rest.trim()) {
+      const match = /^\s*,?\s*(matrix|translate|scale|rotate|skewX|skewY)\s*\(([^)]*)\)/.exec(rest);
+      if (!match) throw new Error("Motivets placering kan ikke læses.");
+      const n = svgNumbers(match[2]);
+      let operation;
+      if (match[1] === "matrix" && n.length === 6) operation = new paperScope.Matrix(...n);
+      else if (match[1] === "translate" && [1,2].includes(n.length)) operation = new paperScope.Matrix(1,0,0,1,n[0],n[1] || 0);
+      else if (match[1] === "scale" && [1,2].includes(n.length)) operation = new paperScope.Matrix(n[0],0,0,n.length === 2 ? n[1] : n[0],0,0);
+      else if (match[1] === "rotate" && [1,3].includes(n.length)) { operation = new paperScope.Matrix(); operation.rotate(n[0], new paperScope.Point(n[1] || 0,n[2] || 0)); }
+      else if (["skewX","skewY"].includes(match[1]) && n.length === 1) { const slope = Math.tan(n[0]*Math.PI/180); operation = new paperScope.Matrix(1,match[1] === "skewY" ? slope : 0,match[1] === "skewX" ? slope : 0,1,0,0); }
+      else throw new Error("Motivets placering kan ikke læses.");
+      matrix.append(operation);
+      rest = rest.slice(match[0].length);
+    }
+    return matrix;
+  }
+
+  // Build geometry ourselves. No imported SVG node, style, link or script is
+  // inserted into the document or handed to Paper's general SVG importer.
+  function websiteSvgParts(text) {
+    if (typeof text !== "string" || new TextEncoder().encode(text).length > MAX_PROJECT_BYTES || /<!|<\?/.test(text)) throw new Error("Motivet kan ikke læses som en sikker vektorfigur.");
+    const doc = new DOMParser().parseFromString(text, "image/svg+xml");
+    const root = doc.documentElement;
+    if (root.localName !== "svg" || root.namespaceURI !== SVG_NS || doc.querySelector("parsererror")) throw new Error("Motivet indeholder en ugyldig SVG.");
+    const viewBox = svgNumbers(root.getAttribute("viewBox") || "");
+    if (viewBox.length !== 4 || viewBox[2] <= 0 || viewBox[3] <= 0) throw new Error("Motivet mangler et gyldigt tegneområde.");
+    const parts = [];
+    let visited = 0;
+    const allowed = new Set(["svg","g","path","rect","circle","ellipse","line","polyline","polygon","title","desc","defs"]);
+    function visit(node, parentMatrix, inheritedRule, depth) {
+      if (++visited > 3000 || depth > 64 || node.namespaceURI !== SVG_NS || !allowed.has(node.localName) || (node.localName === "svg" && node !== root)) throw new Error("Motivet bruger en vektortype, som ikke understøttes.");
+      for (const attribute of node.attributes) if (/^on|href$/i.test(attribute.name) || /url\s*\(|javascript:|@|[\\<>]/i.test(attribute.value)) throw new Error("Motivet indeholder henvisninger, som ikke understøttes.");
+      const style = {};
+      for (const declaration of (node.getAttribute("style") || "").split(";")) {
+        if (!declaration.trim()) continue;
+        const colon = declaration.indexOf(":");
+        const key = declaration.slice(0,colon).trim();
+        if (colon < 0 || !["fill","fill-rule","fill-opacity","stroke","stroke-width","stroke-linecap","stroke-linejoin","stroke-miterlimit","stroke-opacity","opacity"].includes(key)) throw new Error("Motivet bruger en effekt, som ikke understøttes.");
+        style[key] = declaration.slice(colon+1).trim();
+      }
+      const rule = style["fill-rule"] || node.getAttribute("fill-rule") || inheritedRule;
+      if (!["evenodd","nonzero"].includes(rule)) throw new Error("Motivets udfyldning kan ikke læses.");
+      const matrix = parentMatrix.clone().append(svgTransform(node.getAttribute("transform")));
+      if (["title","desc","defs"].includes(node.localName)) { if (node.children.length) throw new Error("Motivet indeholder skjulte figurer, som ikke understøttes."); return; }
+      if (["svg","g"].includes(node.localName)) { for (const child of node.children) visit(child,matrix,rule,depth+1); return; }
+      const number = (name, fallback = 0) => { const n = svgNumbers(node.getAttribute(name) ?? String(fallback)); if (n.length !== 1) throw new Error("Motivet indeholder ugyldige mål."); return n[0]; };
+      let item;
+      try {
+        const tag = node.localName;
+        if (tag === "path") { const path = node.getAttribute("d"); if (!validPathData(path)) throw new Error("Motivets stier kan ikke læses."); item = paperPath(path); }
+        else if (tag === "rect") {
+          const width = number("width"), height = number("height");
+          if (width <= 0 || height <= 0) throw new Error("Motivet indeholder en tom firkant.");
+          const rx = number("rx",number("ry")), ry = number("ry",rx);
+          if (rx < 0 || ry < 0) throw new Error("Motivets hjørner kan ikke læses.");
+          item = new paperScope.Path.Rectangle({rectangle:new paperScope.Rectangle(number("x"),number("y"),width,height),radius:new paperScope.Size(Math.min(rx,width/2),Math.min(ry,height/2)),insert:false});
+        } else if (["circle","ellipse"].includes(tag)) {
+          const rx = tag === "circle" ? number("r") : number("rx"), ry = tag === "circle" ? rx : number("ry");
+          if (rx <= 0 || ry <= 0) throw new Error("Motivet indeholder en tom ellipse.");
+          item = new paperScope.Path.Ellipse({rectangle:new paperScope.Rectangle(number("cx")-rx,number("cy")-ry,2*rx,2*ry),insert:false});
+        } else {
+          const points = tag === "line" ? [number("x1"),number("y1"),number("x2"),number("y2")] : svgNumbers(node.getAttribute("points") || "");
+          if (points.length < (tag === "polygon" ? 6 : 4) || points.length%2) throw new Error("Motivets punkter kan ikke læses.");
+          item = new paperScope.Path({segments:Array.from({length:points.length/2},(_,i)=>new paperScope.Point(points[2*i],points[2*i+1])),closed:tag === "polygon",insert:false});
+        }
+        item.transform(matrix);
+        const path = item.pathData;
+        if (!validPathData(path) || !item.length || (item.bounds.width < .001 && item.bounds.height < .001)) throw new Error("Motivet indeholder tom eller for detaljeret geometri.");
+        parts.push({name:`del ${parts.length+1}`,path,fillRule:rule});
+        if (parts.length > 100) throw new Error("Motivet har for mange dele til én gruppe. Vælg et enklere motiv.");
+      } finally { item?.remove(); }
+      if (node.children.length) throw new Error("Motivet indeholder en figur, som ikke understøttes.");
+    }
+    visit(root,new paperScope.Matrix(),"nonzero",0);
+    if (!parts.length) throw new Error("Motivet indeholder ingen brugbare vektorfigurer.");
+    return parts;
+  }
+
+  async function websiteParts(item, preview = false) {
+    if (websiteGeometry.has(item.id)) return websiteGeometry.get(item.id);
+    const data = await libraryRequest(`/file/${item.id}`,preview);
+    const parts = websiteSvgParts(data.svg);
+    if (websiteGeometry.size >= 36) websiteGeometry.delete(websiteGeometry.keys().next().value);
+    websiteGeometry.set(item.id,parts);
+    return parts;
+  }
+
   function renderLibrary() {
     const query = document.querySelector("#librarySearch").value.trim().toLocaleLowerCase("da");
     const category = document.querySelector("#libraryCategory").value;
-    const filtered = LIBRARY_ITEMS.filter((item) => (!category || item.category === category) && item.title.toLocaleLowerCase("da").includes(query));
+    const filtered = (websiteLibrary ? websiteItems || [] : LIBRARY_ITEMS).filter((item) => (!category || item.category === category) && item.title.toLocaleLowerCase("da").includes(query));
     const grid = document.querySelector("#libraryGrid");
+    const focusedMotif = grid.contains(document.activeElement) ? document.activeElement.dataset.motifId : null;
+    const focusedPage = ["libraryNext","libraryPrevious"].includes(document.activeElement?.id) ? document.activeElement.id : null;
     grid.replaceChildren();
-    document.querySelector("#libraryStatus").textContent = `${filtered.length} motiver · Tilføjes som grupperet Gravér.`;
-    filtered.forEach((item) => {
+    const generation = ++websiteGeneration;
+    for (const controller of previewControllers) controller.abort();
+    const pageCount = Math.max(1,Math.ceil(filtered.length/12));
+    websitePage = Math.min(websitePage,pageCount-1);
+    document.querySelector("#libraryPages").hidden = !websiteLibrary || pageCount === 1;
+    document.querySelector("#libraryPrevious").disabled = websitePage === 0;
+    document.querySelector("#libraryNext").disabled = websitePage >= pageCount-1;
+    document.querySelector("#libraryPageStatus").textContent = `Side ${websitePage+1} af ${pageCount}`;
+    if (!websiteLibrary || websiteItems) document.querySelector("#libraryStatus").textContent = `${filtered.length} motiver · Tilføjes som grupperet Gravér.`;
+    const previews = [];
+    (websiteLibrary ? filtered.slice(websitePage*12,websitePage*12+12) : filtered).forEach((item) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = "library-card";
       button.dataset.motifId = item.id;
-      button.setAttribute("aria-label", `Tilføj ${item.title}`);
       const preview = svgElement("svg", { viewBox: "-8 -8 116 116", "aria-hidden": "true" });
-      preview.append(svgElement("path", { d: item.path, fill: "none", stroke: "currentColor", "stroke-width": 3, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+      if (!websiteLibrary) preview.append(svgElement("path", { d: item.path, fill: "none", stroke: "currentColor", "stroke-width": 3, "stroke-linejoin": "round", "stroke-linecap": "round" }));
       const title = document.createElement("strong");
       title.textContent = item.title;
       const categoryLabel = document.createElement("small");
@@ -916,14 +1123,47 @@
       insert.className = "insert-label";
       insert.textContent = "+ Tilføj grupperet figur";
       button.append(preview, title, categoryLabel, insert);
-      button.addEventListener("click", () => addLibraryMotif(item.id));
+      button.addEventListener("click", async () => {
+        if (!websiteLibrary) { addLibraryMotif(item.id); return; }
+        button.disabled = true;
+        document.querySelector("#libraryStatus").textContent = `Henter ${item.title}…`;
+        try {
+          const parts = await websiteParts(item);
+          if (!libraryIsOpen() || generation !== websiteGeneration) return;
+          insertLibraryItem({...item,title:item.title.slice(0,60),parts});
+        } catch (error) {
+          if (libraryIsOpen() && generation === websiteGeneration) document.querySelector("#libraryStatus").textContent = `${error.message} Din tegning er ikke ændret. Vælg et andet motiv, eller prøv igen.`;
+        } finally { button.disabled = false; }
+      });
       grid.append(button);
+      if (websiteLibrary) previews.push(async () => {
+        try {
+          const parts = await websiteParts(item,true);
+          if (generation !== websiteGeneration || !libraryIsOpen()) return;
+          const bounds = parts.map(part => pathBounds(part.path));
+          const x = Math.min(...bounds.map(b=>b.x)), y = Math.min(...bounds.map(b=>b.y));
+          const width = Math.max(...bounds.map(b=>b.x+b.width))-x, height = Math.max(...bounds.map(b=>b.y+b.height))-y;
+          const margin = Math.max(width,height)*.06 || 1;
+          preview.setAttribute("viewBox",`${x-margin} ${y-margin} ${Math.max(width,.01)+2*margin} ${Math.max(height,.01)+2*margin}`);
+          parts.forEach(part=>preview.append(svgElement("path",{d:part.path,fill:"none",stroke:"currentColor","stroke-width":Math.max(width,height)/70 || .1,"fill-rule":part.fillRule})));
+        } catch { if (generation === websiteGeneration) insert.textContent = "Se motiv ved at tilføje"; }
+      });
     });
     if (!filtered.length) {
       const empty = document.createElement("p");
       empty.className = "library-empty";
-      empty.textContent = "Ingen motiver matcher. Prøv et andet søgeord, eller nulstil filtrene.";
+      empty.textContent = websiteLibrary && !websiteItems ? "Henter motiver fra biblioteket. Ved forbindelsesfejl kan du prøve igen ovenfor." : "Ingen motiver matcher. Prøv et andet søgeord, eller nulstil filtrene.";
       grid.append(empty);
+    }
+    if (websiteLibrary) {
+      let next = 0;
+      const worker = async () => { while (next < previews.length && generation === websiteGeneration && libraryIsOpen()) await previews[next++](); };
+      for (let i=0;i<Math.min(3,previews.length);i++) worker();
+    }
+    if (focusedMotif) ([...grid.querySelectorAll("button")].find(button => button.dataset.motifId === focusedMotif) || document.querySelector("#librarySearch")).focus();
+    if (focusedPage && document.querySelector(`#${focusedPage}`).disabled) {
+      const other = document.querySelector(focusedPage === "libraryNext" ? "#libraryPrevious" : "#libraryNext");
+      (other.disabled ? document.querySelector("#librarySearch") : other).focus();
     }
   }
 
@@ -937,18 +1177,31 @@
     const sourceWidth = Math.max(0.01, right - left);
     const sourceHeight = Math.max(0.01, bottom - top);
     const scale = 34 / Math.max(sourceWidth, sourceHeight);
-    const width = round(sourceWidth * scale);
-    const height = round(sourceHeight * scale);
+    const width = Math.max(.1, round(sourceWidth * scale));
+    const height = Math.max(.1, round(sourceHeight * scale));
+    // A horizontal/vertical engraving line has zero extent on one axis.
+    // Give its logical box a positive size while retaining constant path
+    // coordinates on that axis, so saving and reopening preserves the line.
+    const normalizedParts = parts.map(part => {
+      const path = paperPath(part.path);
+      try {
+        const bounds = {x:path.bounds.x,y:path.bounds.y,width:path.bounds.width,height:path.bounds.height};
+        if (![bounds.x,bounds.y,bounds.width,bounds.height].every(Number.isFinite)) throw new Error("Motivets mål kan ikke læses.");
+        path.translate(new paperScope.Point(-bounds.x,-bounds.y));
+        path.scale(100/(bounds.width || 1),100/(bounds.height || 1),new paperScope.Point(0,0));
+        return {pathData:path.pathData,bounds};
+      } finally { path.remove(); }
+    });
     const children = parts.map((part, index) => {
-      const normalized = normalizePathData(part.path);
+      const normalized = normalizedParts[index];
       return {
         id: allocateId(),
         type: "path",
         name: `${item.title}: ${part.name || `del ${index + 1}`}`,
         x: round((normalized.bounds.x - left) * scale),
         y: round((normalized.bounds.y - top) * scale),
-        width: round(normalized.bounds.width * scale),
-        height: round(normalized.bounds.height * scale),
+        width: Math.max(.1, round(normalized.bounds.width * scale)),
+        height: Math.max(.1, round(normalized.bounds.height * scale)),
         rotation: 0,
         process: "engrave",
         lockRatio: true,
@@ -978,6 +1231,10 @@
   function addLibraryMotif(motifId) {
     const item = LIBRARY_ITEMS.find((candidate) => candidate.id === motifId);
     if (!item) return;
+    insertLibraryItem(item);
+  }
+
+  function insertLibraryItem(item) {
     if (!allowObjectChange({ roots: state.objects.length + 1,
       total: countObjectTree(state.objects) + 1 + (item.parts?.length || 1) }, document.querySelector("#libraryStatus"))) return;
     if (!commit(`${item.title} er tilføjet som en grupperet Gravér-figur.`, () => {
@@ -2303,7 +2560,7 @@
         if (!Array.isArray(source.children) || !source.children.length || source.children.length > MAX_ROOT_OBJECTS) throw new Error(`${objectName} har en ugyldig gruppeliste.`);
         object.children = source.children.map((child, index) => validateObject(child, `${objectName}, del ${index + 1}`, depth + 1));
         object.lockRatio = true;
-        if (typeof source.motifId === "string" && LIBRARY_ITEMS.some((item) => item.id === source.motifId)) object.motifId = source.motifId;
+        if (typeof source.motifId === "string" && (LIBRARY_ITEMS.some((item) => item.id === source.motifId) || /^[a-f0-9]{64}$/.test(source.motifId))) object.motifId = source.motifId;
         object.libraryGroup = Boolean(source.libraryGroup);
       }
       if (source.type === "rect") object.rounded = Boolean(source.rounded);
@@ -2406,18 +2663,32 @@
   document.querySelector("#libraryButton").addEventListener("click", () => {
     renderLibrary();
     openDialog(libraryDialog, document.querySelector("#librarySearch"));
+    if (websiteLibrary) {
+      document.querySelector("#librarySource").hidden = false;
+      if (!websiteItems) {
+        document.querySelector("#librarySourceStatus").textContent = "Kilde: skoleværkstedet.dk · Henter biblioteket…";
+        document.querySelector("#libraryStatus").textContent = "Din tegning er bevaret, mens biblioteket hentes.";
+      }
+      refreshWebsiteLibrary(true);
+      // Start previews only after the dialog has opened.
+      if (websiteItems) renderLibrary();
+    }
   });
   document.querySelector("#closeLibraryButton").addEventListener("click", () => closeDialog(libraryDialog));
   document.querySelector("#finishLibraryButton").addEventListener("click", () => closeDialog(libraryDialog));
-  document.querySelector("#librarySearch").addEventListener("input", renderLibrary);
-  document.querySelector("#libraryCategory").addEventListener("change", renderLibrary);
+  document.querySelector("#librarySearch").addEventListener("input", () => { websitePage = 0; renderLibrary(); });
+  document.querySelector("#libraryCategory").addEventListener("change", () => { websitePage = 0; renderLibrary(); });
+  document.querySelector("#retryLibraryButton").addEventListener("click", () => refreshWebsiteLibrary(true));
+  document.querySelector("#libraryPrevious").addEventListener("click", () => { websitePage -= 1; renderLibrary(); });
+  document.querySelector("#libraryNext").addEventListener("click", () => { websitePage += 1; renderLibrary(); });
   document.querySelector("#resetLibraryFilters").addEventListener("click", () => {
     document.querySelector("#librarySearch").value = "";
     document.querySelector("#libraryCategory").value = "";
+    websitePage = 0;
     renderLibrary();
     document.querySelector("#librarySearch").focus();
   });
-  libraryDialog.addEventListener("close", handleDialogClose);
+  libraryDialog.addEventListener("close", () => { cancelLibraryRequests(); handleDialogClose(); });
 
   document.querySelectorAll("[data-add-type]").forEach((button) => button.addEventListener("click", () => addObject(button.dataset.addType)));
   document.querySelector("#selectToolButton").addEventListener("click", () => announce("Træk en ramme fra et tomt sted. Dele helt indenfor bliver valgt. Hold Shift nede for at tilføje flere, eller brug fluebenene i listen."));

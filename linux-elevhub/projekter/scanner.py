@@ -62,7 +62,8 @@ class Scanner:
                        not (Path(directory)/d).resolve().is_relative_to(self.store.root.resolve())]
             for name in names:
                 p = Path(directory) / name
-                if name.startswith('.') or not name.lower().endswith(EXTENSIONS) or p.is_symlink():
+                extensions=EXTENSIONS+tuple(f['extension'] for f in self.store.app_formats.values())
+                if name.startswith('.') or not name.lower().endswith(extensions) or p.is_symlink():
                     continue
                 try:
                     resolved = p.resolve()
@@ -91,7 +92,7 @@ class Scanner:
                                 changed = True
                         continue
                     project = uuid.uuid5(uuid.NAMESPACE_URL, 'elevhub-local:'+key).hex
-                    kind = kind_for(relative, data)
+                    kind = project_kind(relative.name,kind_for(relative,data),data,self.store.apps)
                     try:
                         existing = self.store.meta(project)
                         expected, kind = existing['revision'], existing['kind']

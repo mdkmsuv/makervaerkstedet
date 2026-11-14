@@ -47,6 +47,24 @@ class TemplateActivation(unittest.TestCase):
         self.assertIn("http://127.0.0.1:8798/",values["InsecureContentAllowedForUrls"])
         self.assertEqual(policy.stat().st_mode & 0o777,0o644)
 
+    def test_modular_bare_activation_needs_only_projects_and_adds_new_app_port(self):
+        runtime=self.root/'usr/share/makervaerkstedet/runtime-release.json'
+        runtime.write_text(json.dumps({'schema':1,'release_id':'2.1.0~20261114.1','role':'student'}))
+        M.activate(self.root)
+        config=json.loads((self.root/'etc/elevhub/kiosk.json').read_text())
+        self.assertEqual(config['lokale_app_urler'],{'projekter':'http://127.0.0.1:8791/'})
+        self.assertEqual(json.loads((self.root/'etc/elevhub/startup.json').read_text())['urls'],['http://127.0.0.1:8791/_elevhub/health'])
+        from app.app_catalog import APP_FIELDS
+        import sys
+        sys.path.insert(0,str(SOURCE.parents[2]))
+        from tests.test_app_catalog import descriptor
+        app=self.root/'usr/share/makervaerkstedet/apps/noter';(app/'www').mkdir(parents=True)
+        (app/'app.json').write_text(json.dumps(descriptor()))
+        (app/'www/index.html').write_text('<html></html>')
+        M.activate(self.root)
+        policy=json.loads((self.root/'etc/chromium/policies/managed/elevhub.json').read_text())
+        self.assertIn('http://127.0.0.1:8799/',policy['InsecureContentAllowedForUrls'])
+
     def test_browser_policy_uses_explicit_proxy_and_preserves_operator_configuration(self):
         config=M.default_config();config.update(server="school.example",webproxy_required=True)
         path=self.root/"etc/elevhub/kiosk.json";path.parent.mkdir(parents=True)

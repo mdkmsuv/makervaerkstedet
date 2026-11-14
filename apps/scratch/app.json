@@ -5,7 +5,7 @@
   "description": "Programmer med blokke, også uden Internet.",
   "category": "kode",
   "icon": null,
-  "version": "15.1.1+local.20261114.3",
+  "version": "15.1.1+local.20261114.4",
   "package": "makervaerkstedet-scratch",
   "architecture": "all",
   "sdk": 1,

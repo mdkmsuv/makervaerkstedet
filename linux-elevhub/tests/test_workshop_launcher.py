@@ -143,13 +143,14 @@ class LaunchTests(unittest.TestCase):
             self.assertEqual(json.loads(self.request('GET', '/apps')[1]), {'apps':[]})
             self.assertTrue(self.server.requests.empty())
 
-    def test_app_catalog_rejects_invalid_manifest_and_untrusted_requests(self):
+    def test_app_catalog_isolates_invalid_manifest_and_rejects_untrusted_requests(self):
         with tempfile.TemporaryDirectory() as directory:
             self.server.manifest_root = Path(directory)
             folder = Path(directory)/'laser'; folder.mkdir()
             (folder/'app.json').write_text('{"schema":1,"unexpected_field":"not in error"}')
             status, raw = self.request('GET', '/apps')
-            self.assertEqual(status, 503)
+            self.assertEqual(status, 200)
+            self.assertEqual(json.loads(raw), {'apps':[]})
             self.assertNotIn(b'unexpected_field', raw)
             for headers in ({'Origin':'https://example.com'}, {'Authorization':'Bearer wrong'},
                             {'Host':'example.com'}, {'X-Elevhub-Computer':'another'}):

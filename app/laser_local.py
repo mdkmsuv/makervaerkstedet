@@ -16,6 +16,7 @@ import re
 import socket
 import ssl
 import threading
+import sys
 import time
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, unquote, urlparse, urlsplit
@@ -610,7 +611,7 @@ class LocalPrintHandler(LocalDesignHandler):
                 received += len(part)
             data = print_submission(b''.join(chunks), unquote(self.headers.get('X-Filename', '')),
                                     self.headers.get('X-Request-ID', ''))
-            payload = self.server.inbox.submit(data)
+            payload = getattr(self.server,'print_inbox',self.server.inbox).submit(data)
             return self.reply(202 if payload.get('queued') else 201, payload)
         except Closed as error:
             return self.reply(423, {'error': str(error)})
@@ -641,6 +642,100 @@ def create_print_server(server_url, ca_file=None, host='127.0.0.1', port=8798,
     return server
 
 
+def _app_host_module():
+    source=Path(__file__).resolve()
+    project_modules=source.parents[2]/'projekter' if source.parents[2].name=='elevhub' else source.parents[1]/'linux-elevhub/projekter'
+    sys.path.insert(0,str(project_modules))
+    import app_host
+    return app_host
+
+
+def create_installed_servers(apps,laser,printing,*,runtime=None,projects_port=8791,
+                             data_root=Path('/etc/elevhub'),shared_root=None,library_client=None):
+    """Bind declarative apps; only fixed SDK endpoints get school-network access."""
+    host=_app_host_module();servers=[]
+    from .svg_library_service import UnixLibraryClient
+    library_client=library_client if library_client is not None else UnixLibraryClient()
+    identity=dict(runtime) if runtime is not None else student_identity('elevhub-design')
+    shared=Path(shared_root) if shared_root is not None else Path(__file__).resolve().parents[1]/'web'
+    for app in apps:
+        if not host.uses_gateway(app):continue
+        class InstalledHandler(LocalPrintHandler):
+            def capabilities(self):
+                caps=self.server.descriptor['capabilities']
+                return set(caps['required']+caps['optional'])
+            def reply(self,status,body,mime='application/json; charset=utf-8',headers=None):
+                if status==200 and isinstance(body,dict) and body.get('queued') is True:status=202
+                return Handler.reply(self,status,body,mime,headers)
+            def do_GET(self):
+                if not self._host_ok():return self.reply(403,{'error':'Ukendt adresse.'})
+                if self._projects():return
+                path=urlsplit(self.path).path
+                if path=='/api/runtime/health':
+                    return self.reply(200,{'local':True,'app':self.server.descriptor['id'],
+                        'app_version':self.server.descriptor['version'],**self.server.runtime_health})
+                library=re.fullmatch(r'/api/(laser|folie)/library(?:/status|/file/[a-f0-9]{64})?',path)
+                if library:
+                    if 'svg-library-v1' not in self.capabilities() or self.path!=path:
+                        return self.reply(403,{'error':'Appen har ikke adgang til SVG-biblioteket.'})
+                    try:
+                        client=self.server.svg_library
+                        payload=client.status() if path.endswith('/status') else client.svg_response(path.rsplit('/',1)[-1]) if '/file/' in path else client.catalogue_response()
+                        return self.reply(200,payload)
+                    except (ValueError,OSError):
+                        return self.reply(503,{'error':'SVG-biblioteket kunne ikke hentes. Prøv igen, når forbindelsen er tilbage.'})
+                if path.startswith('/api/laser/') and 'laser-submit-v1' not in self.capabilities():
+                    return self.reply(404,{'error':'Appen bruger ikke laserkøen.'})
+                if path.startswith('/api/') or path.startswith('/school-appearance/') or path.startswith('/school-profile-assets/'):
+                    return LocalDesignHandler.do_GET(self)
+                overlay=school_appearance_asset(self.server.data_root,path)
+                if overlay is not None:return self.reply(200,*overlay)
+                value=host.asset(self.server.descriptor,path,self.server.shared_assets)
+                if value is None:return self.reply(404,{'error':'Siden findes ikke.'})
+                data,mime=value
+                if mime=='text/html':data=render_local_html(data,school_appearance(self.server.data_root))
+                return self.reply(200,data,mime)
+            def do_POST(self):
+                if self.path=='/api/jobs':
+                    if 'print-job-v1' not in self.capabilities():return self.reply(404,{'error':'Appen bruger ikke printkøen.'})
+                    return LocalPrintHandler.do_POST(self)
+                if self.path.startswith('/api/') and 'laser-submit-v1' not in self.capabilities():
+                    return self.reply(404,{'error':'Appen bruger ikke laserkøen.'})
+                return LocalDesignHandler.do_POST(self)
+        try:server=ThreadingHTTPServer(('127.0.0.1',app['port']),InstalledHandler)
+        except OSError:
+            print('App '+app['id']+' kunne ikke starte; udbakkerne fortsætter.',flush=True)
+            continue
+        server.descriptor=app;server.inbox=laser;server.print_inbox=printing
+        server.runtime_health=identity;server.surface='student'
+        server.frame_ancestors="'self' http://127.0.0.1:"+str(projects_port)
+        server.vaerksted=app['id'];server.port=server.server_port;server.projects_port=projects_port
+        server.data_root=Path(data_root);server.shared_assets=shared
+        server.svg_library=library_client
+        servers.append(server)
+    return servers
+
+
+def run_installed_apps(args):
+    """Always run pending queues, including with zero installed editors."""
+    host=_app_host_module();apps=host.discover_apps(args.manifest_root,strict=False)
+    laser=ForwardingInbox(args.server_url,args.ca_file,outbox=Outbox(args.outbox_dir) if args.outbox_dir else None)
+    printing=PrintForwardingInbox(args.print_server_url or args.server_url,args.ca_file,
+        outbox=Outbox(Path(args.outbox_dir)/'print',validator=validate_print_submission) if args.outbox_dir else None)
+    stop=threading.Event();servers=[]
+    for inbox in (laser,printing):
+        if inbox.outbox is not None:threading.Thread(target=inbox.outbox.run,args=(inbox.send,stop),daemon=True).start()
+    try:
+        servers=create_installed_servers(apps,laser,printing)
+        for server in servers:threading.Thread(target=server.serve_forever,daemon=True).start()
+        print('Installerede netværksapps klar: '+', '.join(s.descriptor['id'] for s in servers)+'; udbakker kører uafhængigt.',flush=True)
+        while not stop.wait(1):pass
+    except KeyboardInterrupt:pass
+    finally:
+        stop.set()
+        for server in servers:server.shutdown();server.server_close()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--server-url', required=True)
@@ -651,7 +746,11 @@ def main():
     parser.add_argument('--print-server-url', help='Hubbens printindgang, fx https://server:8770')
     parser.add_argument('--model3d-port', type=int, default=8798)
     parser.add_argument('--outbox-dir', help='Lokal udbakke til afleveringer uden forbindelse.')
+    parser.add_argument('--manifest-root',type=Path,help='Run only installed apps and independent outbox workers.')
     args = parser.parse_args()
+    if args.manifest_root is not None:
+        run_installed_apps(args)
+        return
     laser_server, folie_server = create_local_servers(
         args.server_url, args.ca_file, args.host, args.laser_port, args.folie_port,
         outbox_dir=args.outbox_dir)

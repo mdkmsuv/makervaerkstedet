@@ -45,4 +45,14 @@ class RuntimeReadiness(unittest.TestCase):
         with self.assertRaisesRegex(M.RuntimeCheckError,"endpoint_unavailable"):
             M.wait_ready(self.version,self.call,read=offline,timeout=0)
 
+    def test_split_base_probes_no_uninstalled_apps_and_checks_own_app_version(self):
+        self.version='2.1.0~20261114.1';self.values[8791]['release_id']=self.version
+        self.assertEqual(M.check_once(self.version,self.call,self.read,apps=[])['core_version'],self.version)
+        app={'id':'noter','port':8799,'version':'1.0.0','capabilities':{'required':[],'optional':[]}}
+        self.values[8799]={**self.values[8791],'app':'noter','app_version':'1.0.0'}
+        M.check_once(self.version,self.call,self.read,apps=[app])
+        self.values[8799]['app_version']='0.9'
+        with self.assertRaisesRegex(M.RuntimeCheckError,'app_version'):
+            M.check_once(self.version,self.call,self.read,apps=[app])
+
 if __name__=="__main__":unittest.main()

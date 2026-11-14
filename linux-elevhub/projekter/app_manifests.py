@@ -13,6 +13,17 @@ MAX_SIZE = 16 * 1024
 
 
 def validate_manifest(data, expected_id=None):
+    if type(data) is dict and data.get('schema') == 2:
+        try:
+            from app.app_catalog import validate_app_descriptor
+        except ModuleNotFoundError:
+            import sys
+            sys.path.insert(0,str(Path(__file__).resolve().parent))
+            from app_catalog import validate_app_descriptor
+        validate_app_descriptor(data)
+        if expected_id is not None and data['id'] != expected_id:
+            raise ValueError('manifest_directory_mismatch')
+        return data
     if type(data) is not dict or set(data) != FIELDS:
         raise ValueError('invalid_manifest_fields')
     if type(data['schema']) is not int or data['schema'] != 1:
@@ -67,7 +78,7 @@ def _open_root(root):
             os.close(fd)
 
 
-def load_manifests(root=Path('/usr/share/makervaerkstedet/apps')):
+def load_manifests(root=Path('/usr/share/makervaerkstedet/apps'),*,on_error=None):
     try:
         root_fd = _open_root(root)
         if root_fd is None:
@@ -75,32 +86,36 @@ def load_manifests(root=Path('/usr/share/makervaerkstedet/apps')):
         try:
             result = []
             for name in sorted(os.listdir(root_fd)):
-                info = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
-                if stat.S_ISLNK(info.st_mode):
-                    raise ValueError('linked_manifest_directory')
-                if not stat.S_ISDIR(info.st_mode):
-                    continue
-                folder_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
                 try:
-                    try:
-                        file_fd = os.open('app.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=folder_fd)
-                    except FileNotFoundError:
+                    info = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+                    if stat.S_ISLNK(info.st_mode):
+                        raise ValueError('linked_manifest_directory')
+                    if not stat.S_ISDIR(info.st_mode):
                         continue
+                    folder_fd = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=root_fd)
                     try:
-                        if not stat.S_ISREG(os.fstat(file_fd).st_mode):
-                            raise ValueError('invalid_manifest_file')
-                        with os.fdopen(file_fd, 'rb') as stream:
-                            file_fd = None
-                            raw = stream.read(MAX_SIZE + 1)
-                        if len(raw) > MAX_SIZE:
-                            raise ValueError('manifest_too_large')
-                        value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_pairs)
-                        result.append(validate_manifest(value, name))
+                        try:
+                            file_fd = os.open('app.json', os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=folder_fd)
+                        except FileNotFoundError:
+                            continue
+                        try:
+                            if not stat.S_ISREG(os.fstat(file_fd).st_mode):
+                                raise ValueError('invalid_manifest_file')
+                            with os.fdopen(file_fd, 'rb') as stream:
+                                file_fd = None
+                                raw = stream.read(MAX_SIZE + 1)
+                            if len(raw) > MAX_SIZE:
+                                raise ValueError('manifest_too_large')
+                            value = json.loads(raw.decode('utf-8'), object_pairs_hook=_unique_pairs)
+                            result.append(validate_manifest(value, name))
+                        finally:
+                            if file_fd is not None:
+                                os.close(file_fd)
                     finally:
-                        if file_fd is not None:
-                            os.close(file_fd)
-                finally:
-                    os.close(folder_fd)
+                        os.close(folder_fd)
+                except (OSError,ValueError,UnicodeError) as error:
+                    if on_error is None:raise
+                    on_error(name,error)
             return result
         finally:
             os.close(root_fd)

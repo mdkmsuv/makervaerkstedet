@@ -15,15 +15,15 @@
     } finally { clearTimeout(timeout); }
   }
   function view() {
-    const hash = location.hash.slice(1), selected = ['forside','apps','computere','printere','teknik'].includes(hash) ? hash : 'forside';
+    const hash = location.hash.slice(1), selected = ['forside','apps','katalog','skoleprofil','computere','printere','teknik'].includes(hash) ? hash : 'forside';
     document.querySelectorAll('[data-view]').forEach(n => n.hidden = n.dataset.view !== selected);
     document.querySelectorAll('#nav [data-v]').forEach(n => { if (n.dataset.v === selected) n.setAttribute('aria-current','page'); else n.removeAttribute('aria-current'); });
   }
   function signedIn(on) {
-    active = on; generation++; clearTimeout(timer); if (!on) window.UpdateAdmin.stop();
+    active = on; generation++; clearTimeout(timer); if (!on) {window.UpdateAdmin.stop(); window.AppAdmin.stop(); window.SchoolProfile.stop();}
     $('panel').hidden = !on; $('login').hidden = on; $('setup').hidden = true; $('logout').hidden = !on; $('refresh').hidden = !on; $('nav').hidden = !on;
     $('app-shell').classList.toggle('signed-in',on); $('status').textContent = on ? '' : 'Log ind for at administrere værkstedet.';
-    if (on) { view(); window.UpdateAdmin.start(); void poll(generation); }
+    if (on) { view(); window.UpdateAdmin.start(); window.AppAdmin.start(); window.SchoolProfile.start(); void poll(generation); }
   }
   function render(d) {
     if (!Array.isArray(d.computere)) throw Error('Ugyldigt svar fra serveren.');

@@ -16,7 +16,7 @@ function statusLabel(app){
  return 'Lukket lige nu';
 }
 function kort(app){
- const info=workshopInfo[app.id]||{name:app.navn,short:app.beskrivelse,image:'workshop-internet-v2.png'};
+ const info=workshopInfo[app.id]||{name:app.navn,short:app.description||app.beskrivelse||'Åbn appen og kom i gang.',image:'workshop-internet-v2.png'};
  const article=node('article','app');article.dataset.app=app.id;
  const button=node('button','card-link app-open');button.type='button';button.disabled=!isOpen(app);button.setAttribute('aria-label',(isOpen(app)?'Åbn ':'')+info.name+(isOpen(app)?'':': '+statusLabel(app)));
  button.addEventListener('click',event=>aabn(event,app,app.id==='3dprint'));
@@ -29,7 +29,7 @@ function kort(app){
 function scrollHint(){const last=document.getElementById('apps').lastElementChild;document.getElementById('workshop-scroll-hint').hidden=!last||last.getBoundingClientRect().bottom+scrollY<=innerHeight;}
 function renderCards(){
  const focus=document.activeElement,appId=focus?.closest('[data-app]')?.dataset.app;
- const filtered=allWorkshops.filter(app=>activeFilter==='alle'||workshopInfo[app.id]?.group===activeFilter);
+ const filtered=allWorkshops.filter(app=>activeFilter==='alle'||(workshopInfo[app.id]?.group||app.category||'ide')===activeFilter);
  const grid=document.getElementById('apps');grid.replaceChildren(...filtered.map(kort));
  document.getElementById('empty-filter').hidden=filtered.length>0||allWorkshops.length===0;
  document.getElementById('workshop-count').textContent=filtered.length+(filtered.length===1?' værksted':' værksteder');

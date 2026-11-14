@@ -21,18 +21,23 @@
       // school colour that is not red.
       for(const name of ['--brand-soft','--school-brand-soft'])root.style.setProperty(name,'color-mix(in srgb, '+appearance.brand+' 8%, #fff)');
     }
-    document.querySelectorAll('[data-school-name]').forEach(node=>{node.textContent=appearance.school_name;});
-    document.querySelectorAll('[data-school-footer]').forEach(node=>{node.textContent=appearance.school_name+' · Makerværkstedet · Udviklet af Mathias Kusk Damgaard · Kreditering: Klostermarksskolen';});
     if(appearance.style&&appearance.style.website_css==='/school-appearance/website.css'){
       const link=document.createElement('link'); link.rel='stylesheet'; link.href=appearance.style.website_css; document.head.appendChild(link);
     }
+    function applyIdentity(){
+    document.querySelectorAll('[data-school-name]').forEach(node=>{node.textContent=appearance.school_name;});
+    document.querySelectorAll('[data-school-footer]').forEach(node=>{node.textContent=appearance.school_name+' · Makerværkstedet · Udviklet af Mathias Kusk Damgaard · Kreditering: Klostermarksskolen';});
     if(appearance.style&&appearance.style.logo==='/school-appearance/logo'){
       if(!document.querySelector('.school-logo')){
-        const brand=document.querySelector('.brand');
+        const brand=document.querySelector('.brand,.brand-block,.creative-app-brand');
         if(brand){const logo=document.createElement('img');logo.className='school-logo';brand.prepend(logo);}
       }
       document.querySelectorAll('.school-logo').forEach(node=>{node.src=appearance.style.logo; node.alt=appearance.school_name; node.hidden=false;});
+      document.querySelectorAll('.brand .brand-mark,.brand-block .brand-mark,.creative-app-brand .brand-mark').forEach(node=>{node.hidden=true;});
     }
+    }
+    applyIdentity();
+    document.addEventListener('elevhub:identity-ready',applyIdentity);
     document.title=document.title.replace(/\s*[·/]\s*Klostermarksskolen\s*$/i,' · '+appearance.school_name);
   }catch{}
 })();

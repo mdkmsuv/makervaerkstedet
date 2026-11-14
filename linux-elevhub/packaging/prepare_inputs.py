@@ -6,6 +6,10 @@ import json
 from pathlib import Path
 import re
 from build_debian import sha, DEBIAN_COMPONENTS
+from app.app_packages import build_gate
+_model3d_gate=build_gate('3dprint')
+validate_model3d_bundle=_model3d_gate.validate_model3d_bundle
+MODEL3D_OUTPUTS=_model3d_gate.MODEL3D_OUTPUTS
 
 CORE_VERSION = "2.1.0~20261114.1"
 UPDATER_VERSION = "1.1.0~20261114.1"
@@ -30,59 +34,7 @@ def text_sha(path):
     """Hash of a text file as committed in Git (LF), whatever the checkout uses."""
     return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
-MODEL3D_OUTPUTS = {"model3d-app.js", "model3d-app.js.LEGAL.txt", "model3d-geometry-worker.js", "model3d-manifold.wasm"}
 
-def validate_model3d_bundle(root, built_from=None):
-    """The built 3D editor must be the build of these exact sources.
-
-    web/vendor is not in Git. Without this check an editor change without a
-    rebuild would ship the old bundle with every gate green. Outputs must match
-    byte for byte. The manifest's source hashes must match the folder the
-    bundle was built in (built_from, usually the working copy), and those
-    sources must equal the packaged sources (root) apart from line endings.
-    """
-    root = Path(root)
-    built_from = Path(built_from) if built_from is not None else root
-    manifest = root / "web/vendor/model3d-vendor-manifest.json"
-    if not manifest.is_file():
-        raise ValueError("model3d_build_receipt_required")
-    value = json.loads(manifest.read_text(encoding="utf-8"))
-    outputs = value.get("outputs", {})
-    if value.get("schema") != 1 or set(outputs) != MODEL3D_OUTPUTS:
-        raise ValueError("model3d_complete_bundle_required")
-    for name, record in outputs.items():
-        path = root / "web/vendor" / name
-        if not path.is_file() or sha(path) != record.get("sha256") or path.stat().st_size != record.get("size"):
-            raise ValueError("model3d_bundle_hash_mismatch:" + name)
-    sources = value.get("source_sha256", {})
-    local_js = {p.relative_to(root).as_posix() for p in (root / "web/model3d").rglob("*.js")}
-    local_js.add("web/stl-validation.mjs")
-    if not local_js <= set(sources):
-        raise ValueError("model3d_source_receipt_incomplete")
-    runtime_inputs = value.get("text", {}).get("input_sha256", {})
-    if "web/assets/model3d/Metrophobic-Regular.ttf" not in runtime_inputs:
-        raise ValueError("model3d_runtime_input_receipt_incomplete")
-    for name, want in runtime_inputs.items():
-        if Path(name).is_absolute() or ".." in Path(name).parts:
-            raise ValueError("model3d_invalid_source_path")
-        if name.startswith("node_modules/"):
-            continue  # Dependency bytes are pinned by the builder, not shipped as source.
-        source = root / name
-        if not source.is_file() or sha(source) != want:
-            raise ValueError("model3d_runtime_input_hash_mismatch:" + name)
-    for name, want in sorted(sources.items()):
-        if Path(name).is_absolute() or ".." in Path(name).parts:
-            raise ValueError("model3d_invalid_source_path")
-        if name in ("package.json", "package-lock.json"):
-            # The build script itself refuses dependency versions other than its
-            # pinned manifold/three/opentype/esbuild, so unrelated npm changes
-            # (other tools in package.json) must not block a package build.
-            continue
-        source, built = root / name, built_from / name
-        if not source.is_file() or not built.is_file():
-            raise ValueError("model3d_source_missing:" + name)
-        if want not in (sha(built), text_sha(built)) or text_sha(built) != text_sha(source):
-            raise ValueError("model3d_source_hash_mismatch:" + name + " (byg 3D-editoren igen: node scripts/build_model3d_vendor.mjs, og commit)")
 
 def runtime_descriptor(directory,version):
     descriptor=directory/"runtime-release-student.json"
@@ -181,8 +133,9 @@ def main():
             add(args.minisign_provenance,"usr/share/doc/"+package+"/minisign-provenance.json")
             add(args.public_trust_dir/"minisign.pub","usr/share/makervaerkstedet/trust/minisign.pub","44de94f24b5a84e5dd35d81d7a90052e45a9950c51f93584ad79c4e4019f4aa5")
             add(args.public_trust_dir/"makervaerkstedet.gpg","usr/share/makervaerkstedet/trust/makervaerkstedet.gpg","5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f")
-            add(args.updater_source/'app/app_catalog.py','usr/lib/makervaerkstedet/updater/app_catalog.py')
-            for name in ("apt_client.py","app_operations.py","template_activation.py","runtime_checks.py","os_maintenance.py"):
+            catalog_pin=json.loads((args.updater_source/'linux-elevhub/packaging/updater-pins.json').read_text(encoding='utf-8'))['app_catalog_verifier_sha256']
+            add(args.updater_source/'app/app_catalog.py','usr/lib/makervaerkstedet/updater/app_catalog.py',catalog_pin,text=True)
+            for name in ("apt_client.py","app_operations.py","app_archive.py","school_profile_sync.py","template_activation.py","runtime_checks.py","os_maintenance.py"):
                 add(args.updater_source/"linux-elevhub/administration"/name,"usr/lib/makervaerkstedet/updater/"+name)
             add(args.updater_source/"app/school_appearance.py","usr/lib/makervaerkstedet/updater/school_appearance.py")
             add(args.updater_source/"linux-elevhub/projekter/student_appearance.py","usr/lib/makervaerkstedet/updater/student_appearance.py")
@@ -204,6 +157,8 @@ def main():
             descriptor=runtime_descriptor(args.output_dir,version)
             add(descriptor,"usr/share/makervaerkstedet/runtime-release.json")
             tree(root / "linux-elevhub/projekter", "usr/local/lib/elevhub/projekter")
+            for name in ('app_catalog.py','simple_release.py'):
+                add(root/'app'/name,'usr/local/lib/elevhub/projekter/'+name)
             add(root / "app/school_appearance.py", "usr/local/lib/elevhub/projekter/school_appearance.py")
             paths = json.loads((root / 'linux-elevhub/packaging/base-design-files.json').read_text(encoding='utf-8'))
             if not paths:
@@ -226,7 +181,7 @@ def main():
             for p in sorted(assets.iterdir()):
                 if p.is_file() and not p.name.startswith(("workshop-data-", "workshop-circuit-")):
                     add(p, "usr/local/share/elevhub/assets/" + p.name)
-            for name in ("start.html.j2", "kiosk-session.j2", "elevhub-lokal.service.j2", "elevhub-design.service.j2", "project-workshops.json.j2", "chromium-politik.json.j2", "elevhub-regler.service.j2", "elevhub-webproxy.service.j2"):
+            for name in ("start.html.j2", "kiosk-session.j2", "elevhub-lokal.service.j2", "elevhub-design.service.j2", "elevhub-svg-library.service.j2", "project-workshops.json.j2", "chromium-politik.json.j2", "elevhub-regler.service.j2", "elevhub-webproxy.service.j2"):
                 source = args.session_template if name == "kiosk-session.j2" and args.session_template else kiosk / "templates" / name
                 add(source, "usr/share/makervaerkstedet/templates/" + name)
             for name in ("CREDITS.md", "LICENSE-SCOPE.md", "LICENSE"):

@@ -1,0 +1,31 @@
+# Offentlige SVG-motiver direkte fra hjemmesiden; ingen skoledata eller køadgang.
+[Unit]
+Description=Elevhub SVG-bibliotek fra Skoleværkstedet
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=elevhub-svg-library
+StateDirectoryMode=0700
+RuntimeDirectory=elevhub-svg-library
+RuntimeDirectoryMode=0755
+WorkingDirectory={{ kiosk_lokal_design_dest }}
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/usr/bin/python3 -m app.svg_library_service
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

@@ -12,6 +12,16 @@ from build_debian import PACKAGES
 from app.app_packages import BASE_PACKAGES, release_packages
 
 
+def simulation_receipt(identity,*,release_set,isolated_paths,apt_config_sha256,debian_keyring_sha256):
+    if release_set not in ('legacy','base','app','migration'):raise ValueError('invalid_release_set')
+    value={'schema':1 if release_set=='legacy' else 2,'target':'debian13-amd64-empty-status',
+           'packages':identity,'all_packages_simulated':True,'actual_install':False,
+           'isolated_paths':isolated_paths,'apt_config_sha256':apt_config_sha256,
+           'debian_keyring_sha256':debian_keyring_sha256}
+    if release_set!='legacy':value['release_set']=release_set
+    return value
+
+
 def check(packages,keyring,report,release_set='legacy',specs=None):
     if not hasattr(os,"geteuid") or os.geteuid()!=0:raise RuntimeError("release_gate_requires_Linux_root")
     release=Path("/etc/os-release").read_text()
@@ -52,7 +62,8 @@ def check(packages,keyring,report,release_set='legacy',specs=None):
             result=subprocess.run(command,env=env,cwd=root,capture_output=True,text=True,timeout=240)
             (report/(name+".log")).write_text(result.stdout+result.stderr)
             if result.returncode:raise RuntimeError("installability_gate_failed:"+name+":"+str(result.returncode))
-        value={"schema":1,"target":"debian13-amd64-empty-status","packages":identity,"all_packages_simulated":True,"actual_install":False,"isolated_paths":len(paths),"apt_config_sha256":hashlib.sha256(dump.encode()).hexdigest(),"debian_keyring_sha256":hashlib.sha256(trust.read_bytes()).hexdigest(),"release_set":release_set}
+        value=simulation_receipt(identity,release_set=release_set,isolated_paths=len(paths),
+            apt_config_sha256=hashlib.sha256(dump.encode()).hexdigest(),debian_keyring_sha256=hashlib.sha256(trust.read_bytes()).hexdigest())
         receipt.write_text(json.dumps(value,indent=2)+"\n")
         return value
 

@@ -1,6 +1,7 @@
 """Independent archives cannot claim the base, another app, or pupil data."""
 import importlib.util
 import json
+import hashlib
 from pathlib import Path
 import sys
 import tempfile
@@ -32,6 +33,15 @@ class AppOwnershipTests(unittest.TestCase):
             'usr/share/makervaerkstedet/apps/noter/app.json',
             'usr/share/makervaerkstedet/apps/noter/www/index.html'})
         self.assertEqual(spec['depends'], ['makervaerkstedet-elev (>= 2.1.0~20261114.1)'])
+
+    def test_scratch_reviewed_wrapper_can_override_its_pinned_legacy_asset(self):
+        app=json.loads((ROOT/'apps/scratch/app.json').read_text(encoding='utf-8'))
+        old=self.root/'old.js';old.write_bytes(b'old school-specific wrapper')
+        new=self.root/'index.html';target='usr/local/share/elevhub/apps/scratch/creative/creative-app.js'
+        legacy={'package':'makervaerkstedet-scratch','files':[{'source':str(old),'path':target,'mode':0o644,'sha256':hashlib.sha256(old.read_bytes()).hexdigest()}]}
+        spec=packages.prepare(self.root,app,self.records(target),self.root/'stage',scratch_lock=legacy)
+        entry=next(item for item in spec['files'] if item['path']==target)
+        self.assertEqual(entry['source'],str(new));self.assertEqual(len(spec['files']),2)
 
     def test_app_cannot_own_other_app_system_configuration_or_data(self):
         for target in ('var/lib/elevhub/projekter/a', 'etc/elevhub/client.json',
@@ -67,5 +77,16 @@ class AppOwnershipTests(unittest.TestCase):
         allowlist = json.loads((ROOT/'linux-elevhub/packaging/base-design-files.json').read_text())
         app_ui = {'web/laser.html', 'web/laservaerksted', 'web/model3d.html', 'web/model3d.css'}
         self.assertFalse(app_ui.intersection(allowlist))
+
+    def test_real_3d_file_manifest_cannot_package_a_stale_or_unverified_bundle(self):
+        app=json.loads((ROOT/'apps/3dprint/app.json').read_text(encoding='utf-8'))
+        manifest=json.loads((ROOT/'apps/3dprint/files.json').read_text())
+        for item in manifest['files']:
+            path=self.root/item['source']
+            if item['tree']:path=path/'placeholder.ttf'
+            path.parent.mkdir(parents=True,exist_ok=True)
+            path.write_bytes(b'{}' if path.name=='model3d-vendor-manifest.json' else b'stale build')
+        with self.assertRaisesRegex(ValueError,'model3d_complete_bundle_required'):
+            packages.prepare(self.root,app,manifest,self.root/'stage')
 
 if __name__ == '__main__': unittest.main()

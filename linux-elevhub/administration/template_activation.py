@@ -29,6 +29,7 @@ TEMPLATES = {"start.html.j2": ("usr/local/share/elevhub/start.html", 0o644),
     "kiosk-session.j2": ("usr/local/lib/elevhub/kiosk-session", 0o755),
     "elevhub-lokal.service.j2": ("etc/systemd/system/elevhub-lokal.service", 0o644),
     "elevhub-design.service.j2": ("etc/systemd/system/elevhub-design.service", 0o644),
+    "elevhub-svg-library.service.j2": ("etc/systemd/system/elevhub-svg-library.service", 0o644),
     "project-workshops.json.j2": ("etc/elevhub/project-workshops.json", 0o644),
     "chromium-politik.json.j2": ("etc/chromium/policies/managed/elevhub.json", 0o644)}
 APP_URLS = {"projekter":"http://127.0.0.1:8791/", "scratch":"http://127.0.0.1:8792/",
@@ -148,7 +149,23 @@ def context(config, root):
         urls={k:v for k,v in urls.items() if k not in {"datatraener","kredsloeb","skolegpt"}}
         if urls.get("3dprint") in ("https://"+server+":8770/", "https://"+server+":8770"):
             urls["3dprint"]=APP_URLS["3dprint"]
-    allowed=APP_URLS
+    runtime=root/'usr/share/makervaerkstedet/runtime-release.json'
+    modular=False;installed=[]
+    if runtime.is_file():
+        try:
+            from app_catalog import compare_versions
+        except ModuleNotFoundError:
+            from app.app_catalog import compare_versions
+        release=json.loads(protected(runtime).read_bytes())
+        modular=compare_versions(release['release_id'],'2.1.0~')>=0
+    if modular:
+        modules=root/'usr/local/lib/elevhub/projekter'
+        if not (modules/'app_host.py').is_file():modules=Path(__file__).resolve().parents[1]/'projekter'
+        sys.path.insert(0,str(modules))
+        from app_host import discover_apps,runtime_endpoints
+        installed=discover_apps(root/'usr/share/makervaerkstedet/apps',root/'usr/local/share/elevhub/apps',strict=False)
+        urls={'projekter':'http://127.0.0.1:8791/',**{app['id']:app['start'] for app in installed}}
+    allowed=urls if modular else APP_URLS
     if not isinstance(urls,dict) or any(k not in allowed or v.rstrip("/")!=allowed[k].rstrip("/") for k,v in urls.items()):
         raise ActivationError("unexpected_local_workshop_urls")
     urls={**allowed,**urls}
@@ -170,9 +187,11 @@ def context(config, root):
     for key in ("screen_output","screen_mode"):
         if not isinstance(config.get(key,""),str) or not re.fullmatch(r"[A-Za-z0-9_.@+-]{0,80}",config.get(key,"")):raise ActivationError("invalid_screen_option")
     return {"inventory_hostname":computer,"kiosk_enhed":{"ui_token":ui}, "kiosk_server":server,
+        "kiosk_modular_apps":modular,"kiosk_installed_ports":[8791]+[app['port'] for app in installed],
+        "kiosk_startup_urls":['http://127.0.0.1:8791/_elevhub/health'] if modular else [],
         "kiosk_protokol":"https", "kiosk_hub_port":8773, "kiosk_printvaerksted_port":8770, "kiosk_theme":theme,
         "kiosk_brand":brand,"kiosk_brand_dark":brand_dark,
-        "kiosk_school_name":school,"kiosk_school_logo":appearance['logo_data'],"kiosk_bruger":user,"kiosk_lokale_app_urler":urls,
+        "kiosk_school_name":school,"kiosk_school_logo":appearance['logo_data'],"kiosk_school_font":appearance['font'],"kiosk_bruger":user,"kiosk_lokale_app_urler":urls,
         "kiosk_app_porte":ports,"kiosk_lokale_apps_enabled":True,"kiosk_webproxy_required":webproxy,
         "kiosk_internet_start":"https://www.google.com/imghp?hl=da&safe=active",
         "kiosk_startside_mappe":"/usr/local/share/elevhub", "kiosk_tastatur":keyboard,
@@ -238,12 +257,18 @@ def activate(root=Path("/")):
     environment.filters["quote"]=shlex.quote
     environment.filters["to_json"]=lambda v: json.dumps(v,ensure_ascii=True).replace("<","\\u003c").replace(">","\\u003e").replace("&","\\u0026")
     prepared=[]
+    previous=root/'var/lib/makervaerkstedet-updater/activation.json'
+    previous_files=json.loads(protected(previous,private=True).read_bytes()).get('files',{}) if previous.exists() else {}
     for name,(target,mode) in TEMPLATES.items():
         destination=plain(root/target)
-        if name=="chromium-politik.json.j2" and destination.exists():
-            protected(destination)
-            continue  # Existing school/operator browser policy is authoritative.
         source=protected(templates/name).read_text(encoding="utf-8")
+        if name=='chromium-politik.json.j2' and destination.exists():
+            existing=protected(destination).read_bytes()
+            owned=previous_files.get(target)==hashlib.sha256(existing).hexdigest()
+            if not owned and values['kiosk_modular_apps']:
+                legacy=environment.from_string(source).render(**{**values,'kiosk_modular_apps':False})
+                owned=json.loads(existing)==json.loads(legacy)
+            if not owned:continue  # An edited operator policy remains authoritative.
         data=environment.from_string(source).render(**values).encode()
         if name=="chromium-politik.json.j2":json.loads(data)
         if b"fresh_session.py" in data or b"start_cad" in data:
@@ -253,7 +278,13 @@ def activate(root=Path("/")):
     # needs the same local checks, otherwise the startup cover never clears.
     # Preserve an existing operator-managed policy during upgrades.
     startup=plain(root/"etc/elevhub/startup.json")
-    if startup.exists():
+    if values['kiosk_modular_apps']:
+        new_startup=json_bytes({'urls':values['kiosk_startup_urls']})
+        old_urls=['http://127.0.0.1:8791/_elevhub/health']+['http://127.0.0.1:'+str(p)+'/api/runtime/health' for p in (8795,8796,8798)]
+        existing=protected(startup).read_bytes() if startup.exists() else None
+        if existing is None or previous_files.get('etc/elevhub/startup.json')==hashlib.sha256(existing).hexdigest() or json.loads(existing)=={'urls':old_urls}:
+            prepared.append((startup,new_startup,0o644))
+    elif startup.exists():
         protected(startup)
     else:
         prepared.append((startup,json_bytes({"urls":[

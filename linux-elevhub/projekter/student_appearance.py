@@ -32,7 +32,7 @@ def read_appearance(config_path=KIOSK_CONFIG, *, config=None, verify=None):
         name = ''
     theme = config.get('theme', 'red')
     result = {'theme':theme if theme in ('red','green','yellow') else 'red',
-              'school_name':name, 'brand':'', 'brand_dark':'', 'logo_data':''}
+              'school_name':name, 'brand':'', 'brand_dark':'', 'logo_data':'', 'font':'standard'}
     result.update(brand_colours(config))
     base = path.parent / 'local-appearance'
     # Only inspect this profile, never a host profile while testing another root.
@@ -48,7 +48,7 @@ def read_appearance(config_path=KIOSK_CONFIG, *, config=None, verify=None):
         for key in ('_logo', '_website_css'):
             if local.get(key):verify(local[key][0])
         for selected in local.get('_static', {}).values():verify(selected[0])
-    result.update({key:local[key] for key in ('theme','school_name','brand','brand_dark') if key in local})
+    result.update({key:local[key] for key in ('theme','school_name','brand','brand_dark','font') if key in local})
     if local.get('_logo'):
         import mimetypes
         filename,content = local['_logo']

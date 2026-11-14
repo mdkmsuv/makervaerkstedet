@@ -4,9 +4,9 @@
   const base=new URL('.',document.currentScript.src);
   const asset=n=>new URL(n,base).href;
   const header=document.createElement('header');header.id='creative-app-header';
-  header.innerHTML='<div class="creative-app-brand"><span class="brand-mark" aria-hidden="true"></span><div><small data-school-name>Makerværkstedet / VÆRKSTEDET</small><strong></strong></div></div><p></p><button type="button">Idéer & hjælp <span aria-hidden="true">↗</span></button>';
+  header.innerHTML='<div class="creative-app-brand"><span class="brand-mark" aria-hidden="true"></span><img class="school-logo" alt="" hidden><div><small data-school-name>Makerværkstedet / VÆRKSTEDET</small><strong></strong></div></div><p></p><button type="button">Idéer & hjælp <span aria-hidden="true">↗</span></button>';
   header.querySelector('strong').textContent=info.name;header.querySelector('p').textContent=info.tag;
-  document.body.prepend(header);
+  document.body.prepend(header);document.dispatchEvent(new Event('elevhub:identity-ready'));
   const combineProjectBar=()=>{const bar=document.getElementById('elevhub-project-bar');if(!bar)return false;header.insertBefore(bar,header.querySelector('button'));header.querySelector(':scope > p').hidden=true;document.body.classList.add('creative-project-header');return true;};
   if(!combineProjectBar()){const barObserver=new MutationObserver(()=>{if(combineProjectBar())barObserver.disconnect();});barObserver.observe(document.body,{childList:true});}
   const dialog=document.createElement('dialog');dialog.id='creative-app-help';dialog.setAttribute('aria-labelledby','creative-app-title');

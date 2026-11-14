@@ -1,4 +1,10 @@
 {
   "schema": 1,
-  "files": []
+  "files": [
+    {
+      "source": "linux-elevhub/server/elevhub/web/assets/creative-app.js",
+      "path": "usr/local/share/elevhub/apps/scratch/creative/creative-app.js",
+      "tree": false
+    }
+  ]
 }

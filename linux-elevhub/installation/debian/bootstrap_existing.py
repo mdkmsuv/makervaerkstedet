@@ -429,6 +429,7 @@ def apply(payload,plan_raw,plan_pin,*,root=Path("/"),run=command):
             journal();mutated=True
             wiped=wipe_pupil_projects(root,inventory["pupil_projects"])
             units=["makervaerkstedet-firstboot.service","makervaerkstedet-apt-update.timer","elevhub-lokal.service","elevhub-design.service","getty@tty1.service"]
+            if (root/'etc/systemd/system/elevhub-svg-library.service').exists():units.append('elevhub-svg-library.service')
             run(["/usr/bin/systemctl","daemon-reload"]);run(["/usr/bin/systemctl","enable",*units])
             run(["/usr/bin/systemctl","restart","elevhub-lokal.service","elevhub-design.service","getty@tty1.service"])
             ready=run(["/usr/bin/python3","-B","/usr/lib/makervaerkstedet/updater/apt_client.py","--check-runtime"])

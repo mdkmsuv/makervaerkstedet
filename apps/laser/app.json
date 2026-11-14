@@ -26,7 +26,8 @@
     ],
     "optional": [
       "theme-v1",
-      "laser-submit-v1"
+      "laser-submit-v1",
+      "svg-library-v1"
     ]
   }
 }

@@ -18,7 +18,11 @@ UNAMBIGUOUS = {'.sb3': 'scratch', '.hex': 'microbit', '.stl': '3dprint', '.mkv3d
                '.mp3': 'audio', '.csv': 'table', '.piskel': 'piskel'}
 
 
-def association(filename, kind='andet', data=None):
+def association(filename, kind='andet', data=None, apps=None):
+    for app in apps or []:
+        project=app.get('project')
+        if project and project['kind'] not in {'scratch','microbit','laser','folie','3dprint'} and filename.lower().endswith(project['extension']):
+            return {'program':app['id'],'label':app['navn'],'extension':project['extension']}
     ext = PurePosixPath(filename.lower()).suffix
     program = UNAMBIGUOUS.get(ext)
     if not program and ext == '.svg':
@@ -60,8 +64,11 @@ def association(filename, kind='andet', data=None):
     return {'program': program, 'label': PROGRAMS[program], 'extension': ext}
 
 
-def project_kind(filename, hint='andet', data=None):
-    program = association(filename, hint, data)['program']
+def project_kind(filename, hint='andet', data=None, apps=None):
+    program = association(filename, hint, data, apps)['program']
+    for app in apps or []:
+        if app['id']==program and app.get('project') and program not in {'scratch','microbit','laser','folie','3dprint'}:
+            return app['project']['kind']
     if program == '3dprint':
         return '3dprint' if PurePosixPath(filename.lower()).suffix == '.mkv3d' else 'stl'
     if program in {'scratch', 'microbit', 'laser', 'folie', 'kredsloeb', 'datatraener'}:

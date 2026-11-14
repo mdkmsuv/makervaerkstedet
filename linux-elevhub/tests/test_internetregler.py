@@ -71,6 +71,13 @@ class InternetreglerTest(unittest.TestCase):
         self.assertNotIn('http://127.0.0.1:8792/', aaben['URLBlocklist'])
         self.assertIn('http://127.0.0.1:8795/', aaben['URLBlocklist'])
 
+    def test_installed_app_with_non_root_start_path_follows_lesson_choice(self):
+        self.konf['lokale_app_urler']['noter']='http://127.0.0.1:8801/editor.html'
+        app={'id':'noter','type':'lokal','aaben':True}
+        self.assertIn('http://127.0.0.1:8801/',json.loads(REGLER._chromium_url_policy(False,[app]))['URLAllowlist'])
+        app['aaben']=False
+        self.assertIn('http://127.0.0.1:8801/',json.loads(REGLER._chromium_url_policy(True,[app]))['URLBlocklist'])
+
     def test_lokalt_designvaerksted_foelger_laererens_aabning(self):
         # Laser og folie er stadig "vaerksted" på serveren (afleveringer går
         # gennem indgangen), men tegnefladen kører på denne computer.

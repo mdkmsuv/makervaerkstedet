@@ -235,15 +235,25 @@ class UpdateImporter:
             if len(raw) > 1024**2 or files[name[:-5] + '.minisig']['size'] > 16384:
                 raise UpdateError('release_metadata_too_large')
             value = strict_json(raw)
-            verified = verify(raw, (stage / (name[:-5] + '.minisig')).read_bytes(),
-                minisign_exe=plain(self.service.base / config['minisign_exe']), minisign_sha256=config['minisign_sha256'],
-                public_key=config['public_key'], repository=REPOSITORY, role=value.get('role'),
-                platform=value.get('platform'), component=value.get('component'), now=self.service.clock())
+            if value.get('schema') == 2 and value.get('component') == 'app-catalog':
+                from app_admin import contract
+                admin = getattr(self.service,'app_admin',None)
+                app_verify = admin.verifier if admin is not None else contract().verify_catalog
+                verified = app_verify(raw,(stage / (name[:-5] + '.minisig')).read_bytes(),
+                    minisign_exe=plain(self.service.base / config['minisign_exe']),minisign_sha256=config['minisign_sha256'],
+                    public_key=config['public_key'],repository=REPOSITORY)
+                artifacts = [entry['artifact'] for entry in verified['apps']]
+            else:
+                verified = verify(raw, (stage / (name[:-5] + '.minisig')).read_bytes(),
+                    minisign_exe=plain(self.service.base / config['minisign_exe']), minisign_sha256=config['minisign_sha256'],
+                    public_key=config['public_key'], repository=REPOSITORY, role=value.get('role'),
+                    platform=value.get('platform'), component=value.get('component'), now=self.service.clock())
+                artifacts = verified['artifacts']
             if verified['_manifest_sha256'] != PurePosixPath(name).stem:
                 raise UpdateError('release_cache_hash_binding_mismatch')
             if verified['role'] != 'student' or verified['platform'] != 'debian-amd64':
                 raise UpdateError('non_apt_component_in_snapshot')
-            for artifact in verified['artifacts']:
+            for artifact in artifacts:
                 if verified['platform'] == 'debian-amd64':
                     if files.get('pool/' + artifact['name']) != {'sha256': artifact['sha256'], 'size': artifact['size']}:
                         raise UpdateError('component_artifact_not_in_snapshot')

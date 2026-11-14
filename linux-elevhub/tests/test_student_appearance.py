@@ -20,7 +20,7 @@ class StudentAppearanceTests(unittest.TestCase):
 
     def test_public_colours_never_select_a_school_logo_or_expose_credentials(self):
         result = read_appearance(self.config)
-        self.assertEqual(result, {'theme':'green','school_name':'Testskolen','brand':'#1f5a8c','brand_dark':'#143c5e','logo_data':''})
+        self.assertEqual(result, {'theme':'green','school_name':'Testskolen','brand':'#1f5a8c','brand_dark':'#143c5e','logo_data':'','font':'standard'})
         self.config.write_text('{}')
         self.assertEqual(read_appearance(self.config)['logo_data'], '')
 
@@ -50,7 +50,7 @@ class StudentAppearanceTests(unittest.TestCase):
 
     def test_missing_config_has_neutral_defaults_and_bad_values_are_bounded(self):
         self.config.unlink()
-        self.assertEqual(read_appearance(self.config), {'theme':'red','school_name':'','brand':'','brand_dark':'','logo_data':''})
+        self.assertEqual(read_appearance(self.config), {'theme':'red','school_name':'','brand':'','brand_dark':'','logo_data':'','font':'standard'})
         self.config.write_text(json.dumps({'theme':'oops','school_name':'<test>','brand':'url(https://evil.test)','brand_dark':'#143c5e'}))
         value=read_appearance(self.config)
         self.assertEqual(value['theme'],'red')

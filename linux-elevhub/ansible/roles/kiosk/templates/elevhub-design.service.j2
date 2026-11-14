@@ -3,7 +3,7 @@
 # til serverens laserindgang, som validerer afleveringen og afviser den, når
 # læreren har lukket Laser.
 [Unit]
-Description=Elevhub lokalt designværksted (laser og folie)
+Description=Elevhub lokale køapps og vedvarende udbakker
 After=network-online.target
 Wants=network-online.target
 
@@ -16,7 +16,7 @@ DynamicUser=yes
 StateDirectory=elevhub-design
 WorkingDirectory={{ kiosk_lokal_design_dest }}
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=/usr/bin/python3 -m app.laser_local --server-url {{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_laservaerksted_port | default(8771) }} --print-server-url {{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_printvaerksted_port | default(8770) }}{% if not kiosk_usikker_test | bool %} --ca-file /etc/elevhub/ca.pem{% endif %} --laser-port {{ kiosk_lokal_design_laser_port }} --folie-port {{ kiosk_lokal_design_folie_port }} --model3d-port {{ kiosk_lokal_design_model3d_port | default(8798) }} --outbox-dir /var/lib/elevhub-design/udbakke
+ExecStart=/usr/bin/python3 -m app.laser_local --server-url {{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_laservaerksted_port | default(8771) }} --print-server-url {{ kiosk_protokol }}://{{ kiosk_server }}:{{ kiosk_printvaerksted_port | default(8770) }}{% if not kiosk_usikker_test | bool %} --ca-file /etc/elevhub/ca.pem{% endif %} --laser-port {{ kiosk_lokal_design_laser_port }} --folie-port {{ kiosk_lokal_design_folie_port }} --model3d-port {{ kiosk_lokal_design_model3d_port | default(8798) }} --outbox-dir /var/lib/elevhub-design/udbakke --manifest-root /usr/share/makervaerkstedet/apps
 Restart=on-failure
 RestartSec=2
 NoNewPrivileges=true

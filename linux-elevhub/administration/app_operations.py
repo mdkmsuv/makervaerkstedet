@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import shutil
 import tempfile
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
@@ -49,23 +50,39 @@ def removal_plan(output, descriptor):
     return removed
 
 
-def installed_descriptors(root=Path('/usr/share/makervaerkstedet/apps')):
+def install_plan(output,descriptor):
+    app=validate_app_descriptor(descriptor)
+    for line in output.splitlines():
+        if line.startswith('Remv '):raise ValueError('unsafe_app_install_plan')
+        if line.startswith(('Inst ','Conf ')):
+            match=re.fullmatch(r'(?:Inst|Conf) ([a-z0-9+.-]+)(?::amd64)?(?: \[[^\]]+\])? \(([^\s)]+)(?: [^\r\n]*)?\)',line)
+            require(match is not None and match[1]==app['package'] and match[2]==app['version'],'unsafe_app_install_plan')
+    return True
+
+
+def installed_descriptors(root=Path('/usr/share/makervaerkstedet/apps'),*,issues=None):
     """Metadata is package-owned, never writable by the kiosk account."""
     root = plain(root)
     if not root.exists(): return []
     protected(root, directory=True)
     result = []
     for folder in sorted(root.iterdir()):
-        if not folder.is_dir(): continue
-        path = plain(folder/'app.json')
-        if not path.exists(): continue
-        raw = protected(path).read_bytes()
-        require(len(raw) <= 16384, 'app_descriptor_too_large')
-        value = json.loads(raw)
-        if value.get('schema') != 2: continue  # .2 migration handled explicitly.
-        validate_app_descriptor(value)
-        require(value['id'] == folder.name, 'app_descriptor_directory_mismatch')
-        result.append(value)
+        try:
+            if not folder.is_dir(): continue
+            path = plain(folder/'app.json')
+            if not path.exists(): continue
+            require(protected(path).stat().st_size <= 16384, 'app_descriptor_too_large')
+            raw = path.read_bytes()
+            value = json.loads(raw)
+            require(type(value) is dict,'invalid_app_descriptor')
+            if value.get('schema') != 2: continue  # .2 migration handled explicitly.
+            validate_app_descriptor(value)
+            require(value['id'] == folder.name, 'app_descriptor_directory_mismatch')
+            result.append(value)
+        except (ValueError,OSError):
+            if issues is None:raise
+            if re.fullmatch('[a-z0-9][a-z0-9-]{0,63}',folder.name):
+                issues.append({'app_id':folder.name,'code':'installed_manifest_invalid'})
     return result
 
 
@@ -74,9 +91,11 @@ class Executor:
         self.state = plain(state); self.state.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.path = plain(self.state/'apps-ledger.json'); self.commands = commands
         self.ledger = json.loads(self.path.read_bytes()) if self.path.exists() else {'schema':1,'jobs':{},'highwater':{},'outbox':[]}
-        require(type(self.ledger) is dict and set(self.ledger) == {'schema','jobs','highwater','outbox'}
+        require(type(self.ledger) is dict and set(self.ledger) in ({'schema','jobs','highwater','outbox'},{'schema','jobs','highwater','outbox','approved'})
                 and self.ledger['schema'] == 1 and type(self.ledger['jobs']) is dict
                 and type(self.ledger['highwater']) is dict and type(self.ledger['outbox']) is list, 'invalid_app_ledger')
+        self.ledger.setdefault('approved',{})
+        require(type(self.ledger['approved']) is dict,'invalid_app_ledger')
 
     def save(self): atomic(self.path, json_bytes(self.ledger), 0o600)
 
@@ -84,10 +103,11 @@ class Executor:
         validate_offer(offer)
         previous=self.ledger['jobs'].get(offer['job_id'])
         require(not previous or previous['offer']==offer,'job_identity_changed')
+        if previous and previous['phase'] in ('complete','failed','repair'):return previous['result']
         code=str(error)
         if not re.fullmatch('[a-z][a-z0-9_]{0,79}',code):code='app_operation_failed'
         result={'job_id':offer['job_id'],'revision':offer['revision'],'state':'failed','code':code}
-        self.ledger['jobs'][offer['job_id']]={'offer':offer,'phase':'failed','result':result}
+        self.ledger['jobs'][offer['job_id']]={'offer':dict(offer),'phase':'failed','result':result}
         if result not in self.ledger['outbox']:self.ledger['outbox'].append(result)
         self.save()
         return result
@@ -96,13 +116,26 @@ class Executor:
         validate_offer(offer)
         old = self.ledger['jobs'].get(offer['job_id'])
         require(not old or old['offer'] == offer, 'job_identity_changed')
+        if old and old['phase'] in ('complete','failed','repair'):return old['result']
+        latest=max((job['offer']['revision'] for job in self.ledger['jobs'].values()
+                    if job['offer']['app_id']==offer['app_id']),default=0)
+        if offer['revision']<latest:return self.reject(offer,ValueError('app_job_superseded'))
         require(type(catalog) is dict and catalog.get('_manifest_sha256') == offer['catalog_sha256'], 'app_catalog_hash_mismatch')
-        highwater = accept_catalog(catalog, self.ledger['highwater'])
         entries = [entry for entry in catalog['apps'] if entry['descriptor']['id'] == offer['app_id']]
         require(len(entries) == 1, 'app_not_in_catalog')
         entry = entries[0]; app = entry['descriptor']
+        if catalog['sequence']<self.ledger['highwater'].get('sequence',0):
+            approved=self.ledger['approved'].get(app['id'])
+            entry_hash=hashlib.sha256(json.dumps(entry,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+            resume=old is not None and old.get('entry')==entry and old['phase'] in ('verified','applying','installed') and self.ledger['highwater'].get('apps',{}).get(app['id'],{}).get('sha256')==entry_hash
+            require(approved is not None and approved['entry']==entry and (offer['action']=='remove' or resume),
+                    'historical_app_job_not_authorized')
+            highwater=self.ledger['highwater']
+        else:
+            highwater=accept_catalog(catalog,self.ledger['highwater'])
         self.ledger['highwater'] = highwater
-        job = old or {'offer':offer, 'phase':'verified'}
+        self.ledger['approved'][app['id']]={'entry':json.loads(json.dumps(entry)),'catalog_sha256':offer['catalog_sha256']}
+        job = old or {'offer':dict(offer), 'phase':'verified','entry':json.loads(json.dumps(entry))}
         self.ledger['jobs'][offer['job_id']] = job; self.save()
         def observe():
             values = self.commands.app_inventory([app])
@@ -114,13 +147,16 @@ class Executor:
         try:
             current = observe()
             wanted_absent = offer['action'] == 'remove'
+            self.commands.preflight_app(app,removed=wanted_absent)
             satisfied = current['state'] == 'absent' if wanted_absent else (current['state'] == 'installed' and current['version'] == app['version'])
-            if job['phase'] == 'complete' and satisfied: return job['result']
+            if not wanted_absent and satisfied:satisfied=self.commands.app_matches(app)
             if not wanted_absent:
                 require(compatibility(app, core_version=core_version)['compatible'], 'app_incompatible')
                 require(offer['action'] != 'update' or current['state'] == 'installed', 'app_not_installed')
                 require(current['state'] != 'installed' or compare_versions(app['version'],current['version']) >= 0, 'app_downgrade_rejected')
             if not satisfied:
+                if not wanted_absent:
+                    require(shutil.disk_usage(self.state).free>=2*entry['artifact']['size']+128*1024**2,'insufficient_download_space')
                 job['phase'] = 'applying'; self.save()
                 if wanted_absent: self.commands.remove_app(app)
                 else:
@@ -130,15 +166,19 @@ class Executor:
                     with tempfile.TemporaryDirectory(prefix='app-download-',dir=self.state) as temporary:
                         directory=Path(temporary);directory.chmod(0o700)
                         package=self.commands.download(artifact,directory)
-                        self.commands.install([package],False)
+                        self.commands.install_app([package],app)
             current = observe()
             require(current['state'] == 'absent' if wanted_absent else
                     current['state'] == 'installed' and current['version'] == app['version'], 'app_installed_state_mismatch')
+            require(self.commands.app_absent(app) if wanted_absent else self.commands.app_matches(app),
+                    'app_removal_incomplete' if wanted_absent else 'app_installed_manifest_mismatch')
             job['phase'] = 'installed'; self.save()
-            self.commands.activate(core_version)
+            self.commands.activate_app(core_version,app,removed=wanted_absent)
             current = observe()
             require(current['state'] == 'absent' if wanted_absent else
                     current['state'] == 'installed' and current['version'] == app['version'], 'app_installed_state_mismatch')
+            require(self.commands.app_absent(app) if wanted_absent else self.commands.app_matches(app),
+                    'app_removal_incomplete' if wanted_absent else 'app_installed_manifest_mismatch')
             result = {'job_id':offer['job_id'],'revision':offer['revision'],'state':'succeeded','code':None}
             job['phase'] = 'complete'
         except (ValueError, OSError, subprocess.SubprocessError) as error:
@@ -152,17 +192,34 @@ class Executor:
 
 
 class AppClient:
-    def __init__(self, legacy):
+    def __init__(self, legacy,*,manifest_root=Path('/usr/share/makervaerkstedet/apps')):
         self.legacy = legacy
+        self.manifest_root=manifest_root
         self.executor = Executor(legacy.state, legacy.commands)
 
     def tick(self):
         old = self.legacy
         current = {item['component']:item['version'] for item in old.commands.installed()}
-        inventory = old.commands.app_inventory(installed_descriptors())
+        issues=[]
+        root_error=False
+        try:descriptors=installed_descriptors(self.manifest_root,issues=issues)
+        except (ValueError,OSError):descriptors=[];root_error=True
+        known={item['id']:item for item in descriptors}
+        for app_id,record in self.executor.ledger['approved'].items():
+            known.setdefault(app_id,record['entry']['descriptor'])
+        inventory=[]
+        for app_id,descriptor in known.items():
+            try:
+                record=old.commands.app_inventory([descriptor])[0]
+                if record['state']=='installed' and (root_error or record['version']!=descriptor['version'] or not old.commands.app_matches(descriptor)):
+                    issues.append({'app_id':app_id,'code':'installed_manifest_mismatch'})
+                if any(issue['app_id']==app_id for issue in issues):record['state']='incomplete'
+                inventory.append(record)
+            except (ValueError,OSError):
+                inventory.append({'id':app_id,'package':descriptor['package'],'version':None,'state':'incomplete'})
         pending = self.executor.ledger['outbox'][0] if self.executor.ledger['outbox'] else None
         body={'schema':1,'capabilities':[PROTOCOL],'updater_version':current.get('updater'),
-              'core_version':current.get('studentcore'),'installed':inventory,'result':pending}
+              'core_version':current.get('studentcore'),'installed':inventory,'issues':issues,'result':pending}
         # A .2 school server may not have this endpoint yet. Never change the
         # schema1 core-update request or ask an old updater to parse app jobs.
         try: response = old.transport.poll_apps(body)
@@ -177,12 +234,29 @@ class AppClient:
             self.executor.ledger['outbox'].pop(0); self.executor.save()
         for offer in response['jobs']:
             try:
+                previous=self.executor.ledger['jobs'].get(offer['job_id'])
+                require(not previous or previous['offer']==offer,'job_identity_changed')
+                if previous and previous['phase'] in ('complete','failed','repair'):
+                    if previous['result'] not in self.executor.ledger['outbox']:
+                        self.executor.ledger['outbox'].append(previous['result']);self.executor.save()
+                    continue
                 digest = offer['catalog_sha256']; path='/apt/apps/catalog/'+digest
-                raw=old.transport.get(path+'.json',MAX_MANIFEST)
+                cache=plain(old.state/'app-catalogs')
+                cache.mkdir(exist_ok=True,mode=0o700)
+                message=plain(cache/(digest+'.json'));sigfile=plain(cache/(digest+'.minisig'))
+                cached=message.exists() and sigfile.exists()
+                if cached:
+                    require(protected(message,private=True).stat().st_size<=MAX_MANIFEST
+                            and protected(sigfile,private=True).stat().st_size<=MAX_SIGNATURE,'cached_app_catalog_too_large')
+                    raw=message.read_bytes();signature=sigfile.read_bytes()
+                else:
+                    raw=old.transport.get(path+'.json',MAX_MANIFEST)
+                    signature=old.transport.get(path+'.minisig',MAX_SIGNATURE)
                 require(hashlib.sha256(raw).hexdigest() == digest, 'app_catalog_hash_mismatch')
-                signature=old.transport.get(path+'.minisig',MAX_SIGNATURE)
                 catalog=verify_catalog(raw,signature,minisign_exe=old.minisign,minisign_sha256=MINISIGN_SHA256,
                                        public_key=old.public_key,repository=REPOSITORY)
+                if not cached:
+                    atomic(message,raw,0o600);atomic(sigfile,signature,0o600)
                 self.executor.execute(offer,catalog,core_version=current.get('studentcore'))
             except (ValueError,OSError,subprocess.SubprocessError) as error:
                 self.executor.reject(offer,error)

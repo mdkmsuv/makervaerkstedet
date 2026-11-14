@@ -39,7 +39,9 @@ def tekst(value, maximum, field):
 
 
 class Projektarkiv:
-    def __init__(self, root, max_total=MAX_TOTAL, retention_days=RETENTION_DAYS):
+    def __init__(self, root, max_total=MAX_TOTAL, retention_days=RETENTION_DAYS, *, apps=None):
+        self.apps=apps or []
+        self.app_formats={app['project']['kind']:app['project'] for app in self.apps if app.get('project')}
         self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)
         self.files = self.root / 'versioner'
@@ -111,7 +113,11 @@ class Projektarkiv:
         filename = tekst(filename, 180, 'Filnavn')
         if '/' in filename or '\\' in filename or ':' in filename or filename in ('.', '..'):
             raise ValueError('Ugyldigt filnavn.')
-        if kind in LEGACY_TYPES:
+        if kind in self.app_formats and kind not in TYPES:
+            format=self.app_formats[kind]
+            if not filename.lower().endswith(format['extension']) or not isinstance(data,bytes) or len(data)>format['max_bytes']:
+                raise ValueError('Denne fil passer ikke til appens projektformat.')
+        elif kind in LEGACY_TYPES:
             pass  # existing record of a retired type; its original filename stays valid
         elif not filename.lower().endswith(EXTENSIONS) or kind not in TYPES:
             raise ValueError('Denne projekttype understøttes ikke.')

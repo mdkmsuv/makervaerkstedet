@@ -1,6 +1,7 @@
 <!doctype html>
-<html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Makerværkstedet starter</title><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/creative-hub.css"></head>
+<html lang="da"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="no-referrer"><title>Makerværkstedet starter</title><link rel="icon" href="assets/favicon.svg" type="image/svg+xml"><link rel="stylesheet" href="assets/creative-hub.css">{% set skolefont = kiosk_school_font | default('standard') %}{% if skolefont in ['manrope','metrophobic'] %}<style>@font-face{font-family:SchoolProfile;src:url('assets/{{ 'Manrope.ttf' if skolefont == 'manrope' else 'metrophobic-latin.ttf' }}') format('truetype');font-display:swap}body{--f-body:SchoolProfile,sans-serif;--f-display:SchoolProfile,sans-serif;font-family:SchoolProfile,sans-serif}button,input,select{font-family:inherit}</style>{% endif %}</head>
 {% set kb = kiosk_brand | default('', true) | string %}{% set kd = kiosk_brand_dark | default('', true) | string %}{% set skolefarver = kb | length == 7 and kd | length == 7 and kb[0] == '#' and kd[0] == '#' and kb[1:].strip('0123456789abcdef') == '' and kd[1:].strip('0123456789abcdef') == '' %}{% set skolefarver_stil = (' style="--brand:' ~ kb ~ ';--deep:' ~ kd ~ ';--brand-dark:' ~ kd ~ '"') if skolefarver else '' %}
+
 <body data-theme="{{ kiosk_theme | default('red') }}"{{ skolefarver_stil }}>
 <a class="skip-link" href="#workshops">Spring til værkstederne</a>
 <svg class="symbols" aria-hidden="true"><defs><symbol id="hub-arrow" viewBox="0 0 24 24"><path d="M4 12h16m-6-6 6 6-6 6"/></symbol><symbol id="hub-folder" viewBox="0 0 24 24"><path d="M3 6h7l3 3h8v11H3Z"/></symbol><symbol id="hub-cube" viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9ZM4 7.5l8 4.5 8-4.5M12 12v9"/></symbol></defs></svg>
@@ -50,7 +51,7 @@ async function hentKatalog() {
     const ids = new Set();
     for (const app of data.apps) {
       const url = new URL(app.start);
-      if (app.schema !== 1 || typeof app.id !== 'string' || ids.has(app.id) || !app.navn ||
+      if (![1, 2].includes(app.schema) || typeof app.id !== 'string' || ids.has(app.id) || !app.navn ||
           url.protocol !== 'http:' || url.hostname !== '127.0.0.1' || url.username || url.password ||
           typeof app.offline !== 'boolean' || typeof app.kraever_internet !== 'boolean') throw new Error('catalogue');
       ids.add(app.id);
@@ -87,7 +88,7 @@ document.getElementById('kiosk-dismiss').addEventListener('click', () => {
 });
 function lokaltApp(app) {
   return {id: app.id, navn: app.navn, type: 'lokal', local_start: app.start, aaben: true, klar: true,
-    requires_internet: app.kraever_internet, offline_unavailable: offlineMode && !app.offline};
+    description: app.description || '', category: app.category || 'ide', requires_internet: app.kraever_internet, offline_unavailable: offlineMode && !app.offline};
 }
 // Cards this computer can offer without a usable answer from the school
 // server. When the server is unreachable, Internet is open too. When the
@@ -109,11 +110,12 @@ function erLokalApp(app) {
   return app.type === 'lokal' || installeredeApps.some(value => value.id === app.id);
 }
 function tilgaengeligeApps(apps) {
-  return apps.flatMap(app => {
+  const listed = apps.flatMap(app => {
     if (!erLokalApp(app)) return app.type === 'browser' || app.type === 'web' ? [app] : [];
     const installed = installeredeApps.find(value => value.id === app.id);
     return installed ? [{...app, ...lokaltApp(installed), aaben: app.aaben, klar: app.klar}] : [];
   });
+  return [...listed, ...installeredeApps.filter(app => !apps.some(remote => remote.id === app.id)).map(lokaltApp)];
 }
 function tegnKatalog(apps) {
   const focus = document.activeElement;

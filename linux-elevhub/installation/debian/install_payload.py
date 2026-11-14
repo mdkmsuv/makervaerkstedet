@@ -91,7 +91,7 @@ def apply(payload,manifest):
     shutil.copyfile(payload/"enrollment/makervaerkstedet-enroll.service",unit);unit.chmod(0o644)
     command(["/usr/bin/python3","-B","/usr/lib/makervaerkstedet/updater/template_activation.py"])
     # --root writes boot links only. Never start a service in the installer.
-    command(["/usr/bin/systemctl","--root=/","enable","makervaerkstedet-enroll.service","makervaerkstedet-firstboot.service","makervaerkstedet-apt-update.timer","elevhub-lokal.service","elevhub-design.service"])
+    command(["/usr/bin/systemctl","--root=/","enable","makervaerkstedet-enroll.service","makervaerkstedet-firstboot.service","makervaerkstedet-apt-update.timer","elevhub-lokal.service","elevhub-design.service","elevhub-svg-library.service"])
     marker.write_text(json.dumps({"schema":1,"packages":manifest["packages"]})+"\n");marker.chmod(0o600)
 
 def main():

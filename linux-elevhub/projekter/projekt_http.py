@@ -52,11 +52,11 @@ def opening(server, project):
     cache = getattr(server, 'opening_cache', {})
     key = (project['id'], project['revision'], project['modified'])
     if key not in cache:
-        route = association(project['filename'], project['kind'])
+        route = association(project['filename'], project['kind'],apps=server.projekt_apps)
         if route['extension'] in ('.svg', '.txt', '.json', '.zip'):
             try:
                 _, data = server.projekter.read(project['id'])
-                route = association(project['filename'], project['kind'], data)
+                route = association(project['filename'], project['kind'], data,server.projekt_apps)
             except (OSError, ValueError, KeyError):
                 pass  # Opening the file will show its concrete error.
         if len(cache) > 4000:
@@ -98,13 +98,14 @@ def handle(handler):
         if h.command in ('GET', 'HEAD'):
             if path == '/api/list':
                 workshop = arg('workshop')
-                if workshop and workshop not in TYPES:
+                installed_kinds={app['project']['kind'] for app in h.server.projekt_apps if app.get('project')}
+                if workshop and workshop not in TYPES|installed_kinds:
                     raise ValueError('Værkstedet kunne ikke genkendes.')
                 projects = []
                 for p in store.list(arg('q')):
                     route = opening(h.server, p)
                     program = route['program']
-                    category = ('stl' if program == '3dprint' and route['extension'] == '.stl' else program if program in TYPES
+                    category = ('stl' if program == '3dprint' and route['extension'] == '.stl' else program if program in TYPES|installed_kinds
                                 else 'datatraener' if p['kind'] == 'datatraener' else 'andet')
                     if not workshop or category == workshop:
                         projects.append({**p, 'opening': route})
@@ -116,7 +117,7 @@ def handle(handler):
                 except ValueError as error:
                     h.svar(503, {'error':str(error)})
                     return True
-                h.svar(200, {'apps': [{'id': a['id'], 'port': a.get('port'), 'type': a.get('type', 'vaerksted')}
+                h.svar(200, {'apps': [{'id': a['id'], 'port': a.get('port'), 'navn':a.get('navn',a['id']), 'project':a.get('project'), 'type': a.get('type', 'vaerksted')}
                                      for a in h.server.projekt_apps], 'appearance':appearance,
                              # Always return to the project service origin. Editor
                              # proxies have their own CSP and are not launcher origins.
@@ -155,7 +156,7 @@ def handle(handler):
                 h.svar(415, {'error': 'Forkert filtype i forespørgslen.'})
                 return True
             data = h.laes_krop(size)
-            kind = project_kind(arg('filename'), arg('kind'), data)
+            kind = project_kind(arg('filename'), arg('kind'), data,h.server.projekt_apps)
             try:
                 kind = store.meta(arg('id'))['kind']  # Keep existing history, including old labels.
             except KeyError:

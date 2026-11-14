@@ -29,7 +29,7 @@ def installed_apps(root):
     spec = importlib.util.spec_from_file_location('_mkv_app_manifests', reader)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.load_manifests(root)
+    return module.load_manifests(root,on_error=lambda name,error: None)
 
 
 def session_request(method, path, data=None):

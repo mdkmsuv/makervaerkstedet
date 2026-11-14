@@ -1,7 +1,7 @@
 [Unit]
 Description=Render Makervaerkstedet local workshop templates offline
 After=local-fs.target
-Before=elevhub-lokal.service elevhub-design.service getty@tty1.service
+Before=elevhub-lokal.service elevhub-design.service elevhub-svg-library.service getty@tty1.service
 ConditionPathExists=/usr/share/makervaerkstedet/templates/start.html.j2
 
 [Service]

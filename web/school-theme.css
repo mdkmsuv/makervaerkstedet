@@ -7,3 +7,5 @@
 :root[data-school-theme="red"] .choice-label,:root[data-school-theme="red"] .choice-machine,:root[data-school-theme="red"] .choice-action{color:var(--brand)}
 :root[data-school-theme="yellow"] .choice-label,:root[data-school-theme="yellow"] .choice-machine,:root[data-school-theme="yellow"] .choice-action{color:var(--brand)}
 :root[data-school-theme="green"] .choice-label,:root[data-school-theme="green"] .choice-machine,:root[data-school-theme="green"] .choice-action{color:var(--brand)}
+[hidden]{display:none!important}
+img.school-logo{display:block;width:auto;height:40px;max-width:160px;max-height:48px;object-fit:contain;flex-shrink:0}

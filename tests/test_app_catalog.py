@@ -23,7 +23,7 @@ def descriptor(app_id='noter', port=8799, *, project=True):
         'sdk': 1, 'min_core': '2.1.0~20261114.1',
         'start': f'http://127.0.0.1:{port}/index.html', 'offline': True,
         'aflevering': None, 'kraever_internet': False, 'licens': 'GPL-3.0-or-later',
-        'project': {'kind': app_id, 'extension': '.noter.json', 'max_bytes': 1_000_000} if project else None,
+        'project': {'kind': app_id, 'extension': {'scratch':'.sb3','laser':'.laser.json','folie':'.svg','3dprint':'.mkv3d','microbit':'.microbit.json'}.get(app_id,'.noter.json'), 'max_bytes': 1_000_000} if project else None,
         'capabilities': {'required': ['projects-v1'] if project else [], 'optional': ['theme-v1']},
     }
 
@@ -48,6 +48,10 @@ class CatalogContractTests(unittest.TestCase):
     def test_new_app_and_stateless_app_need_no_hardcoded_core_id(self):
         for value in (descriptor(), descriptor('quiz', 8800, project=False)):
             self.assertEqual(catalog.validate_app_descriptor(value), value)
+
+    def test_app_cannot_claim_sdk_available_on_the_unmigrated_core(self):
+        value=descriptor();value['min_core']='2.0.0~20261114.2'
+        self.assertFalse(catalog.compatibility(value,core_version='2.0.0~20261114.2')['compatible'])
 
     def test_existing_ids_and_three_d_component_namespace_are_preserved(self):
         for app_id in ('laser', 'folie', '3dprint', 'scratch', 'microbit'):
@@ -83,6 +87,27 @@ class CatalogContractTests(unittest.TestCase):
             with self.subTest(state=state), self.assertRaises(catalog.CatalogError):
                 catalog.accept_catalog(value, state)
 
+    def test_same_app_version_keeps_exact_bytes_even_after_removal_and_new_sequences(self):
+        value=envelope();value['_manifest_sha256']='c'*64
+        state=catalog.accept_catalog(value,{})
+        absent=copy.deepcopy(value);absent.update(sequence=2,apps=[],_manifest_sha256='d'*64)
+        state=catalog.accept_catalog(absent,state)
+        changed=copy.deepcopy(value);changed.update(sequence=3,_manifest_sha256='e'*64)
+        changed['apps'][0]['sequence']=2
+        changed['apps'][0]['artifact']['sha256']='f'*64
+        with self.assertRaisesRegex(catalog.CatalogError,'app_version_identity_conflict'):
+            catalog.accept_catalog(changed,state)
+        # Republishing the same exact bytes from another approved release URL is safe.
+        changed['apps'][0]['artifact']['sha256']='b'*64
+        changed['apps'][0]['artifact']['url']=changed['apps'][0]['artifact']['url'].replace('app-noter-1.0.0','republish')
+        self.assertEqual(catalog.accept_catalog(changed,state)['sequence'],3)
+
+    def test_catalog_rejects_project_extension_conflict_between_different_apps(self):
+        value=envelope();other=envelope(descriptor('quiz',8800))['apps'][0]
+        value['apps'].append(other)
+        with self.assertRaisesRegex(catalog.CatalogError,'duplicate_catalog_project_format'):
+            catalog.validate_catalog(value,repository=REPOSITORY)
+
     def test_local_start_is_strictly_loopback_and_does_not_claim_system_ports(self):
         for start in ('https://example.com/', 'http://localhost:8799/',
                       'http://127.0.0.1:8790/', 'http://127.0.0.1:8791/',
@@ -98,6 +123,11 @@ class CatalogContractTests(unittest.TestCase):
             value = descriptor(); value[field] = content
             with self.subTest(content=content), self.assertRaises(ValueError):
                 catalog.validate_app_descriptor(value)
+
+    def test_new_project_format_cannot_claim_another_app_or_generic_file_type(self):
+        for kind,extension in (('scratch','.noter.json'),('noter','.sb3'),('noter','.json')):
+            value=descriptor();value['project'].update(kind=kind,extension=extension)
+            with self.subTest(kind=kind,extension=extension),self.assertRaises(ValueError):catalog.validate_app_descriptor(value)
         for content in ({'kind': 'noter', 'extension': '../x', 'max_bytes': 100},
                         {'kind': 'noter', 'extension': '.note', 'max_bytes': 51 * 1024**2}):
             value = descriptor(); value['project'] = content

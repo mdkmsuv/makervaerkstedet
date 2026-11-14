@@ -95,6 +95,26 @@ class ImportTests(ImportFixture, unittest.TestCase):
     def setUp(self):
         self.initialize_import()
 
+    def test_signed_app_catalog_is_imported_separately_from_legacy_core(self):
+        import sys
+        sys.path.insert(0,str(Path(__file__).resolve().parents[3]))
+        from tests.test_app_catalog import envelope
+        from app import app_catalog
+        with patch.object(app_catalog.simple_release,'_minisign'):
+            from app_admin import AppAdmin
+            self.service.app_admin=AppAdmin(self.service,verifier=app_catalog.verify_catalog)
+            def add_app(files):
+                catalog=envelope();entry=catalog['apps'][0];payload=b'synthetic app package'
+                entry['artifact'].update(size=len(payload),sha256=hashlib.sha256(payload).hexdigest())
+                raw=json.dumps(catalog).encode();digest=hashlib.sha256(raw).hexdigest()
+                files.update({'manifests/'+digest+'.json':raw,'manifests/'+digest+'.minisig':b'synthetic signature',
+                              'pool/'+entry['artifact']['name']:payload})
+            self.build_source(mutate=add_app)
+            self.assertTrue(self.importer.refresh(),self.importer.status())
+            apps=self.service.app_admin.overview()
+            self.assertEqual([entry['descriptor']['id'] for entry in apps['catalog']],['noter'])
+            self.assertEqual(self.service.overview()['catalog_errors'],[])
+
     def test_verified_import_enables_desired_and_keeps_program_data_untouched(self):
         data = self.root / 'queue.sqlite3'; data.write_bytes(b'existing queue and history')
         self.assertTrue(self.importer.refresh())

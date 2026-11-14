@@ -7,17 +7,22 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import PurePosixPath
+from pathlib import PurePosixPath,Path
 import re
 from urllib.parse import unquote, urlsplit
 
 try:
     from . import simple_release
 except ImportError:  # Also installed next to the standalone updater verifier.
-    import simple_release
+    import importlib.util
+    _release_spec=importlib.util.spec_from_file_location('_mkv_catalog_release',Path(__file__).with_name('simple_release.py'))
+    simple_release=importlib.util.module_from_spec(_release_spec)
+    _release_spec.loader.exec_module(simple_release)
 
 SDK_VERSION = 1
-SUPPORTED_CAPABILITIES = frozenset(('projects-v1', 'theme-v1', 'laser-submit-v1', 'print-job-v1'))
+SDK_MIN_CORE = '2.1.0~'
+SUPPORTED_CAPABILITIES = frozenset(('projects-v1', 'theme-v1', 'laser-submit-v1', 'print-job-v1','svg-library-v1'))
+GATEWAY_CAPABILITIES = frozenset(('laser-submit-v1','print-job-v1','svg-library-v1'))
 QUEUE_CAPABILITIES = {'laser-submit': 'laser-submit-v1', 'print-job': 'print-job-v1'}
 SYSTEM_PORTS = frozenset((8790, 8791))
 RESERVED_IDS = frozenset(('catalog', 'internet', 'projekter', 'start'))
@@ -168,6 +173,10 @@ def validate_app_descriptor(value):
                 and '..' not in project['extension'] and _positive(project['max_bytes'])
                 and project['max_bytes'] <= MAX_PROJECT_BYTES
                 and 'projects-v1' in capabilities['required'], 'invalid_app_project')
+        builtins={'scratch':'.sb3','laser':'.laser.json','folie':'.svg','3dprint':'.mkv3d','microbit':'.microbit.json'}
+        reserved=set(builtins.values())|{'.json','.txt','.png','.wav','.mp3','.csv','.piskel','.zip','.stl','.hex','.projekt.svg'}
+        require(project['kind']==value['id'] and (project['extension']==builtins[value['id']] if value['id'] in builtins else project['extension'] not in reserved),
+                'app_project_format_conflict')
     return value
 
 
@@ -175,7 +184,8 @@ def compatibility(descriptor, *, core_version, sdk=SDK_VERSION, capabilities=SUP
     validate_app_descriptor(descriptor)
     reasons = []
     if descriptor['sdk'] != sdk: reasons.append('sdk_unsupported')
-    if compare_versions(core_version, descriptor['min_core']) < 0: reasons.append('core_too_old')
+    if compare_versions(core_version, descriptor['min_core']) < 0 or compare_versions(core_version,SDK_MIN_CORE)<0:
+        reasons.append('core_too_old')
     reasons.extend('missing_capability:' + item for item in descriptor['capabilities']['required']
                    if item not in capabilities)
     return {'compatible': not reasons, 'reasons': reasons}
@@ -192,7 +202,7 @@ def validate_catalog(value, *, repository):
     _version_parts(value['version'])
     require(_positive(value['sequence']), 'invalid_catalog_sequence')
     require(type(value['apps']) is list and len(value['apps']) <= 128, 'invalid_catalog_apps')
-    ids, ports, packages = set(), set(), set()
+    ids, ports, packages,formats = set(), set(), set(),set()
     for entry in value['apps']:
         require(type(entry) is dict and set(entry) == ENTRY_FIELDS, 'invalid_catalog_entry')
         app = validate_app_descriptor(entry['descriptor'])
@@ -202,6 +212,10 @@ def validate_catalog(value, *, repository):
         require(app['id'] not in ids and port not in ports and app['package'] not in packages,
                 'duplicate_catalog_app')
         ids.add(app['id']); ports.add(port); packages.add(app['package'])
+        if app['project'] is not None:
+            extension=app['project']['extension']
+            require(extension not in formats,'duplicate_catalog_project_format')
+            formats.add(extension)
         artifact = entry['artifact']
         require(type(artifact) is dict and set(artifact) == ARTIFACT_FIELDS, 'invalid_app_artifact')
         name = artifact['name']
@@ -257,9 +271,13 @@ def accept_catalog(catalog, highest_seen):
     require(type(highest_seen.get('apps', {})) is dict, 'invalid_catalog_highwater')
     for identity, old in highest_seen.get('apps', {}).items():
         component_for_app(identity)
-        require(type(old) is dict and set(old) == {'sequence', 'sha256'}
+        require(type(old) is dict and set(old) == {'sequence', 'sha256','versions'}
                 and _positive(old['sequence']) and type(old['sha256']) is str
-                and simple_release.HEX.fullmatch(old['sha256']), 'invalid_catalog_highwater')
+                and simple_release.HEX.fullmatch(old['sha256']) and type(old['versions']) is dict,
+                'invalid_catalog_highwater')
+        for version,version_digest in old['versions'].items():
+            _version_parts(version)
+            require(type(version_digest) is str and simple_release.HEX.fullmatch(version_digest),'invalid_catalog_highwater')
     previous = highest_seen.get('sequence', 0)
     require(type(previous) is int and previous >= 0 and catalog['sequence'] >= previous,
             'catalog_rollback_rejected')
@@ -270,9 +288,14 @@ def accept_catalog(catalog, highest_seen):
         identity = entry['descriptor']['id']
         entry_hash = hashlib.sha256(json.dumps(entry, sort_keys=True, ensure_ascii=False,
                                               separators=(',', ':')).encode()).hexdigest()
-        old = apps.get(identity, {'sequence': 0})
+        old = apps.get(identity, {'sequence': 0,'versions':{}})
         require(entry['sequence'] >= old['sequence'], 'app_rollback_rejected')
         if entry['sequence'] == old['sequence']:
             require(old.get('sha256') == entry_hash, 'app_sequence_fork')
-        apps[identity] = {'sequence': entry['sequence'], 'sha256': entry_hash}
+        bound={'descriptor':entry['descriptor'],'artifact':{key:entry['artifact'][key] for key in ('name','size','sha256')}}
+        binding=hashlib.sha256(json.dumps(bound,sort_keys=True,ensure_ascii=False,separators=(',',':')).encode()).hexdigest()
+        versions=dict(old['versions']);version=entry['descriptor']['version']
+        require(version not in versions or versions[version]==binding,'app_version_identity_conflict')
+        versions[version]=binding
+        apps[identity] = {'sequence': entry['sequence'], 'sha256': entry_hash,'versions':versions}
     return {'sequence': catalog['sequence'], 'manifest_sha256': digest, 'apps': apps}

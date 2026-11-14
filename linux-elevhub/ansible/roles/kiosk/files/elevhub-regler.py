@@ -175,7 +175,7 @@ def _chromium_url_policy(internet_aaben, apps):
             try:
                 parsed = urlsplit(url)
                 if (parsed.scheme != 'http' or parsed.hostname != '127.0.0.1'
-                        or parsed.port is None or parsed.path not in ('', '/')):
+                        or parsed.port is None or parsed.username or parsed.password or parsed.query or parsed.fragment):
                     continue
                 prefix = f'http://127.0.0.1:{parsed.port}/'
                 aliases = [prefix, f'http://localhost:{parsed.port}/']
@@ -192,7 +192,7 @@ def _chromium_url_policy(internet_aaben, apps):
                 try:
                     parsed = urlsplit(url)
                     if (parsed.scheme == 'http' and parsed.hostname == '127.0.0.1'
-                            and parsed.port is not None and parsed.path in ('', '/')):
+                            and parsed.port is not None and not parsed.username and not parsed.password and not parsed.query and not parsed.fragment):
                         local_open.extend([f'http://127.0.0.1:{parsed.port}/',
                                            f'http://localhost:{parsed.port}/'])
                 except (AttributeError, TypeError, ValueError):

@@ -137,7 +137,7 @@ def _metadata(value):
     if not isinstance(value, dict):
         raise ValueError('Invalid appearance object')
     name, theme = value.get('school_name'), value.get('theme')
-    if (not isinstance(name, str) or not 1 <= len(name.strip()) <= 80
+    if (not isinstance(name, str) or not 1 <= len(name.strip()) <= 120
             or any(ord(c) < 32 or ord(c) == 127 for c in name)
             or not isinstance(theme, str) or theme not in THEMES):
         raise ValueError('Invalid school identity')
@@ -181,6 +181,10 @@ def _manifest(data_folder):
             raise ValueError('Invalid appearance style')
         result = {'school_name': name, 'theme': theme, **brand_colours(value),
                   'style': {}, '_static': {}}
+        if 'font' in value:
+            if value['font'] not in ('standard', 'manrope', 'metrophobic'):
+                raise ValueError('Invalid school font')
+            result['font'] = value['font']
         for key, public, suffixes in (
                 ('website_css', '/school-appearance/website.css', {'.css'}),
                 ('logo', '/school-appearance/logo', LOGO_SUFFIXES)):
@@ -213,7 +217,7 @@ def school_appearance_manifest_present(data_folder):
 def school_appearance(data_folder):
     result = _manifest(data_folder)
     if result:
-        return {key: result[key] for key in ('school_name', 'theme', 'brand', 'brand_dark', 'style')
+        return {key: result[key] for key in ('school_name', 'theme', 'brand', 'brand_dark', 'style', 'font')
                 if key in result}
     if school_appearance_manifest_present(data_folder):
         return None
