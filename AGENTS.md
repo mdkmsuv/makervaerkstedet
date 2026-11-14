@@ -6,6 +6,12 @@ UI-/flowændringer. Den gamle faste agentfordeling gælder ikke længere.
 Denne fil supplerer reglerne og genindfører ikke et generelt installationsforbud.
 Arbejdsmapper under 2.0 følger også projektrodens regler.
 
+For denne OneDrive-arbejdskopi er `LEVERANCE.md` i projektroden den fælles
+aktuelle status for Claude og Codex: kilde, byggede kandidater, faktisk
+kontrol, mangler og næste arbejde. Opdatér den ved statusændringer; de gamle
+statusfiler i `planer/` er historik. Den private projektstatus følger ikke
+med den offentlige produktudgave.
+
 ## Læs kun det relevante
 
 | Opgave | Reference |

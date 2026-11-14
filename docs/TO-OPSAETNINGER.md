@@ -131,10 +131,12 @@ Computeren skal være tændt, når andre enheder skal bruge systemet.
    **3D-print for lærere** og **Administration** (serverens fælles
    lærerpanel). Log ind med den kode, du oprettede på serveren.
 
-   > **Kendt mangel:** Adressen til 3D-print for lærere bliver ikke sat op
-   > af installationen. Indtil den står som `print_url` i
-   > `makervaerkstedet.json` på lasercomputeren, viser kortet
-   > "Adressen til 3D-print er ikke sat op på denne computer".
+   Installationen udfylder adresserne til 3D-print for lærere og Administration
+   fra serverens forbindelsesfil. De gemmes i stationens
+   `data\makervaerkstedet.json`; allerede angivne adresser bevares ved opdatering.
+   Hvis en ældre installation stadig melder, at adressen mangler, skal IT
+   færdiggøre den med den relevante, kontrollerede stationsudgivelse. Prøv
+   begge indgange som del af installationskontrollen.
 5. Åbn **Laserstation**. Brug Laserværkstedets særskilte kode fra serverens
    `Manage-School.cmd`, punkt 5. Stationen henter opgaver i serverens laserkø.
 6. Kontrollér med en prøveaflevering, at samme job vises centralt og på
