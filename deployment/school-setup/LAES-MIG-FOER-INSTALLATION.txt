@@ -1,5 +1,10 @@
 MAKERVÆRKSTEDET — LÆS MIG FØR INSTALLATION
 
+Har du Makervaerkstedet-server-Setup.exe og en elev-ISO, så følg først
+docs/INSTALLATION-FRA-EXE-OG-ISO.md og leverancens README. EXE'en har sin egen
+guide og beder om administratorgodkendelse ved opstart. START.cmd-forløbet
+nedenfor gælder den udpakkede programmappe, ikke EXE'ens sider.
+
 Kreditering: Klostermarksskolen.
 Se docs/TO-OPSAETNINGER.md for den grafiske guide og hjælp til hvert felt.
 

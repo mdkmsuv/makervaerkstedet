@@ -1,5 +1,10 @@
 # Makerværkstedet på én eller to computere
 
+Har leverancen en `Setup.exe`, skal du følge
+[EXE-/ISO-vejledningen](INSTALLATION-FRA-EXE-OG-ISO.md). Siderne og UAC-
+tidspunktet nedenfor gælder `START.cmd`-guiden i den udpakkede programmappe;
+rollefordelingen er den samme.
+
 > Offentlig dokumentation: LOKAL_IP er en pladsholder. Brug skolens egne adresser.
 
 **Kreditering: Klostermarksskolen.** Vejledningen kræver ingen AI.

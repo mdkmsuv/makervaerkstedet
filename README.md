@@ -6,7 +6,11 @@ hovedsystemet og lærerens browseradgang; elevværkstederne understøttes på
 Linux. Systemet kan køre på én Windows-computer eller med en central
 Windows-server/VM og en separat Windows-lasercomputer.
 
-Start med [Kom godt i gang](docs/KOM-GODT-IGANG.md). Vælg dér mellem ren
+Har du en færdig Setup.exe og elev-ISO, så følg
+[installation fra EXE og ISO](docs/INSTALLATION-FRA-EXE-OG-ISO.md) samt
+leverancens README. Den beskriver den aktuelle EXE-guide og første elevstart.
+
+Start ellers med [Kom godt i gang](docs/KOM-GODT-IGANG.md). Vælg dér mellem ren
 installation og opdatering af Linux-elevcomputer eller Windows-server.
 Installationsforløbet forklarer felter, forudsætninger, databevaring,
 genoptagelse og næste skridt ved fejl. En ren installation opretter et nyt

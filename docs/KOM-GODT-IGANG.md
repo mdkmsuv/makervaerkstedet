@@ -1,5 +1,10 @@
 # Kom godt i gang med Makerværkstedet
 
+**Færdig Setup.exe og elev-ISO:** følg først
+[EXE-/ISO-vejledningen](INSTALLATION-FRA-EXE-OG-ISO.md) og leverancens README.
+START.cmd-trinene nedenfor beskriver den udpakkede programmappe. EXE'en har
+sin egen guide og beder om administratorgodkendelse ved opstart.
+
 > Offentlig dokumentation: LOKAL_IP er en pladsholder. Brug skolens egne adresser.
 
 **Kreditering: Klostermarksskolen.** Denne vejledning er til læreren og den
