@@ -61,6 +61,16 @@ kildeinputs. Tidligere-pakker-mappen leverer den præcise genbrugte
 Matchbox-pakke og dens inputkvittering samt Scratch-baseline ved behov.
 Der installeres intet på byggemaskinen.
 
+Placér den nye arbejdsmappe på WSL's Linux-filsystem, eksempelvis under
+`/var/tmp`. Eksportens atomiske oprettelse understøttes dér; en Windows- eller
+OneDrive-mappe via `/mnt/c` kan afvise den med `Invalid argument`. Inputs må
+stadig ligge på Windows-drevet. Kopiér de færdige pakker og kvitteringer til
+Windows, hvis den lokale signer skal bruge dem.
+
+Den genbrugte Matchbox-pakkes dokumentation havde CRLF ved udgivelsen.
+Inputproducenten genskaber præcis disse hashfastlåste bytes i en stagingmappe
+fra både LF- og CRLF-kilde; patchen og det låste program ændres ikke.
+
 Gaten kræver Debian 13 amd64/root og eksisterende native værktøjer.
 `check_install.py` kører reel `apt-get update` og
 `apt-get install --simulate` med tom dpkg-status, isolerede apt-

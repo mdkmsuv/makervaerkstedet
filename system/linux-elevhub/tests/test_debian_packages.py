@@ -38,6 +38,30 @@ class DebianPackages(unittest.TestCase):
             M.build(self.spec, self.root / "retired.deb")
         self.assertFalse((self.root / "retired.deb").exists())
 
+    def test_matchbox_documents_reproduce_published_receipt_from_lf_and_crlf_sources(self):
+        sys.path.insert(0,str(SOURCE.parent));import prepare_inputs
+        original=SOURCE.parents[1]/'kiosk-window-guard'
+        expected={'COPYING':'498d32907f132c2cd7d3ae269f304aed87156293f63e724b83d9f62ed787d55a',
+                  'README.md':'aa48a6e275073c41c3893147e3111b43edd578254d3f4928d48d7f46ef0150cf',
+                  'build.sh':'f368b96e69b06df35b49c299860da7aca8349fd47193fd650207aadfb2efb2e4',
+                  'debian-copyright':'d1df51cadd3a071466a29249b847bb46d1cf250eac0df3c9c4d9e2c191c1f554',
+                  'matchbox-close-guard.patch':'963c952bc80fa286c36e5889490a2935c6491ab7342c1c95ba058afddb704dca'}
+        for variant in ('lf','crlf'):
+            source=self.root/variant;source.mkdir()
+            for name in expected:
+                data=(original/name).read_bytes()
+                if name!='matchbox-close-guard.patch':
+                    data=data.replace(b'\r\n',b'\n')
+                    if variant=='crlf':data=data.replace(b'\n',b'\r\n')
+                (source/name).write_bytes(data)
+            before={p.name:p.read_bytes() for p in source.iterdir()}
+            documents=prepare_inputs.matchbox_documents(source,self.root/(variant+'-staged'))
+            self.assertEqual({name:M.sha(path) for name,path in documents},expected)
+            self.assertEqual({p.name:p.read_bytes() for p in source.iterdir()},before)
+            (source/'README.md').write_text('changed content')
+            with self.assertRaisesRegex(ValueError,'matchbox_document_hash_mismatch'):
+                prepare_inputs.matchbox_documents(source,self.root/(variant+'-changed'))
+
     def test_runtime_descriptor_binds_core_not_updater_and_cannot_be_silently_reused(self):
         sys.path.insert(0,str(SOURCE.parent))
         import prepare_inputs

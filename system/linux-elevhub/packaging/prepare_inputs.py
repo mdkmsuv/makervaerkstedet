@@ -38,6 +38,31 @@ def text_sha(path):
     return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n", b"\n")).hexdigest()
 
 
+def matchbox_documents(source,directory):
+    """Reproduce the published guard package, independent of Git line endings.
+
+    Its four documentation files were published with CRLF; the patch was LF.
+    Keep their pinned bytes without changing the executable source checkout.
+    """
+    expected={'COPYING':'498d32907f132c2cd7d3ae269f304aed87156293f63e724b83d9f62ed787d55a',
+              'README.md':'aa48a6e275073c41c3893147e3111b43edd578254d3f4928d48d7f46ef0150cf',
+              'build.sh':'f368b96e69b06df35b49c299860da7aca8349fd47193fd650207aadfb2efb2e4',
+              'debian-copyright':'d1df51cadd3a071466a29249b847bb46d1cf250eac0df3c9c4d9e2c191c1f554',
+              'matchbox-close-guard.patch':'963c952bc80fa286c36e5889490a2935c6491ab7342c1c95ba058afddb704dca'}
+    prepared=[]
+    for name,digest in expected.items():
+        data=(source/name).read_bytes()
+        if name!='matchbox-close-guard.patch':data=data.replace(b'\r\n',b'\n').replace(b'\n',b'\r\n')
+        if hashlib.sha256(data).hexdigest()!=digest:raise ValueError('matchbox_document_hash_mismatch:'+name)
+        prepared.append((name,data))
+    directory.mkdir(parents=True,exist_ok=True)
+    for name,data in prepared:
+        target=directory/name
+        if target.is_symlink() or target.exists() and target.read_bytes()!=data:raise ValueError('matchbox_document_exists')
+        if not target.exists():target.write_bytes(data)
+    return [(name,directory/name) for name,_ in prepared]
+
+
 
 def runtime_descriptor(directory,version):
     descriptor=directory/"runtime-release-student.json"
@@ -152,8 +177,9 @@ def main():
             add(source_path("CREDITS.md", args.source_root),"usr/share/doc/"+package+"/CREDITS.md")
         elif kind == "matchbox":
             add(args.matchbox, "usr/local/lib/elevhub/matchbox-window-manager", "1e12237a37a8e023dca7da641ba68f210c7922a277b4dcaa9b06a4d665802930", 0o755)
-            for name in ("COPYING", "debian-copyright", "README.md", "matchbox-close-guard.patch", "build.sh"):
-                add(source_path("linux-elevhub/kiosk-window-guard", args.source_root) / name, "usr/share/doc/" + package + "/" + name)
+            for name,path in matchbox_documents(source_path("linux-elevhub/kiosk-window-guard",args.source_root),
+                                                args.output_dir/'matchbox-docs'):
+                add(path, "usr/share/doc/" + package + "/" + name)
         else:
             root = args.source_root
             add(source_path("app/runtime_health.py", root),"usr/lib/makervaerkstedet/runtime_health.py","54c6b4451edce5e451703b661693632c620b0ae284ee795a90161bef7e4b2fe4",text=True)
