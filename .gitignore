@@ -6,6 +6,8 @@ node_modules/
 web/vendor/
 *.log
 dist/
+/.worktrees/
+/.superpowers/
 
 # Lokale bygninger, testkopier og staging. Kilder og tests uden for disse
 # mapper skal fortsat kunne spores i en senere public export.
