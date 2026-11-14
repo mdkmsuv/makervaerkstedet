@@ -72,7 +72,10 @@ class KonfigurationTest(unittest.TestCase):
         apps.valider(basis, regler.REGLER)
         apps.klargoer_lokale_apps(basis, tempfile.gettempdir())
         lokale = {a['id']: a for a in basis['apps'] if a.get('type') == 'lokal'}
-        self.assertEqual(set(lokale), {'scratch', 'datatraener', 'kredsloeb'})
+        self.assertEqual(set(lokale), {'scratch'})
+        self.assertTrue({'cadoodle', 'skolegpt', 'kredsloeb', 'datatraener'}.isdisjoint(
+            a['id'] for a in basis['apps']))
+        self.assertEqual(next(a['type'] for a in basis['apps'] if a['id'] == 'microbit'), 'web')
         self.assertTrue(all(a['klar'] and a['mappe'] is None for a in lokale.values()))
 
     def test_lokal_og_web_er_gyldige_samt_browser_uden_port(self):

@@ -106,6 +106,7 @@ $adminSsh=Join-Path $DataRoot 'admin-ssh'; New-Item -ItemType Directory -Path $a
 $programRoot=$PackageRoot; $packageManifest=[pscustomobject]@{localAiIncluded=$false}
 $aclCalls=[Collections.Generic.List[object]]::new()
 function Invoke-Icacls([string]$Path,[string[]]$Arguments) { $aclCalls.Add([pscustomobject]@{path=$Path;args=$Arguments}) }
+function Set-Acl { [CmdletBinding()] param([string]$LiteralPath,$AclObject) $aclCalls.Add([pscustomobject]@{path=$LiteralPath;args=@('Set-Acl')}) }
 function Get-ScheduledTask { return $null }
 function Get-NetFirewallRule { return $null }
 function Assert-PortsFree { }
@@ -122,13 +123,22 @@ function NewOwner {
     return [ordered]@{ schemaVersion=1;product='ElevhubServer';ownerId='11111111-1111-4111-8111-111111111111';state='rolledBack';createdUtc='original';installRoot=$InstallRoot;dataRoot=$DataRoot;taskName=$TaskName;roleIp=$RoleIp;roleNetwork=$RoleNetwork;studentSubnet=$StudentSubnet;teacherAddress=$TeacherAddress;teacherPort=$TeacherPort;printBackendPort=$PrintBackendPort;designBackendPort=$DesignBackendPort;teacherBackendPort=$TeacherBackendPort;generationLayout=$false;externalBackends=@();firewallNames=@($FirewallPorts | ForEach-Object { "ElevhubServer-$_" });caThumbprint=$null;packageManifestSha256=(Get-FileHash -LiteralPath (Join-Path $PackageRoot 'integrity.json')).Hash.ToLowerInvariant() }
 }
 $ownerMarker=Join-Path $DataRoot 'installation-owner.json'; $originalOwner=NewOwner; $marker=$originalOwner; Write-JsonAtomic $ownerMarker $originalOwner
-$RemoteLaserStation=$false; $Machine='fbb2'
+$RemoteLaserStation=$false; $Machine='fbb2'; $Brand=''; $BrandDark=''
 $preflight=Section $installAst.EndBlock.Statements 'if (Test-Path -LiteralPath $InstallRoot)' '$ownerId ='
 $prepareMarker=Section $installAst.EndBlock.Statements '$ownerId =' 'try {'
-$tryAst=@($installAst.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.TryStatementAst] })[-1]
+# Select the installer transaction by its real DataRoot boundary. Optional
+# post-install actions may have their own top-level try/catch after this one.
+$transactionAsts=@($installAst.EndBlock.Statements | Where-Object {
+    $_ -is [Management.Automation.Language.TryStatementAst] -and
+    @($_.Body.Statements | Where-Object { $_.Extent.Text.StartsWith('if (-not $Resume) { New-Item -ItemType Directory -Path $DataRoot') }).Count -eq 1
+})
+Assert ($transactionAsts.Count -eq 1) 'Missing unique installer transaction AST.'
+$tryAst=$transactionAsts[0]
 $prepareRoot=Section $tryAst.Body.Statements 'if (-not $Resume)' '$securityPath ='
 $provisionSecurity=Section $tryAst.Body.Statements '$securityPath =' '$security = $securityPath'
 $prepareSecurity=Section $tryAst.Body.Statements '$security = $securityPath' 'New-Item -ItemType Directory -Path $InstallRoot'
+# Invoke-Expression has no script filename; supply the real helper lookup inside it.
+$prepareSecurity='$PSScriptRoot=Split-Path -Parent $env:INSTALL_SCRIPT' + "`n" + $prepareSecurity
 $configure=Section $tryAst.Body.Statements '$runtimeConfig = Join-Path' 'Write-JsonAtomic (Join-Path $InstallRoot'
 $schoolDispatch=Section $setupAst.EndBlock.Statements '$ownerMarker = Join-Path' '$owner = Get-Content'
 function Fingerprints {
@@ -194,14 +204,14 @@ foreach ($bad in @(
     @{installRoot=(Join-Path $env:FIXTURE_ROOT 'elsewhere')}, @{dataRoot=(Join-Path $env:FIXTURE_ROOT 'elsewhere')}, @{state='installed'}
 )) {
     $candidate=NewOwner; foreach ($name in $bad.Keys) { $candidate[$name]=$bad[$name] }; Write-JsonAtomic $ownerMarker $candidate
-    $before=Fingerprints; $rejected=$false
+    $before=Fingerprints; $aclBefore=$aclCalls.Count; $rejected=$false
     try { Invoke-Expression $preflight } catch { $rejected=$true }
     Assert $rejected ('Accepted mismatched marker: '+($bad|ConvertTo-Json -Compress))
-    Assert ((Fingerprints) -ceq $before -and $aclCalls.Count -eq 0) 'Rejected preflight changed data or ACLs.'
+    Assert ((Fingerprints) -ceq $before -and $aclCalls.Count -eq $aclBefore) 'Rejected preflight changed data or ACLs.'
 }
 Write-JsonAtomic $ownerMarker (NewOwner)
 Remove-Item -LiteralPath (Join-Path $Security 'server.key')
-$before=Fingerprints; $rejected=$false
+$before=Fingerprints; $aclBefore=$aclCalls.Count; $rejected=$false
 try { Invoke-Expression $preflight } catch { $rejected=$true }
 Assert ($rejected -and (Fingerprints) -ceq $before) 'Incomplete TLS was not safely rejected.'
 ''')
@@ -250,9 +260,9 @@ $Resume=[Management.Automation.SwitchParameter]::new($false); Invoke-Expression 
 $config=Get-Content -LiteralPath $runtimeConfig -Raw -Encoding UTF8 | ConvertFrom-Json
 $config.laerer_port=9999; Write-JsonAtomic $runtimeConfig $config
 $Resume=[Management.Automation.SwitchParameter]::new($true)
-$before=Fingerprints; $rejected=$false
+$before=Fingerprints; $aclBefore=$aclCalls.Count; $rejected=$false
 try { Invoke-Expression $preflight } catch { $rejected=$true }
-Assert ($rejected -and (Fingerprints) -ceq $before -and $aclCalls.Count -eq 1) 'Changed runtime identity was not safely rejected.'
+Assert ($rejected -and (Fingerprints) -ceq $before -and $aclCalls.Count -eq $aclBefore) 'Changed runtime identity was not safely rejected.'
 ''')
 
     def test_hard_crash_installing_and_rollback_failed_recover_owned_partial_programs(self):
@@ -336,7 +346,7 @@ foreach ($count in @(0,1,2,3,4)) {
     }
     $queueHash=(Get-FileHash -LiteralPath (Join-Path $queue 'queue.json')).Hash
     Remove-OwnedResources $ownerMarker
-    $before=Fingerprints; Invoke-Expression $preflight
+    $before=Fingerprints; $aclBefore=$aclCalls.Count; Invoke-Expression $preflight
     Assert ((Fingerprints) -ceq $before) 'Read-only TLS preflight changed data.'
     Invoke-Expression $prepareMarker; Invoke-Expression $prepareRoot; Invoke-Expression $provisionSecurity
     foreach ($name in @('ca.crt','server.crt','server.key','enheder.json')) {
@@ -373,20 +383,20 @@ foreach ($bad in @(@{ownerId='foreign'},@{serverIp='172.17.1.3'},@{state='unknow
     $journal=[ordered]@{schemaVersion=1;ownerId='11111111-1111-4111-8111-111111111111';serverIp=$RoleIp;state='staged';material=$files;sha256=$hashes}
     foreach ($name in $bad.Keys) { $journal[$name]=$bad[$name] }
     Write-JsonAtomic (Join-Path $Security 'tls-initialization.json') $journal
-    $before=Fingerprints; $rejected=$false
+    $before=Fingerprints; $aclBefore=$aclCalls.Count; $rejected=$false
     try { Invoke-Expression $preflight } catch { $rejected=$true }
-    Assert ($rejected -and (Fingerprints) -ceq $before -and $aclCalls.Count -eq 0) 'Foreign TLS journal changed data.'
+    Assert ($rejected -and (Fingerprints) -ceq $before -and $aclCalls.Count -eq $aclBefore) 'Foreign TLS journal changed data.'
 }
 Remove-Item -LiteralPath $Security -Recurse
 $candidate=NewOwner; $candidate.caThumbprint='issued'; Write-JsonAtomic $ownerMarker $candidate
-$before=Fingerprints; $rejected=$false
+$before=Fingerprints; $aclBefore=$aclCalls.Count; $rejected=$false
 try { Invoke-Expression $preflight } catch { $rejected=$true }
 Assert ($rejected -and (Fingerprints) -ceq $before) 'Missing issued identity was regenerated.'
 New-Item -ItemType Directory -Path $Security | Out-Null
 foreach ($name in @('ca.crt','server.crt','server.key','enheder.json')) { [IO.File]::WriteAllText((Join-Path $Security $name),$files[$name],[Text.UTF8Encoding]::new($false)) }
-$before=Fingerprints; $rejected=$false
+$before=Fingerprints; $aclBefore=$aclCalls.Count; $rejected=$false
 try { Invoke-Expression $preflight } catch { $rejected=$true }
-Assert ($rejected -and (Fingerprints) -ceq $before -and $aclCalls.Count -eq 0) 'Changed already-issued CA was accepted.'
+Assert ($rejected -and (Fingerprints) -ceq $before -and $aclCalls.Count -eq $aclBefore) 'Changed already-issued CA was accepted.'
 ''', material)
 
     def test_fresh_config_and_marker_use_original_install_path(self):
@@ -399,7 +409,7 @@ $saved=Get-Content -LiteralPath $markerPath -Raw -Encoding UTF8 | ConvertFrom-Js
 $config=Get-Content -LiteralPath $runtimeConfig -Raw -Encoding UTF8 | ConvertFrom-Json
 Assert ($saved.ownerId -ne '11111111-1111-4111-8111-111111111111' -and $saved.state -eq 'installing') 'Fresh installation reused identity.'
 Assert ($config.backend_ports.print -eq 8765 -and $config.makerspace_printers.backend -eq '127.0.0.1:8765') 'Fresh configuration changed backend wiring.'
-Assert ($config.apps[4].navn -eq 'Datatræneren') 'BOM-less JSON lost Danish text.'
+Assert (@($config.apps | Where-Object id -eq 'laser')[0].beskrivelse -like '*skære*') 'BOM-less JSON lost Danish text.'
 Assert ($config.tls.noegle -eq (Join-Path $security 'server.key')) 'Fresh configuration changed TLS wiring.'
 ''')
 
@@ -440,14 +450,14 @@ foreach ($state in @('installed','rolledBack')) {
     foreach ($bad in @(@{roleIp='172.17.1.3'}, @{studentSubnet='172.18.0.0/24'}, @{ownerId=''}, @{generationLayout=$true}, @{packageManifestSha256='wrong'}, @{teacherPort=9999}, @{printBackendPort=9999}, @{externalBackends=@('print')})) {
         $candidate=NewOwner; $candidate.state=$state
         foreach ($name in $bad.Keys) { $candidate[$name]=$bad[$name] }; Write-JsonAtomic $ownerMarker $candidate
-        $before=Fingerprints; $rejected=$false
+        $before=Fingerprints; $aclBefore=$aclCalls.Count; $rejected=$false
         try { Invoke-Expression $schoolDispatch } catch { $rejected=$true }
         Assert ($rejected -and $calls -eq 0 -and (Fingerprints) -ceq $before) 'School mismatch mutated data or invoked installer.'
     }
 }
 Write-JsonAtomic $ownerMarker (NewOwner)
 Write-JsonAtomic (Join-Path $DataRoot 'school.json') ([ordered]@{schemaVersion=1;school_name=$SchoolName;theme=$Theme;role='makerspace';server=$RoleIp;student_subnet=$StudentSubnet})
-$before=Fingerprints; $rejected=$false
+$before=Fingerprints; $aclBefore=$aclCalls.Count; $rejected=$false
 try { Invoke-Expression $schoolDispatch } catch { $rejected=$true }
 Assert ($rejected -and $calls -eq 0 -and (Fingerprints) -ceq $before) 'Changed school role was accepted.'
 Assert-SchoolDataPath $DataRoot
@@ -462,7 +472,7 @@ Assert $rejected 'Unsafe installer path accepted.'
 # A junction points within the fixture; reject it without touching its target.
 $target=Join-Path $env:FIXTURE_ROOT 'junction-target'; New-Item -ItemType Directory -Path $target | Out-Null
 $junction=Join-Path $DataRoot 'linked-security'; New-Item -ItemType Junction -Path $junction -Target $target | Out-Null
-$before=Fingerprints; $rejected=$false
+$before=Fingerprints; $aclBefore=$aclCalls.Count; $rejected=$false
 try { Assert-SchoolDataPath $DataRoot } catch { $rejected=$true }
 Assert ($rejected -and (Fingerprints) -ceq $before) 'School reparse tree accepted or changed.'
 $rejected=$false

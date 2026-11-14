@@ -1,52 +1,64 @@
-const {startFixture,loadPlaywright,loadJSZip}=require('./student_journey_fixture.js');
-const path=require('node:path');
-// End-to-end regression through the pupil HTTPS gateway, not the HTTP backend.
-// Isolated browser storage. Generates geometry only; never submits to a queue.
-const {chromium}=loadPlaywright();
-const assert=require('node:assert/strict');
-
-
+'use strict';
+const {startFixture,loadPlaywright}=require('./student_journey_fixture.js');
+const fs=require('node:fs/promises'),path=require('node:path');
+const {chromium}=loadPlaywright(),assert=require('node:assert/strict');
+// Historical filename retained for the suite. The old combined editor's box
+// dialog is retired and the school HTTPS gateway carries queue traffic only.
+// Verify that boundary and the current local pupil editor with editable
+// grouped SVG-library geometry, size changes, drawing preservation and undo.
+// Disposable storage and test CA only; no request is submitted to a queue.
 (async()=>{
- const fixture=await startFixture();
- const browser=await chromium.launch({headless:true,channel:'chrome'});
+ const fixture=await startFixture();let browser,page;
+ const output=process.env.ELEVHUB_LASER_GATEWAY_OUTPUT||fixture.output;
+ const report={flows:[],errors:[],retired:'The old box dialog is not part of the current Laser editor.'};
+ const project=()=>page.evaluate(async()=>JSON.parse(await(await window.ElevhubProjectAdapter.export()).text()));
  try{
-  // The isolated pilot uses its own CA. Actual TLS/Origin validation is also
-  // covered by test_sikkerhed with a verified temporary test certificate.
-  const page=await browser.newPage({ignoreHTTPSErrors:true,viewport:{width:1366,height:900}});
-  const errors=[];
-  page.on('pageerror',e=>errors.push(e.message));
-  await page.goto(fixture.urls.gateway+'laser.html');
-  await page.locator('.laser-tool-levels summary').click();
-  await page.locator('[data-level="3"]').click();
-  await page.locator('#laser-tool-tab-more').click();
-  const before=await page.evaluate(()=>JSON.parse(localStorage.getItem('kloster-laservaerksted-v1')));
-  const initialResponse=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/laser/boxes');
-  await page.locator('#box-button').click();
-  assert.equal((await initialResponse).status(),200,'Default box must work through pupil gateway');
-  await page.waitForFunction(()=>!document.querySelector('#box-insert').disabled);
-  assert.equal(await page.locator('#box-status').evaluate(n=>n.classList.contains('error')),false);
-  assert(await page.locator('#box-preview svg path').count()>0);
-
-  await page.locator('#box-width').fill('100');
-  await page.locator('#box-depth').fill('80');
-  await page.locator('#box-height').fill('60');
-  const updatedResponse=page.waitForResponse(r=>new URL(r.url()).pathname==='/api/laser/boxes');
-  await page.locator('#box-generate').click();
-  const response=await updatedResponse;
-  assert.equal(response.status(),200,'Changed box dimensions must work through pupil gateway');
-  const result=await response.json();
-  await page.waitForFunction(()=>!document.querySelector('#box-insert').disabled);
-  await page.screenshot({path:path.join(fixture.output,'box-tool-fixed.png')});
-  await page.locator('#box-insert').click();
-  assert.equal(await page.locator('#box-dialog').evaluate(n=>n.open),false);
-  const after=await page.evaluate(()=>JSON.parse(localStorage.getItem('kloster-laservaerksted-v1')));
-  assert.deepEqual(after.items.slice(0,before.items.length),before.items,'Existing pupil drawing must be preserved');
-  const added=after.items.slice(before.items.length);
-  assert(added.length>0&&added.every(o=>o.name.startsWith('Kasse')&&o.op==='cut'&&o.d.length>0));
-  assert(after.width>=result.details.width&&after.height>=result.details.height);
-  await page.keyboard.press('Control+z');
-  assert.deepEqual(await page.evaluate(()=>JSON.parse(localStorage.getItem('kloster-laservaerksted-v1'))),before,'Undo must restore the complete original drawing');
-  assert.deepEqual(errors,[]);
-  console.log('PASS HTTPS pupil gateway: default and changed dimensions, preview, editable cut lines, original drawing preserved, undo, no browser errors.');
- }finally{await browser.close();await fixture.close();}
+  browser=await chromium.launch({headless:true,channel:process.env.PLAYWRIGHT_BROWSER_CHANNEL||(process.platform==='win32'?'chrome':undefined)});
+  const context=await browser.newContext({ignoreHTTPSErrors:true,viewport:{width:1366,height:900}});
+  page=await context.newPage();const submissions=[];
+  page.on('pageerror',e=>report.errors.push(e.message));
+  page.on('request',request=>{if(new URL(request.url()).pathname==='/api/laser/submit')submissions.push(request.url());});
+  const gatewayHealth=await context.request.get(fixture.urls.gateway+'api/laser/health');
+  assert.equal(gatewayHealth.status(),200);
+  for(const route of ['laser.html','api/laser/jobs']){
+    const denied=await context.request.get(fixture.urls.gateway+route);assert.equal(denied.status(),403,'school entrance must not expose '+route);
+  }
+  const deniedBox=await context.request.post(fixture.urls.gateway+'api/laser/boxes',{data:{width:100,depth:80,height:60}});
+  assert.equal(deniedBox.status(),403,'retired remote box generation must remain unavailable');
+  report.flows.push('HTTPS school entrance exposes health but rejects editor, teacher jobs and remote box generation');
+  const response=await page.goto(fixture.urls.laser);
+  assert.equal(response.status(),200);assert.equal(new URL(page.url()).hostname,'127.0.0.1');
+  await page.locator('#designCanvas').waitFor();await page.waitForFunction(()=>window.ElevhubProjectAdapter);
+  await page.locator('#project-classroom').fill('6.B');await page.locator('#project-student').fill('Prøveelev');
+  await page.locator('#project-title').fill('SVG fra biblioteket');await page.locator('#project-start-confirm').click();
+  await page.waitForFunction(()=>!document.querySelector('#elevhub-project-dialog').open);
+  assert.equal(await page.locator('#designCanvas').getAttribute('viewBox'),'0 0 250 167');
+  const before=await project();
+  await page.locator('#libraryButton').click();
+  await page.locator('#librarySearch').fill('Raket');
+  assert.equal(await page.locator('#libraryGrid button').count(),1);
+  await page.locator('#libraryGrid [data-motif-id="rocket"]').click();
+  await page.locator('#finishLibraryButton').click();
+  assert.equal(await page.locator('#libraryDialog').evaluate(node=>node.open),false);
+  const after=await project();
+  assert.deepEqual(after.project.objects.slice(0,before.project.objects.length),before.project.objects,'SVG-library insertion must preserve the original drawing');
+  const added=after.project.objects.at(-1);
+  assert.equal(after.project.objects.length,before.project.objects.length+1);
+  assert.equal(added.type,'group');assert.equal(added.process,'engrave');assert.equal(added.children.length,3);
+  assert(added.children.every(o=>o.type==='path'&&o.process==='engrave'&&o.pathData.length>0));
+  assert(added.x>=0&&added.y>=0&&added.x+added.width<=250&&added.y+added.height<=167);
+  report.flows.push('Current local pupil entrypoint inserts grouped editable library vectors without replacing the drawing');
+  await page.locator('#objectWidth').fill('45');await page.locator('#objectWidth').press('Tab');
+  const resized=await project();assert.equal(resized.project.objects.at(-1).width,45);
+  assert.deepEqual(resized.project.objects.slice(0,before.project.objects.length),before.project.objects);
+  await page.locator('#undoButton').click();assert.deepEqual((await project()).project.objects,after.project.objects,'undo size change must restore exact geometry');
+  await page.locator('#undoButton').click();assert.deepEqual((await project()).project.objects,before.project.objects,'undo insertion must restore the complete original drawing');
+  await page.locator('#redoButton').click();assert.deepEqual((await project()).project.objects,after.project.objects);
+  report.flows.push('Dimensions remain editable; undo restores resizing and insertion, redo restores the grouped motif');
+  assert.deepEqual(submissions,[]);assert.deepEqual(report.errors,[]);
+  await fs.mkdir(output,{recursive:true});await page.screenshot({path:path.join(output,'https-current-library.png'),fullPage:true});
+  report.status='passed';console.log('PASS local Laser and HTTPS queue boundary: grouped vectors, dimensions, original drawing preserved, undo/redo, no queue requests.');
+ }catch(error){report.status='failed';report.failure=error.stack||String(error);console.error(report.failure);process.exitCode=1;
+  if(page){await fs.mkdir(output,{recursive:true});await page.screenshot({path:path.join(output,'gateway-failure.png'),fullPage:true}).catch(()=>{});}
+ }finally{if(browser)await browser.close();await fixture.close();await fs.mkdir(output,{recursive:true});await fs.writeFile(path.join(output,'gateway-result.json'),JSON.stringify(report,null,2));}
 })().catch(e=>{console.error(e);process.exitCode=1;});

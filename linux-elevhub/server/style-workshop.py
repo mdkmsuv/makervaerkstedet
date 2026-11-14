@@ -13,9 +13,10 @@ def apply(build: Path, workshop: str):
     backup=build/'index.before-creative.html'
     if not backup.exists():shutil.copy2(index,backup)
     assets=HERE/'elevhub/web/assets';target=build/'creative';target.mkdir(exist_ok=True)
-    # workshops.js supplies these filenames to the help dialog and data mission.
-    image='workshop-code-bauhaus-v1.png'
-    for name in ('creative-app.css','creative-app.js','workshops.js','metrophobic-latin.ttf','klostermarksskolen-logo.png',image):shutil.copy2(assets/name,target/name)
+    # The current public Scratch card is also used by the help dialog.
+    # School logos belong to the private appearance profile, never this build.
+    image='workshop-scratch-v2.png'
+    for name in ('creative-app.css','creative-app.js','workshops.js','metrophobic-latin.ttf',image):shutil.copy2(assets/name,target/name)
     html=backup.read_text(encoding='utf-8-sig').replace('lang="en"','lang="da"')
     html=re.sub(r'<title>.*?</title>','<title>Scratch · Klostermarksskolen</title>',html)
     html=html.replace('</head>','<link rel="stylesheet" href="creative/creative-app.css"></head>')

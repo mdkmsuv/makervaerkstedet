@@ -129,7 +129,7 @@ class ActiveGenerationTests(unittest.TestCase):
         (self.program / 'server').mkdir()
         for name in ('bootstrap.py', 'provision.py'):
             shutil.copy2(embedded.ROOT / 'windows-elevhub/server' / name, self.program / 'server' / name)
-        for name in ('instance.py', 'backup_guard.py', 'process_tree.py', 'paths.py'):
+        for name in ('instance.py', 'backup_guard.py', 'process_tree.py', 'paths.py', 'demo_workshop.py'):
             shutil.copy2(embedded.ROOT / 'app' / name, self.program / 'app' / name)
         (self.program / 'hub').mkdir()
         (self.program / 'web').mkdir()
@@ -153,6 +153,15 @@ class ActiveGenerationTests(unittest.TestCase):
 
     def test_real_supervisor_starts_all_children_with_same_selection_and_drains_them(self):
         self._bootstrap_program()
+        # This fixture tests selected child processes and leases. Its documentation
+        # IP is not assigned to the host, so fake only the address-readiness edge.
+        bootstrap = self.program / 'server/bootstrap.py'
+        source = bootstrap.read_text(encoding='utf-8')
+        entry = '\nif __name__ == "__main__":\n'
+        self.assertEqual(source.count(entry), 1)
+        bootstrap.write_text(source.replace(entry,
+            '\nwait_for_role_ip = lambda _role_ip, stopping: not stopping.is_set()\n' + entry),
+            encoding='utf-8')
         (self.program / 'installation.json').write_text(json.dumps({'data_root': str(self.root / 'old-data')}))
         children = {'print': 'app/background.py', 'design': 'app/laser_server.py', 'hub': 'hub/elevhub.py'}
         for role, source in children.items():

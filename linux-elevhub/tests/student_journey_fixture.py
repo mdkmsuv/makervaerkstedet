@@ -53,18 +53,28 @@ class StyledAssets(LocalHandler):
 
 
 def main():
-    with tempfile.TemporaryDirectory(prefix='makervaerksted-student-') as temp:
+    with tempfile.TemporaryDirectory(prefix='makervaerksted-student-') as temp, contextlib.ExitStack() as cleanup:
         root = Path(temp)
+        servers = []
+
+        def manage(server):
+            servers.append(server)
+            cleanup.callback(server.server_close)
+            return server
+
         store, navigation = Projektarkiv(root/'projects'), Navigation()
-        local = make_server(0, store, navigation=navigation)
+        local = manage(make_server(0, store, navigation=navigation))
         laser, folie = create_local_servers('http://127.0.0.1:1', laser_port=0, folie_port=0, projects_port=local.server_port)
+        manage(laser)
+        manage(folie)
         print_app = Application(root/'print', False)
-        printer = PrintServer(('127.0.0.1', 0), PrintHandler,
-                              project_origins=[f'http://127.0.0.1:{local.server_port}'])
+        cleanup.callback(print_app.shutdown)
+        printer = manage(PrintServer(('127.0.0.1', 0), PrintHandler,
+                              project_origins=[f'http://127.0.0.1:{local.server_port}']))
         printer.app = print_app
-        central = create_server(root/'laser', port=0,
-                                project_origins=[f'http://127.0.0.1:{local.server_port}'])
-        teacher = create_server(root/'laser', port=0, surface='teacher', inbox=central.inbox)
+        central = manage(create_server(root/'laser', port=0,
+                                project_origins=[f'http://127.0.0.1:{local.server_port}']))
+        teacher = manage(create_server(root/'laser', port=0, surface='teacher', inbox=central.inbox))
         laser.inbox = folie.inbox = ForwardingInbox(f'http://127.0.0.1:{central.server_port}')
         cert, key = root/'test.crt', root/'test.key'
         openssl = shutil.which('openssl') or 'C:/Program Files/Git/usr/bin/openssl.exe'
@@ -72,8 +82,8 @@ def main():
                         '-subj', '/CN=localhost', '-keyout', str(key), '-out', str(cert),
                         '-addext', 'subjectAltName=DNS:localhost,IP:127.0.0.1'],
                        capture_output=True, check=True, timeout=30)
-        gateway = Server(('127.0.0.1', 0), Indgang,
-                         tls=tls_kontekst({'tls': {'certifikat':str(cert), 'noegle':str(key)}}, root))
+        gateway = manage(Server(('127.0.0.1', 0), Indgang,
+                         tls=tls_kontekst({'tls': {'certifikat':str(cert), 'noegle':str(key)}}, root)))
         app = {'id':'laser', 'navn':'Laser', 'standard_aaben':True, 'regler':'laser'}
         gateway.navn, gateway.app, gateway.regel = 'laser', app, laser_rules
         gateway.bagved, gateway.tilstand = central.server_address, Tilstand(root/'hub', [app])
@@ -82,6 +92,8 @@ def main():
                      '3dprint':f'http://127.0.0.1:{printer.server_port}/'}
         if os.environ.get('ELEVHUB_CENTRAL_LASER_IMPORT') == '1':
             workshops['laser'] = f'http://school.example.test:{central.server_port}/laser.html'
+        if os.environ.get('ELEVHUB_CENTRAL_FOLIE_IMPORT') == '1':
+            workshops['folie'] = f'http://school.example.test:{central.server_port}/folie.html'
         sources = {'microbit':ROOT/'linux-elevhub/server/microbit-controller'}
         for name in ('scratch',):
             override = os.environ.get('ELEVHUB_TEST_SCRATCH_ASSETS')
@@ -90,7 +102,6 @@ def main():
             else:
                 record = json.loads((ROOT/f'linux-elevhub/server/{name}/installation.json').read_text(encoding='utf-8-sig'))
                 sources[name] = Path(record['outputPath'])
-        servers = [local, laser, folie, printer, central, teacher, gateway]
         urls = {'projekter':f'http://127.0.0.1:{local.server_port}',
                 'print':workshops['3dprint'].rstrip('/'), 'laser':workshops['laser'],
                 'folie':workshops['folie'], 'design':f'http://127.0.0.1:{central.server_port}',
@@ -105,36 +116,28 @@ def main():
             f'<iframe id="blocked" src="{urls["print"]}/?elevhub_import=1" '
             'onload="this.contentWindow.postMessage({type:\'elevhub-file-hello\',request:\'untrusted\'},\'*\')"></iframe>'
             '</body></html>', encoding='utf-8')
-        untrusted = make_server(0, store, app='untrusted', assets=untrusted_assets, workshops=workshops)
-        servers.append(untrusted)
+        untrusted = manage(make_server(0, store, app='untrusted', assets=untrusted_assets, workshops=workshops))
         urls['untrusted'] = f'http://127.0.0.1:{untrusted.server_port}'
         apps = []
         for name, source in sources.items():
             if not (source/'index.html').is_file():
                 raise FileNotFoundError(f'Real {name} assets missing: {source}')
-            server = make_server(0, store, app=name, assets=source, navigation=navigation,
-                                 sessions=local.workshop_sessions, workshops=workshops)
-            servers.append(server)
+            server = manage(make_server(0, store, app=name, assets=source, navigation=navigation,
+                                 sessions=local.workshop_sessions, workshops=workshops))
             apps.append({'id':name, 'port':server.server_port})
             urls[name] = f'http://127.0.0.1:{server.server_port}'
         for server in servers:
             server.projekt_apps = apps
             server.workshop_urls = workshops
         kiosk.Handler.mode = 'down'
-        hub = kiosk.ThreadingHTTPServer(('127.0.0.1',0), kiosk.Handler)
+        hub = manage(kiosk.ThreadingHTTPServer(('127.0.0.1',0), kiosk.Handler))
         kiosk.PORT = hub.server_port
         urls['hub'] = f'http://127.0.0.1:{hub.server_port}'
-        servers.append(hub)
         for server in servers:
             threading.Thread(target=server.serve_forever, daemon=True).start()
+            cleanup.callback(server.shutdown)
         print(json.dumps(urls), flush=True)
-        try:
-            sys.stdin.readline()
-        finally:
-            for server in servers:
-                server.shutdown()
-                server.server_close()
-            print_app.shutdown()
+        sys.stdin.readline()
 
 
 if __name__ == '__main__':

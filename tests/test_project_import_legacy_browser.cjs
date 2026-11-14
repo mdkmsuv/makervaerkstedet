@@ -1,4 +1,6 @@
 'use strict';
+// The supported vinyl editor retains the SVG receiver shared with older
+// backends. The current Laser editor uses a separate JSON project format.
 const assert=require('node:assert/strict'),fs=require('node:fs/promises'),path=require('node:path');
 const {spawn}=require('node:child_process'),{createHash}=require('node:crypto');
 const {loadPlaywright}=require('../linux-elevhub/tests/student_journey_fixture.js');
@@ -16,7 +18,7 @@ const {chromium}=loadPlaywright(),root=path.resolve(__dirname,'..');
   // request is created on either historical port.
   const svg='<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="100mm" viewBox="0 0 100 100"><rect x="10" y="10" width="35" height="20" fill="black"/></svg>';
   let target=urls.legacy;
-  function parentHTML(){return '<html><body><script>window.received=[];const childOrigin='+JSON.stringify(new URL(target).origin)+';addEventListener("message",e=>{if(e.source!==document.querySelector("iframe").contentWindow||e.origin!==childOrigin)return;received.push(e.data.type);if(e.data.type==="elevhub-file-ready"){const bytes=new TextEncoder().encode('+JSON.stringify(svg)+').buffer;e.source.postMessage({type:"elevhub-file-import",request:"legacy-fixture",filename:"saved.svg",name:"Gemte mål",bytes},childOrigin,[bytes]);}});</script><iframe src="'+target+'/laser.html?elevhub_import=1" onload="this.contentWindow.postMessage({type:\'elevhub-file-hello\',request:\'legacy-fixture\'},'+JSON.stringify(new URL(target).origin).replaceAll('"','&quot;')+')"></iframe></body></html>';}
+  function parentHTML(){return '<html><body><script>window.received=[];const childOrigin='+JSON.stringify(new URL(target).origin)+';addEventListener("message",e=>{if(e.source!==document.querySelector("iframe").contentWindow||e.origin!==childOrigin)return;received.push(e.data.type);if(e.data.type==="elevhub-file-ready"){const bytes=new TextEncoder().encode('+JSON.stringify(svg)+').buffer;e.source.postMessage({type:"elevhub-file-import",request:"legacy-fixture",filename:"saved.svg",name:"Gemte mål",bytes},childOrigin,[bytes]);}});</script><iframe src="'+target+'/folie.html?elevhub_import=1" onload="this.contentWindow.postMessage({type:\'elevhub-file-hello\',request:\'legacy-fixture\'},'+JSON.stringify(new URL(target).origin).replaceAll('"','&quot;')+')"></iframe></body></html>';}
   for(const origin of ['http://127.0.0.1:8791','http://localhost:8791','http://127.0.0.1:8792']){
    // Route-fulfilled parent documents have no socket address classification.
    // Grant only this isolated browser's synthetic parents local-network access;
@@ -31,7 +33,17 @@ const {chromium}=loadPlaywright(),root=path.resolve(__dirname,'..');
    const exported=await frame.evaluate(async()=>await(await window.ElevhubProjectAdapter.export()).text());assert.match(exported,/35/);assert.match(exported,/20/);assert.equal(await frame.evaluate(()=>typeof window.ElevhubProjectOrigins),'undefined');
   }
   report.flows.push('Both historical 8791 parents import real SVG bytes through actual child HTTP/CSP while the config script returns 404');
-  async function blocked(parent,childURL){target=childURL;await page.goto(parent+'/__blocked-fixture');assert(page.frames().some(frame=>frame.url()==='chrome-error://chromewebdata/'));assert.deepEqual(await page.evaluate(()=>window.received),[]);}
+  async function blocked(parent,childURL){
+   target=childURL;
+   const violation=page.waitForEvent('console',{predicate:message=>message.type()==='error'&&message.text().includes('frame-ancestors'),timeout:10000});
+   await page.goto(parent+'/__blocked-fixture');
+   await violation;
+   const policy=(await page.request.get(childURL+'/folie.html')).headers()['content-security-policy'];
+   const ancestors=policy.match(/(?:^|;)\s*frame-ancestors\s+([^;]+)/)?.[1].split(/\s+/);
+   assert(ancestors,'The actual child response must declare its frame policy');
+   assert(!ancestors.includes(parent),'The rejected parent must be absent from the actual policy');
+   assert.deepEqual(await page.evaluate(()=>window.received),[]);
+  }
   await blocked('http://127.0.0.1:8792',urls.legacy);report.flows.push('Another port is rejected by the older exact CSP and receives no fallback handshake');
   const config=await page.request.get(urls.disabled+'/project-import-config.js');assert.equal(config.status(),200);assert.match(await config.text(),/Object\.freeze\(\[\]\)/);
   await blocked('http://127.0.0.1:8791',urls.disabled);report.flows.push('Modern explicit empty list keeps embedding disabled');

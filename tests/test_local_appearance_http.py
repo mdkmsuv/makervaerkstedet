@@ -196,6 +196,9 @@ class LocalAppearanceHTTPTests(unittest.TestCase):
                 server.kode, server.pause = Laererkode(data), PauseStore(data)
                 threading.Thread(target=server.serve_forever, daemon=True).start()
                 try:
+                    status, original = get(server.server_port, '/kontrolpanel.css')
+                    self.assertEqual(status, 200)
+                    self.assertEqual(original, (hub_root / 'web' / 'kontrolpanel.css').read_bytes())
                     cases = (({'brand': '#1f5a8c', 'brand_dark': '#143c5e'}, '--brand:#1f5a8c;--brand-dark:#143c5e;'),
                              ({}, '--brand:#28734e;--brand-dark:#1a5037;'),
                              ({'brand': '#1f5a8c'}, '--brand:#28734e;--brand-dark:#1a5037;'),
@@ -204,9 +207,13 @@ class LocalAppearanceHTTPTests(unittest.TestCase):
                         with self.subTest(colours=colours):
                             (root / 'school.json').write_text(json.dumps(
                                 {'school_name': 'Prøveskolen', 'theme': 'green', **colours}), encoding='utf-8')
-                            status, body = get(server.server_port, '/laerer.css')
-                            self.assertEqual(status, 200)
-                            self.assertIn(expected, body.decode('utf-8'))
+                            for stylesheet in ('/laerer.css', '/kontrolpanel.css'):
+                                status, body = get(server.server_port, stylesheet)
+                                self.assertEqual(status, 200)
+                                self.assertIn(expected, body.decode('utf-8'), stylesheet)
+                                if stylesheet == '/kontrolpanel.css':
+                                    self.assertIn('--school-accent-dark:', body.decode('utf-8'))
+                                    self.assertIn('--school-accent-soft:', body.decode('utf-8'))
                 finally:
                     server.shutdown(); server.server_close()
         finally:

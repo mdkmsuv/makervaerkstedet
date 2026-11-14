@@ -11,7 +11,12 @@
   const FILE_VERSION = 2;
   const SUPPORTED_FILE_VERSIONS = new Set([1, 2]);
   const MAX_ROOT_OBJECTS = 100;
-  const MAX_TOTAL_OBJECTS = 240;
+  // A 500-part laser drawing also needs room for its grouping nodes.
+  // The same limits apply when editing and reopening the saved JSON.
+  const MAX_TOTAL_OBJECTS = 600;
+  const MAX_OBJECT_DEPTH = 6;
+  const MAX_PROJECT_BYTES = 2_000_000;
+  const PROJECT_SIZE_ERROR = "Tegningen bliver for stor til at kunne gemmes og åbnes igen. Fjern nogle detaljer, før du fortsætter. Din tegning er ikke ændret.";
   const zoomSteps = [25, 35, 50, 65, 75, 90, 100, 125, 150, 175, 200];
   const pathPattern = /^[\s\d.,+eEaAcChHlLmMqQsStTvVzZ-]+$/;
 
@@ -203,15 +208,22 @@
     return id;
   }
 
-  function commit(message, mutation) {
+  function commit(message, mutation, feedback = elements.statusMessage) {
     const before = clone(state);
     mutation();
     normalizeSelection();
+    if (projectFileBytes(state) > MAX_PROJECT_BYTES) {
+      state = before;
+      renderAll();
+      feedback.textContent = PROJECT_SIZE_ERROR;
+      return false;
+    }
     history.push(before);
     if (history.length > 80) history.shift();
     future = [];
     renderAll();
     announce(message);
+    return true;
   }
 
   function undo() {
@@ -861,10 +873,7 @@
   }
 
   function addObject(type) {
-    if (state.objects.length >= MAX_ROOT_OBJECTS) {
-      announce("Tegningen kan højst have 100 dele på øverste niveau.");
-      return;
-    }
+    if (!allowObjectChange({ roots: state.objects.length + 1, total: countObjectTree(state.objects) + 1 })) return;
     const shape = SHAPES[type];
     const name = makeUniqueName(type === "text" ? "Ny tekst" : shape.label);
     commit(`${name} er tilføjet.`, () => {
@@ -967,17 +976,15 @@
   }
 
   function addLibraryMotif(motifId) {
-    if (state.objects.length >= MAX_ROOT_OBJECTS) {
-      document.querySelector("#libraryStatus").textContent = "Tegningen kan højst have 100 dele på øverste niveau.";
-      return;
-    }
     const item = LIBRARY_ITEMS.find((candidate) => candidate.id === motifId);
     if (!item) return;
-    commit(`${item.title} er tilføjet som en grupperet Gravér-figur.`, () => {
+    if (!allowObjectChange({ roots: state.objects.length + 1,
+      total: countObjectTree(state.objects) + 1 + (item.parts?.length || 1) }, document.querySelector("#libraryStatus"))) return;
+    if (!commit(`${item.title} er tilføjet som en grupperet Gravér-figur.`, () => {
       const object = createLibraryGroup(item);
       state.objects.push(object);
       setSelectedIds([object.id]);
-    });
+    }, document.querySelector("#libraryStatus"))) return;
     document.querySelector("#libraryStatus").textContent = `${item.title} er tilføjet som gruppe. Vælg flere, eller tryk Tegn videre.`;
   }
 
@@ -1011,6 +1018,25 @@
 
   function countObjectTree(objects) {
     return objects.reduce((total, object) => total + 1 + (object.type === "group" ? countObjectTree(object.children) : 0), 0);
+  }
+
+  function objectTreeDepth(objects) {
+    return objects.reduce((depth, object) => Math.max(depth,
+      object.type === "group" ? 1 + objectTreeDepth(object.children) : 0), 0);
+  }
+
+  function allowObjectChange({ roots = state.objects.length, total = countObjectTree(state.objects),
+    depth = objectTreeDepth(state.objects) } = {}, feedback = elements.statusMessage) {
+    const message = roots > MAX_ROOT_OBJECTS
+      ? `Tegningen kan højst have ${MAX_ROOT_OBJECTS} dele på øverste niveau. Behold nogle dele i grupper, eller fjern nogle dele.`
+      : total > MAX_TOTAL_OBJECTS
+        ? `Tegningen kan højst indeholde ${MAX_TOTAL_OBJECTS} dele og grupper. Fjern nogle dele, før du tilføjer flere.`
+        : depth > MAX_OBJECT_DEPTH
+          ? `Der kan højst være ${MAX_OBJECT_DEPTH} niveauer i grupperne. Ophæv en gruppe, før du grupperer videre.`
+          : "";
+    if (!message) return true;
+    feedback.textContent = message;
+    return false;
   }
 
   function duplicateShapeSignature(object) {
@@ -1050,10 +1076,8 @@
       announce("Vælg en eller flere dele, før du trykker Ctrl+D.");
       return;
     }
-    if (state.objects.length + objects.length > MAX_ROOT_OBJECTS || countObjectTree(state.objects) + countObjectTree(objects) > MAX_TOTAL_OBJECTS) {
-      announce("Der er ikke plads til flere kopier i tegningen.");
-      return;
-    }
+    if (!allowObjectChange({ roots: state.objects.length + objects.length,
+      total: countObjectTree(state.objects) + countObjectTree(objects) })) return;
     const chain = state.repeatDuplicate;
     let step = null;
     let continuing = Boolean(chain && objects.length === chain.copyIds.length && objects.every((object, i) => object.id === chain.copyIds[i]));
@@ -1157,7 +1181,7 @@
   }
 
   function readObjectClipboard(text) {
-    if (typeof text !== "string" || text.length > 2_000_000) throw new Error("Udklippet er for stort til tegningen.");
+    if (typeof text !== "string" || text.length > MAX_PROJECT_BYTES) throw new Error("Udklippet er for stort til tegningen.");
     const payload = JSON.parse(text);
     if (payload?.format !== "laservaerkstedet-clipboard" || payload.version !== 1 || !Array.isArray(payload.objects) || !payload.objects.length) {
       throw new Error("Kopiér først en eller flere dele i værkstedet.");
@@ -1176,16 +1200,14 @@
       return;
     }
     const { objects, cut, pasteCount } = objectClipboard;
-    if (state.objects.length + objects.length > MAX_ROOT_OBJECTS || countObjectTree(state.objects) + countObjectTree(objects) > MAX_TOTAL_OBJECTS) {
-      announce("Der er ikke plads til flere dele i tegningen.");
-      return;
-    }
+    if (!allowObjectChange({ roots: state.objects.length + objects.length,
+      total: countObjectTree(state.objects) + countObjectTree(objects) })) return;
     const offset = 5 * (pasteCount + (cut ? 0 : 1));
     if (objects.some((object) => object.x + offset > PAPER_WIDTH * 3 || object.y + offset > PAPER_HEIGHT * 3)) {
       announce("Kopierne kommer for langt uden for tegnefladen. Kopiér igen fra en placering tættere på.");
       return;
     }
-    commit(`${objects.length} ${objects.length === 1 ? "del er indsat" : "dele er indsat"}.`, () => {
+    if (!commit(`${objects.length} ${objects.length === 1 ? "del er indsat" : "dele er indsat"}.`, () => {
       const copies = objects.map((object) => {
         const copy = cloneWithFreshIds(object);
         copy.x = round(object.x + offset);
@@ -1195,7 +1217,7 @@
         return copy;
       });
       setSelectedIds(copies.map((copy) => copy.id));
-    });
+    })) return;
     objectClipboard.pasteCount += 1;
     focusPrimaryCanvasObject();
   }
@@ -1615,6 +1637,14 @@
       return;
     }
     if (completed.changed) {
+      if (projectFileBytes(state) > MAX_PROJECT_BYTES) {
+        state = completed.before;
+        suppressCanvasClick = true;
+        renderAll();
+        focusPrimaryCanvasObject();
+        announce(PROJECT_SIZE_ERROR);
+        return;
+      }
       history.push(completed.before);
       if (history.length > 80) history.shift();
       future = [];
@@ -1651,6 +1681,9 @@
     }
     const bounds = unionBounds(objects);
     const selected = new Set(objects.map((object) => object.id));
+    if (!allowObjectChange({ roots: state.objects.length - objects.length + 1,
+      total: countObjectTree(state.objects) + 1,
+      depth: Math.max(objectTreeDepth(objects) + 1, objectTreeDepth(state.objects.filter((object) => !selected.has(object.id)))) })) return;
     const insertIndex = state.objects.findIndex((object) => selected.has(object.id));
     commit(`${objects.length} dele er grupperet.`, () => {
       const children = objects.map((object) => {
@@ -1685,6 +1718,8 @@
       announce("Vælg én gruppe for at ophæve den.");
       return;
     }
+    if (!allowObjectChange({ roots: state.objects.length - 1 + group.children.length,
+      total: countObjectTree(state.objects) - 1 })) return;
     const index = state.objects.findIndex((object) => object.id === group.id);
     commit(`${group.name} er opdelt i ${group.children.length} ${group.children.length === 1 ? "del" : "dele"}.`, () => {
       const groupCenter = { x: group.width / 2, y: group.height / 2 };
@@ -2165,18 +2200,26 @@
     }
   }
 
-  function projectPayload() {
+  function projectPayload(projectState = state) {
     return {
       format: FILE_FORMAT,
       version: FILE_VERSION,
       workspace: { widthMm: PAPER_WIDTH, heightMm: PAPER_HEIGHT },
       project: {
-        name: state.name,
-        nextId: state.nextId,
-        selectedIds: state.selectedIds,
-        objects: state.objects
+        name: projectState.name,
+        nextId: projectState.nextId,
+        selectedIds: projectState.selectedIds,
+        objects: projectState.objects
       }
     };
+  }
+
+  function projectFileBytes(projectState) {
+    const payload = projectPayload(projectState);
+    // Selection also appears in saved files. Reserve all current root IDs so
+    // selecting more parts cannot make an otherwise valid file too large.
+    payload.project.selectedIds = projectState.objects.map((object) => object.id);
+    return new Blob([JSON.stringify(payload, null, 2)]).size;
   }
 
   function safeFilename(name) {
@@ -2215,7 +2258,7 @@
     const allowedTypes = new Set(Object.keys(typeLabels));
 
     function validateObject(source, label, depth = 0) {
-      if (!source || typeof source !== "object" || depth > 6) throw new Error(`${label} kan ikke læses.`);
+      if (!source || typeof source !== "object" || depth > MAX_OBJECT_DEPTH) throw new Error(`${label} kan ikke læses.`);
       totalObjects += 1;
       if (totalObjects > MAX_TOTAL_OBJECTS) throw new Error("Projektfilen indeholder for mange indlejrede dele.");
       if (!allowedTypes.has(source.type)) throw new Error(`${label} har en ukendt type.`);
@@ -2276,18 +2319,20 @@
       return match ? Math.max(largest, Number(match[1])) : largest;
     }, 0);
     const selectedIds = requestedSelection.length ? [...new Set(requestedSelection)] : objects[0] ? [objects[0].id] : [];
-    return {
+    const validated = {
       name,
       objects,
       selectedIds,
       selectedId: selectedIds.at(-1) || null,
       nextId: Math.max(largestNumericId + 1, Number(data.project.nextId) || 1)
     };
+    if (projectFileBytes(validated) > MAX_PROJECT_BYTES) throw new Error("Projektfilen er for detaljeret til at kunne gemmes og åbnes igen. Vælg en mindre fil.");
+    return validated;
   }
 
   async function openProjectFile(file) {
     try {
-      if (!file || file.size > 2_000_000) throw new Error("Filen er for stor til Laserværkstedet.");
+      if (!file || file.size > MAX_PROJECT_BYTES) throw new Error("Filen er for stor til Laserværkstedet.");
       const text = await file.text();
       const data = JSON.parse(text);
       const nextProject = validateProjectFile(data);
@@ -2550,6 +2595,7 @@
     setName: (value) => {
       const name = String(value || "").trim().slice(0, 80);
       if (!name) return;
+      if (projectFileBytes({ ...state, name }) > MAX_PROJECT_BYTES) throw new Error("Projektnavnet gør filen for stor. Vælg et kortere navn.");
       state.name = name;
       elements.projectName.value = name;
       renderAll();
@@ -2560,6 +2606,7 @@
     export: async () => new Blob([JSON.stringify(projectPayload(), null, 2)], { type: "application/json" }),
     import: async (blob) => {
       if (!blob || typeof blob.text !== "function") throw new Error("Projektet kunne ikke læses.");
+      if (blob.size > MAX_PROJECT_BYTES) throw new Error("Filen er for stor til Laserværkstedet.");
       let data;
       try {
         data = JSON.parse(await blob.text());

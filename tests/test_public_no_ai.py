@@ -50,15 +50,16 @@ class PublicNoAiTests(unittest.TestCase):
                     violations.append(f"{item.relative}:{node.lineno}")
         self.assertEqual(violations, [])
 
-    def test_educational_tools_remain_in_both_standard_configurations(self):
+    def test_standard_configurations_keep_current_workshops_and_omit_retired_apps(self):
         for name in ("linux-elevhub/server/elevhub/konfiguration.json",
                      "windows-elevhub/server/hub/konfiguration.windows.json"):
             with self.subTest(name=name):
                 config = json.loads((self.root / name).read_text(encoding="utf-8-sig"))
                 apps = {item["id"]: item for item in config["apps"]}
-                self.assertIn("datatraener", apps)
-                self.assertEqual(apps["skolegpt"]["type"], "web")
-                self.assertEqual(apps["skolegpt"]["start_url"], "https://chat.skolegpt.dk/")
+                self.assertTrue({'3dprint', 'laser', 'folie', 'scratch', 'microbit', 'internet'} <= set(apps))
+                self.assertFalse({'datatraener', 'skolegpt', 'kredsloeb', 'cadoodle'} & set(apps))
+                self.assertEqual(apps['scratch']['type'], 'lokal')
+                self.assertEqual(apps['microbit']['start_url'], 'https://makecode.microbit.org/')
 
 
 if __name__ == "__main__":

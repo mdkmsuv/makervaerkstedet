@@ -116,7 +116,8 @@ Rører opgaven elevsystemet (alt, der ender i pakken `makervaerkstedet-elev` ell
 bash linux-elevhub/packaging/build_from_source.sh <kilde> <byggeinput>/linux <byggeinput>/vaerktoejer <mappe med udgivne Scratch- og Matchbox-pakker> <ny arbejdsmappe>
 ```
 
-Scriptet bygger kerne- og updater-pakken fra kilden, genbruger de udgivne Scratch- og Matchbox-pakker uændret og kører
+Scriptet bygger kerne- og updater-pakken fra kilden, pakker Scratch fra det
+kvitteringsbundne, historiske runtimeinput, genbruger Matchbox-pakken uændret og kører
 `apt-get update` og en simuleret installation af alle fire mod Debian 13 med tom pakkestatus. Intet installeres på byggemaskinen.
 
 Består, når `report/install-simulation.json` har `all_packages_simulated: true`, og forskellen i `*.inputs.json` mod forrige

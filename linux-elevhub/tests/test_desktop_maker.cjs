@@ -9,7 +9,7 @@ let pages = [
  ['hub','http://127.0.0.1:8808/','#apps .app'],
  ['print','http://127.0.0.1:8765/','#send-button'],
  ['design','http://127.0.0.1:8766/','#choose-laser'],
- ['laser','http://127.0.0.1:8766/laser.html','#drawing'],
+ ['laser','http://127.0.0.1:8766/laser.html','#designCanvas'],
  ['folie','http://127.0.0.1:8766/folie.html','#vinyl-setup'],
  ['scratch','http://127.0.0.1:8792/','#creative-app-header #elevhub-project-bar'],
  ['projekter','http://127.0.0.1:8791/','#search']
@@ -27,14 +27,15 @@ let pages = [
  try {
   for(const viewport of [{width:1024,height:768},{width:1366,height:768},{width:1920,height:1080}]){
    const context=await browser.newContext({viewport});
+   await context.route('http://127.0.0.1:8790/apps',async route=>{
+    const response=await route.fetch({url:fixture.urls.hub+'/apps'});await route.fulfill({response});
+   });
    for(const [name,url,ready] of pages){
     const p=await context.newPage(); const errors=[];p.on('pageerror',e=>errors.push(e.message));
     try {
      await p.goto(url,{waitUntil:'domcontentloaded'}); await p.locator(ready).first().waitFor({timeout:60000});
      if(name==='scratch') await p.locator('[class*="stage-wrapper_stage-wrapper"]').first().waitFor({timeout:60000});
-     if(name==='kredsloeb') await p.waitForFunction(()=>document.getElementById('simulator').contentWindow.CircuitJS1,{timeout:30000});
-     if(name==='datatraener') await p.getByRole('img',{name:'loading',exact:true}).waitFor({state:'hidden',timeout:20000});
-     if(['scratch','datatraener','kredsloeb','laser','folie'].includes(name)){
+     if(['scratch','laser','folie'].includes(name)){
       await p.locator('#project-classroom').fill('5A');await p.locator('#project-student').fill('Testelev');await p.locator('#project-title').fill('Værkstedsprøve');await p.locator('#project-start-confirm').click();
      }
      await p.evaluate(()=>document.fonts.ready);
@@ -49,6 +50,7 @@ let pages = [
      if(viewport.width===1366){
       if(name==='hub'){
        const ids=await p.locator('#apps .app').evaluateAll(els=>els.map(e=>e.dataset.app));
+       assert.deepEqual([...ids].sort(),['3dprint','folie','internet','laser','microbit','scratch']);
        assert(ids.includes('internet'),'Internet is available on cold offline start');
        assert(await p.locator('[data-app="internet"] .app-open').isEnabled());
        for(const id of ids) assert(await p.locator(`[data-app="${id}"] .app-open`).isEnabled(),`${id} open during outage`);
@@ -61,22 +63,38 @@ let pages = [
        await p.waitForFunction(()=>window.CreativeHub&&!window.CreativeHub.isOffline(),{},{timeout:15000});
        report.flows.push(`hub: ${ids.length} cold-offline entries open including Internet, reconnect current closed policy, outage clears restrictions, reconnect open policy`);
       }
-      if(['scratch','datatraener'].includes(name)){
+      if(name==='scratch'){
        await p.locator('#creative-app-header > button').click();await p.locator('#creative-app-help').waitFor();await p.locator('.creative-first-steps summary').click();assert.equal(await p.locator('.creative-first-steps li').count(),3);await p.keyboard.press('Escape');await p.locator('#creative-app-help').waitFor({state:'hidden',timeout:3000});
        if(name==='scratch')assert.equal(await p.locator('#elevhub-project-bar').count(),1);report.flows.push(`${name}: ideas/help, keyboard close${name==='scratch'?', merged save header':''}`);
       }
-      if(name==='datatraener'){await p.getByText('Data',{exact:true}).click();assert(await p.getByText('Din micro:bit er ikke tilsluttet endnu.',{exact:true}).isVisible());report.flows.push('data: real disconnected hardware guidance');}
       if(name==='projekter'){
        await p.locator('#search').fill('QA-no-matching-project-20260920');await p.locator('#empty-projects').waitFor();assert.match(await p.locator('#empty-title').innerText(),/ingen|find/i);await p.locator('#clear-search').click();assert.equal(await p.locator('#search').inputValue(),'');report.flows.push('project shelf: search, no-match guidance, clear search');
       }
-      if(['laser','folie'].includes(name)){
+      if(name==='laser'){
+       const initialCount=await p.locator('#objectLayer > .drawing-object').count();
+       await p.locator('[data-add-type="rect"]').click();await p.locator('#selectionPanel').waitFor();
+       await p.locator('#objectWidth').fill('42');await p.locator('#objectWidth').press('Tab');
+       await p.locator('#undoButton').click();assert(await p.locator('#redoButton').isEnabled());await p.locator('#redoButton').click();
+       assert.equal(await p.locator('#objectLayer > .drawing-object').count(),initialCount+1);
+       await p.locator('#saveProjectButton').click();await p.waitForFunction(()=>document.querySelector('#statusMessage').textContent.includes('Gemt på denne computer'));
+       const saved=await p.evaluate(async()=>JSON.parse(await(await window.ElevhubProjectAdapter.export()).text()));
+       assert(saved.project.objects.some(object=>object.type==='rect'&&object.width===42));
+       await p.locator('#openProjectButton').click();
+       const shelf=p.frameLocator('#elevhub-project-dialog iframe');await shelf.locator('.project').filter({hasText:'Værkstedsprøve'}).first().locator('summary').click();
+       const download=p.waitForEvent('download');await shelf.getByRole('link',{name:'Hent fil',exact:true}).first().click();
+       const file=await download;await file.saveAs(`${out}/qa-laser.laser.json`);
+       const exported=JSON.parse(await fs.readFile(`${out}/qa-laser.laser.json`,'utf8'));assert.deepEqual(exported,saved);
+       await p.locator('#project-library-close').click();
+       await p.locator('#helpButton').click();await p.locator('#helpDialog').waitFor();await p.keyboard.press('Escape');
+       report.flows.push('laser: shape, width, undo/redo, real local save and exact downloaded JSON, help');
+      }
+      if(name==='folie'){
        await p.getByRole('button',{name:'Firkant',exact:true}).click();assert(await p.locator('#object-properties').isVisible());
        await p.locator('#object-width').fill('42');await p.locator('#object-width').press('Tab');
        const download=p.waitForEvent('download');await p.locator('#export-button').click();const file=await download;await file.saveAs(`${out}/qa-${name}.projekt.svg`);
        assert.match(await fs.readFile(`${out}/qa-${name}.projekt.svg`,'utf8'),/<svg/);
        await p.locator('#help-button').click();await p.locator('#help-dialog').waitFor();await p.keyboard.press('Escape');
-       if(name==='folie'){await p.locator('.studio-ideas').click();await p.locator('.studio-idea-dialog').waitFor();await p.keyboard.press('Escape');}
-       else{await p.locator('#laser-projects-button').click();await p.locator('#laser-project-dialog').waitFor();await p.keyboard.press('Escape');}
+       await p.locator('.studio-ideas').click();await p.locator('.studio-idea-dialog').waitFor();await p.keyboard.press('Escape');
        await p.locator('#undo').click();assert(await p.locator('#redo').isEnabled());
        report.flows.push(`${name}: shape, width, real project export, help, ideas, undo`);
       }
@@ -84,14 +102,12 @@ let pages = [
        assert(await p.locator('#send-button').isDisabled());await p.getByRole('button',{name:'Se udfordringen: Din egen spilfigur',exact:true}).click();await p.locator('dialog[open]').waitFor();await p.keyboard.press('Escape');
        report.flows.push('print: real printer status, no-model guard, maker challenge');
       }
-      if(name==='kredsloeb'){
-       const buttons=p.locator('#examples button');for(let n=0;n<await buttons.count();n++){await buttons.nth(n).click();if(await p.locator('#project-finish-discard').isVisible())await p.locator('#project-finish-discard').click();await p.waitForFunction(i=>document.querySelectorAll('#examples button')[i]?.getAttribute('aria-pressed')==='true',n);assert.equal(await buttons.nth(n).getAttribute('aria-pressed'),'true');assert((await p.locator('#experiment-question').innerText()).length>10);}report.flows.push('circuit: all real examples load, selection and experiment question');
-      }
      }
      console.log('PASS layout '+name+' '+viewport.width);
      if(errors.length)report.errors.push({name,viewport,errors});
     }catch(error){console.log('FAIL '+name+' '+viewport.width+': '+error.message);report.errors.push({name,viewport,error:error.message});await p.screenshot({path:`${out}/${name}-${viewport.width}-failure.png`}).catch(()=>{});}
     await p.close();
+    await fs.writeFile(`${out}/desktop-progress.json`,JSON.stringify(report,null,2));
    }
    await context.close();
   }

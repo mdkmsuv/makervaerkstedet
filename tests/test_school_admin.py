@@ -12,8 +12,8 @@ from app.generation_runtime import build_active_command
 from tests import test_generation_embedded as embedded
 
 
-@unittest.skipUnless(os.name == 'nt' and embedded.ARCHIVE.is_file(),
-                     'kræver den cachede Windows embedded Python')
+@unittest.skipUnless(os.name == 'nt',
+                     'requires Windows embedded Python')
 class SchoolAdminActiveTests(unittest.TestCase):
     """Compose the embedded fixture; do not inherit its test methods."""
 

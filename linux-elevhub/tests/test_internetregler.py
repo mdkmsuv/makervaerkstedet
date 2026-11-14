@@ -26,8 +26,8 @@ class InternetreglerTest(unittest.TestCase):
                      'elev_porte': [8770, 8771, 8772, 8773], 'internet_app': 'internet',
                      'lokale_app_urler': {'projekter': 'http://127.0.0.1:8791/',
                                           'scratch': 'http://127.0.0.1:8792/',
-                                          'datatraener': 'http://127.0.0.1:8793/',
-                                          'kredsloeb': 'http://127.0.0.1:8794/'}}
+                                          'laser': 'http://127.0.0.1:8795/',
+                                          'folie': 'http://127.0.0.1:8796/'}}
         self.credentials = {'computer': 'vaertsted-01', 'token': 'root-token-123456789'}
         self.addCleanup(patch.stopall)
         patch.object(REGLER, 'KONF', self.konf).start()
@@ -62,14 +62,14 @@ class InternetreglerTest(unittest.TestCase):
     def test_lokale_apps_foelger_laererens_aabning_i_chromium_politik(self):
         apps = [
             {'id': 'scratch', 'type': 'lokal', 'aaben': True},
-            {'id': 'datatraener', 'type': 'lokal', 'aaben': False},
+            {'id': 'laser', 'type': 'vaerksted', 'aaben': False},
         ]
         lukket = json.loads(REGLER._chromium_url_policy(False, apps))
         self.assertIn('http://127.0.0.1:8792/', lukket['URLAllowlist'])
-        self.assertNotIn('http://127.0.0.1:8793/', lukket['URLAllowlist'])
+        self.assertNotIn('http://127.0.0.1:8795/', lukket['URLAllowlist'])
         aaben = json.loads(REGLER._chromium_url_policy(True, apps))
         self.assertNotIn('http://127.0.0.1:8792/', aaben['URLBlocklist'])
-        self.assertIn('http://127.0.0.1:8793/', aaben['URLBlocklist'])
+        self.assertIn('http://127.0.0.1:8795/', aaben['URLBlocklist'])
 
     def test_lokalt_designvaerksted_foelger_laererens_aabning(self):
         # Laser og folie er stadig "vaerksted" på serveren (afleveringer går
@@ -118,15 +118,17 @@ class InternetreglerTest(unittest.TestCase):
         self.assertFalse(REGLER.ANVENDT.exists())
         self.assertEqual(REGLER.AKTUELLE_APPS, [])
 
-    def test_skolegpt_chat_api_foelger_vaerkstedet_i_browseren(self):
+    def test_microbit_domaener_foelger_vaerkstedet_i_browseren(self):
         config = json.loads((Path(__file__).parents[1] / 'server/elevhub/konfiguration.json').read_text(encoding='utf-8'))
-        app = next(a for a in config['apps'] if a['id'] == 'skolegpt')
+        app = next(a for a in config['apps'] if a['id'] == 'microbit')
         allowed = json.loads(REGLER._chromium_url_policy(False, [dict(app, aaben=True)]))
         blocked = json.loads(REGLER._chromium_url_policy(True, [dict(app, aaben=False)]))
-        exact_origin = 'https://.glyph-gate.dbc.dk/'
-        self.assertIn(exact_origin, allowed['URLAllowlist'])
-        self.assertIn(exact_origin, blocked['URLBlocklist'])
-        self.assertNotIn(exact_origin, blocked.get('URLAllowlist', []))
+        for domain in app['domaener']:
+            with self.subTest(domain=domain):
+                exact_origin = 'https://.' + domain + '/'
+                self.assertIn(exact_origin, allowed['URLAllowlist'])
+                self.assertIn(exact_origin, blocked['URLBlocklist'])
+                self.assertNotIn(exact_origin, blocked.get('URLAllowlist', []))
 
     def test_dns_kun_til_konfigurerede_resolvere(self):
         sti = self.root / 'resolv.conf'
@@ -159,7 +161,7 @@ class InternetreglerTest(unittest.TestCase):
         # No usable teacher list (403, expired certificate, garbage): Internet
         # stays closed, but every workshop installed on this computer is allowed.
         policy = json.loads(REGLER._chromium_url_policy(False, []))
-        for port in (8791, 8792, 8793, 8794):
+        for port in (8791, 8792, 8795, 8796):
             self.assertIn(f'http://127.0.0.1:{port}/', policy['URLAllowlist'])
         self.assertNotIn('URLBlocklist', {k: v for k, v in policy.items() if v == []})
         self.assertFalse(any(url.startswith('https://') for url in policy['URLAllowlist']))

@@ -683,7 +683,7 @@ class Laerer(Grund):
             return self.svar(status, content, mimetypes.guess_type(path.name)[0] or 'application/octet-stream')
         # A distributable school keeps its public identity beside the hub data.
         # Legacy installations without this profile retain their existing UI.
-        if relativ not in ('laerer.html', 'kontrolpanel.html', 'om.html', 'laerer.css', 'makerspace.html', 'makerspace.css'):
+        if relativ not in ('laerer.html', 'kontrolpanel.html', 'om.html', 'laerer.css', 'kontrolpanel.css', 'makerspace.html', 'makerspace.css'):
             return super().fil(relativ, status)
         path = self.server.tilstand.mappe.parent / 'school.json'
         try:
@@ -723,8 +723,12 @@ class Laerer(Grund):
         private = _brand_colours(profile)
         if private:
             brand, deep = private['brand'], private['brand_dark']
-        content += ('\n:root{--brand:' + brand + ';--brand-dark:' + deep
-                    + ';--section:#f3edd6;--pale:#f8f3e4;--ink:#121611;--line:#d8d3c0}\n')
+        content += '\n:root{--brand:' + brand + ';--brand-dark:' + deep
+        if relativ == 'kontrolpanel.css':
+            content += (';--school-accent-dark:color-mix(in srgb,' + brand + ' 45%,#fff)'
+                        ';--school-accent-soft:color-mix(in srgb,var(--accent) 12%,var(--surface))}\n')
+        else:
+            content += ';--section:#f3edd6;--pale:#f8f3e4;--ink:#121611;--line:#d8d3c0}\n'
         return self.svar(status, content.encode('utf-8'), 'text/css; charset=utf-8')
 
     def lokal(self):

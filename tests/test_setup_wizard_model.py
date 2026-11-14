@@ -13,12 +13,13 @@ class SetupWizardModelTests(unittest.TestCase):
         exe = self.ps()
         if not exe: self.skipTest('PowerShell kræves')
         with tempfile.TemporaryDirectory() as d:
-            p = Path(d) / 'h.ps1'; p.write_text("Set-StrictMode -Version Latest\n. '" + str(MODEL).replace("'", "''") + "'\n" + body, encoding='utf-8-sig')
-            return subprocess.run([exe, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', str(p), *args], capture_output=True, text=True, timeout=30)
+            p = Path(d) / 'h.ps1'; p.write_text("[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)\nSet-StrictMode -Version Latest\n. '" + str(MODEL).replace("'", "''") + "'\n" + body, encoding='utf-8-sig')
+            return subprocess.run([exe, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', str(p), *args], capture_output=True, text=True, encoding='utf-8', timeout=30)
 
     def test_server_model_and_pathological_inputs(self):
         body = "$v=@{schoolName='Skolen Å';deployment='single-computer';component='server';roleIp='192.0.2.10';studentSubnet='192.0.2.0/24';theme='green';machine='fbb2';addressConfirmed=$true;packageRoot='C:\\pkg'}; Test-SetupWizardInput -Values $v | ConvertTo-Json -Depth 8 -Compress"
         r = self.run_ps(body); self.assertEqual(r.returncode, 0, r.stderr); v=json.loads(r.stdout); self.assertTrue(v['valid']); self.assertEqual(v['parameters']['Role'], 'makerspace')
+        self.assertEqual(v['parameters']['SchoolName'], 'Skolen Å')
         bad = body.replace("roleIp='192.0.2.10'", "roleIp='127.0.0.1'").replace('addressConfirmed=$true','addressConfirmed=$false')
         v=json.loads(self.run_ps(bad).stdout); self.assertFalse(v['valid']); self.assertGreaterEqual(len(v['errors']), 2)
         string_bool = body.replace('addressConfirmed=$true', "addressConfirmed='True'")

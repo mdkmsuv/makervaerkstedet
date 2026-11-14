@@ -19,7 +19,7 @@ const runId=crypto.randomUUID().slice(0,8);
    assert.equal(r.status(),200,await r.text());return await r.json();
   }
   async function acceptFreshImport(){
-   await page.waitForFunction(()=>document.querySelector('#project-finish-discard')||document.querySelector('#save-status')?.textContent.includes('Åbnet')||document.querySelector('#elevhub-project-bar')?.textContent.includes('Åbnet'));
+   await page.waitForFunction(()=>document.querySelector('#project-finish-discard')?.getClientRects().length||['#save-status','#statusMessage','#elevhub-project-bar'].some(selector=>document.querySelector(selector)?.textContent.includes('Åbnet')));
    if(await page.locator('#project-finish-discard').isVisible())await page.locator('#project-finish-discard').click();
   }
   async function open(p){await page.goto(base+'/_elevhub/projekter/open?id='+p.id+'&revision='+p.revision);}
@@ -53,8 +53,28 @@ const runId=crypto.randomUUID().slice(0,8);
   const exported=await design.evaluate(async()=>await(await window.ElevhubProjectAdapter.export()).text());
   assert.match(exported,/35/);assert.match(exported,/20/);
   await page.screenshot({path:screenshot('folie')});console.log('PASS saved SVG chooses Folie and imports geometry');
-  const laser=await save('laser.svg',svg.replace('vinyl','laser'));await open(laser);
-  await page.waitForURL(fixture.urls.laser+'**');await acceptFreshImport();await page.waitForFunction(()=>document.querySelector('#save-status')?.textContent.includes('Åbnet'));console.log('PASS local Laser navigation and import');
+  // SVG files from the retired laser editor remain downloadable. The current
+  // editor imports its editable JSON format and must report the old format.
+  const legacySvg=svg.replace('vinyl','laser');
+  const legacyLaser=await save('laser.svg',legacySvg);await open(legacyLaser);
+  await page.waitForURL(fixture.urls.laser+'**');
+  await page.waitForFunction(()=>document.querySelector('#statusMessage')?.textContent.includes('gamle lasereditor'));
+  assert.equal(await(await page.request.get(api+'file?id='+legacyLaser.id)).text(),legacySvg,'unsupported legacy file stays intact');
+  console.log('PASS legacy Laser SVG reports its format and remains downloadable without data loss');
+  await page.goto(fixture.urls.laser);await page.waitForFunction(()=>window.ElevhubProjectAdapter);
+  await page.locator('#project-classroom').fill('5A');await page.locator('#project-student').fill('Testelev');await page.locator('#project-title').fill('Laserimport');await page.locator('#project-start-confirm').click();
+  await page.locator('[data-add-type="rect"]').click();
+  await page.locator('#objectWidth').fill('35');await page.locator('#objectWidth').press('Tab');
+  await page.locator('#objectHeight').fill('20');await page.locator('#objectHeight').press('Tab');
+  const laserPayload=await page.evaluate(async()=>JSON.parse(await(await window.ElevhubProjectAdapter.export()).text()));
+  const laser=await save('design.laser.json',JSON.stringify(laserPayload));await open(laser);
+  await page.waitForURL(fixture.urls.laser+'**');await acceptFreshImport();
+  const reopenedLaser=await page.evaluate(async()=>JSON.parse(await(await window.ElevhubProjectAdapter.export()).text()));
+  const normalize=objects=>objects.map(object=>({...object,...(object.type==='rect'?{rounded:object.rounded??false}:{}),...(object.children?{children:normalize(object.children)}:{})}));
+  assert.deepEqual(normalize(reopenedLaser.project.objects),normalize(laserPayload.project.objects));
+  assert.deepEqual(reopenedLaser.workspace,laserPayload.workspace);
+  assert(reopenedLaser.project.objects.some(object=>object.type==='rect'&&object.width===35&&object.height===20));
+  console.log('PASS current editable Laser JSON navigation and geometry roundtrip');
   // A genuine Scratch file, including the editor's own costume and sound assets.
   await page.goto(fixture.urls.scratch+'/');await page.waitForFunction(()=>window.ElevhubProjectAdapter);
   await page.locator('#project-classroom').fill('5A');await page.locator('#project-student').fill('Testelev');await page.locator('#project-title').fill('Importprøve');await page.locator('#project-start-confirm').click();
@@ -76,7 +96,12 @@ const runId=crypto.randomUUID().slice(0,8);
   await open(hex);await page.waitForURL(fixture.urls.microbit+'/**');
   await page.getByText(/micro:bit kunne ikke åbnes/).first().waitFor({timeout:25000});
   console.log('PASS HEX recognition/extraction and real offline MakeCode guidance (external editor not exercised)');
-  const stl=await save('qa-cube-20mm.stl',fs.readFileSync('linux-elevhub/tests/fixtures/cube-20mm.stl'));
+  const {BoxGeometry,Mesh}=await import('three');
+  const {STLExporter}=await import('three/examples/jsm/exporters/STLExporter.js');
+  const cubeGeometry=new BoxGeometry(20,20,20);
+  const cubeStl=new STLExporter().parse(new Mesh(cubeGeometry),{binary:true});
+  const stl=await save('qa-cube-20mm.stl',Buffer.from(cubeStl.buffer,cubeStl.byteOffset,cubeStl.byteLength));
+  cubeGeometry.dispose();
   await open(stl);
   await page.getByText('Åbnet i 3D-værkstedet · version 1',{exact:true}).waitFor({timeout:45000});
   const print=page.frames().find(f=>f.url().startsWith(fixture.urls.print+'/'));

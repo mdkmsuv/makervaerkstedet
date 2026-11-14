@@ -6,9 +6,9 @@ const crypto = require('node:crypto');
 const {spawn} = require('node:child_process');
 const {chromium} = require('playwright');
 const root = path.resolve(__dirname, '../..');
-const python = path.join(root, '.venv', 'Scripts', 'python.exe');
+const python = process.env.ELEVHUB_TEST_PYTHON || process.env.PYTHON || path.join(root, '.venv', 'Scripts', 'python.exe');
 const fixture = path.join(__dirname, 'teacher_browser_fixture.py');
-const files = ['linux-elevhub/server/elevhub/web/makerspace.js', 'linux-elevhub/server/elevhub/web/makerspace.html', 'linux-elevhub/server/elevhub/web/makerspace.css', 'linux-elevhub/server/elevhub/makerspace_api.py', 'linux-elevhub/server/elevhub/makerspace_store.py', 'linux-elevhub/server/elevhub/makerspace_workflows.py', 'linux-elevhub/server/elevhub/elevhub.py', 'linux-elevhub/tests/teacher_browser_fixture.py', 'linux-elevhub/tests/test_teacher_journey.cjs'];
+const files = ['linux-elevhub/server/elevhub/web/kontrolpanel.html', 'linux-elevhub/server/elevhub/web/kontrolpanel.js', 'linux-elevhub/server/elevhub/web/makerspace.js', 'linux-elevhub/server/elevhub/web/makerspace.html', 'linux-elevhub/server/elevhub/web/makerspace.css', 'linux-elevhub/server/elevhub/makerspace_api.py', 'linux-elevhub/server/elevhub/makerspace_store.py', 'linux-elevhub/server/elevhub/makerspace_workflows.py', 'linux-elevhub/server/elevhub/elevhub.py', 'linux-elevhub/tests/teacher_browser_fixture.py', 'linux-elevhub/tests/test_teacher_journey.cjs'];
 const started = new Date().toISOString(), checks = [], browserErrors = [];
 const report = {started, reason:'Real teacher journey covers new draft validation and connection/auth recovery, plus zero-client registration/workflow/version contracts.', command:'node linux-elevhub/tests/test_teacher_journey.cjs', inputs:Object.fromEntries(files.map(f=>[f,crypto.createHash('sha256').update(fs.readFileSync(path.join(root,f))).digest('hex')])), checks, skips:['Physical printers/laser, admin installation, pupil devices, visual school pilot.']};
 let browser, server;
@@ -27,11 +27,11 @@ async function main(){
   await check('Login required, wrong code explained, actual teacher login',async()=>{
     assert.equal((await context.request.get(url+'/api/makerspace/state')).status(),401);
     await page.goto(url+'/makerspace');await page.waitForURL(url+'/kontrolpanel');
-    await page.locator('#login-kode').fill('wrong-password');await page.locator('#login-form button').click();await page.locator('#login-fejl').filter({hasText:'Forkert lærerkode'}).waitFor();
-    await page.locator('#login-kode').fill('teacher-fixture-123');await page.locator('#login-form button').click();await page.locator('#panel').waitFor();
+    await page.locator('#password').fill('wrong-password');await page.locator('#login-form button').click();await page.locator('#error').filter({hasText:'Forkert lærerkode'}).waitFor();
+    await page.locator('#password').fill('teacher-fixture-123');await page.locator('#login-form button').click();await page.locator('#panel').waitFor();
   });
   await check('No student clients; local school identity preserves project credit; services unknown',async()=>{
-    await page.goto(url+'/makerspace');await page.locator('#status').filter({hasText:'opdateret'}).waitFor();
+    await page.getByRole('link',{name:'Åbn maskinadministration',exact:true}).click();await page.locator('#status').filter({hasText:'opdateret'}).waitFor();
     const state=await snapshot();assert.deepEqual(state.computers,[]);assert.equal(state.computers_status,'ok');
     assert.equal(await page.locator('.brand-school').textContent(),'Rejseskolen');assert.equal(await page.locator('.school-logo').isVisible(),false);assert.equal(await page.locator('#retry-command').isVisible(),false);assert.match(await page.locator('.note-band').textContent(),/Kreditering: Klostermarksskolen/);
     assert.equal(state.printer_administration.status,'not_configured');assert.equal(state.laser_administration.status,'not_configured');
@@ -84,5 +84,5 @@ async function main(){
 main().catch(error=>{report.status='failed';report.error=error.stack;console.error(error);process.exitCode=1;}).finally(async()=>{
   if(browser)await browser.close();if(server){server.stdin.end();await new Promise(resolve=>{if(server.exitCode!==null)return resolve();const timer=setTimeout(()=>{server.kill();resolve();},10000);server.once('exit',()=>{clearTimeout(timer);resolve();});});}
   report.finished=new Date().toISOString();report.browserErrors=browserErrors;
-  const output=path.join(root,'output','maturity-final-20261013','teacher');fs.mkdirSync(output,{recursive:true});const basename='journey-'+started.replace(/[:.]/g,'-');report.raw_log=basename+'.log';fs.writeFileSync(path.join(output,report.raw_log),checks.map(c=>'PASS '+c.name).join('\n')+'\n'+(report.error||''));fs.writeFileSync(path.join(output,basename+'.json'),JSON.stringify(report,null,2));
+  const output=process.env.ELEVHUB_TEST_OUTPUT || path.join(root,'output','maturity-final-20261013','teacher');fs.mkdirSync(output,{recursive:true});const basename='journey-'+started.replace(/[:.]/g,'-');report.raw_log=basename+'.log';fs.writeFileSync(path.join(output,report.raw_log),checks.map(c=>'PASS '+c.name).join('\n')+'\n'+(report.error||''));fs.writeFileSync(path.join(output,basename+'.json'),JSON.stringify(report,null,2));
 });

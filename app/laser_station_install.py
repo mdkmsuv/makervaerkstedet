@@ -185,7 +185,8 @@ def assert_port_free(port):
         try:
             listener.bind(('127.0.0.1', port))
         except OSError as error:
-            raise ValueError('Luk den åbne laserstation før installation eller opdatering.') from error
+            raise ValueError(f'Port {port} er optaget eller utilgængelig. Luk programmet, der bruger porten, '
+                             'og prøv igen. Ved en ny installation kan du vælge en anden stationsport.') from error
 
 
 def install(package, root, *, action, connection_file=None, plates=None, beam_studio=None,
@@ -252,6 +253,10 @@ def install(package, root, *, action, connection_file=None, plates=None, beam_st
               'install_root': str(root), 'school_name': connection['school_name'], 'check_only': check_only}
     if check_only:
         return result
+    # Refuse an occupied port before claiming a fresh installation directory.
+    # A journal is for interrupted work, not an otherwise unchanged preflight.
+    if action == 'Install':
+        assert_port_free(config['port'])
     root.mkdir(parents=True, exist_ok=True)
     version = None
     activated = False
@@ -334,6 +339,11 @@ def install(package, root, *, action, connection_file=None, plates=None, beam_st
             if version != final:
                 version.rename(final)
             version = final
+            # Copying and probing can take time; retain the old selection if
+            # another application has taken the port since the first check.
+            # Check before writing history, so a refused update leaves no
+            # history entry for a candidate that was never activated.
+            assert_port_free(config['port'])
             if old:
                 history = plain(root / 'history')
                 history.mkdir(exist_ok=True)

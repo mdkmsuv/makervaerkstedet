@@ -7,6 +7,7 @@ import threading
 import unittest
 from unittest.mock import patch
 import elevhub
+from tilstand import Laererkode, Tilstand
 
 
 class ComponentLicenseTests(unittest.TestCase):
@@ -20,6 +21,10 @@ class ComponentLicenseTests(unittest.TestCase):
             (root / 'licenses/Elevhub-LICENSE.txt').write_bytes(mit)
             handler = type('QuietTeacher', (elevhub.Laerer,), {'log_message': lambda *args: None})
             server = ThreadingHTTPServer(('127.0.0.1', 0), handler)
+            server.navn = 'laerer'
+            server.apps = []
+            server.tilstand = Tilstand(root / 'hub', server.apps)
+            server.kode = Laererkode(root / 'hub')
             thread = threading.Thread(target=server.serve_forever, daemon=True)
             thread.start()
             try:

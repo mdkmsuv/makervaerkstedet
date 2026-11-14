@@ -14,10 +14,9 @@ import zipfile
 from unittest.mock import patch
 
 from app.instance import InstanceLock
-from tests.test_generation_embedded import ARCHIVE_SHA256
+from tests.test_generation_embedded import ARCHIVE, ARCHIVE_SHA256
 
 ROOT = Path(__file__).resolve().parents[1]
-ARCHIVE = ROOT / '.runtime' / 'downloads' / 'python-3.14.7-embed-amd64.zip'
 
 _spec = importlib.util.spec_from_file_location('generation_install_tested', ROOT / 'windows-elevhub/server/generation_install.py')
 generation_install = importlib.util.module_from_spec(_spec)
@@ -30,8 +29,8 @@ finally:
     sys.dont_write_bytecode = _old_bytecode
 
 
-@unittest.skipUnless(sys.platform == 'win32' and ARCHIVE.is_file(),
-                     'kræver Windows og den allerede cachede embedded Python')
+@unittest.skipUnless(sys.platform == 'win32',
+                     'requires Windows embedded Python')
 class GenerationInstallTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='generation-install-')

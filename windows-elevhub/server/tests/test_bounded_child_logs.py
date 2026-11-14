@@ -25,7 +25,8 @@ class BoundedChildLogTests(unittest.TestCase):
                 def close(self):
                     raise OSError('tree close failed')
             try:
-                with patch.object(bootstrap, 'read_runtime_config', return_value={}), \
+                with patch.object(bootstrap, 'read_runtime_config', return_value={'elev_adresse': '192.0.2.2'}), \
+                     patch.object(bootstrap, 'wait_for_role_ip', return_value=True), \
                      patch.object(bootstrap, 'check'), \
                      patch.object(bootstrap, '_commands', return_value=[('fixture', ['fixture'])]), \
                      patch.object(bootstrap.signal, 'signal'), \
@@ -62,7 +63,8 @@ class BoundedChildLogTests(unittest.TestCase):
                     log = real_log(pipe, root / 'missing' / 'service.log')
                     logs.append(log)
                     return log
-                with patch.object(bootstrap, 'read_runtime_config', return_value={}), \
+                with patch.object(bootstrap, 'read_runtime_config', return_value={'elev_adresse': '192.0.2.2'}), \
+                     patch.object(bootstrap, 'wait_for_role_ip', return_value=True), \
                      patch.object(bootstrap, 'check'), \
                      patch.object(bootstrap, '_commands', return_value=[('fixture', ['fixture'])]), \
                      patch.object(bootstrap.signal, 'signal'), \

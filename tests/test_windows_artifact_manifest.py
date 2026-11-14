@@ -22,7 +22,7 @@ SCHOOL_SPEC.loader.exec_module(school_builder)
 
 class WindowsArtifactManifestTests(unittest.TestCase):
     def make_manifest(self, root, names=None):
-        names = names or build_packages.ARTIFACT_NAMES
+        names = names or ('server.tools', 'server.licenses', 'runtime.python', 'runtime.wheels')
         artifacts = {}
         for index, name in enumerate(names):
             source = root / name.replace('.', '/')
@@ -42,7 +42,7 @@ class WindowsArtifactManifestTests(unittest.TestCase):
             manifest, expected = self.make_manifest(Path(temporary))
             loaded = build_packages.load_artifact_manifest(manifest)
             self.assertEqual(loaded['artifacts']['server.tools']['version'], 'server.tools-20261012')
-            self.assertEqual(loaded['artifacts']['client.cadoodle']['sha256'], expected['client.cadoodle']['sha256'])
+            self.assertEqual(loaded['artifacts']['server.licenses']['sha256'], expected['server.licenses']['sha256'])
 
     def test_changed_source_is_rejected_before_copy(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -54,7 +54,7 @@ class WindowsArtifactManifestTests(unittest.TestCase):
 
     def test_server_sources_do_not_include_private_features(self):
         with tempfile.TemporaryDirectory() as temporary:
-            names = build_packages.ARTIFACT_NAMES
+            names = ('server.tools', 'server.licenses', 'runtime.python', 'runtime.wheels')
             manifest, _ = self.make_manifest(Path(temporary), names)
             loaded = build_packages.load_artifact_manifest(manifest)
             self.assertNotIn('server.ai', loaded['artifacts'])
@@ -214,6 +214,17 @@ class WindowsArtifactManifestTests(unittest.TestCase):
                 copied.append((Path(source), Path(target)))
                 if Path(source).is_dir():
                     Path(target).mkdir(parents=True, exist_ok=True)
+                if Path(source) == ROOT / 'web':
+                    # Copy the real receipt-bound 3D assets so the package gate runs.
+                    receipt = ROOT / 'web/vendor/model3d-vendor-manifest.json'
+                    value = json.loads(receipt.read_text(encoding='utf-8'))
+                    names = [receipt.relative_to(ROOT), Path('web/assets/model3d/Metrophobic-Regular.ttf')]
+                    names += [Path('web/vendor') / name for name in value['outputs']]
+                    names += [Path('web/assets/licenses/model3d') / name for name in value['license_sha256']]
+                    for name in names:
+                        destination = output / name
+                        destination.parent.mkdir(parents=True, exist_ok=True)
+                        destination.write_bytes((ROOT / name).read_bytes())
 
             # This test exercises artifact selection/copying. Real runtime
             # ZIP/wheel preflight is covered by test_windows_build_inputs.
@@ -264,8 +275,8 @@ class WindowsArtifactManifestTests(unittest.TestCase):
             build_packages.manifest(output, 'server', artifact_manifest=manifest)
             package = json.loads((output / 'elevhub-package.json').read_text(encoding='utf-8'))
             self.assertEqual(package['artifactSources']['server.tools']['version'], 'server.tools-20261012')
-            self.assertEqual(package['artifactSources']['client.cadoodle']['sha256'],
-                             json.loads(manifest.read_text(encoding='utf-8'))['artifacts']['client.cadoodle']['sha256'])
+            self.assertEqual(package['artifactSources']['server.licenses']['sha256'],
+                             json.loads(manifest.read_text(encoding='utf-8'))['artifacts']['server.licenses']['sha256'])
             self.assertEqual(len(package['artifactManifestSha256']), 64)
 
     def test_school_builder_refuses_missing_manifest_before_output_creation(self):

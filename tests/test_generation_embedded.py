@@ -21,11 +21,25 @@ from app.instance import InstanceLock
 
 
 ROOT = Path(__file__).resolve().parents[1]
-ARCHIVE = ROOT / '.runtime' / 'downloads' / 'python-3.14.7-embed-amd64.zip'
+
+
+def resolve_embedded_archive():
+    configured = os.environ.get('MKV_TEST_EMBEDDED_PYTHON')
+    archive = (Path(configured).expanduser() if configured else
+               ROOT.parent / 'byggeinput/windows/runtime-python/python-3.14.7-embed-amd64.zip')
+    if os.name == 'nt' and not archive.is_file():
+        raise FileNotFoundError(
+            f'Required Windows embedded Python test archive is missing: {archive}. '
+            'Provide the official build input or set MKV_TEST_EMBEDDED_PYTHON; '
+            'the pinned SHA-256 is still required.')
+    return archive
+
+
+ARCHIVE = resolve_embedded_archive()
 ARCHIVE_SHA256 = 'd297e5ff019966817ad8502465176139f2d3d840fa4ed84b13bed399a6ab1f15'
 
 
-@unittest.skipUnless(os.name == 'nt' and ARCHIVE.is_file(), 'kræver Windows og den allerede cachede embedded Python')
+@unittest.skipUnless(os.name == 'nt', 'requires Windows embedded Python')
 class EmbeddedGenerationTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(prefix='embedded-generation-')

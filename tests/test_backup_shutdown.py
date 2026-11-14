@@ -173,7 +173,8 @@ class BackupShutdownTests(unittest.TestCase):
                 if len(streams) == 2:
                     raise OSError('start')
                 return process
-            with mock.patch.object(module, "read_runtime_config", return_value={}), \
+            with mock.patch.object(module, "read_runtime_config", return_value={'elev_adresse': '192.0.2.10'}), \
+                 mock.patch.object(module, 'wait_for_role_ip', return_value=True), \
                  mock.patch.object(module, "check"), mock.patch.object(module, "_commands", return_value=commands), \
                  mock.patch.object(module.signal, 'signal'), \
                  mock.patch("app.process_tree.ProcessTree", return_value=tree), \
@@ -211,15 +212,20 @@ class BackupShutdownTests(unittest.TestCase):
                     InstanceLock(root)
                 events.append('log-close')
             log.close.side_effect = close_log
+            stop_handlers = []
             def install_signal(_signal, handler):
-                handler(None, None)
-            with mock.patch.object(module, "read_runtime_config", return_value={}), \
+                stop_handlers.append(handler)
+            def start_child(*args, **kwargs):
+                stop_handlers[0](None, None)
+                return process
+            with mock.patch.object(module, "read_runtime_config", return_value={'elev_adresse': '192.0.2.10'}), \
+                 mock.patch.object(module, 'wait_for_role_ip', return_value=True), \
                  mock.patch.object(module, "check"), \
                  mock.patch.object(module, "_commands", return_value=[("one", ["one"])]), \
                  mock.patch.object(module.signal, "signal", side_effect=install_signal), \
                  mock.patch("app.process_tree.ProcessTree", return_value=tree), \
                  mock.patch.object(module, "BoundedChildLog", return_value=log), \
-                 mock.patch.object(module.subprocess, "Popen", return_value=process):
+                 mock.patch.object(module.subprocess, "Popen", side_effect=start_child):
                 self.assertEqual(module.run(root, root), 0)
             tree.close.assert_called_once_with()
             self.assertEqual(process.wait.call_args_list, [mock.call(timeout=10), mock.call()])

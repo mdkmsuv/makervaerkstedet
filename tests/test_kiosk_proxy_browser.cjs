@@ -53,6 +53,20 @@ function fixtureProcess() {
   return { child, port };
 }
 
+async function routeLocalFixture(context, port) {
+  await context.route('**/*', async route => {
+    const requestUrl = new URL(route.request().url());
+    if (requestUrl.hostname === '127.0.0.1' && requestUrl.port === '8790' && requestUrl.pathname === '/apps') {
+      const response = await route.fetch({ url: `http://127.0.0.1:${port}/apps` });
+      return route.fulfill({ response });
+    }
+    if ((requestUrl.hostname === '127.0.0.1' || requestUrl.hostname === 'localhost') && requestUrl.port && Number(requestUrl.port) !== port) {
+      return route.fulfill({ status: 404, body: 'fixture-only' });
+    }
+    return route.continue();
+  });
+}
+
 async function main() {
   const fixture = fixtureProcess();
   let proxy;
@@ -70,21 +84,16 @@ async function main() {
       ],
     });
     const context = await browser.newContext();
-    await context.route('**/*', route => {
-      const requestUrl = new URL(route.request().url());
-      if ((requestUrl.hostname === '127.0.0.1' || requestUrl.hostname === 'localhost') && requestUrl.port && Number(requestUrl.port) !== port) {
-        return route.fulfill({ status: 404, body: 'fixture-only' });
-      }
-      return route.continue();
-    });
+    await routeLocalFixture(context, port);
     const page = await context.newPage();
     const pageErrors = [];
     page.on('pageerror', error => pageErrors.push(error));
     const url = `http://school.example.test:${port}/start.html`;
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     const ids = () => page.locator('#apps [data-app]').evaluateAll(cards => cards.map(card => card.dataset.app).sort());
-    await page.waitForFunction(() => document.querySelectorAll('#apps [data-app]').length === 9);
-    assert.deepEqual(await ids(), ['3dprint', 'datatraener', 'folie', 'internet', 'kredsloeb', 'laser', 'microbit', 'scratch', 'skolegpt']);
+    const offlineIds = ['3dprint', 'folie', 'internet', 'laser', 'microbit', 'scratch'];
+    await page.waitForFunction(() => document.querySelectorAll('#apps [data-app]').length === 6);
+    assert.deepEqual(await ids(), offlineIds);
 
     await setMode(port, 'closed');
     await page.waitForFunction(() => document.querySelectorAll('#apps [data-app]').length === 1, null, { timeout: 7000 });
@@ -92,12 +101,12 @@ async function main() {
 
     await setMode(port, 'down');
     await page.reload({ waitUntil: 'domcontentloaded' });
-    await page.waitForFunction(() => document.querySelectorAll('#apps [data-app]').length === 9);
-    assert.deepEqual(await ids(), ['3dprint', 'datatraener', 'folie', 'internet', 'kredsloeb', 'laser', 'microbit', 'scratch', 'skolegpt'], 'offline clears stale closures and pauses');
+    await page.waitForFunction(() => document.querySelectorAll('#apps [data-app]').length === 6);
+    assert.deepEqual(await ids(), offlineIds, 'offline clears stale closures and pauses');
 
     await setMode(port, 'open');
-    await page.waitForFunction(() => document.querySelectorAll('#apps [data-app]').length === 3, null, { timeout: 7000 });
-    assert.deepEqual(await ids(), ['internet', 'laser', 'scratch'], 'reconnect adopts the new teacher policy');
+    await page.waitForFunction(() => document.querySelectorAll('#apps [data-app]').length === 4, null, { timeout: 7000 });
+    assert.deepEqual(await ids(), ['internet', 'laser', 'microbit', 'scratch'], 'reconnect adopts the new teacher policy');
     assert.equal(proxy.seen.filter(line => line.includes('school.example.test')).length, 0, 'Hub traffic bypasses the deny proxy');
     await page.goto('https://internet.example.test/', { waitUntil: 'domcontentloaded', timeout: 3000 }).catch(() => {});
     assert.ok(proxy.seen.some(line => line.includes('internet.example.test')), 'Internet probe reaches the deny proxy');
@@ -110,16 +119,11 @@ async function main() {
       args: [`--proxy-server=http=127.0.0.1:${proxy.port};https=127.0.0.1:${proxy.port}`, '--proxy-bypass-list=127.0.0.1,localhost', '--host-resolver-rules=MAP school.example.test 127.0.0.1'],
     });
     const negativeContext = await browser.newContext();
-    await negativeContext.route('**/*', route => {
-      const requestUrl = new URL(route.request().url());
-      if ((requestUrl.hostname === '127.0.0.1' || requestUrl.hostname === 'localhost') && requestUrl.port && Number(requestUrl.port) !== port) {
-        return route.fulfill({ status: 404, body: 'fixture-only' });
-      }
-      return route.continue();
-    });
+    await routeLocalFixture(negativeContext, port);
     const negative = await negativeContext.newPage();
     await negative.goto(`http://127.0.0.1:${port}/start.html`, { waitUntil: 'domcontentloaded' });
-    await negative.waitForFunction(() => document.querySelectorAll('#apps [data-app]').length === 9, null, { timeout: 7000 });
+    await negative.waitForFunction(() => document.querySelectorAll('#apps [data-app]').length === 6, null, { timeout: 7000 });
+    assert.deepEqual(await negative.locator('#apps [data-app]').evaluateAll(cards => cards.map(card => card.dataset.app).sort()), offlineIds);
     assert.ok(proxy.seen.some(line => line.includes(`school.example.test:${port}`)), 'negative control detects Hub traffic sent through proxy');
     console.log('kiosk proxy browser regression: ok');
   } finally {

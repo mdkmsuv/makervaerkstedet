@@ -153,6 +153,15 @@ class BuilderInputTests(unittest.TestCase):
         required={'runtime/python.exe','runtime/python314.dll','runtime/python314.zip','runtime/python314._pth','elevhub-package.json','school-package.json','makerspace-release.json','integrity.json','CREDITS.md','server/install.ps1','server/public-apt-cache-acl.ps1','server/verify.py','deployment/school-setup/Setup-School.ps1','deployment/school-setup/enrollment.py','hub/konfiguration.windows.json','hub/simple_updates.py','app/simple_release.py'}
         for name in required:
             file=package/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(b'synthetic fixture')
+        # Keep the real model3d receipt and all hash-bound runtime assets intact.
+        receipt=ROOT/'web/vendor/model3d-vendor-manifest.json'
+        model3d=json.loads(receipt.read_text(encoding='utf-8'))
+        names=[receipt.relative_to(ROOT),Path('web/assets/model3d/Metrophobic-Regular.ttf')]
+        names += [Path('web/vendor')/name for name in model3d['outputs']]
+        names += [Path('web/assets/licenses/model3d')/name for name in model3d['license_sha256']]
+        for name in names:
+            target=package/name;target.parent.mkdir(parents=True,exist_ok=True)
+            target.write_bytes((ROOT/name).read_bytes())
         verifier=self.root/'minisign.exe';verifier.write_bytes(b'synthetic verifier; never executed')
         license_file=self.root/'LICENSE';license_file.write_bytes(b'synthetic license fixture')
         provenance=self.root/'provenance.json';provenance.write_text('{"fixture":true}')

@@ -92,8 +92,10 @@ class PackageFeatureBoundaryTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Excluded private feature in trusted runtime'):
                 updater.verify(root)
 
-    def test_educational_datatraener_is_not_rejected(self):
-        for name in ('datatraener/tfjs.min.js', 'tensorflow/model.json', 'datatraener/model.onnx', 'datatraener/model.pt', 'school_maintenance.py'):
+    def test_windows_package_excludes_retired_app_paths_and_keeps_administration(self):
+        for name in ('datatraener/tfjs.min.js', 'datatraener/model.onnx', 'datatraener/model.pt'):
+            self.assertTrue(builder.private_feature_path(name))
+        for name in ('scratch/index.html', 'school_maintenance.py'):
             self.assertFalse(builder.private_feature_path(name))
             self.assertFalse(updater.private_feature_path(name))
 

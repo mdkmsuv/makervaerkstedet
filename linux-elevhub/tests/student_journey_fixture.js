@@ -30,9 +30,15 @@ function loadPlaywright(){
  throw Error('Playwright is required; install it or set PLAYWRIGHT_MODULE.');
 }
 function loadJSZip(){
- const record=JSON.parse(require('node:fs').readFileSync(path.join(root,'linux-elevhub/server/scratch/installation.json'),'utf8').replace(/^\uFEFF/,''));
- for(const name of [process.env.JSZIP_MODULE,'jszip',path.join(record.sourcePath,'node_modules/jszip')].filter(Boolean)){
+ for(const name of [process.env.JSZIP_MODULE,'jszip'].filter(Boolean)){
   try{return require(name);}catch{}
+ }
+ const records=[process.env.ELEVHUB_TEST_SCRATCH_ASSETS&&path.join(process.env.ELEVHUB_TEST_SCRATCH_ASSETS,'installation.json'),
+  path.join(root,'linux-elevhub/server/scratch/installation.json')].filter(Boolean);
+ for(const file of records){
+  if(!exists(file))continue;
+  const record=JSON.parse(require('node:fs').readFileSync(file,'utf8').replace(/^\uFEFF/,''));
+  if(record.sourcePath){try{return require(path.join(record.sourcePath,'node_modules/jszip'));}catch{}}
  }
  throw Error('JSZip is required for genuine SB3/ZIP checks; install it or set JSZIP_MODULE.');
 }

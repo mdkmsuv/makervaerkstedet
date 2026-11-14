@@ -72,6 +72,33 @@ programmets funktioner. Det kan ændre igangværende jobs eller miste historik.
 Kør fra projektroden med projektets Python-miljø. Vælg de prøver, som matcher
 ændringen; et bestået delområde beviser ikke, at hele systemet er driftsklart.
 
+Testforudsætninger:
+
+- Byg de ignorerede 3D-browserfiler med `npm run build:model3d`, før prøver,
+  som kontrollerer den kvitteringsbundne browserpakke. Brug projektets låste
+  Node-afhængigheder og de dokumenterede byggeinputs.
+- Windows-generationstests bruger det officielle, hashkontrollerede embedded
+  Python-arkiv i `byggeinput/windows/runtime-python/` ved siden af produktet.
+  `MKV_TEST_EMBEDDED_PYTHON` kan angive arkivet på en anden maskine. På Windows
+  er et manglende arkiv en fejl; et grønt resultat med oversprungne
+  generationstests dokumenterer ikke versionsskift.
+  De tunge activation-/transaction-/rollback-fixtures kan overskride en kort
+  modulgrænse. Brug passende tidsgrænse eller særskilte testcases; bevar
+  allerede bestået evidens og kør de resterende cases. En timeout er ikke et
+  bestået resultat.
+- Kør Linux-klientprøver i Debian/WSL med produktets `requirements.txt`
+  tilgængelig i testmiljøet. Beskyttede syntetiske installationstræer i
+  `test_apt_client`, `test_bootstrap_existing`, `test_template_activation`,
+  `test_local_admin_update_helper`, `test_update_status` og
+  `test_app_manifest_packages` prøves som root. Apt-prøven kræver også
+  `MKV_TEST_MINISIGN` til det fastlåste Linux-værktøj. Kør de øvrige prøver
+  som almindelig bruger; `test_projektbackup` kontrollerer netop ejerskab.
+- Bevar separate processer for klientmodulerne, som i `scripts/run_tests.py`.
+  X11/Tk-fixtures deler ikke sikkert proces. Shellfiler skal have LF; det
+  håndhæves af `.gitattributes`. Windows PowerShell-fixtures skal angive
+  samme outputkodning i PowerShell og Python frem for at afhænge af konsollens
+  kodepage eller et globalt `PYTHONUTF8`.
+
 ~~~powershell
 # Lærerens administration, adgang og workflows
 .venv\Scripts\python.exe -m unittest discover -s linux-elevhub/server/elevhub -p 'test_makerspace*.py' -q

@@ -30,9 +30,10 @@ apt/GPG metadata validation, not production HTTPS/CA/boot/service behavior.
 
 Publication input requires `install_gate: {path, sha256}` binding the private
 `release-build.json` receipt from the native Debian13/amd64 empty-status
-installation simulation. The receipt must say all_five_simulated=true and
+installation simulation. The receipt must say all_packages_simulated=true and
 actual_install=false, with exact package names, versions, architectures, file
-names and SHA256 for all five allowlisted packages. Missing, failed, changed
+names and SHA256 for all four allowlisted packages (core, updater, Scratch
+and Matchbox). Missing, failed, changed
 or mismatched evidence is rejected before native commands or signing.
 This proves dependency resolution in a clean simulated target, not installation.
 Receipt/local paths are private; the public repository contains no receipt.

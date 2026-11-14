@@ -24,11 +24,11 @@ $ErrorActionPreference='Stop'
 $tokens=$null; $errors=$null
 $ast=[Management.Automation.Language.Parser]::ParseFile((Join-Path $env:TLS_SOURCE_ROOT 'windows-elevhub/server/install.ps1'),[ref]$tokens,[ref]$errors)
 if($errors.Count){throw 'Installer parse failure'}
-$nodes=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.ForEachStatementAst] -and $n.Extent.Text -match "'school_tls.py'" -and $n.Extent.Text -match 'Copy-Item'},$true))
+$nodes=@($ast.FindAll({param($n) $n -is [Management.Automation.Language.FunctionDefinitionAst] -and $n.Name -eq 'Copy-FixedAdministrativeAppFiles'},$true))
 if($nodes.Count -ne 1){throw 'Expected one fixed-runtime copy branch'}
-$programRoot=$env:TLS_SOURCE_ROOT; $InstallRoot=$env:TLS_RUNTIME_ROOT
 Invoke-Expression $nodes[0].Extent.Text
-@(Get-ChildItem -LiteralPath (Join-Path $InstallRoot 'app') -File | ForEach-Object {$_.Name}) | ConvertTo-Json -Compress
+Copy-FixedAdministrativeAppFiles -ProgramRoot $env:TLS_SOURCE_ROOT -InstallRoot $env:TLS_RUNTIME_ROOT -IntegrityManifest ([pscustomobject]@{files=[pscustomobject]@{}})
+@(Get-ChildItem -LiteralPath (Join-Path $env:TLS_RUNTIME_ROOT 'app') -File | ForEach-Object {$_.Name}) | ConvertTo-Json -Compress
 '''
             result = subprocess.run([POWERSHELL, '-NoProfile', '-NonInteractive', '-Command', script],
                 env={**os.environ, 'TLS_SOURCE_ROOT': str(ROOT), 'TLS_RUNTIME_ROOT': str(runtime)},

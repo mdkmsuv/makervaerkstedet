@@ -56,20 +56,23 @@ class WebproxyPolicyTest(unittest.TestCase):
         self.assertIn('acl blocked_server_0 dst 203.0.113.1', text)
         self.assertIn('http_access deny blocked_server_0', text)
 
-    def test_skolegpt_chat_api_follows_workshop_access_in_shipped_configs(self):
-        root = Path(__file__).parents[1]
-        for relative in ('server/elevhub/konfiguration.json', 'testmiljoe/vaert/elevhub-test.json'):
+    def test_microbit_domains_follow_workshop_access_in_shipped_configs(self):
+        root = Path(__file__).parents[2]
+        for relative in ('linux-elevhub/server/elevhub/konfiguration.json',
+                         'windows-elevhub/server/hub/konfiguration.windows.json'):
             with self.subTest(config=relative):
                 config = json.loads((root / relative).read_text(encoding='utf-8'))
-                app = next(a for a in config['apps'] if a['id'] == 'skolegpt')
-                # The UI and the streaming chat API use different origins.
-                self.assertIn('glyph-gate.dbc.dk', PROXY.web_domains(app))
+                self.assertTrue({'cadoodle', 'skolegpt', 'kredsloeb', 'datatraener'}.isdisjoint(
+                    a['id'] for a in config['apps']))
+                app = next(a for a in config['apps'] if a['id'] == 'microbit')
+                self.assertEqual(set(PROXY.web_domains(app)), set(app['domaener']))
                 opened = PROXY.render_policy([dict(app, aaben=True)], False)
                 closed = PROXY.render_policy([dict(app, aaben=False)], True)
                 for policy, acl in ((opened, 'open'), (closed, 'closed')):
                     for suffix in ('_workshops dstdomain', '_sni ssl::server_name --client-requested'):
                         line = next(s for s in policy.splitlines() if s.startswith('acl ' + acl + suffix))
-                        self.assertIn('glyph-gate.dbc.dk', line.split())
+                        for domain in app['domaener']:
+                            self.assertIn(domain, line.split())
                 self.assertNotIn('http_access allow CONNECT https_port', opened)
                 self.assertLess(closed.index('http_access deny closed_workshops'),
                                 closed.index('http_access allow CONNECT https_port'))

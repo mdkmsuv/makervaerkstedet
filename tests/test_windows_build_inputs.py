@@ -41,7 +41,7 @@ class WindowsBuildInputTests(unittest.TestCase):
     def make_manifest(self, root, omit=None):
         omit = set(omit or ())
         artifacts = {}
-        for index, name in enumerate(build_packages.ARTIFACT_NAMES):
+        for index, name in enumerate(('runtime.python', 'runtime.wheels')):
             if name in omit:
                 continue
             source = root / 'inputs' / name.replace('.', '/')
@@ -67,16 +67,6 @@ class WindowsBuildInputTests(unittest.TestCase):
                             f'Tag: {tags}\n'
                         ).encode('ascii'),
                     })
-            elif name == 'client.webview2':
-                for relative in build_packages.WEBVIEW2_FILES:
-                    path = source / relative
-                    path.parent.mkdir(parents=True, exist_ok=True)
-                    path.write_bytes(b'webview2')
-            elif name == 'client.shell':
-                for relative in build_packages.SHELL_FILES:
-                    (source / relative).write_bytes(b'shell')
-            elif name == 'client.circuitjs':
-                (source / 'circuitjs.html').write_text('<html></html>', encoding='utf-8')
             artifacts[name] = {
                 'path': str(source), 'version': f'{name}-test',
                 'sha256': build_packages.artifact_tree_digest(source),
@@ -89,14 +79,11 @@ class WindowsBuildInputTests(unittest.TestCase):
         archive = Path(json.loads(manifest.read_text(encoding='utf-8'))['artifacts']['runtime.python']['path']) / build_packages.PYTHON_ARCHIVE
         return mock.patch.object(build_packages, 'PYTHON_HASH', build_packages.digest(archive))
 
-    def test_schema_v1_manifest_accepts_explicit_runtime_and_client_inputs(self):
+    def test_schema_v1_manifest_accepts_explicit_server_runtime_inputs(self):
         with tempfile.TemporaryDirectory() as temporary:
             manifest = self.make_manifest(Path(temporary))
             with self.patch_python_hash(manifest):
                 loaded = build_packages.load_artifact_manifest(manifest)
-                self.assertEqual(
-                    set(build_packages.validate_build_inputs(loaded, 'client')),
-                    {'runtime.python', 'client.webview2', 'client.shell', 'client.circuitjs'})
                 self.assertEqual(
                     set(build_packages.validate_build_inputs(loaded, 'server')),
                     {'runtime.python', 'runtime.wheels'})
@@ -105,17 +92,18 @@ class WindowsBuildInputTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             manifest = self.make_manifest(root)
-            missing = root / 'inputs/client/shell/ElevhubShell.exe'
+            missing = root / 'inputs/runtime/python' / build_packages.PYTHON_ARCHIVE
+            hash_patch = self.patch_python_hash(manifest)
             missing.unlink()
             value = json.loads(manifest.read_text(encoding='utf-8'))
-            value['artifacts']['client.shell']['sha256'] = build_packages.artifact_tree_digest(
-                root / 'inputs/client/shell')
+            value['artifacts']['runtime.python']['sha256'] = build_packages.artifact_tree_digest(
+                root / 'inputs/runtime/python')
             manifest.write_text(json.dumps(value), encoding='utf-8')
             output = root / 'out'
-            with self.patch_python_hash(manifest):
-                with self.assertRaisesRegex(ValueError, 'client.shell.*ElevhubShell.exe'):
+            with hash_patch:
+                with self.assertRaisesRegex(ValueError, 'runtime.python.*python-3.14.7-embed-amd64.zip'):
                     build_packages.validate_build_inputs(
-                        build_packages.load_artifact_manifest(manifest), 'client')
+                        build_packages.load_artifact_manifest(manifest), 'server')
             self.assertFalse(output.exists())
 
     def test_client_builder_is_disabled_before_binary_preflight(self):
@@ -170,7 +158,7 @@ class WindowsBuildInputTests(unittest.TestCase):
                     with self.patch_python_hash(manifest):
                         loaded = build_packages.load_artifact_manifest(manifest)
                         with self.assertRaises(ValueError):
-                            build_packages.validate_build_inputs(loaded, 'client')
+                            build_packages.validate_build_inputs(loaded, 'server')
 
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -185,7 +173,7 @@ class WindowsBuildInputTests(unittest.TestCase):
                  mock.patch.object(build_packages, 'MAX_ARCHIVE_MEMBER_BYTES', 4):
                 loaded = build_packages.load_artifact_manifest(manifest)
                 with self.assertRaisesRegex(ValueError, 'for stort ZIP-medlem'):
-                    build_packages.validate_build_inputs(loaded, 'client')
+                    build_packages.validate_build_inputs(loaded, 'server')
 
     def test_wheel_cannot_overwrite_existing_runtime_site_file(self):
         with tempfile.TemporaryDirectory() as temporary:

@@ -22,18 +22,16 @@ async function main(){
  await page.locator('#login-form button').click();
  await page.locator('[data-camera="one"]').click();
  await page.waitForFunction(()=>{const im=document.getElementById('camera-photo');return !im.hidden&&im.complete&&im.naturalWidth===640;});
- assert.equal(await page.locator('#camera-setup').isVisible(),false);
- assert.equal(await page.locator('#camera-check').isVisible(),true);
+ assert.equal(await page.locator('#camera-setup').count(),0);
+ assert.equal(await page.locator('#camera-check').count(),0,'retired automatic inspection is absent');
+ assert.match(await page.locator('#camera-state').innerText(),/Kontrollér pladen/);
  assert.match(await page.locator('#camera-updated').innerText(),/Billede taget/);
  const first=await page.locator('#camera-photo').getAttribute('src');
  await page.locator('#camera-capture').click();
  await page.waitForFunction(old=>{const im=document.getElementById('camera-photo');return !im.hidden&&im.complete&&im.src!==old;}, first);
- await page.locator('#camera-check').click();
- await page.waitForFunction(()=>document.getElementById('camera-state').textContent.includes('manuel godkendelse'));
- assert.equal(await page.locator('#camera-photo').isVisible(),false,'fresh analysis must not be placed beside an older image');
  assert(!((await page.locator('#camera-panel').innerText()).includes('undefined')));
  const state=await context.request.get(info.url+'/api/state');
- assert.equal((await state.json()).printers[0].bed_clear,false,'camera viewing/inspection must not clear the plate');
+ assert.equal((await state.json()).printers[0].bed_clear,false,'camera viewing/refresh must not clear the plate');
  await page.locator('#camera-capture').click();
  await page.waitForFunction(()=>!document.getElementById('camera-photo').hidden&&document.getElementById('camera-photo').complete);
  await page.locator('#camera-close').click();
@@ -41,7 +39,12 @@ async function main(){
  await page.locator('[data-camera="one"]').click();
  await page.waitForFunction(()=>!document.getElementById('camera-photo').hidden&&document.getElementById('camera-photo').complete);
  assert.deepEqual(errors,[]);
- console.log('PASS real main/sidecar HTTP: external fresh preview, refresh, advisory inspection, close/reopen, no automatic clearance');
+ await page.locator('#camera-close').click();
+ await page.locator('[data-release="one"]').click();
+ await page.waitForFunction(()=>document.querySelector('[data-release="one"]').textContent.includes('Pladen er frigivet'));
+ const released=await context.request.get(info.url+'/api/state');
+ assert.equal((await released.json()).printers[0].bed_clear,true,'only explicit teacher release clears the synthetic plate');
+ console.log('PASS real manual camera HTTP: fresh preview, refresh, close/reopen, explicit teacher clearance');
  await context.close();
 }
 main().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{

@@ -129,15 +129,18 @@ class TilstandTest(unittest.TestCase):
         self.assertFalse(t.aaben('internet'))
         self.assertEqual(json.loads((Path(self.mappe.name) / 'tilstand.json').read_text())['version'], 2)
 
-    def test_begge_konfigurationer_aabner_vaerksteder_og_lukker_internet(self):
+    def test_offentlige_konfigurationer_aabner_vaerksteder_og_lukker_internet(self):
         rod = Path(__file__).resolve().parents[2]
         for konfig_sti in (rod / 'server/elevhub/konfiguration.json',
-                           rod / 'testmiljoe/vaert/elevhub-test.json'):
+                           rod.parent / 'windows-elevhub/server/hub/konfiguration.windows.json'):
             with self.subTest(konfiguration=konfig_sti.name), tempfile.TemporaryDirectory() as mappe:
                 konfiguration = json.loads(konfig_sti.read_text(encoding='utf-8'))
                 t = Tilstand(mappe, konfiguration['apps'])
-                self.assertEqual([t.aaben(app_id) for app_id in ('3dprint', 'laser', 'folie', 'internet')],
-                                 [True, True, True, False])
+                self.assertEqual([t.aaben(app_id) for app_id in
+                                  ('3dprint', 'laser', 'folie', 'scratch', 'microbit', 'internet')],
+                                 [True, True, True, True, True, False])
+                self.assertTrue({'cadoodle', 'skolegpt', 'kredsloeb', 'datatraener'}.isdisjoint(
+                    app['id'] for app in konfiguration['apps']))
 
     def test_gemt_laerer_lukning_bevares_ved_genstart(self):
         apps = [{'id': '3dprint', 'navn': '3D-print', 'standard_aaben': True}]
@@ -450,12 +453,15 @@ class Integration(unittest.TestCase):
             profile = root / 'school.json'
             with patch.object(self.tilstand, 'mappe', root / 'hub'):
                 legacy = self.kald('laerer', 'GET', '/')[2]
-                self.assertIn(b'KLOSTERMARKSSKOLEN', legacy)
+                self.assertIn(b'Kreditering: Klostermarksskolen', legacy)
                 profile.write_text(json.dumps({'school_name': '<Test & skole>', 'theme': 'green',
                                                'admin_public_key': 'NOT-FOR-HTML'}), encoding='utf-8')
                 body = self.kald('laerer', 'GET', '/')[2]
                 self.assertIn(b'&lt;Test &amp; skole&gt;', body)
-                self.assertIn(b'<img class="school-logo"', body)
+                self.assertIn(b'Kreditering: Klostermarksskolen', body)
+                # A name/theme profile alone has no validated logo asset.
+                self.assertIn(b'<span class="public-mark brand-mark" aria-hidden="true"></span>', body)
+                self.assertNotIn(b'<img class="school-logo"', body)
                 self.assertNotIn(b'NOT-FOR-HTML', body)
                 self.assertIn(b'--brand:#28734e', self.kald('laerer', 'GET', '/laerer.css')[2])
                 profile.write_text('{"school_name":"Test","theme":[]}', encoding='utf-8')

@@ -58,6 +58,9 @@ class LaserStationInstallTests(unittest.TestCase):
         self.connection.write_text(json.dumps(self.connection_value), encoding='utf-8')
         self.install_root = self.root / 'Installed Laser Station'
         self.plates = self.root / 'Preserved Laser Plates'
+        with socket.socket() as port_probe:
+            port_probe.bind(('127.0.0.1', 0))
+            self.port = port_probe.getsockname()[1]
         self.probe = patch.object(station, 'probe_runtime')
         self.probe.start()
         self.addCleanup(self.probe.stop)
@@ -70,6 +73,7 @@ class LaserStationInstallTests(unittest.TestCase):
         (self.package / 'makerspace-release.json').write_text(json.dumps(manifest), encoding='utf-8')
 
     def fresh(self, **kwargs):
+        kwargs.setdefault('port', self.port)
         return station.install(self.package, self.install_root, action='Install',
                                connection_file=self.connection, plates=self.plates, **kwargs)
 
@@ -104,6 +108,61 @@ class LaserStationInstallTests(unittest.TestCase):
         self.assertFalse((self.install_root / 'school.json').exists())
         self.assertFalse(self.plates.exists())
         self.assertEqual(len(active['installation_id']), 32)
+
+    def test_occupied_port_rejects_fresh_install_without_writing(self):
+        before = {p.relative_to(self.package): p.read_bytes() for p in self.package.rglob('*') if p.is_file()}
+        with socket.socket() as listener:
+            listener.bind(('127.0.0.1', 0))
+            listener.listen()
+            port = listener.getsockname()[1]
+            for exists in (False, True):
+                with self.subTest(existing_empty_root=exists):
+                    target = self.root / ('empty-station' if exists else 'absent-station')
+                    if exists:
+                        target.mkdir()
+                    with self.assertRaises(ValueError):
+                        station.install(self.package, target, action='Install',
+                                        connection_file=self.connection, plates=self.plates, port=port)
+                    self.assertEqual(target.exists(), exists)
+                    if exists:
+                        self.assertEqual(list(target.iterdir()), [])
+                    self.assertFalse(self.plates.exists())
+        self.assertEqual(before, {p.relative_to(self.package): p.read_bytes()
+                                  for p in self.package.rglob('*') if p.is_file()})
+
+    def test_port_taken_during_fresh_copy_prevents_activation_and_allows_resume(self):
+        with socket.socket() as listener:
+            def occupy(_program):
+                listener.bind(('127.0.0.1', self.port))
+                listener.listen()
+            with patch.object(station, 'probe_runtime', side_effect=occupy), self.assertRaises(ValueError):
+                self.fresh()
+            self.assertFalse((self.install_root / 'active.json').exists())
+            self.assertTrue((self.install_root / 'installation-pending.json').is_file())
+            self.assertFalse(self.plates.exists())
+        station.install(self.package, self.install_root, action='ResumeInstall')
+        station.active_installation(self.install_root)
+        self.assertFalse((self.install_root / 'installation-pending.json').exists())
+
+    def test_port_taken_during_update_preserves_active_version_and_plates(self):
+        self.fresh()
+        self.plates.mkdir()
+        plate = self.plates / 'preserve.svg'
+        plate.write_bytes(b'preserved plate')
+        before = (self.install_root / 'active.json').read_bytes()
+        self.seal('second-release')
+        with socket.socket() as listener:
+            def occupy(_program):
+                listener.bind(('127.0.0.1', self.port))
+                listener.listen()
+            with patch.object(station, 'probe_runtime', side_effect=occupy), self.assertRaises(ValueError):
+                self.update()
+            self.assertEqual((self.install_root / 'active.json').read_bytes(), before)
+            station.active_installation(self.install_root)
+            self.assertEqual(plate.read_bytes(), b'preserved plate')
+            self.assertFalse((self.install_root / 'history').exists())
+        self.update()
+        self.assertEqual(station.active_installation(self.install_root)[0]['release'], 'second-release')
 
     def test_check_only_reads_package_without_creating_station_or_plates(self):
         result = self.fresh(check_only=True)
@@ -282,10 +341,11 @@ def blocked_copy(source, target):
 installer.shutil.copy2 = blocked_copy
 installer.probe_runtime = lambda program: None
 options = {'connection_file': Path(sys.argv[4]), 'plates': Path(sys.argv[5])} if sys.argv[7] == 'Install' else {}
+if sys.argv[7] == 'Install': options['port'] = int(sys.argv[8])
 installer.install(Path(sys.argv[2]), Path(sys.argv[3]), action=sys.argv[7], **options)
 '''
         child = subprocess.Popen([sys.executable, '-I', '-B', '-c', code, str(ROOT), str(self.package),
-                                  str(self.install_root), str(self.connection), str(self.plates), str(signal), action],
+                                  str(self.install_root), str(self.connection), str(self.plates), str(signal), action, str(self.port)],
                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         try:
             deadline = time.monotonic() + 10
@@ -387,7 +447,7 @@ installer.package_info = barrier_info
 installer.shutil.copy2 = blocked_copy
 installer.probe_runtime = lambda program: None
 installer.install(Path(sys.argv[2]), Path(sys.argv[3]), action='Install',
-                  connection_file=Path(sys.argv[4]), plates=Path(sys.argv[5]))
+                  connection_file=Path(sys.argv[4]), plates=Path(sys.argv[5]), port=int(sys.argv[9]))
 '''
         children = []
         try:
@@ -398,7 +458,7 @@ installer.install(Path(sys.argv[2]), Path(sys.argv[3]), action='Install',
                 ready = self.root / ('ready-' + name)
                 child = subprocess.Popen([sys.executable, '-I', '-B', '-c', code, str(ROOT), str(self.package),
                                           str(self.install_root), str(connection), str(self.plates), str(copying),
-                                          str(ready), str(release_barrier)],
+                                          str(ready), str(release_barrier), str(self.port)],
                                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 children.append((name, child, copying, ready))
             deadline = time.monotonic() + 10
@@ -586,9 +646,10 @@ try { & '__LAUNCHER__' -InstallPath '__INSTALL__' 3>&1 } catch { Write-Output ('
                            ('__LAUNCHER__', ROOT / station.LAUNCHER), ('__INSTALL__', self.install_root)):
             script = script.replace(key, str(value).replace("'", "''"))
         harness = self.root / 'no-desktop-test.ps1'
-        harness.write_text(script, encoding='utf-8-sig')
+        harness.write_text('[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)\n' + script,
+                           encoding='utf-8-sig')
         result = subprocess.run([powershell, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(harness)],
-                                capture_output=True, text=True, timeout=20)
+                                capture_output=True, text=True, encoding='utf-8', timeout=20)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertNotIn('ERROR=', result.stdout)
         # The console wraps a long warning and repeats its prefix on each line.
@@ -730,7 +791,11 @@ laser_station_install.run_station(Path(sys.argv[2]))
         station.atomic_json(stale_path, stale_request)
         wrong_root = self.root / 'another-station'
         wrong_plates = self.root / 'another-plates'
-        station.install(self.package, wrong_root, action='Install', connection_file=self.connection, plates=wrong_plates)
+        with socket.socket() as port_probe:
+            port_probe.bind(('127.0.0.1', 0))
+            wrong_port = port_probe.getsockname()[1]
+        station.install(self.package, wrong_root, action='Install', connection_file=self.connection,
+                        plates=wrong_plates, port=wrong_port)
         station.atomic_json(wrong_root / 'running.json', descriptor)
         with self.assertRaisesRegex(ValueError, 'tilhører ikke'):
             station.stop_station(wrong_root, timeout=.2)

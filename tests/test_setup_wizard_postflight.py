@@ -21,13 +21,14 @@ class SetupWizardPostflightTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             script = Path(directory) / "postflight.ps1"
             script.write_text(
+                "[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false)\n"
                 "Set-StrictMode -Version Latest\n"
                 ". '" + str(POSTFLIGHT).replace("'", "''") + "'\n. '" + str(POSTFLIGHT.with_name("setup-wizard-model.ps1")).replace("'", "''") + "'\n" + body,
                 encoding="utf-8-sig",
             )
             return subprocess.run(
                 [exe, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script)],
-                capture_output=True, text=True, timeout=30,
+                capture_output=True, text=True, encoding="utf-8", timeout=30,
             )
 
     def test_server_success_checks_owned_listeners_and_https_without_changes(self):

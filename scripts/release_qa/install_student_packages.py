@@ -4,10 +4,11 @@ Run as root inside a disposable test installation (for example WSL Debian) that
 has the synthetic fixture in /etc/elevhub. The script refuses to run on a
 machine that is enrolled or that points at a real server.
 
-Example:
+Use the exact package versions recorded in release-build.json. Example after
+setting CORE_VERSION and UPDATER_VERSION from that candidate's receipt:
     python3 install_student_packages.py /path/to/debian report.json \
-        --expect makervaerkstedet-elev=2.0.0~20261112.7 \
-        --expect makervaerkstedet-updater=1.0.0~20261112.5
+        --expect makervaerkstedet-elev="$CORE_VERSION" \
+        --expect makervaerkstedet-updater="$UPDATER_VERSION"
 """
 import argparse
 import hashlib

@@ -3,3 +3,5 @@
 deployment/keys/minisign.pub -text
 # This reviewed third-party license is also a byte-pinned model3d build input.
 web/assets/model3d/Metrophobic-OFL.txt -text
+# Linux scripts must also run directly from the Windows checkout under WSL.
+*.sh text eol=lf
