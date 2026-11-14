@@ -31,7 +31,7 @@ def read_health(url):
     if not 0<len(raw)<=16384:raise RuntimeCheckError("runtime_health_size")
     return json.loads(raw)
 
-def check_once(core_version,call,read=read_health,*,apps=None):
+def check_once(core_version,call,read=read_health,*,apps=None,legacy_scratch=True):
     if not isinstance(core_version,str) or re.fullmatch(r"[0-9][A-Za-z0-9.+:~\-]{0,127}",core_version) is None:
         raise RuntimeCheckError("runtime_core_version_required")
     pids={}
@@ -41,7 +41,7 @@ def check_once(core_version,call,read=read_health,*,apps=None):
         if values.get("ActiveState")!="active" or not values.get("MainPID","").isdigit() or int(values["MainPID"])<=0:
             raise RuntimeCheckError("runtime_service_inactive")
         pids[service]=int(values["MainPID"])
-    endpoints=ENDPOINTS
+    endpoints=tuple(item for item in ENDPOINTS if legacy_scratch or item[3]!='scratch')
     try:
         from app_catalog import compare_versions
     except ModuleNotFoundError:
@@ -71,10 +71,10 @@ def check_once(core_version,call,read=read_health,*,apps=None):
         instances[service]=instance
     return {"core_version":core_version,"services":instances}
 
-def wait_ready(core_version,call,*,read=read_health,timeout=30,clock=time.monotonic,sleep=time.sleep,apps=None):
+def wait_ready(core_version,call,*,read=read_health,timeout=30,clock=time.monotonic,sleep=time.sleep,apps=None,legacy_scratch=True):
     deadline=clock()+timeout
     while True:
-        try:return check_once(core_version,call,read,apps=apps)
+        try:return check_once(core_version,call,read,apps=apps,legacy_scratch=legacy_scratch)
         except (RuntimeCheckError,OSError,ValueError) as error:
             if clock()>=deadline:
                 raise RuntimeCheckError(str(error) if isinstance(error,RuntimeCheckError) else "runtime_endpoint_unavailable") from error

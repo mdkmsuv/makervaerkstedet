@@ -305,7 +305,10 @@ class Commands:
             self.call(["/usr/bin/systemctl","enable","--now","elevhub-svg-library.service"])
         self.call(["/usr/bin/systemctl","try-restart","elevhub-lokal.service","elevhub-design.service","elevhub-regler.service","getty@tty1.service"])
         try:
-            if apps is None:wait_ready(core_version,lambda argv:self.call(argv,timeout=5))
+            if apps is None and compare_versions(core_version,'2.1.0~')<0:
+                scratch=any(item['component']=='scratch' for item in self.installed())
+                wait_ready(core_version,lambda argv:self.call(argv,timeout=5),legacy_scratch=scratch)
+            elif apps is None:wait_ready(core_version,lambda argv:self.call(argv,timeout=5))
             else:wait_ready(core_version,lambda argv:self.call(argv,timeout=5),apps=apps)
         except (RuntimeCheckError,subprocess.TimeoutExpired) as error:raise UpdateError(str(error) if isinstance(error,RuntimeCheckError) else "runtime_service_timeout") from error
 

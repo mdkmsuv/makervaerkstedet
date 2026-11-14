@@ -334,6 +334,15 @@ class HTTPSAndCommands(unittest.TestCase):
         self.assertNotIn("makervaerkstedet-apt-update.service",str(commands))
         self.assertEqual(health.call_args.args[0],"2.0.0")
 
+    def test_bridge_readiness_uses_native_scratch_presence_without_installing_it(self):
+        for scratch in (False,True):
+            adapter=M.Commands(options=[])
+            installed=[{'component':'studentcore','version':'2.0.0~20261114.2'}]
+            if scratch:installed.append({'component':'scratch','version':'15.1.1+local.20261112.2'})
+            with patch.object(adapter,'call',return_value=''),patch.object(adapter,'installed',return_value=installed),patch.object(M,'wait_ready') as health:
+                adapter.activate('2.0.0~20261114.2')
+            self.assertEqual(health.call_args.kwargs['legacy_scratch'],scratch)
+
     def test_readonly_os_preflight_rejects_wrong_baseline_before_install(self):
         file=self.root/"os-release";file.write_text('ID=debian\nVERSION_ID="13"\n')
         M.verify_host(file)

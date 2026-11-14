@@ -45,6 +45,18 @@ class RuntimeReadiness(unittest.TestCase):
         with self.assertRaisesRegex(M.RuntimeCheckError,"endpoint_unavailable"):
             M.wait_ready(self.version,self.call,read=offline,timeout=0)
 
+    def test_legacy_bridge_checks_scratch_only_when_it_is_installed(self):
+        visited=[]
+        def absent_scratch(url):
+            port=urlsplit(url).port;visited.append(port)
+            if port==8792:raise OSError('Scratch is not installed')
+            return self.values[port]
+        result=M.wait_ready(self.version,self.call,read=absent_scratch,timeout=0,legacy_scratch=False)
+        self.assertEqual(result['core_version'],self.version)
+        self.assertNotIn(8792,visited)
+        with self.assertRaisesRegex(M.RuntimeCheckError,'endpoint_unavailable'):
+            M.wait_ready(self.version,self.call,read=absent_scratch,timeout=0,legacy_scratch=True)
+
     def test_split_base_probes_no_uninstalled_apps_and_checks_own_app_version(self):
         self.version='2.1.0~20261114.1';self.values[8791]['release_id']=self.version
         self.assertEqual(M.check_once(self.version,self.call,self.read,apps=[])['core_version'],self.version)

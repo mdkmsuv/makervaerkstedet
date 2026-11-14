@@ -120,6 +120,14 @@ hvis det faktisk var installeret. Skolens standardvalg erstatter ikke den
 gamle enheds bestand. Afbrudt migration skal genoptage og kontrollere
 appbestanden, selv hvis kernens versionsnummer allerede matcher.
 
+Bro-opdatereren kræver kun svar fra Scratch, hvis pakken faktisk er
+installeret. Den gamle 1.0-opdaterer kan efter udskiftning til broen endnu
+rapportere `runtime_endpoint_unavailable`, fordi dens allerede indlæste kode
+kræver Scratch. Næste automatiske kørsel bruger den nye opdaterer og
+genoptager aktiveringen uden at installere Scratch eller hente pakkerne igen.
+En ny bestilling er ikke nødvendig. Andre manglende tjenester bliver stadig
+rapporteret som fejl.
+
 Ved en vedvarende migrationsfejl åbner læreren **Teknik → Opdateringer**,
 finder computerens seneste resultat og vælger **Stop genforsøg** på den
 pågældende computer. Serveren trækker kun det afventende forsøg tilbage.
