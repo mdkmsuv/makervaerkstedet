@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "source": "web/model3d.html",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/model3d.html",
+      "tree": false
+    },
+    {
+      "source": "web/model3d.css",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/model3d.css",
+      "tree": false
+    },
+    {
+      "source": "web/vendor/model3d-app.js",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/vendor/model3d-app.js",
+      "tree": false
+    },
+    {
+      "source": "web/vendor/model3d-app.js.LEGAL.txt",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/vendor/model3d-app.js.LEGAL.txt",
+      "tree": false
+    },
+    {
+      "source": "web/vendor/model3d-geometry-worker.js",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/vendor/model3d-geometry-worker.js",
+      "tree": false
+    },
+    {
+      "source": "web/vendor/model3d-manifold.wasm",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/vendor/model3d-manifold.wasm",
+      "tree": false
+    },
+    {
+      "source": "web/vendor/model3d-vendor-manifest.json",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/vendor/model3d-vendor-manifest.json",
+      "tree": false
+    },
+    {
+      "source": "web/assets/model3d",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/assets/model3d",
+      "tree": true
+    },
+    {
+      "source": "web/assets/licenses/model3d",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/assets/licenses/model3d",
+      "tree": true
+    }
+  ]
+}

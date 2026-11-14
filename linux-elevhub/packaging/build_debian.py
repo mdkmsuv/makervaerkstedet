@@ -15,6 +15,9 @@ import re
 import shutil
 import subprocess
 import tempfile
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+from app.app_packages import validate_spec
 
 EPOCH = 1793746800
 _release_path = Path(__file__).resolve().parents[2] / "app/simple_release.py"
@@ -58,9 +61,12 @@ def validate_files(entries):
     return checked
 
 def build(spec, output):
-    if set(spec) != {"schema", "package", "version", "architecture", "depends", "files", "provenance"} or spec["schema"] != "makervaerkstedet.debian-inputs.v1":
+    fields = {"schema", "package", "version", "architecture", "depends", "files", "provenance"}
+    app = spec.get('schema') == 'makervaerkstedet.debian-inputs.v2'
+    if set(spec) != fields | ({'app_descriptor'} if app else set()) or spec["schema"] not in {"makervaerkstedet.debian-inputs.v1", "makervaerkstedet.debian-inputs.v2"}:
         raise ValueError("invalid_package_input")
-    if spec["package"] not in PACKAGES or spec["architecture"] not in {"all", "amd64"}:
+    if app: validate_spec(spec)
+    if (not app and spec["package"] not in PACKAGES) or spec["architecture"] not in {"all", "amd64"}:
         raise ValueError("invalid_package_identity")
     if not re.fullmatch(r"[0-9][0-9A-Za-z.+:~\-]*", spec["version"]):
         raise ValueError("invalid_package_version")
@@ -87,6 +93,7 @@ def build(spec, output):
             f"Architecture: {spec['architecture']}\nMaintainer: Makervaerkstedet <noreply@example.invalid>\n"
             "Section: education\nPriority: optional\n"
             + ("Depends: " + ", ".join(spec["depends"]) + "\n" if spec["depends"] else "")
+            + ("Breaks: makervaerkstedet-elev (<< 2.1.0~)\nReplaces: makervaerkstedet-elev (<< 2.1.0~)\n" if app and spec['app_descriptor']['id'] != 'scratch' else "")
             + "Description: Makervaerkstedet student program component\n Public program files only; pupil data and local identity are external.\n")
         (control / "control").write_text(content, encoding="utf-8")
         (control / "control").chmod(0o644)

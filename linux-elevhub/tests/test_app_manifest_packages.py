@@ -30,10 +30,7 @@ class PackageManifests(unittest.TestCase):
                     '--output-dir', str(out), '--components', 'core', 'scratch']
             with patch.object(sys, 'argv', argv): prepare_inputs.main()
             expected = {
-                'makervaerkstedet-elev': {'laser': ('http://127.0.0.1:8795/', 'laser-submit', False),
-                    'folie': ('http://127.0.0.1:8796/', None, False),
-                    '3dprint': ('http://127.0.0.1:8798/model3d.html', 'print-job', False),
-                    'microbit': ('http://127.0.0.1:8797/', None, True)},
+                'makervaerkstedet-elev': {},
                 'makervaerkstedet-scratch': {'scratch': ('http://127.0.0.1:8792/', None, False)}}
             for package, apps in expected.items():
                 lock = json.loads((out / (package+'.json')).read_text())
@@ -54,8 +51,8 @@ class PackageManifests(unittest.TestCase):
                     self.assertEqual(value['navn'], {'laser': 'Laser', 'folie': 'Folie', '3dprint': '3D-v\u00e6rksted', 'microbit': 'micro:bit', 'scratch': 'Scratch'}[id])
             # Version numbers change with every release; check their form and
             # that the updater requires the core it was built with.
-            self.assertRegex(prepare_inputs.CORE_VERSION, r'^2\.0\.0~\d{8}\.\d+$')
-            self.assertRegex(prepare_inputs.UPDATER_VERSION, r'^1\.0\.0~\d{8}\.\d+$')
+            self.assertRegex(prepare_inputs.CORE_VERSION, r'^2\.1\.0~\d{8}\.\d+$')
+            self.assertRegex(prepare_inputs.UPDATER_VERSION, r'^1\.1\.0~\d{8}\.\d+$')
             self.assertIn('makervaerkstedet-elev (>= ' + prepare_inputs.CORE_VERSION + ')', prepare_inputs.SPECS['updater'][3])
 
 class ScratchInventory(unittest.TestCase):

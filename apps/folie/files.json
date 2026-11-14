@@ -1,0 +1,65 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "source": "web/laser.html",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/laser.html",
+      "tree": false
+    },
+    {
+      "source": "web/laser.css",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/laser.css",
+      "tree": false
+    },
+    {
+      "source": "web/desktop-studio.css",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/desktop-studio.css",
+      "tree": false
+    },
+    {
+      "source": "web/laser-workshop.css",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/laser-workshop.css",
+      "tree": false
+    },
+    {
+      "source": "web/vinyl-workshop.css",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/vinyl-workshop.css",
+      "tree": false
+    },
+    {
+      "source": "web/vendor/laser.js",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/vendor/laser.js",
+      "tree": false
+    },
+    {
+      "source": "web/vendor/laser-trace-worker.js",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/vendor/laser-trace-worker.js",
+      "tree": false
+    },
+    {
+      "source": "web/assets/workshop-vinyl-v1.webp",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/assets/workshop-vinyl-v1.webp",
+      "tree": false
+    },
+    {
+      "source": "web/assets/Paper-MIT.txt",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/assets/Paper-MIT.txt",
+      "tree": false
+    },
+    {
+      "source": "web/assets/OpenType-MIT.txt",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/assets/OpenType-MIT.txt",
+      "tree": false
+    },
+    {
+      "source": "web/assets/ImageTracer-UNLICENSE.txt",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/assets/ImageTracer-UNLICENSE.txt",
+      "tree": false
+    },
+    {
+      "source": "web/assets/Clipper-LICENSE.txt",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/assets/Clipper-LICENSE.txt",
+      "tree": false
+    }
+  ]
+}

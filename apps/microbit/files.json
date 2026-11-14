@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "source": "linux-elevhub/server/microbit-controller",
+      "path": "usr/share/makervaerkstedet/apps/microbit/www",
+      "tree": true
+    }
+  ]
+}

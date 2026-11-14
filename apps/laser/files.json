@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "source": "web/laservaerksted",
+      "path": "usr/share/makervaerkstedet/apps/laser/www/laservaerksted",
+      "tree": true
+    }
+  ]
+}

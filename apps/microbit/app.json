@@ -1,0 +1,31 @@
+{
+  "schema": 2,
+  "id": "microbit",
+  "navn": "micro:bit",
+  "description": "Programmer micro:bit med MakeCode.",
+  "category": "kode",
+  "icon": null,
+  "version": "1.0.0",
+  "package": "makervaerkstedet-app-microbit",
+  "architecture": "all",
+  "sdk": 1,
+  "min_core": "2.1.0~20261114.1",
+  "start": "http://127.0.0.1:8797/",
+  "offline": true,
+  "aflevering": null,
+  "kraever_internet": true,
+  "licens": "Se CREDITS.md og appens medfølgende tredjepartslicenser",
+  "project": {
+    "kind": "microbit",
+    "extension": ".microbit.json",
+    "max_bytes": 52428800
+  },
+  "capabilities": {
+    "required": [
+      "projects-v1"
+    ],
+    "optional": [
+      "theme-v1"
+    ]
+  }
+}

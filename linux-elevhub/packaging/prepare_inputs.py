@@ -7,8 +7,8 @@ from pathlib import Path
 import re
 from build_debian import sha, DEBIAN_COMPONENTS
 
-CORE_VERSION = "2.0.0~20261114.2"
-UPDATER_VERSION = "1.0.0~20261114.2"
+CORE_VERSION = "2.1.0~20261114.1"
+UPDATER_VERSION = "1.1.0~20261114.1"
 SCRATCH_RECEIPT_SHA256 = "e6526962d7114eb8547b527c41cbed348f1cc8fb8c4d44c635dfb8cb0aa00677"
 
 SPECS = {
@@ -95,12 +95,6 @@ def runtime_descriptor(directory,version):
 # The app files are staged as build inputs and become package-owned files.
 # Micro:bit serves its wrapper locally, but the MakeCode editor needs Internet.
 APP_MANIFESTS = {
-    "core": (
-        ("laser", "Laser", "http://127.0.0.1:8795/", True, "laser-submit", False),
-        ("folie", "Folie", "http://127.0.0.1:8796/", True, None, False),
-        ("3dprint", "3D-v\u00e6rksted", "http://127.0.0.1:8798/model3d.html", True, "print-job", False),
-        ("microbit", "micro:bit", "http://127.0.0.1:8797/", True, None, True),
-    ),
     "scratch": (("scratch", "Scratch", "http://127.0.0.1:8792/", True, None, False),),
 }
 
@@ -206,14 +200,11 @@ def main():
         else:
             root = args.source_root
             add(root/"app/runtime_health.py","usr/lib/makervaerkstedet/runtime_health.py","54c6b4451edce5e451703b661693632c620b0ae284ee795a90161bef7e4b2fe4",text=True)
-            validate_model3d_bundle(root, args.vendor_built_from)
             descriptor=runtime_descriptor(args.output_dir,version)
             add(descriptor,"usr/share/makervaerkstedet/runtime-release.json")
             tree(root / "linux-elevhub/projekter", "usr/local/lib/elevhub/projekter")
             add(root / "app/school_appearance.py", "usr/local/lib/elevhub/projekter/school_appearance.py")
-            tasks = (root / "linux-elevhub/ansible/roles/kiosk/tasks/main.yml").read_text(encoding="utf-8")
-            section = tasks.split("    kiosk_lokal_design_filer:\n", 1)[1].split("  block:\n", 1)[0]
-            paths = re.findall(r"^      - ([a-zA-Z0-9_./-]+)$", section, re.MULTILINE)
+            paths = json.loads((root / 'linux-elevhub/packaging/base-design-files.json').read_text(encoding='utf-8'))
             if not paths:
                 raise ValueError("missing_design_allowlist")
             for rel in paths:
@@ -230,7 +221,6 @@ def main():
                 if not p.name.startswith("test_"):
                     target = "usr/local/sbin/elevhub-power" if p.name == "elevhub-power.py" else "usr/local/lib/elevhub/" + p.name
                     add(p, target, mode=0o755 if p.name == "elevhub-power.py" else 0o644)
-            tree(root / "linux-elevhub/server/microbit-controller", "usr/local/share/elevhub/apps/microbit")
             assets = root / "linux-elevhub/server/elevhub/web/assets"
             for p in sorted(assets.iterdir()):
                 if p.is_file() and not p.name.startswith(("workshop-data-", "workshop-circuit-")):
@@ -240,7 +230,7 @@ def main():
                 add(source, "usr/share/makervaerkstedet/templates/" + name)
             for name in ("CREDITS.md", "LICENSE-SCOPE.md", "LICENSE"):
                 add(root / name, "usr/share/doc/" + package + "/" + name)
-        for source, target in app_descriptors(args.output_dir, kind, version):
+        for source, target in app_descriptors(args.output_dir, kind, version) if kind == 'scratch' else ():
             add(source, target)
         spec = {"schema": "makervaerkstedet.debian-inputs.v1", "package": package, "version": version,
             "architecture": arch, "depends": dependencies, "files": [files[k] for k in sorted(files)],

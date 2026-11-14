@@ -1,0 +1,31 @@
+{
+  "schema": 2,
+  "id": "folie",
+  "navn": "Folie",
+  "description": "Tegn motiver til folieskæring.",
+  "category": "byg",
+  "icon": null,
+  "version": "1.0.0",
+  "package": "makervaerkstedet-app-folie",
+  "architecture": "all",
+  "sdk": 1,
+  "min_core": "2.1.0~20261114.1",
+  "start": "http://127.0.0.1:8796/",
+  "offline": true,
+  "aflevering": null,
+  "kraever_internet": false,
+  "licens": "Se CREDITS.md og appens medfølgende tredjepartslicenser",
+  "project": {
+    "kind": "vinyl",
+    "extension": ".svg",
+    "max_bytes": 52428800
+  },
+  "capabilities": {
+    "required": [
+      "projects-v1"
+    ],
+    "optional": [
+      "theme-v1"
+    ]
+  }
+}
