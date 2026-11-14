@@ -14,7 +14,17 @@ class RepositoryLayoutTests(unittest.TestCase):
         self.assertEqual(layout.repo_root(__file__),ROOT)
         for name in ('app','linux-elevhub','mkv2','windows','windows-elevhub','web','third_party'):
             self.assertTrue((ROOT/'system'/name).is_dir(),name)
-            self.assertFalse((ROOT/name).exists(),'Old parallel source directory: '+name)
+            # Git moves sources but leaves ignored caches in existing checkouts.
+            # Only Python bytecode inside __pycache__ may remain, never source
+            # files, assets, configuration, standalone bytecode or symlinks.
+            legacy=ROOT/name
+            if legacy.exists():
+                self.assertFalse(legacy.is_symlink(),'Old source alias: '+name)
+                for item in legacy.rglob('*'):
+                    self.assertFalse(item.is_symlink(),'Old source alias: '+str(item))
+                    if item.is_dir():continue
+                    self.assertTrue(item.is_file() and item.suffix=='.pyc' and item.parent.name=='__pycache__',
+                                    'Old parallel source file: '+str(item))
         for app in ('laser','folie','3dprint','scratch','microbit'):
             folder=ROOT/'apps'/app
             files=json.loads((folder/'files.json').read_text())['files']
