@@ -92,8 +92,8 @@ Byggeinput ændres kun som en selvstændig opgave med nyt fingeraftryk i `artifa
 
 ### Port 5 — Windows på test-VM
 ```
-python -B windows/inno/build.py --inputs <inputs.json> --output <exe-mappe> --payload-output <payload-mappe>
-windows/inno/Test-InstallOnVm.ps1 -VMName <test-VM> -Checkpoint <rent øjebliksbillede> -CredentialFile <privat fil> -Payloads <A.zip>,<B.zip>,<C.zip> -ResultFile <resultat.json>
+python -B system/windows/inno/build.py --inputs <inputs.json> --output <exe-mappe> --payload-output <payload-mappe>
+system/windows/inno/Test-InstallOnVm.ps1 -VMName <test-VM> -Checkpoint <rent øjebliksbillede> -CredentialFile <privat fil> -Payloads <A.zip>,<B.zip>,<C.zip> -ResultFile <resultat.json>
 ```
 
 Rækkefølgen af payloads skal være:
@@ -108,26 +108,68 @@ Testen kører samme kode som installeren, men klikker ikke gennem installerens s
 
 Scripts til de øvrige testkørsler (laserstation, serveropdatering, WSL-elevpakker, browserprøver, ISO-installation og signering) ligger i `scripts/release_qa/`; rækkefølgen står i [README](../scripts/release_qa/README.md).
 
-### Port 6 — Elevpakker i WSL
-Rører opgaven elevsystemet (alt, der ender i pakken `makervaerkstedet-elev` eller `makervaerkstedet-updater`), hæves
-`CORE_VERSION` og `UPDATER_VERSION` i `linux-elevhub/packaging/prepare_inputs.py`, og pakkerne bygges i WSL-Debian som root:
+### Port 6 — Modulære elevpakker og native prøve
 
+Den fysiske kilde ligger i `system/`, `apps/<id>/` og `sdk/`.
+Installerede URL'er og datastier ændres ikke med kildeopdelingen.
+
+En appændring hæver kun appens version i `apps/<id>/app.json`;
+hovedsystemet skal ikke genbygges eller have nyt versionsnummer.
+Kerne og opdaterer versioneres hver for sig i
+`system/linux-elevhub/packaging/prepare_inputs.py`, når deres indhold
+ændres. Apppakker skal forblive tilvalg uden permanente kerneafhængigheder.
+
+På Debian 13 amd64/WSL bruges den høje bygger fra committet kilde eller
+verificeret offentlig eksport:
+
+```bash
+bash system/linux-elevhub/packaging/build_from_source.sh \
+  /sti/til/kilde /sti/til/inputs/linux /sti/til/vaerktoejer \
+  /sti/til/tidligere-pakker /sti/til/ny-arbejdsmappe --release-set base
 ```
-bash linux-elevhub/packaging/build_from_source.sh <kilde> <byggeinput>/linux <byggeinput>/vaerktoejer <mappe med udgivne Scratch- og Matchbox-pakker> <ny arbejdsmappe>
-```
 
-Scriptet bygger kerne- og updater-pakken fra kilden, pakker Scratch fra det
-kvitteringsbundne, historiske runtimeinput, genbruger Matchbox-pakken uændret og kører
-`apt-get update` og en simuleret installation af alle fire mod Debian 13 med tom pakkestatus. Intet installeres på byggemaskinen.
+Vælg `base` for præcis elevkerne, opdaterer og Matchbox,
+`app --app <id>` for basis plus én app eller `migration` for basis
+plus de fem indbyggede apps. Det sidste er udgivelsens samlede inputs,
+ikke en permanent installation af alle apps.
+Se [packaging-guiden](../system/linux-elevhub/packaging/README.md) og
+[ny-app-guiden](NY-APP-GUIDE.md) for selvstændigt appbyg.
 
-Består, når `report/install-simulation.json` har `all_packages_simulated: true`, og forskellen i `*.inputs.json` mod forrige
-udgivelse kun er de filer, opgaven har ændret.
+Kontrollér `release-build.json`: præcist sæt, hashes,
+`all_packages_simulated: true` og `actual_install: false`.
+Gaten bruger reel apt-opdatering og simulation med tom pakkestatus;
+den installerer intet på byggemaskinen. Schema-1-kvitteringen med
+de historiske fire pakker bevares kun til den gamle udgivelsesvej.
 
-Porten viser, at pakkerne kan installeres sammen. Den viser ikke, at en elevcomputer starter og virker bagefter.
-Derfor prøves opdateringen på én elevcomputer, før resten får den.
+For en ny modulær udgivelse skal faktisk native installation på et
+ejet, isoleret testmål desuden dokumentere:
+
+- tom basis uden valgfrie appfliser samt fungerende start/projekthylde,
+- appinstallering, opdatering, fjernelse og geninstallation med rigtig
+  pakkeversion, descriptor, activation og rapporteret status,
+- bevarelse af profiler, identitet, CA, nøgler, projekter, udbakker og
+  relevante kø-/historikdata,
+- kold offline opstart og genforbindelse med lærerens aktuelle adgang,
+- ISO-installation og boot som særskilt prøve, når ISO udgives.
+
+Migration fra den gamle samlede kerne prøves særskilt: observeret
+bro-opdaterer først, derefter verificeret kerne og bevarede apps i én
+afgrænset apt-transaktion. Laser, Folie, 3D og micro:bit bevares;
+Scratch kun hvis det faktisk var installeret. Ingen ny projektnulstilling
+eller erstatning med skolens standardvalg. Afbrydelse genoptager samme
+bundne katalog/appbestand og kontrollerer den, også hvis kerneversionen
+allerede matcher. Senere autoriseret afinstallation skal forblive fjernet.
+
+Bygget pakke, apt-simulering, faktisk native installation, grafisk
+kioskprøve, ISO-boot og fysisk hardwareunderstøttelse er forskellige
+bevisniveauer. Først én aftalt elevenhed, derefter resten efter det
+konkrete udrulningsmandat. Brug ingen fysisk køhandling som test.
 
 ### Port 7 — Udgivelse efter udtrykkelig bestilling
-- Versionsnummer `2.0.0-ÅÅÅÅMMDD.N`. Et nummer genbruges aldrig, heller ikke til en fejlet bygning.
+- Hver komponent beholder sit dokumenterede versionsformat: kerne/updater
+  følger Debian-versionerne fra deres bygger; apps følger descriptoren;
+  Windows-EXE følger sin releaseversion. Et versionsnummer med andre bytes
+  genbruges aldrig. Katalogets sekvens stiger, og release-tag bindes præcist.
 - Signér EXE og manifest med minisign. Nøglen ligger ikke i kilden eller i OneDrive.
 - Opret udgivelsen på GitHub med EXE, signatur og `build-provenance.json`. Tag det commit, pakken er bygget af.
 - Gem kvitteringen (se nederst) i `udgivelser/<version>/`.
@@ -147,7 +189,7 @@ Skriv i kvitteringen, hvad der blev installeret hvor og hvornår, og hvad der ev
 - **Kilden er sandheden.** Det, der kører på en maskine, skal kunne bygges fra et commit i `main` plus `byggeinput/`. Intet rettes i hånden på en installeret maskine.
 - **Data overlever programmet.** En ændring af database eller konfiguration skal kunne læses af den forrige version, eller opgaven skal sige udtrykkeligt, at tilbagerulning ikke er mulig, og hvorfor.
 - **Hver databaseændring får et nyt versionsnummer** i databasen, og programmet afviser en database, der er nyere end det kender.
-- **Installeren afprøves tidligt på mål-OS.** Ændringer i `windows/inno/` eller `windows-elevhub/server/install.ps1` får relevante installationsprøver under udvikling. Før en Windows-udgivelse skal hele port 5 være bestået, også når ændringen er lille.
+- **Installeren afprøves tidligt på mål-OS.** Ændringer i `system/windows/inno/` eller `system/windows-elevhub/server/install.ps1` får relevante installationsprøver under udvikling. Før en Windows-udgivelse skal hele port 5 være bestået, også når ændringen er lille.
 - **Fejlmeddelelser til brugeren er på dansk** og siger, hvad man skal gøre nu.
 - **Ingen hemmeligheder i kilde, pakke eller chat.** Testkoder til test-VM'en ligger i en privat fil uden for kilden.
 
@@ -178,7 +220,8 @@ Port 2 offentlig:   <filer / fund: 0>
 Port 3 review:      <fund og hvad der blev gjort>
 Port 4 bygning:     <EXE sha256>, forskel mod <forrige version>: <tilføjet/fjernet/ændret>
 Port 5 test-VM:     <A → B → C, tider, resultatfil>
-Port 6 elevpakker:  <bygget / ikke berørt>
+Port 6 elevpakker:  <release-set, pakkehashes, simulation, native installation>
+Migration/ISO:      <faktisk prøve eller udtrykkeligt ikke prøvet>
 Ikke afprøvet:      <det, kvitteringen ikke dækker>
 Signeret af:        <navn, dato>
 Installeret:        <maskine, dato, kontrolleret af>

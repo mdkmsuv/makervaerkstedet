@@ -69,7 +69,9 @@ def revoke_device_updates(hub_data: Path, computer: str, *, revoked_token_sha256
         for table in ('desired', 'bindings'):
             if table in tables:
                 changed = bool(db.execute('DELETE FROM ' + table + ' WHERE device=?', (computer,)).rowcount) or changed
-        for table in ('reports', 'apps_reports', 'apps_enrolled'):
+        # Keep the last core observation as revocation history. A fresh identity
+        # must be explicitly rebound and clears that observation before eligibility.
+        for table in ('apps_reports', 'apps_enrolled', 'migrations'):
             if table in tables:
                 changed = bool(db.execute('DELETE FROM ' + table + ' WHERE device=?', (computer,)).rowcount) or changed
         if 'apps_jobs' in tables:
@@ -148,6 +150,10 @@ class SimpleUpdates:
                 CREATE TABLE IF NOT EXISTS reports(device TEXT PRIMARY KEY, installed TEXT NOT NULL, result TEXT, seen TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS bindings(device TEXT PRIMARY KEY, role TEXT NOT NULL, platform TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS revoked_devices(device TEXT PRIMARY KEY, token_sha256 TEXT);
+                CREATE TABLE IF NOT EXISTS migrations(device TEXT NOT NULL,core_hash TEXT NOT NULL,revision INTEGER NOT NULL,
+                    identity TEXT NOT NULL,catalog_hash TEXT NOT NULL,core_version TEXT NOT NULL,apps TEXT NOT NULL,
+                    ack INTEGER NOT NULL DEFAULT 0,completed INTEGER NOT NULL DEFAULT 0,
+                    PRIMARY KEY(device,core_hash,revision));
             ''')
 
     @contextmanager
@@ -258,9 +264,113 @@ class SimpleUpdates:
         binding = self.binding(device, db)
         return all(manifest[key] == binding[key] for key in ('role', 'platform'))
 
+    def _apps(self,db):
+        admin=getattr(self,'app_admin',None)
+        if admin is not None:return admin
+        admin=getattr(self,'_migration_admin_cache',None)
+        if admin is None:
+            from app_admin import AppAdmin
+            admin=self._migration_admin_cache=AppAdmin(self,db=db)
+        else:
+            # Initialization may have been rolled back with a rejected core
+            # order. Repair it on this connection while retaining verified file
+            # stamps, rather than hashing large app archives on every overview.
+            admin._initialize(db)
+        return admin
+
+    def _at_least(self,version,minimum):
+        if not isinstance(version,str):return False
+        from app_admin import contract
+        if not hasattr(self,'_migration_contract'):self._migration_contract=contract()
+        try:return self._migration_contract.compare_versions(version,minimum)>=0
+        except ValueError:return False
+
+    def _observed(self,db,device):
+        report=db.execute('SELECT installed FROM reports WHERE device=?',(device,)).fetchone()
+        return {item['component']:item['version'] for item in json.loads(report[0])} if report else {}
+
+    def migration_active(self,db,device):
+        return db.execute('SELECT 1 FROM migrations WHERE device=? AND completed=0',(device,)).fetchone() is not None
+
+    def _prerequisite(self,db,device,item,*,row=None):
+        observed=self._observed(db,device)
+        core=observed.get('studentcore')
+        if item['component']=='scratch' and (self.migration_active(db,device) or self._at_least(core,'2.1.0~')):
+            return 'legacy_scratch_suppressed'
+        if item['component']=='updater' and self._at_least(item['version'],'1.1.0~'):
+            if not self._at_least(core,'2.0.0~20261114.2'):return 'legacy_core_baseline_required'
+        if item['component']=='studentcore' and self._at_least(item['version'],'2.1.0~'):
+            if not self._at_least(observed.get('updater'),'1.1.0~'):return 'updater_bridge_required'
+            if not self._at_least(core,'2.0.0~20261114.2'):return 'legacy_core_baseline_required'
+            if row is not None:
+                migration=db.execute('SELECT * FROM migrations WHERE device=? AND completed=0',(device,)).fetchone()
+                if migration is not None:
+                    if migration['core_hash']!=row['hash'] or migration['revision']!=row['revision'] or migration['identity']!=self.registry.identitet(device):
+                        return 'migration_binding_required'
+                elif not self._at_least(core,'2.1.0~'):return 'migration_binding_required'
+        return None
+
+    def _bind_migration(self,db,device,item,digest,revision,admin,catalog):
+        if self.migration_active(db,device):raise UpdateError('migration_in_progress',409)
+        if not catalog:raise UpdateError('migration_catalog_required',409)
+        entries={entry['descriptor']['id']:entry['descriptor'] for entry in catalog['apps']}
+        builtin={'laser','folie','3dprint','microbit','scratch'}
+        if not builtin<=set(entries):raise UpdateError('migration_catalog_incomplete',409)
+        if not all(admin.contract.compatibility(entries[name],core_version=item['version'])['compatible'] for name in builtin):
+            raise UpdateError('migration_catalog_incompatible',409)
+        admin._artifacts(catalog)
+        if db.execute("SELECT 1 FROM apps_jobs WHERE device=? AND state='queued'",(device,)).fetchone():
+            raise UpdateError('migration_pending_apps',409)
+        selected=builtin if 'scratch' in self._observed(db,device) else builtin-{'scratch'}
+        identity=self.registry.identitet(device)
+        if not isinstance(identity,str) or not re.fullmatch('[a-f0-9]{64}',identity):raise UpdateError('unknown_update_device',403)
+        db.execute('INSERT INTO migrations(device,core_hash,revision,identity,catalog_hash,core_version,apps) VALUES(?,?,?,?,?,?,?)',
+            (device,digest,revision,identity,catalog['_manifest_sha256'],item['version'],canonical(sorted(selected))))
+        db.execute('INSERT OR REPLACE INTO apps_enrolled VALUES(?,1)',(device,))
+
+    def migration(self,device,digest,revision):
+        if not isinstance(digest,str) or not re.fullmatch('[a-f0-9]{64}',digest) or type(revision) is not int or not 1<=revision<=2**63-1:
+            raise UpdateError('migration_not_found',404)
+        with self.transaction() as db:
+            if device not in self.devices(db) or self.binding(device,db)!={'role':'student','platform':'debian-amd64'}:
+                raise UpdateError('unknown_update_device',403)
+            row=db.execute('SELECT * FROM migrations WHERE device=? AND core_hash=? AND revision=?',(device,digest,revision)).fetchone()
+            identity=self.registry.identitet(device)
+            if not isinstance(identity,str) or not re.fullmatch('[a-f0-9]{64}',identity):raise UpdateError('migration_state_unavailable',503)
+            if row is None or row['identity']!=identity:raise UpdateError('migration_not_found',404)
+            if type(row['completed']) is not int or row['completed'] not in (0,1):raise UpdateError('migration_state_unavailable',503)
+            return {'schema':1,'core_manifest_sha256':digest,'revision':revision,
+                    'catalog_sha256':row['catalog_hash'],'apps':json.loads(row['apps']),'completed':bool(row['completed'])}
+
+    def complete_migration(self,db,device,*,admin=None):
+        row=db.execute('SELECT * FROM migrations WHERE device=? AND completed=0',(device,)).fetchone()
+        if row is None or row['ack']!=1 or device not in self.devices(db):return False
+        if self.binding(device,db)!={'role':'student','platform':'debian-amd64'} or row['identity']!=self.registry.identitet(device):return False
+        if self._observed(db,device).get('studentcore')!=row['core_version']:return False
+        admin=admin or self._apps(db)
+        report,_=admin._report(db,device)
+        if not admin._capable(db,device,report):return False
+        try:
+            # Artifact bytes were authenticated before authorization and by the
+            # native transaction. Completion compares signed metadata to current
+            # inventory; it must not depend on retaining unselected old .deb files.
+            catalog=admin._verify(row['catalog_hash'])
+        except (ValueError,OSError):return False
+        selected=set(json.loads(row['apps']))
+        expected={entry['descriptor']['id']:entry['descriptor'] for entry in catalog['apps']}
+        actual={item['id']:item for item in report['installed']}
+        if any(issue['app_id'] in selected for issue in report['issues']):return False
+        for name in selected:
+            item=actual.get(name);want=expected.get(name)
+            if item is None or want is None or item['state']!='installed' or (item['package'],item['version'])!=(want['package'],want['version']):
+                return False
+        db.execute('UPDATE migrations SET completed=1 WHERE device=? AND core_hash=? AND revision=?',(device,row['core_hash'],row['revision']))
+        db.execute("DELETE FROM desired WHERE device=? AND component='studentcore' AND hash=? AND revision=?",(device,row['core_hash'],row['revision']))
+        return True
+
     def offer(self, row, catalog, db):
         item = catalog.get(row['hash'])
-        if item is None or not item['orderable'] or not self.eligible(row['device'], item, db) or (item['rollback_required'] and not row['rollback']):
+        if item is None or not item['orderable'] or not self.eligible(row['device'], item, db) or (item['rollback_required'] and not row['rollback']) or self._prerequisite(db,row['device'],item,row=row):
             return None
         return {'component': row['component'], 'version': item['version'], 'revision': row['revision'],
                 'manifest_sha256': row['hash'], 'rollback': bool(row['rollback']),
@@ -271,12 +381,16 @@ class SimpleUpdates:
     def overview(self):
         with self.transaction() as db:
             catalog, errors = self.catalog(db)
+            if any(item['component']=='studentcore' and self._at_least(item['version'],'2.1.0~') for item in catalog.values()):
+                self._apps(db).catalog(db)
             devices = []
             for device in sorted(self.devices(db)):
                 report = db.execute('SELECT * FROM reports WHERE device=?', (device,)).fetchone()
                 desired = [dict(row, available=self.offer(row, catalog, db) is not None)
                            for row in db.execute('SELECT * FROM desired WHERE device=?', (device,))]
+                migration=db.execute('SELECT core_hash AS core_manifest_sha256,revision FROM migrations WHERE device=? AND completed=0',(device,)).fetchone()
                 devices.append({'device': device, **self.binding(device, db), 'desired': desired,
+                    'migration':dict(migration) if migration is not None else None,
                     'installed': json.loads(report['installed']) if report else [],
                     'result': json.loads(report['result']) if report and report['result'] else None,
                     'last_seen': report['seen'] if report else None, 'installation_evidence': 'device_report' if report else 'unknown'})
@@ -322,12 +436,50 @@ class SimpleUpdates:
             db.execute('INSERT OR REPLACE INTO bindings VALUES(?,?,?)', (body['device'], body['role'], body['platform']))
             db.execute('DELETE FROM revoked_devices WHERE device=?', (body['device'],))
             # A rebind must not inherit a previous role's desired operation.
-            if old_binding != {'role': body['role'], 'platform': body['platform']}:
+            old_identity=db.execute('SELECT identity FROM migrations WHERE device=? LIMIT 1',(body['device'],)).fetchone()
+            identity_changed=old_identity is not None and old_identity['identity']!=self.registry.identitet(body['device'])
+            if old_binding != {'role': body['role'], 'platform': body['platform']} or identity_changed or revoked is not None:
                 db.execute('DELETE FROM desired WHERE device=?', (body['device'],))
+                for table in ('migrations','reports','apps_reports','apps_enrolled'):
+                    if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",(table,)).fetchone():
+                        db.execute('DELETE FROM '+table+' WHERE device=?',(body['device'],))
+                if db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='apps_jobs'").fetchone():
+                    db.execute("UPDATE apps_jobs SET state='superseded',code='device_rebound' WHERE device=? AND state='queued'",(body['device'],))
             db.execute('UPDATE meta SET revision=?', (revision + 1,))
             response = {'schema': 1, 'revision': revision + 1, 'command_id': body['command_id']}
             db.execute('INSERT INTO commands VALUES(?,?,?)', (body['command_id'], payload, canonical(response)))
             return response
+
+    def cancel_migration(self,body):
+        """Stop retry authority; never kill apt, undo packages or erase reports."""
+        fields(body,('command_id','expected_revision','device','core_manifest_sha256','migration_revision'))
+        self.command_id(body['command_id'])
+        if (type(body['expected_revision']) is not int or body['expected_revision']<0
+                or type(body['migration_revision']) is not int or not 1<=body['migration_revision']<2**63
+                or not isinstance(body['device'],str) or not isinstance(body['core_manifest_sha256'],str)
+                or not re.fullmatch('[a-f0-9]{64}',body['core_manifest_sha256'])):
+            raise UpdateError('invalid_migration_cancellation')
+        payload=canonical(body)
+        with self.transaction() as db:
+            if body['device'] not in self.devices(db) or self.binding(body['device'],db)!={'role':'student','platform':'debian-amd64'}:
+                raise UpdateError('unknown_update_device',403)
+            old=db.execute('SELECT * FROM commands WHERE id=?',(body['command_id'],)).fetchone()
+            if old:
+                if old['body']!=payload:raise UpdateError('command_id_conflict',409)
+                return json.loads(old['receipt'])
+            revision=db.execute('SELECT revision FROM meta').fetchone()[0]
+            if revision!=body['expected_revision']:raise UpdateError('update_revision_conflict',409)
+            row=db.execute('SELECT * FROM migrations WHERE device=? AND core_hash=? AND revision=? AND completed=0',
+                (body['device'],body['core_manifest_sha256'],body['migration_revision'])).fetchone()
+            if row is None:raise UpdateError('migration_not_pending',409)
+            db.execute('DELETE FROM desired WHERE device=? AND component=? AND hash=? AND revision=?',
+                (body['device'],'studentcore',row['core_hash'],row['revision']))
+            db.execute('DELETE FROM migrations WHERE device=? AND core_hash=? AND revision=?',
+                (body['device'],row['core_hash'],row['revision']))
+            db.execute('UPDATE meta SET revision=?',(revision+1,))
+            receipt={'schema':1,'revision':revision+1,'command_id':body['command_id']}
+            db.execute('INSERT INTO commands VALUES(?,?,?)',(body['command_id'],payload,canonical(receipt)))
+            return receipt
 
     def order(self, body):
         fields(body, ('command_id', 'expected_revision', 'devices', 'component', 'manifest_sha256', 'rollback_manifest_sha256'))
@@ -350,11 +502,14 @@ class SimpleUpdates:
                 if receipt['body'] != payload:
                     raise UpdateError('command_id_conflict', 409)
                 return json.loads(receipt['receipt'])
+            catalog, _ = self.catalog(db)
+            item = catalog.get(body['manifest_sha256'])
+            admin=app_catalog=None
+            if item is not None and item['component']=='studentcore' and self._at_least(item['version'],'2.1.0~'):
+                admin=self._apps(db);app_catalog,_=admin.catalog(db)
             revision = db.execute('SELECT revision FROM meta').fetchone()[0]
             if revision != body['expected_revision']:
                 raise UpdateError('update_revision_conflict', 409)
-            catalog, _ = self.catalog(db)
-            item = catalog.get(body['manifest_sha256'])
             if item is None or item['component'] != body['component']:
                 raise UpdateError('unknown_release', 409)
             if not item['orderable']:
@@ -367,6 +522,12 @@ class SimpleUpdates:
             for device in body['devices']:
                 if not self.eligible(device, item, db):
                     raise UpdateError('device_release_binding_mismatch', 403)
+                error=self._prerequisite(db,device,item)
+                if error:raise UpdateError(error,409)
+                if item['component']=='studentcore':
+                    if self.migration_active(db,device):raise UpdateError('migration_in_progress',409)
+                    if self._at_least(item['version'],'2.1.0~') and not self._at_least(self._observed(db,device).get('studentcore'),'2.1.0~'):
+                        self._bind_migration(db,device,item,body['manifest_sha256'],revision+1,admin,app_catalog)
                 db.execute('INSERT OR REPLACE INTO desired VALUES(?,?,?,?,?)', (device, item['component'], body['manifest_sha256'], revision + 1, int(rollback)))
             db.execute('UPDATE meta SET revision=?', (revision + 1,))
             response = {'schema': 1, 'revision': revision + 1, 'command_id': body['command_id']}
@@ -398,9 +559,14 @@ class SimpleUpdates:
             catalog, _ = self.catalog(db)
             db.execute('INSERT OR REPLACE INTO reports VALUES(?,?,?,?)',
                        (device, canonical(body['installed']), canonical(result), self.clock().isoformat()))
+            if result is not None:
+                db.execute('UPDATE migrations SET ack=? WHERE device=? AND revision=? AND completed=0',
+                    (int(result['state']=='succeeded'),device,result['revision']))
+            self.complete_migration(db,device)
             if result is not None and result['state'] == 'succeeded':
                 installed = {item['component']: item['version'] for item in body['installed']}
                 for row in db.execute('SELECT * FROM desired WHERE device=? AND revision=?', (device, result['revision'])):
+                    if db.execute('SELECT 1 FROM migrations WHERE device=? AND core_hash=? AND revision=?',(device,row['hash'],row['revision'])).fetchone():continue
                     expected = self.offer(row, catalog, db)
                     # A receipt alone does not complete an operation. Match the
                     # actual report to the still-verified authorized version.
@@ -435,7 +601,7 @@ def handle(handler, path, body=None, length=0):
         handler.close_connection = True
         handler.svar(410, {'error': 'legacy_updates_disabled'})
         return True
-    if path not in ('/api/admin/updates', '/api/admin/updates/bind', '/api/admin/updates/source', '/api/admin/updates/refresh', '/api/device/updates') and not raw_path.startswith('/apt/'):
+    if path not in ('/api/admin/updates', '/api/admin/updates/bind', '/api/admin/updates/source', '/api/admin/updates/refresh', '/api/admin/updates/cancel-migration', '/api/device/updates') and not raw_path.startswith('/apt/'):
         return False
     try:
         if service is None:
@@ -455,11 +621,11 @@ def handle(handler, path, body=None, length=0):
                     while chunk := source.read(64 * 1024):
                         handler.wfile.write(chunk)
             return True
-        if path in ('/api/admin/updates', '/api/admin/updates/bind', '/api/admin/updates/source', '/api/admin/updates/refresh'):
+        if path in ('/api/admin/updates', '/api/admin/updates/bind', '/api/admin/updates/source', '/api/admin/updates/refresh', '/api/admin/updates/cancel-migration'):
             if not hasattr(handler, 'logget_ind') or not handler.logget_ind():
                 raise UpdateError('teacher_login_required', 401)
             if handler.command in ('GET', 'HEAD'):
-                if path.endswith(('/bind', '/refresh')):
+                if path.endswith(('/bind', '/refresh', '/cancel-migration')):
                     raise UpdateError('method_not_allowed', 405)
                 if path.endswith('/source'):
                     worker = getattr(service, 'source_worker', None)
@@ -481,7 +647,7 @@ def handle(handler, path, body=None, length=0):
                 elif path.endswith('/source'):
                     raise UpdateError('method_not_allowed', 405)
                 else:
-                    response = service.bind(body) if path.endswith('/bind') else service.order(body)
+                    response = service.cancel_migration(body) if path.endswith('/cancel-migration') else service.bind(body) if path.endswith('/bind') else service.order(body)
             else:
                 raise UpdateError('method_not_allowed', 405)
         else:

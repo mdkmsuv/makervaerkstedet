@@ -19,10 +19,13 @@ UNAMBIGUOUS = {'.sb3': 'scratch', '.hex': 'microbit', '.stl': '3dprint', '.mkv3d
 
 
 def association(filename, kind='andet', data=None, apps=None):
+    matches=[]
     for app in apps or []:
         project=app.get('project')
         if project and project['kind'] not in {'scratch','microbit','laser','folie','3dprint'} and filename.lower().endswith(project['extension']):
-            return {'program':app['id'],'label':app['navn'],'extension':project['extension']}
+            matches.append({'program':app['id'],'label':app['navn'],'extension':project['extension']})
+    if len(matches)==1:return matches[0]
+    if matches:return {'program':'andet','label':PROGRAMS['andet'],'extension':PurePosixPath(filename.lower()).suffix}
     ext = PurePosixPath(filename.lower()).suffix
     program = UNAMBIGUOUS.get(ext)
     if not program and ext == '.svg':

@@ -6,10 +6,11 @@
   const names = {studentcore:'Elevsystem',scratch:'Scratch',datatraener:'Datatræner',matchbox:'Vinduesstyring',updater:'Opdateringstjeneste',server:'Hovedserver',laser:'Laserstation'};
   const roles = {student:'Elevcomputer',server:'Hovedserver',laser_station:'Laserstation'};
   const storage = 'makervaerkstedet.simple-update.pending.v1';
+  const unknownResult = 'Svaret mangler. Serveren kan have gemt anmodningen. Afklar samme anmodning før en ny bestilling.';
   let active=false, busy=false, stale=true, timer, generation=0, state=null, source=null, pending=null;
   try {
     const saved=JSON.parse(sessionStorage.getItem(storage)||'null');
-    if (saved && ['/api/admin/updates','/api/admin/updates/bind','/api/admin/updates/refresh'].includes(saved.path) && /^[a-f0-9-]{36}$/.test(saved.body?.command_id || '')) pending=saved;
+    if (saved && ['/api/admin/updates','/api/admin/updates/bind','/api/admin/updates/refresh','/api/admin/updates/cancel-migration'].includes(saved.path) && /^[a-f0-9-]{36}$/.test(saved.body?.command_id || '')) pending=saved;
   } catch { /* An invalid saved request is never sent. */ }
   function persist(){try{if(pending)sessionStorage.setItem(storage,JSON.stringify(pending));else sessionStorage.removeItem(storage);}catch{/* Same-page retry remains available. */}}
   function sync(){
@@ -41,7 +42,8 @@
       }).join('<br>')||'Ingen bestilling';
       const result=d.result ? `${d.result.state==='failed'?'Fejl':d.result.state==='succeeded'?'Forsøget rapporteres gennemført':'Ukendt resultat'} · revision ${escape(d.result.revision)}${d.result.code?' · '+escape(d.result.code):''}` : 'Intet resultat rapporteret';
       const seen=d.last_seen ? escape(d.last_seen) : 'Ingen rapport';
-      return `<article class="system-liste"><h4>${escape(d.device)}</h4><p>${escape(roles[d.role]||d.role)} · ${escape(d.platform)}</p><p><b>Installeret, rapporteret af computeren:</b> ${installed}</p><p><b>Ønsket:</b> ${desired}</p><p><b>Seneste resultat:</b> ${result}</p><p>Seneste rapport: ${seen}</p></article>`;
+      const migration=d.migration?`<form data-cancel-migration="${escape(d.device)}"><p><b>Overgang til tilvalgsapps:</b> Ikke afsluttet. Ved en vedvarende fejl kan du stoppe genforsøg. En installation, der allerede kører på computeren, afbrydes ikke.</p><button type="submit" class="btn migration-retry-stop" aria-label="Stop genforsøg på ${escape(d.device)}">Stop genforsøg</button></form>`:'';
+      return `<article class="system-liste"><h4>${escape(d.device)}</h4><p>${escape(roles[d.role]||d.role)} · ${escape(d.platform)}</p><p><b>Installeret, rapporteret af computeren:</b> ${installed}</p><p><b>Ønsket:</b> ${desired}</p><p><b>Seneste resultat:</b> ${result}</p><p>Seneste rapport: ${seen}</p>${migration}</article>`;
     }).join('');
     const unbound=state.unbound_devices.map(d=>`<form data-bind="${escape(d)}"><label>${escape(d)} <select name="role" aria-label="Rolle for ${escape(d)}"><option value="student">Elevcomputer · Debian</option><option value="server">Hovedserver · Windows</option><option value="laser_station">Laserstation · Windows</option></select></label> <button class="sekundaer" type="submit">Tilknyt computer</button></form>`).join('');
     const options=releases.map(r=>`<option value="${escape(r.manifest_sha256)}">${escape(names[r.component]||r.component)} · ${escape(r.version)} · ${escape(roles[r.role]||r.role)} (${escape(r.platform)})</option>`).join('');
@@ -73,7 +75,8 @@
       if(!active||epoch!==generation)return;
       if(next.schema!==1||!Number.isSafeInteger(next.revision)||!Array.isArray(next.devices)||!Array.isArray(next.catalog)||!Array.isArray(next.catalog_errors)||!Array.isArray(next.unbound_devices))throw Error('unreadable_response');
       state=next;stale=false;render();
-      if(!pending && !preserveStatus)$('updates-status').textContent='Status hentet. Installation vises ud fra computerens egen rapport.';
+      if(pending&&!busy)$('updates-status').textContent=unknownResult;
+      else if(!pending && !preserveStatus)$('updates-status').textContent='Status hentet. Installation vises ud fra computerens egen rapport.';
     }catch(error){if(!active||epoch!==generation)return;stale=true;$('updates-status').textContent=error.status===401?'Log ind igen for at se opdateringer.':'Status kunne ikke hentes. Prøv igen. '+(error.status?'Fejl: '+error.message:'');sync();}
   }
   async function send(command){
@@ -82,16 +85,23 @@
       const receipt=await request(command.path,command.body);
       const isSource=command.path==='/api/admin/updates/refresh';
       if(receipt.command_id!==command.body.command_id||receipt.schema!==1||(isSource?receipt.accepted!==true:!Number.isSafeInteger(receipt.revision)))throw Error('unreadable_response');
-      pending=null;persist();stale=true;$('updates-status').textContent=isSource?'Søgningen er bestilt. Se kildestatus for resultatet.':'Bestillingen er gemt på serveren. Computeren skal stadig modtage og rapportere den.';
+      pending=null;persist();stale=true;$('updates-status').textContent=command.path.endsWith('/cancel-migration')?'Genforsøg er stoppet på serveren. En igangværende installation kan stadig blive afsluttet. Hent computerens status, før du bestiller igen.':isSource?'Søgningen er bestilt. Se kildestatus for resultatet.':'Bestillingen er gemt på serveren. Computeren skal stadig modtage og rapportere den.';
     }catch(error){
-      if(error.status>=400&&error.status<500&&error.status!==401){pending=null;persist();stale=true;$('updates-status').textContent='Anmodningen blev afvist: '+error.message+'. Hent status og prøv igen.';}
-      else $('updates-status').textContent='Svaret mangler. Serveren kan have gemt anmodningen. Afklar samme anmodning før en ny bestilling.';
+      if(error.status>=400&&error.status<500&&error.status!==401){pending=null;persist();stale=true;$('updates-status').textContent=error.message==='update_revision_conflict'?'Bestillingen er ændret af en anden. Hent den nye status og prøv igen.':error.message==='migration_not_pending'?'Overgangen er allerede afsluttet eller stoppet. Hent den nye status.':'Anmodningen blev afvist: '+error.message+'. Hent status og prøv igen.';}
+      else $('updates-status').textContent=unknownResult;
     }finally{busy=false;sync();}
-    if(!pending){await refresh(true);await refreshSource();}
+    if(pending&&active)$('updates-retry-request').focus();
+    if(!pending){await refresh(true);await refreshSource();if(command.path.endsWith('/cancel-migration')){$('updates-status').tabIndex=-1;$('updates-status').focus();}}
   }
   $('updates-content').addEventListener('submit',event=>{
     event.preventDefault();if(busy||pending||stale||!state)return;
     const form=event.target;
+    if(form.dataset.cancelMigration!==undefined){
+      const device=state.devices.find(d=>d.device===form.dataset.cancelMigration);
+      if(!device?.migration){$('updates-status').textContent='Overgangen er ikke længere afventende. Hent status igen.';return;}
+      void send({path:'/api/admin/updates/cancel-migration',body:{command_id:crypto.randomUUID(),expected_revision:state.revision,
+        device:device.device,core_manifest_sha256:device.migration.core_manifest_sha256,migration_revision:device.migration.revision}});return;
+    }
     if(form.dataset.bind!==undefined){
       const role=form.elements.role.value, platform=role==='student'?'debian-amd64':'windows-amd64';
       void send({path:'/api/admin/updates/bind',body:{command_id:crypto.randomUUID(),expected_revision:state.revision,device:form.dataset.bind,role,platform}});return;

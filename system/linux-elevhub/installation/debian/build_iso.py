@@ -10,6 +10,10 @@ from pathlib import Path
 import importlib.util
 sys.path.insert(0,str(Path(__file__).resolve().parents[4]))
 from repository import source_path
+_payload_spec=importlib.util.spec_from_file_location('_mkv_iso_payload',Path(__file__).with_name('install_payload.py'))
+_payload_module=importlib.util.module_from_spec(_payload_spec)
+_payload_spec.loader.exec_module(_payload_module)
+validate_packages,strict_json=_payload_module.validate_packages,_payload_module.strict_json
 
 BASE_SHA="a7ef94ac2fb9a7fec454552abd629b7cc9d5155c886165a45649f5ce6167e355"
 KEY_SHA="5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f"
@@ -28,11 +32,39 @@ EXTRA_DEBIAN=("openssh-client","libnss3-tools","ca-certificates","console-setup"
 
 def sha(path):return hashlib.sha256(path.read_bytes()).hexdigest()
 
-def validated_repository(repo,receipt,receipt_sha):
+def verify_repository_signatures(repo):
+    # Ignore the user's GnuPG home/keyrings; trust only the pinned public key.
+    with tempfile.TemporaryDirectory(prefix='mkv-iso-verify-') as temporary:
+        common=['gpg','--no-options','--homedir',temporary,'--batch','--no-default-keyring',
+                '--keyring',str((repo/'makervaerkstedet.gpg').resolve()),'--no-auto-key-retrieve']
+        for arguments in (['--verify',str(repo/'Release.gpg'),str(repo/'Release')],
+                          ['--output','-','--decrypt',str(repo/'InRelease')]):
+            result=subprocess.run([*common,*arguments],capture_output=True)
+            if result.returncode:raise ValueError('repository_signature_invalid')
+            if arguments[0]=='--output' and result.stdout!=(repo/'Release').read_bytes():raise ValueError('signed_release_content_mismatch')
+
+
+def validated_repository(repo,receipt,receipt_sha,release_set='base'):
     if sha(receipt)!=receipt_sha:raise ValueError("release_gate_receipt_hash_mismatch")
-    gate=json.loads(receipt.read_text())
-    if gate.get("schema")!=1 or gate.get("target")!="debian13-amd64-empty-status" or gate.get("all_packages_simulated") is not True or gate.get("actual_install") is not False or set(gate["packages"])!=set(PACKAGES):raise ValueError("release_package_simulation_required")
+    gate=strict_json(receipt.read_text())
+    modern=release_set=='base'
+    if release_set not in ('base','legacy') or type(gate) is not dict or type(gate.get('schema')) is not int or gate['schema']!=(2 if modern else 1) or (modern and gate.get('release_set')!='base') or (not modern and 'release_set' in gate) or gate.get('target')!='debian13-amd64-empty-status' or gate.get('all_packages_simulated') is not True or gate.get('actual_install') is not False or type(gate.get('packages')) is not dict:raise ValueError('release_package_simulation_required')
+    if modern:
+        fields={'schema','release_set','target','all_packages_simulated','actual_install','packages',
+                'isolated_paths','apt_config_sha256','debian_keyring_sha256'}
+        if set(gate)!=fields or type(gate['isolated_paths']) is not int or gate['isolated_paths']<1:raise ValueError('invalid_native_install_gate')
+        for field in ('apt_config_sha256','debian_keyring_sha256'):
+            if not isinstance(gate[field],str) or not re.fullmatch('[0-9a-f]{64}',gate[field]):raise ValueError('invalid_native_install_gate')
+    identities=[]
+    for name,item in gate['packages'].items():
+        if type(item) is not dict or set(item)!={'file','version','architecture','sha256'}:raise ValueError('invalid_gate_package')
+        if not isinstance(item['sha256'],str) or not re.fullmatch('[0-9a-f]{64}',item['sha256']):raise ValueError('invalid_gate_package_hash')
+        identities.append(dict(package=name,version=item['version'],architecture=item['architecture']))
+    expected=validate_packages(identities,release_set)
     if sha(repo/"makervaerkstedet.gpg")!=KEY_SHA:raise ValueError("wrong_repository_public_key")
+    for name in ('makervaerkstedet.gpg','Release','InRelease','Release.gpg','Packages','Packages.gz'):
+        if not (repo/name).is_file() or (repo/name).is_symlink():raise ValueError('regular_public_repository_files_required')
+    verify_repository_signatures(repo)
     release=(repo/"Release").read_text()
     if re.search(r"^Valid-Until:",release,re.M):raise ValueError("own_repository_must_not_expire")
     hashes={name:(h,int(size)) for h,size,name in re.findall(r"^ ([0-9a-f]{64}) +([0-9]+) +(\S+)$",release,re.M)}
@@ -44,17 +76,17 @@ def validated_repository(repo,receipt,receipt_sha):
     for block in index.strip().split("\n\n"):
         values=dict(line.split(": ",1) for line in block.splitlines() if ": " in line and not line.startswith(" "))
         name=values.get("Package")
-        if name not in PACKAGES:raise ValueError("unexpected_package_in_iso_repository")
+        if name not in expected:raise ValueError("unexpected_package_in_iso_repository")
         target=gate["packages"][name]
         filename="pool/"+target["file"]
-        if values.get("Version")!=target["version"] or values.get("Architecture")!=PACKAGES[name] or target["architecture"]!=PACKAGES[name] or values.get("SHA256")!=target["sha256"] or values.get("Filename")!=filename:raise ValueError("package_gate_repository_mismatch")
+        if values.get("Version")!=target["version"] or values.get("Architecture")!=expected[name] or target["architecture"]!=expected[name] or values.get("SHA256")!=target["sha256"] or values.get("Filename")!=filename:raise ValueError("package_gate_repository_mismatch")
         if name in found:raise ValueError("ambiguous_iso_package_version")
         if not re.fullmatch(r"pool/[a-z0-9+_.~:-]+\.deb",filename):raise ValueError("unsafe_package_filename")
         path=repo/filename
         if path.is_symlink() or sha(path)!=target["sha256"] or path.stat().st_size!=int(values["Size"]):raise ValueError("package_bytes_mismatch")
         found[name]=dict(package=name,version=target["version"],architecture=target["architecture"])
         artifacts.append(filename)
-    if set(found)!=set(PACKAGES):raise ValueError("missing_iso_package")
+    if set(found)!=set(expected):raise ValueError("missing_iso_package")
     files=["InRelease","Release","Release.gpg","Packages","Packages.gz","makervaerkstedet.gpg",*artifacts]
     # Include native Acquire-By-Hash indices, never arbitrary repository extras.
     for path in sorted((repo/"by-hash/SHA256").glob("*")):
@@ -123,10 +155,18 @@ def verify_recipe(packages,repo,gate,report):
             if result.returncode:raise ValueError("iso_recipe_dependency_gate_failed:"+mode)
         (report/"recipe-gate.json").write_text(json.dumps({"packages":packages,"program_packages":gate["packages"],"target":"debian13-empty-status","isolated_paths":len(paths),"simulated":True,"installed":False},indent=2)+"\n")
 
+
+def recipe_dependencies(dependencies,release_set):
+    if release_set=='base':
+        custom=set(re.findall(r'\bmakervaerkstedet-[a-z0-9+.-]+',dependencies))
+        if custom-set(_payload_module.BASE_PACKAGES):raise ValueError('optional_app_in_base_recipe')
+    return sorted(set([dependency.strip().split(' ')[0] for dependency in dependencies.split(',')
+                       if dependency.strip() and not dependency.strip().startswith('makervaerkstedet-')]+list(EXTRA_DEBIAN)))
+
 def build(args):
     if sha(args.base_iso)!=BASE_SHA:raise ValueError("unverified_base_iso")
     if args.output.exists() or args.output.with_suffix(".iso.part").exists():raise ValueError("iso_output_exists")
-    packages,repo_files=validated_repository(args.repo,args.release_receipt,args.release_receipt_sha256)
+    packages,repo_files=validated_repository(args.repo,args.release_receipt,args.release_receipt_sha256,args.release_set)
     args.evidence_dir.mkdir(parents=True,exist_ok=True)
     source=args.source_root;installation=source_path("linux-elevhub/installation",source);here=Path(__file__).parent
     args.output.parent.mkdir(parents=True,exist_ok=True)
@@ -150,7 +190,8 @@ def build(args):
         copy(installation/"onboarding.py",extra/"onboarding.py")
         (payload/"enrollment/profile_validation.py").write_text(pure_validator(installation/"firstboot.py"))
         provenance["linux-elevhub/installation/firstboot.py"]=sha(installation/"firstboot.py")
-        lock={"schema":1,"packages":packages,"files":{p.relative_to(payload).as_posix():sha(p) for p in sorted(payload.rglob("*")) if p.is_file()}}
+        lock={"schema":2 if args.release_set=='base' else 1,"packages":packages,"files":{p.relative_to(payload).as_posix():sha(p) for p in sorted(payload.rglob("*")) if p.is_file()}}
+        if args.release_set=='base':lock['release_set']='base'
         (payload/"install-lock.json").write_text(json.dumps(lock,indent=2)+"\n")
         # Exercise the actual inert entrypoint; --apply is NEVER called here.
         checked=subprocess.run(["python3","-B",str(payload/"apt-firstboot.py"),"--payload",str(payload)],check=True,capture_output=True,text=True)
@@ -164,7 +205,7 @@ def build(args):
         core=next(p for p in packages if p["package"]=="makervaerkstedet-elev")
         gate=json.loads(args.release_receipt.read_text());corefile=args.repo/"pool"/gate["packages"][core["package"]]["file"]
         deps=subprocess.check_output(["dpkg-deb","--field",str(corefile),"Depends"],text=True)
-        debian_packages=sorted(set([d.strip().split(" ")[0] for d in deps.split(",") if not d.strip().startswith("makervaerkstedet-")]+list(EXTRA_DEBIAN)))
+        debian_packages=recipe_dependencies(deps,args.release_set)
         verify_recipe(debian_packages,args.repo,gate,args.evidence_dir)
         cfg=root/"preseed.cfg";cfg.write_text(preseed(source_path("linux-elevhub/testmiljoe/vm/preseed-usb.skabelon.cfg",source),payload_sha,debian_packages))
         copy(cfg,args.evidence_dir/"preseed.cfg")
@@ -187,13 +228,19 @@ def build(args):
         if "BIOS" not in boot or "UEFI" not in boot:raise ValueError("missing_hybrid_boot_entries")
         (args.evidence_dir/"boot-records.txt").write_text(boot)
         os.replace(partial,args.output)
-        receipt={"schema":1,"output":args.output.name,"sha256":sha(args.output),"bytes":args.output.stat().st_size,"base_iso_sha256":BASE_SHA,"release_gate_sha256":args.release_receipt_sha256,"payload_sha256":payload_sha,"packages":packages,"extra_debian_dependencies":list(EXTRA_DEBIAN),"disk_guard_sha256":{name:sha(extra/name) for name in ("partman-disk-guard.sh","select-install-disk.sh","disk-selection.templates")},"shell_line_endings":"LF","mirror_required":True,"school_credentials":False,"boot_tested":False,"installed":False,"public_inputs":provenance}
+        receipt={"schema":2 if args.release_set=='base' else 1,"output":args.output.name,"sha256":sha(args.output),"bytes":args.output.stat().st_size,"base_iso_sha256":BASE_SHA,"release_gate_sha256":args.release_receipt_sha256,"payload_sha256":payload_sha,"packages":packages,"extra_debian_dependencies":list(EXTRA_DEBIAN),"disk_guard_sha256":{name:sha(extra/name) for name in ("partman-disk-guard.sh","select-install-disk.sh","disk-selection.templates")},"shell_line_endings":"LF","mirror_required":True,"school_credentials":False,"boot_tested":False,"installed":False,"public_inputs":provenance}
+        if args.release_set=='base':receipt['release_set']='base'
         (args.evidence_dir/"iso-build.json").write_text(json.dumps(receipt,indent=2)+"\n")
         print(json.dumps({k:receipt[k] for k in ("output","sha256","bytes","mirror_required","boot_tested","installed")}))
 
-def main():
+def argument_parser():
     p=argparse.ArgumentParser(description=__doc__)
     for name in ("base-iso","repo","release-receipt","output","evidence-dir"):p.add_argument("--"+name,type=Path,required=True)
     p.add_argument("--release-receipt-sha256",required=True);p.add_argument("--source-root",type=Path,default=Path(__file__).resolve().parents[4])
-    build(p.parse_args())
+    p.add_argument('--release-set',choices=('base','legacy'),default='base')
+    return p
+
+
+def main():
+    build(argument_parser().parse_args())
 if __name__=="__main__":main()

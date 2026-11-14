@@ -18,14 +18,25 @@ TEACHER = frozenset(('/api/admin/apps', '/api/admin/apps/order', '/api/admin/app
 def handle(handler, path, length=0):
     raw = urlsplit(handler.path).path
     catalog = re.fullmatch(r'/apt/apps/catalog/([a-f0-9]{64})\.(json|minisig)', raw)
+    migration = raw.startswith('/api/device/migration')
     school_device = path == '/api/device/school-profile' or raw.startswith('/api/device/school-profile/assets/')
-    if path not in TEACHER and path != '/api/device/apps' and not raw.startswith('/apt/apps/catalog/') and not school_device:
+    if path not in TEACHER and path != '/api/device/apps' and not raw.startswith('/apt/apps/catalog/') and not school_device and not migration:
         return False
     try:
         profile = path == PROFILE or school_device
         service = getattr(handler.server, 'simple_updates', None)
         if not profile and service is None:
             raise UpdateError('simple_updates_unavailable', 503)
+        if migration:
+            if handler.command!='GET':raise UpdateError('method_not_allowed',405)
+            if handler.headers.get('Origin') is not None or not hasattr(handler,'enhed'):
+                raise UpdateError('native_device_required',403)
+            device=handler.enhed('root')
+            if device is None:return True
+            match=re.fullmatch(r'/api/device/migration/([a-f0-9]{64})/([1-9][0-9]{0,18})',raw)
+            if match is None or urlsplit(handler.path).query:raise UpdateError('migration_not_found',404)
+            handler.svar(200,service.migration(device,match[1],int(match[2])))
+            return True
         if profile:
             admin = getattr(handler.server, 'school_profile_admin', None)
             if admin is None:

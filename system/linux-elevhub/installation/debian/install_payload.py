@@ -9,7 +9,7 @@ import grp
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import importlib.util
 import pwd
 import re
@@ -27,16 +27,52 @@ _release_spec = importlib.util.spec_from_file_location("_mkv_simple_release", _r
 _release_module = importlib.util.module_from_spec(_release_spec)
 _release_spec.loader.exec_module(_release_module)
 PACKAGES = {package: architecture for package, architecture in _release_module.DEBIAN_COMPONENTS.values()}
+BASE_PACKAGES = {name: arch for name, arch in PACKAGES.items()
+                 if name != _release_module.DEBIAN_COMPONENTS['scratch'][0]}
 APT=["/usr/bin/apt-get","-o","APT::Get::AllowUnauthenticated=false","-o","Acquire::AllowInsecureRepositories=false","-o","Acquire::AllowDowngradeToInsecureRepositories=false","-o","Acquire::Check-Valid-Until=true","-o","Acquire::Check-Date=true","-o","APT::Update::Error-Mode=any"]
 
+def strict_json(text):
+    def unique(pairs):
+        result={}
+        for key,value in pairs:
+            if key in result:raise ValueError('duplicate_json_key')
+            result[key]=value
+        return result
+    return json.loads(text,object_pairs_hook=unique)
+
+
+def validate_packages(packages,release_set):
+    expected=BASE_PACKAGES if release_set=='base' else PACKAGES if release_set=='legacy' else None
+    if expected is None or type(packages) is not list or len(packages)!=len(expected):raise ValueError('incomplete_install_package_set')
+    found={}
+    for item in packages:
+        if type(item) is not dict or set(item)!={'package','architecture','version'}:raise ValueError('invalid_install_package')
+        name=item['package'];version=item['version']
+        if not isinstance(name,str) or name in found or name not in expected or item['architecture']!=expected[name]:raise ValueError('incomplete_install_package_set')
+        if not isinstance(version,str) or not re.fullmatch(r'[0-9][A-Za-z0-9.+:~\-]{0,127}',version):raise ValueError('invalid_package_version')
+        floor={'makervaerkstedet-elev':'2.1','makervaerkstedet-updater':'1.1'}.get(name)
+        if release_set=='base' and floor and subprocess.run(['/usr/bin/dpkg','--compare-versions',version,'ge',floor],capture_output=True).returncode!=0:raise ValueError('modular_base_version_required')
+        found[name]=item['architecture']
+    if found!=expected:raise ValueError('incomplete_install_package_set')
+    return expected
+
+
 def check(payload):
-    manifest=json.loads((payload/"install-lock.json").read_text())
-    if set(manifest)!={"schema","packages","files"} or manifest["schema"]!=1:raise ValueError("invalid_install_lock")
-    if {p["package"]:p["architecture"] for p in manifest["packages"]}!=PACKAGES:raise ValueError("incomplete_install_package_set")
-    for p in manifest["packages"]:
-        if not re.fullmatch(r"[0-9][A-Za-z0-9.+:~\-]{0,127}",p["version"]):raise ValueError("invalid_package_version")
+    manifest=strict_json((payload/'install-lock.json').read_text())
+    if type(manifest) is not dict or type(manifest.get('schema')) is not int:raise ValueError('invalid_install_lock')
+    modern=manifest['schema']==2
+    fields={'schema','packages','files'}|({'release_set'} if modern else set())
+    if set(manifest)!=fields or manifest['schema'] not in (1,2) or (modern and manifest['release_set']!='base'):raise ValueError('invalid_install_lock')
+    validate_packages(manifest['packages'],'base' if modern else 'legacy')
+    if type(manifest['files']) is not dict or not manifest['files']:raise ValueError('invalid_payload_inventory')
+    actual=set()
+    for entry in payload.rglob('*'):
+        if entry.is_symlink():raise ValueError('unsafe_payload_path')
+        if entry.is_file() and entry!=payload/'install-lock.json':actual.add(entry.relative_to(payload).as_posix())
+    if actual!=set(manifest['files']):raise ValueError('payload_inventory_mismatch')
     for name,expected in manifest["files"].items():
-        if Path(name).is_absolute() or ".." in Path(name).parts or "\\" in name:raise ValueError("unsafe_payload_path")
+        if not isinstance(name,str) or not name or PurePosixPath(name).is_absolute() or PurePosixPath(name).as_posix()!=name or '..' in PurePosixPath(name).parts or '\\' in name or ':' in name:raise ValueError('unsafe_payload_path')
+        if not isinstance(expected,str) or not re.fullmatch('[0-9a-f]{64}',expected):raise ValueError('invalid_payload_hash')
         file=payload/name
         if file.is_symlink() or not file.is_file() or hashlib.sha256(file.read_bytes()).hexdigest()!=expected:raise ValueError("payload_hash_mismatch")
     return manifest
@@ -91,7 +127,9 @@ def apply(payload,manifest):
     shutil.copyfile(payload/"enrollment/makervaerkstedet-enroll.service",unit);unit.chmod(0o644)
     command(["/usr/bin/python3","-B","/usr/lib/makervaerkstedet/updater/template_activation.py"])
     # --root writes boot links only. Never start a service in the installer.
-    command(["/usr/bin/systemctl","--root=/","enable","makervaerkstedet-enroll.service","makervaerkstedet-firstboot.service","makervaerkstedet-apt-update.timer","elevhub-lokal.service","elevhub-design.service","elevhub-svg-library.service"])
+    units=["makervaerkstedet-enroll.service","makervaerkstedet-firstboot.service","makervaerkstedet-apt-update.timer","elevhub-lokal.service","elevhub-design.service"]
+    if manifest['schema']==2:units.append('elevhub-svg-library.service')
+    command(["/usr/bin/systemctl","--root=/","enable",*units])
     marker.write_text(json.dumps({"schema":1,"packages":manifest["packages"]})+"\n");marker.chmod(0o600)
 
 def main():

@@ -260,6 +260,8 @@ def activate(root=Path("/")):
     previous=root/'var/lib/makervaerkstedet-updater/activation.json'
     previous_files=json.loads(protected(previous,private=True).read_bytes()).get('files',{}) if previous.exists() else {}
     for name,(target,mode) in TEMPLATES.items():
+        if name=='elevhub-svg-library.service.j2' and not values['kiosk_modular_apps']:
+            continue  # The bridge must activate using the installed .2 template set.
         destination=plain(root/target)
         source=protected(templates/name).read_text(encoding="utf-8")
         if name=='chromium-politik.json.j2' and destination.exists():

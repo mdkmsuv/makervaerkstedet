@@ -175,7 +175,12 @@ def validate_app_descriptor(value):
                 and 'projects-v1' in capabilities['required'], 'invalid_app_project')
         builtins={'scratch':'.sb3','laser':'.laser.json','folie':'.svg','3dprint':'.mkv3d','microbit':'.microbit.json'}
         reserved=set(builtins.values())|{'.json','.txt','.png','.wav','.mp3','.csv','.piskel','.zip','.stl','.hex','.projekt.svg'}
-        require(project['kind']==value['id'] and (project['extension']==builtins[value['id']] if value['id'] in builtins else project['extension'] not in reserved),
+        # Namespaced JSON is a supported opaque app format. Raw .json remains
+        # reserved; machine/media formats and the builtin formats cannot be
+        # claimed through a longer suffix such as .cad.stl or .note.laser.json.
+        require(project['kind']==value['id'] and (project['extension']==builtins[value['id']] if value['id'] in builtins
+                else project['extension'] not in reserved and not any(
+                    project_extensions_overlap(project['extension'],extension) for extension in reserved-{'.json'})),
                 'app_project_format_conflict')
     return value
 
@@ -189,6 +194,11 @@ def compatibility(descriptor, *, core_version, sdk=SDK_VERSION, capabilities=SUP
     reasons.extend('missing_capability:' + item for item in descriptor['capabilities']['required']
                    if item not in capabilities)
     return {'compatible': not reasons, 'reasons': reasons}
+
+
+def project_extensions_overlap(left,right):
+    """An opaque filename must identify exactly one app, independent of order."""
+    return left.endswith(right) or right.endswith(left)
 
 
 def validate_catalog(value, *, repository):
@@ -214,7 +224,8 @@ def validate_catalog(value, *, repository):
         ids.add(app['id']); ports.add(port); packages.add(app['package'])
         if app['project'] is not None:
             extension=app['project']['extension']
-            require(extension not in formats,'duplicate_catalog_project_format')
+            require(not any(project_extensions_overlap(extension,other) for other in formats),
+                    'duplicate_catalog_project_format')
             formats.add(extension)
         artifact = entry['artifact']
         require(type(artifact) is dict and set(artifact) == ARTIFACT_FIELDS, 'invalid_app_artifact')

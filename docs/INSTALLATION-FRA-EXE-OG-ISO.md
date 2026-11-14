@@ -8,12 +8,31 @@ Denne vejledning gælder en færdig leverance med
 en installationspakke. Følg også leverancens README for præcis version,
 filplaceringer, prøver og begrænsninger.
 
+## Vælg guiden til den leverede version
+
+| Leverance | Første elevstart |
+|---|---|
+| Eksisterende samlet EXE/ISO med versionsslutning `.2` | De medfølgende værksteder kan åbnes lokalt før tilmelding; følg leverancens egen README og den nedenstående manuelle prøve |
+| Ny modulær basis | Start, Internet og projekthylde findes uden valgfrie apps; tilmeld først og lad skolens godkendte standardsæt/installationsordrer blive udført |
+
+Den modulære kilde har egne apppakker og en tom basis. Det ændrer ikke
+en tidligere skrevet ISO eller USB. Brug aldrig en gammel `.2`-kvittering
+som bevis for, at den nye modulære kandidat er installeret eller bootet.
+Leverancens README skal angive kildecommit, signaturer, pakkeversioner og
+faktisk native/ISO-prøve. Denne guide dokumenterer ikke i sig selv nogen
+ny installation.
+
+En manuel prøve af den eksisterende `.2`-leverance hører til netop
+denne leverance og dens medier. En udsat prøve genoptages særskilt; en
+ny modulær bygning må ikke overskrive dens klargjorte medier eller maskiner.
+
 ## Før du begynder
 
 Serveren skal være Windows x64 med fast IPv4-adresse eller DHCP-reservation.
 Elevcomputeren skal være Intel/AMD amd64. Begge skal kunne nå hinanden på det
-angivne elevnet. Debian-installationen kræver internet; værkstederne følger
-med ISO'en. Brug en frisk testprofil ved en hjemmeprøve.
+angivne elevnet. Debian-installationen kræver internet. Den eksisterende
+samlede ISO medbringer værksteder; den modulære basis installerer apps
+efter tilmelding. Brug en frisk testprofil ved en hjemmeprøve.
 
 Kontrollér leverancens signaturer og kvittering. Tag backup før installation
 på en computer med data. Ved en VM-prøve skal elevens disk være ny og tom.
@@ -65,9 +84,11 @@ sider og forskelligt tidspunkt for Windows-godkendelsen.
    Til offlineprøven trykker du Enter eller venter. Den lokale elevflade
    åbner. Skoleopsætningen tilbydes igen ved genstart, så længe eleven ikke
    er tilmeldt.
-6. Åbn Laser, tegn en figur, gem, gå til start og genåbn fra projekthylden.
-   Prøv Folie og 3D, hvor grafikken understøttes. VM'ens grafik beviser ikke
-   fysisk GPU-/WebGL-understøttelse.
+6. **Samlet `.2`-ISO:** Åbn Laser, tegn en figur, gem, gå til start og
+   genåbn fra projekthylden. Prøv Folie og 3D, hvor grafikken understøttes.
+   **Modulær basis:** Kontrollér start og projekthylde uden valgfrie
+   appfliser; fortsæt til tilmelding. VM'ens grafik beviser ikke fysisk
+   GPU-/WebGL-understøttelse.
 
 ## 3. Tilmeld eleven til den nye server
 
@@ -87,19 +108,54 @@ sider og forskelligt tidspunkt for Windows-godkendelsen.
 5. Kontrollér vist skolenavn og adresse. Indtast samme computernavn og
    engangskoden; den vises ikke, mens du skriver. Bekræft med **JA** og vent
    på færdig tilmelding.
-6. Kontrollér eleven i lærerens panel. Afprøv efter aftale elevskift,
-   gem/genåbn, aflevering og lærerens modtagelse. Aflevering er ikke en
-   tilladelse til fysisk produktion.
+6. Kontrollér eleven i lærerens panel. I den modulære udgave får en ny
+   enhed skolens standardapps, når updateren har kontakt. Åbn **Appkatalog**
+   og følg den rapporterede status; en ordre eller download er ikke en
+   færdig installation. Vælg eventuelt app og computer og bestil
+   **Installér på manglende**. Ingen lokal appflise før installation er
+   forventet på en tom basis.
+7. Afprøv efter aftale elevskift, gem/genåbn, offline genstart og lærerens
+   adgangslukning i de faktisk installerede apps. Prøv kun aflevering i
+   det aftalte testmiljø. **202: gemt i udbakken** betyder afventende
+   forbindelse; modtagelse i serverens kø er ikke fysisk færdig produktion.
 
 Ved geninstallation afmeldes det gamle computernavn først i serverens
 administration. Genbrug ikke en anden skoles profil eller certifikater.
 
+## Daglig administration i den modulære udgave
+
+**Appkatalog** skelner mellem **Installerede apps** og **Kan installeres**.
+Vælg computerne og brug installering, opdatering eller afinstallation.
+Gemte projekter og ventende afleveringer bevares ved fjernelse. **Apps til
+nye elevcomputere** ændrer kun standardsættet for nye enheder.
+
+**Apps og internet** styrer lærerens adgang til undervisningen. En
+lukning fjerner ingen software. Ved serverudfald er installerede lokale
+apps åbne; eksterne tjenester kræver stadig internet.
+
+I **Skoleprofil** vælges navn, PNG-logo, farve og en tilgængelig
+skrifttype. Kontrollér forhåndsvisningen og vælg **Gem skoleprofil**.
+Profilen distribueres til tilmeldte elever og bevares til offline brug.
+Se [skoletilpasning](SKOLETILPASNING.md) for grænser og eksisterende
+private profiler.
+
 ## Opdatering og fejl
+
+Hvis en overgang til tilvalgsapps bliver ved med at fejle, kan læreren i
+**Teknik → Opdateringer** læse computerens fejlkode og vælge **Stop genforsøg**.
+Det stopper nye forsøg på serveren og bevarer historik og elevprojekter.
+En igangværende installation får lov at afslutte. Vent på computerens nye
+status og ret årsagen, før overgangen bestilles igen. Se de konkrete
+fejlkoder i [app-platformens migrationsvejledning](APP-PLATFORM.md).
 
 Samme rolle-EXE viser **Opdatering fundet** ved en kendt installation og
 bevarer profil, identitet og data. Serverens køer bliver pauset, indtil
 læreren fortsætter. Genoptagelse, backupgendannelse og opdatering er
-forskellige handlinger. Se [Kom godt i gang](KOM-GODT-IGANG.md).
+forskellige handlinger. En eksisterende samlet Linux-installation skal
+bruge den ordnede bro-/appmigration, ikke geninstalleres med basis-ISO
+eller nulstille elevprojekter igen. Se
+[appplatformen](APP-PLATFORM.md), [opdateringer](GITHUB-OPDATERINGER.md)
+og [Kom godt i gang](KOM-GODT-IGANG.md).
 
 Hvis et trin fejler, stop dér og notér trinnet og den synlige fejl. Bevar
 data og logs. Læs leverancens aktuelle status før et nyt forsøg; en kilde-

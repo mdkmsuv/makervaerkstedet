@@ -16,6 +16,22 @@ En kodeagent arbejder i de filer og det miljø, skolens ansvarlige giver den
 adgang til. Den får ikke en skjult driftsidentitet i programmet. En brugers
 konkrete instruktioner afgør opgaven og hvilke ændringer, der er ønsket.
 
+## Fælles overdragelse mellem Claude og Codex
+
+I den private OneDrive-projektrod er `LEVERANCE.md` den fælles aktuelle
+status: kildecommit, bygget pakke, testinstallation, faktisk evidens,
+åbne forhold og næste afgrænsede arbejde. Opdatér den før aflevering ved
+statusændring; opret ikke en konkurrerende aktuel status. Den private
+status og rå logs skal ikke indgå i en offentlig kildeudgave.
+
+Produktroden indeholder `REPOSITORY-LAYOUT.json`. Kilden ligger i
+`system/`, selvstændige apps i `apps/<id>/` og udviklingsværktøjer
+i `sdk/`. Installerede URL'er og dataområder er ikke flyttet med Git.
+Læs [kodekortet](KODEKORT.md) for de præcise ejere og
+[appplatformen](APP-PLATFORM.md) for kontrakter og migration.
+En tidligere samlet `.2`-leverance er en anden kandidat end den nye
+modulære kilde. Bevar dens kvittering og manuelprøve som særskilt evidens.
+
 ## Læs i denne rækkefølge
 
 | Dokument | Hvad det afklarer |
@@ -23,7 +39,7 @@ konkrete instruktioner afgør opgaven og hvilke ændringer, der er ønsket.
 | [Projektindgang](../AGENTS.md) | Installation, roller og grundlæggende krav ved ændringer. |
 | [Arkitektur](MAKERSPACE-ARKITEKTUR.md) | Komponenter, dataejerskab, maskiner og workflowgrænser. |
 | [Skoletilpasning](SKOLETILPASNING.md) | Skoleprofil, LAN, værksteder og de faktiske generatorer og skabeloner. |
-| Kildekode og testkørsel | Kontroller den aktuelle kode og relevante testkommandoer i projektet. |
+| [Kodekort](KODEKORT.md) | Kildeejerskab, aktuelle fysiske stier og relevante testkommandoer. |
 | [Serverkontrolpanel](SERVERKONTROLPANEL.md) | Lærerens samlede overblik. |
 | [Backup](MAKERSPACE-BACKUP.md) og [opdatering](MAKERSPACE-OPDATERING.md) | Databevarelse, isolerede prøver og grænser for ibrugtagning. |
 | [Kreditering](../CREDITS.md) og [offentlig udgivelse](PUBLIC-RELEASE.md) | Obligatorisk kreditering, tredjepartslicenser og mangler før deling. |
@@ -35,12 +51,15 @@ maskinadministration og workflows skal fungere med nul elevcomputere.
 
 | Skolens ønske | Start her |
 |---|---|
-| Navn, tema, rolle eller LAN-opsætning | [Skoletilpasning](SKOLETILPASNING.md) og [Setup-School.ps1](../deployment/school-setup/Setup-School.ps1). |
+| Navn, PNG-logo, farve og skrifttype | Lærerens **Skoleprofil** og [skoletilpasning](SKOLETILPASNING.md). |
+| Serverrolle eller LAN-opsætning | [Setup-School.ps1](../deployment/school-setup/Setup-School.ps1) og profilens validering. |
 | Tilføje en understøttet printer eller en manuel station | Lærerens `/makerspace`-panel. Koden ligger i [makerspace_store.py](../system/linux-elevhub/server/elevhub/makerspace_store.py) og [makerspace_printers.py](../system/linux-elevhub/server/elevhub/makerspace_printers.py). |
 | Ændre en arbejdsgang | Lærerens workfloweditor og [makerspace_workflows.py](../system/linux-elevhub/server/elevhub/makerspace_workflows.py). |
 | Tilføje en ny maskintype | Undersøg den eksisterende adapter og den autoritative kø først. En manuel registrering giver ikke automatisk en hardwaredriver. |
 | Bygge en ny app til elevenhederne | [Sådan laver du en ny app](NY-APP-GUIDE.md) og [Værksteder som apps](APP-PLATFORM.md). |
-| Ændre digitale værksteder | Appskabelonerne i [skoletilpasningen](SKOLETILPASNING.md), [apps.py](../system/linux-elevhub/server/elevhub/apps.py) og [tilstand.py](../system/linux-elevhub/server/elevhub/tilstand.py). |
+| Installerede apps, standardvalg eller afinstallation | [Appplatformen](APP-PLATFORM.md), `app_admin.py`, `app_operations.py` og [ny-app-guiden](NY-APP-GUIDE.md). |
+| Ændre en apps brugerflade | Appens egen mappe `apps/<id>/`, descriptor og filliste; se [kodekortet](KODEKORT.md). |
+| Ændre lærerens åbning/lukning | [apps.py](../system/linux-elevhub/server/elevhub/apps.py) og [tilstand.py](../system/linux-elevhub/server/elevhub/tilstand.py). |
 | Ændre lærerens overblik | [system_overview.py](../system/linux-elevhub/server/elevhub/system_overview.py) og [web-mappen](../system/linux-elevhub/server/elevhub/web). |
 | Ændre printerforløbet | [core.py](../system/app/core.py), [printer_bridge.py](../system/app/printer_bridge.py) og [printerfrigivelse](PRINTERFRIGIVELSE.md). |
 | Ændre laserforløbet | [laser_server.py](../system/app/laser_server.py), [laser_station.py](../system/app/laser_station.py) og [laseradapteren](../system/linux-elevhub/server/elevhub/makerspace_laser_admin.py). |
@@ -101,17 +120,17 @@ Testforudsætninger:
 
 ~~~powershell
 # Lærerens administration, adgang og workflows
-.venv\Scripts\python.exe -m unittest discover -s linux-elevhub/server/elevhub -p 'test_makerspace*.py' -q
+python -B -m unittest discover -s system/linux-elevhub/server/elevhub -p 'test_makerspace*.py' -q
 
 # Printer/laser mellem lærerpanel og de lokale tjenester
-.venv\Scripts\python.exe -m unittest tests.test_makerspace_printer_integration tests.test_makerspace_laser_integration tests.test_makerspace_queue_control -q
+python -B -m unittest tests.test_makerspace_printer_integration tests.test_makerspace_laser_integration tests.test_makerspace_queue_control -q
 
 # Offlinepolitik på elevklienten
-.venv\Scripts\python.exe -m unittest discover -s linux-elevhub/tests -p test_internetregler.py -q
-node linux-elevhub/tests/test_kiosk_offline_reconnect.cjs
+python -B -m unittest discover -s system/linux-elevhub/tests -p test_internetregler.py -q
+node system/linux-elevhub/tests/test_kiosk_offline_reconnect.cjs
 
 # Windows-bootstrap i isolerede softwaretests
-.venv\Scripts\python.exe -m unittest discover -s windows-elevhub/server/tests -p 'test_*.py' -q
+python -B -m unittest discover -s system/windows-elevhub/server/tests -p 'test_*.py' -q
 ~~~
 
 Ved ændringer i dataformater, installation eller opdatering skal de relevante
@@ -124,6 +143,9 @@ kræver særskilt praktisk afprøvning.
 - Læreren styrer systemet. De interne HTTP-funktioner under `/api/makerspace/`
   betjener lærerens panel og kræver lærerlogin. Private forbindelsesnøgler
   mellem lokale tjenester er komponentkommunikation, ikke agentadgang.
+- Installeret appbestand og lærerens åbning/lukning er adskilte. En ny app
+  registreres via descriptor og signeret katalog, ikke en fast startliste.
+  Fjernelse bevarer projekter og udbakke; køkvittering er ikke fysisk færdig.
 - Ved serverudfald er de understøttede lokale elevværksteder og Internet-adgang
   åbne, også ved kold opstart; eksterne tjenester kræver stadig netværk.
   CaDoodle er udtaget af 2.0. Ved genforbindelse gælder lærerens aktuelle valg igen.

@@ -138,7 +138,7 @@ def main():
             add(args.public_trust_dir/"makervaerkstedet.gpg","usr/share/makervaerkstedet/trust/makervaerkstedet.gpg","5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f")
             catalog_pin=json.loads((source_path('linux-elevhub/packaging/updater-pins.json', args.updater_source)).read_text(encoding='utf-8'))['app_catalog_verifier_sha256']
             add(source_path('app/app_catalog.py', args.updater_source),'usr/lib/makervaerkstedet/updater/app_catalog.py',catalog_pin,text=True)
-            for name in ("apt_client.py","app_operations.py","app_archive.py","school_profile_sync.py","template_activation.py","runtime_checks.py","os_maintenance.py"):
+            for name in ("apt_client.py","app_operations.py","app_archive.py","app_migration.py","identity_state.py","migration_space.py","school_profile_sync.py","template_activation.py","runtime_checks.py","os_maintenance.py"):
                 add(source_path("linux-elevhub/administration", args.updater_source)/name,"usr/lib/makervaerkstedet/updater/"+name)
             add(source_path("app/school_appearance.py", args.updater_source),"usr/lib/makervaerkstedet/updater/school_appearance.py")
             add(source_path("linux-elevhub/projekter/student_appearance.py", args.updater_source),"usr/lib/makervaerkstedet/updater/student_appearance.py")

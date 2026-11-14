@@ -374,7 +374,8 @@
     "system/third_party/boxes.py/documentation/src/burn.svg",
     "system/third_party/boxes.py/documentation/src/burn2.svg",
     "system/third_party/boxes.py/documentation/src/overcuts.svg",
-    "system/third_party/boxes.py/tests/data/.gitkeep"
+    "system/third_party/boxes.py/tests/data/.gitkeep",
+    "sdk/README.md"
   ],
   "includeExtensions": [
     ".py",

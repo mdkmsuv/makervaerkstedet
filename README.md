@@ -6,9 +6,25 @@ hovedsystemet og lærerens browseradgang; elevværkstederne understøttes på
 Linux. Systemet kan køre på én Windows-computer eller med en central
 Windows-server/VM og en separat Windows-lasercomputer.
 
+Kilden er opdelt i `system/` (hovedsystem), `apps/<id>/` (selvstændige
+apps) og `sdk/` (skabelon og lokal prøve). Se
+[appplatformen](docs/APP-PLATFORM.md) og
+[sådan laver du en ny app](docs/NY-APP-GUIDE.md).
+En app har egen version og pakke; skolens godkendte appkatalog styrer
+installation, opdatering og fjernelse på de valgte elevcomputere.
+**Apps og internet** styrer undervisningsadgang og er adskilt fra, om
+softwaren er installeret. Skolens standardsæt gælder nye tilmeldte enheder.
+
+Læreren kan forhåndsvise og gemme navn, PNG-logo, temafarve og skrifttype
+under **Skoleprofil**. Profilen distribueres til tilmeldte enheder og
+gemmes lokalt til offline brug. Både Laser og Folie har direkte adgang til
+hjemmesidens SVG-bibliotek med lokal cache.
+
 Har du en færdig Setup.exe og elev-ISO, så følg
 [installation fra EXE og ISO](docs/INSTALLATION-FRA-EXE-OG-ISO.md) samt
-leverancens README. Den beskriver den aktuelle EXE-guide og første elevstart.
+leverancens README. Guiden skelner den eksisterende samlede `.2`-leverance fra den nye
+modulære basis. Den leverede versions kvittering afgør, hvad der faktisk
+er bygget, installeret og bootet.
 
 Start ellers med [Kom godt i gang](docs/KOM-GODT-IGANG.md). Vælg dér mellem ren
 installation og opdatering af Linux-elevcomputer eller Windows-server.
@@ -44,8 +60,8 @@ Den offentlige kildeudgave bruger generiske Bauhaus-inspirerede skins.
 Skolelogo, Klosterbrandstyle og andre lokale skoleprofiler hører til den
 lokale opsætning. [Public release](docs/PUBLIC-RELEASE.md) beskriver eksport,
 privat konfiguration og tredjepartsnotices. En almindelig commit er ikke en
-installationsbestilling. Der er endnu ingen installationsrelease verificeret
-fra GitHub.
+installationsbestilling. En lokal kilde- eller byggeprøve er ikke dokumentation for en
+publiceret installationsrelease fra GitHub.
 
 GitHub skal være hele grundlaget for installation og opdatering, så den
 oprindelige udviklingsmappe kan undværes. Programmet kører lokalt på skolens

@@ -63,6 +63,8 @@ class HTTPS:
         parsed=urlsplit(origin)
         require(parsed.scheme=="https" and parsed.hostname and not parsed.username and not parsed.password and parsed.path in ("", "/") and not parsed.query and not parsed.fragment,"https_origin_required")
         self.origin=origin.rstrip("/");self.computer=computer;self.token=token
+        self.identity_sha256=digest(json_bytes({'schema':1,'origin':[parsed.scheme,parsed.hostname.lower(),parsed.port or 443],
+            'computer':computer,'token_sha256':digest(token.encode())}))
         self.opener=urllib.request.build_opener(urllib.request.ProxyHandler({}),NoRedirect(),urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=str(ca))))
     def request(self,path,limit,body=None):
         require(path.startswith("/") and not path.startswith("//") and "\\" not in path,"unsafe_server_path")
@@ -70,7 +72,9 @@ class HTTPS:
         if body is not None:
             require(path in (API,'/api/device/apps'),"fixed_poll_path_required")
             headers.update({"Authorization":"Bearer "+self.token,"X-Elevhub-Computer":self.computer})
-        elif path == '/api/device/school-profile' or re.fullmatch(r'/api/device/school-profile/assets/[a-f0-9]{64}\.(?:png|ttf|css|svg|jpg|jpeg|webp|woff|woff2|otf|ico)',path):
+        elif (path == '/api/device/school-profile'
+                or re.fullmatch(r'/api/device/school-profile/assets/[a-f0-9]{64}\.(?:png|ttf|css|svg|jpg|jpeg|webp|woff|woff2|otf|ico)',path)
+                or re.fullmatch(r'/api/device/migration/[a-f0-9]{64}/[1-9][0-9]{0,18}',path)):
             headers.update({"Authorization":"Bearer "+self.token,"X-Elevhub-Computer":self.computer})
         data=None if body is None else json_bytes(body)
         if data is not None:headers["Content-Type"]="application/json"
@@ -180,7 +184,7 @@ class Commands:
         return not plain(self.app_root/app['id']/'app.json').exists()
     def preflight_app(self,descriptor,*,removed=False):
         from app_operations import installed_descriptors
-        from app_catalog import validate_app_descriptor
+        from app_catalog import validate_app_descriptor,project_extensions_overlap
         app=validate_app_descriptor(descriptor);others=[]
         for existing in installed_descriptors(self.app_root,issues=[]):
             if existing['id']==app['id']:continue
@@ -189,7 +193,8 @@ class Commands:
             if not removed:
                 require(urlsplit(existing['start']).port!=urlsplit(app['start']).port,'app_port_conflict')
                 a,b=app['project'],existing['project']
-                require(a is None or b is None or (a['kind']!=b['kind'] and a['extension']!=b['extension']),'app_project_format_conflict')
+                require(a is None or b is None or (a['kind']!=b['kind'] and not project_extensions_overlap(a['extension'],b['extension'])),
+                        'app_project_format_conflict')
             others.append(existing)
         # Preserve the set of currently responsive apps across the shared service
         # restart. Already broken apps are reported separately by inventory.
@@ -212,25 +217,39 @@ class Commands:
         from app_operations import install_plan
         require(len(files)==1,'one_app_archive_required')
         archive=inspect_deb(files[0],descriptor)
-        volumes={}
-        for key,allocation in archive['allocation'].items():
-            if not allocation['files'] and not allocation['directories']:continue
-            target=self.app_root if key=='app' else Path('/usr/local/share/elevhub/apps/scratch')
-            probe=plain(target)
-            while not probe.exists():probe=probe.parent
-            volume=probe.stat().st_dev;stats=os.statvfs(probe)
-            # Include block rounding, directory entries and dpkg's temporary
-            # copies, not merely compressed download bytes.
-            estimate=allocation['bytes']+(allocation['files']+allocation['directories'])*stats.f_frsize
-            item=volumes.setdefault(volume,{'path':probe,'bytes':0})
-            item['bytes']+=2*estimate
-        for item in volumes.values():
-            require(shutil.disk_usage(item['path']).free>=item['bytes']+128*1024**2,'insufficient_install_space')
+        self.check_app_space([archive])
         args=[*self.apt(),'--yes','--no-remove','--no-install-recommends','--reinstall',
               '-o','APT::Get::AutomaticRemove=false','-o','Dpkg::Options::=--force-confold']
         targets=[str(path) for path in files]
         install_plan(self.call([*args,'--simulate','install',*targets]),descriptor)
         self.call([*args,'install',*targets])
+    def check_app_space(self,archives):
+        volumes={}
+        for archive in archives:
+            for key,allocation in archive['allocation'].items():
+                if not allocation['files'] and not allocation['directories']:continue
+                target=self.app_root if key=='app' else Path('/usr/local/share/elevhub/apps/scratch')
+                probe=plain(target)
+                while not probe.exists():probe=probe.parent
+                volume=probe.stat().st_dev;stats=os.statvfs(probe)
+                # Account for all apps sharing a volume, block rounding and
+                # dpkg's temporary copies before the single native transaction.
+                estimate=allocation['bytes']+(allocation['files']+allocation['directories'])*stats.f_frsize
+                item=volumes.setdefault(volume,{'path':probe,'bytes':0});item['bytes']+=2*estimate
+        for item in volumes.values():
+            require(shutil.disk_usage(item['path']).free>=item['bytes']+128*1024**2,'insufficient_install_space')
+    def install_migration(self,files,descriptors,targets):
+        from app_archive import inspect_deb
+        from migration_space import check_migration_space
+        indexed={app['package']:app for app in descriptors};survivors={}
+        for app in descriptors:
+            for survivor in self.preflight_app(app):survivors[survivor['id']]=survivor
+        for file in files:
+            package=self.call(['/usr/bin/dpkg-deb','--field',str(file),'Package']).strip()
+            if package in indexed:inspect_deb(file,indexed[package])
+        self.migration_space=check_migration_space(files)
+        self.migration_survivors=[value for key,value in survivors.items() if key not in {a['id'] for a in descriptors}]
+        self.install(files,False,migration_targets=targets)
     def download(self,artifact,directory):
         before=set(directory.glob("*.deb"))
         self.call([*self.apt(),"download",artifact["package"]+"="+version(artifact["version"])],cwd=directory)
@@ -244,16 +263,18 @@ class Commands:
         verify_artifact(file,artifact)
         return file
     def refresh(self):self.call([*self.apt(),"update"])
-    def install(self,files,rollback):
-        flags=["--yes","--no-remove","--no-install-recommends","-o","Dpkg::Options::=--force-confold"]
+    def install(self,files,rollback,*,migration_targets=None):
+        flags=["--yes","--no-remove","--no-install-recommends","-o","Dpkg::Options::=--force-confold",
+               '-o','APT::Get::AutomaticRemove=false']
         if rollback:flags.append("--allow-downgrades")
+        if migration_targets is not None:flags.append('--reinstall')
         targets=[str(p) for p in files]
         # Native apt decides whether installed OS dependencies and the school
         # repository suffice. Keep exactly this scope for simulation and apply;
         # unused system indices cannot supply stale/expired dependency metadata.
         args=[*self.apt(),*flags]
         try:
-            self.call([*args,"--simulate","install",*targets])
+            simulation=self.call([*args,"--simulate","install",*targets])
         except UpdateError as error:
             if str(error)!="command_failed":raise
             # New/changed OS dependencies require successful native validation
@@ -261,8 +282,14 @@ class Commands:
             # or retry a partially executed installation.
             self.call([*self.apt(system_dependencies=True),"update"])
             args=[*self.apt(system_dependencies=True),*flags]
-            self.call([*args,"--simulate","install",*targets])
+            simulation=self.call([*args,"--simulate","install",*targets])
+        if migration_targets is not None:
+            from app_migration import install_plan
+            install_plan(simulation,migration_targets)
         self.call([*args,"install",*targets])
+    def activate_migration(self,core_version,descriptors):
+        apps={app['id']:app for app in [*getattr(self,'migration_survivors',[]),*descriptors]}
+        self.activate(core_version,apps=[{**app,'port':urlsplit(app['start']).port} for app in apps.values()])
     def activate_app(self,core_version,descriptor,*,removed=False):
         app={**descriptor,'port':urlsplit(descriptor['start']).port}
         survivors=[{**item,'port':urlsplit(item['start']).port} for item in getattr(self,'app_survivors',[])]
@@ -307,7 +334,8 @@ class Client:
         self.minisign=minisign;self.public_key=public_key;self.now=now or (lambda:datetime.now(timezone.utc))
         self.path=self.state/"ledger.json"
         self.ledger=strict_json(protected(self.path,private=True).read_bytes()) if self.path.exists() else {"schema":1,"jobs":{},"outbox":[],"highwater":{}}
-        fields(self.ledger,("schema","jobs","outbox","highwater"))
+        require(type(self.ledger) is dict and set(self.ledger) in (
+            {'schema','jobs','outbox','highwater'},{'schema','jobs','outbox','highwater','identity_sha256'}),'invalid_ledger')
         require(self.ledger["schema"]==1 and type(self.ledger["jobs"]) is dict and type(self.ledger["outbox"]) is list and type(self.ledger["highwater"]) is dict,"invalid_ledger")
     def save(self):atomic(self.path,json_bytes(self.ledger),0o600)
     def enqueue(self,component,revision,state,code):
@@ -325,6 +353,11 @@ class Client:
         highest=accept_sequence(manifest,{(REPOSITORY,"student","debian-amd64",c):old["sequence"]},rollback_manifest_sha256=manifest["_manifest_sha256"] if offer["rollback"] else None)
         return manifest,highest
     def tick(self):
+        from identity_state import scoped_ledger
+        scoped=scoped_ledger(self.state,self.ledger,getattr(self.transport,'identity_sha256',None),kind='core')
+        if scoped is not self.ledger:self.ledger=scoped;self.save()
+        from app_migration import (Migration,needed,guard_bridge,at_least,MODULAR,
+                                   completed_apps,confirm_completed)
         installed=self.commands.installed()
         current={i["component"]:i["version"] for i in installed}
         pending=self.ledger["outbox"][0] if self.ledger["outbox"] else None
@@ -332,29 +365,56 @@ class Client:
             job=self.ledger["jobs"].get(pending["component"]+":"+str(pending["revision"]))
             if not job or current.get(pending["component"])!=job["version"]:
                 pending["state"]="failed";pending["code"]="installed_version_mismatch";self.save()
+            elif job.get('migration') and job['migration']['phase']!='acknowledged' and not completed_apps(self,job):
+                pending['state']='failed';pending['code']='migration_app_state_mismatch';self.save()
         body={"schema":1,"installed":installed,"result":{k:v for k,v in pending.items() if k!="component"} if pending else None}
         response=validate_response(self.transport.poll(body))
+        if pending and pending['state']=='succeeded':
+            job=self.ledger['jobs'].get(pending['component']+':'+str(pending['revision']))
+            if job and job.get('migration') and job['migration']['phase']!='acknowledged':
+                job['migration']['phase']='reported';self.save()
+        for job in self.ledger['jobs'].values():
+            if job.get('migration'):confirm_completed(self,job,current)
+        self.migration_pending=any(job.get('migration') and job['migration']['phase'] not in ('acknowledged','superseded')
+                                   for job in self.ledger['jobs'].values())
         # Schema1 Scratch desires belong to the bundled generation. Once the
         # split core is installed only the app journal may select/remove it.
         from app_catalog import compare_versions
-        if 'studentcore' in current and compare_versions(current['studentcore'],'2.1.0~')>=0:
+        if ('studentcore' in current and compare_versions(current['studentcore'],'2.1.0~')>=0
+                or any(o['component']=='studentcore' and at_least(o['version'],MODULAR) for o in response['desired'])):
             response['desired']=[o for o in response['desired'] if o['component']!='scratch']
         if pending:self.ledger["outbox"].pop(0);self.save()
-        plan=[];bad=False
+        plan=[];bad=False;migrations={}
         for offer in response["desired"]:
             c=offer["component"];revision=offer["revision"];key=c+":"+str(revision)
             old=self.ledger["jobs"].get(key)
-            if old and old["phase"]=="complete" and current.get(c)==offer["version"]:
+            if old and old['manifest_sha256']!=offer['manifest_sha256']:
+                self.failure(c,revision,UpdateError('revision_manifest_changed'));bad=True;continue
+            if old and old.get('migration') and old['migration']['phase'] in ('acknowledged','superseded'):
+                require(old['manifest_sha256']==offer['manifest_sha256'],'revision_manifest_changed')
+                if current.get(c)!=offer['version']:self.failure(c,revision,UpdateError('migration_already_completed'))
+                continue
+            migrating=needed(offer,current,old)
+            if migrating:self.migration_pending=True
+            if (old and old["phase"]=="complete" and current.get(c)==offer["version"]
+                    and (not migrating or completed_apps(self,old))):
                 require(old["manifest_sha256"]==offer["manifest_sha256"],"revision_manifest_changed")
+                # A crash between durable completion and outbox write must not
+                # strand a native migration which the server has not confirmed.
+                if migrating:self.enqueue(c,revision,'succeeded',None)
                 continue
             try:
                 require(not old or old["manifest_sha256"]==offer["manifest_sha256"],"revision_manifest_changed")
+                require(not getattr(self.commands,'incomplete',set()),'dpkg_manual_repair_required')
+                guard_bridge(offer,current)
                 manifest,highest=self.verify(offer)
                 if c in current and self.commands.older(offer["version"],current[c]):require(offer["rollback"],"downgrade_not_authorized")
                 high=self.ledger["highwater"].get(c,{"sequence":0,"hash":None})
                 if manifest["sequence"]>=high["sequence"]:self.ledger["highwater"][c]={"sequence":highest,"hash":manifest["_manifest_sha256"]}
-                job={"manifest_sha256":offer["manifest_sha256"],"version":offer["version"],"phase":"verified"}
-                self.ledger["jobs"][key]=job;self.save();plan.append((offer,manifest,job))
+                job=old or {"manifest_sha256":offer["manifest_sha256"],"version":offer["version"]}
+                job['phase']='verified';self.ledger["jobs"][key]=job;self.save()
+                if migrating:migrations[key]=Migration(self,offer,job,current)
+                plan.append((offer,manifest,job))
             except (UpdateError,ReleaseVerificationError,OSError,ValueError) as error:
                 self.failure(c,revision,error);bad=True
         # Authenticate every application component before a single apt command.
@@ -363,9 +423,11 @@ class Client:
             for offer,_,_ in plan:self.enqueue(offer["component"],offer["revision"],"failed","plan_rejected")
         elif plan:
             try:
+                migration=next(iter(migrations.values()),None)
+                app_size=migration.preflight() if migration is not None else 0
                 changed=[p for p in plan if current.get(p[0]["component"])!=p[0]["version"]]
-                if changed:
-                    size=sum(a["size"] for _,m,_ in changed for a in m["artifacts"])
+                if changed or app_size:
+                    size=app_size+sum(a["size"] for _,m,_ in changed for a in m["artifacts"])
                     require(shutil.disk_usage(self.state).free>=2*size+128*1024*1024,"insufficient_download_space")
                     self.commands.refresh()
                     with tempfile.TemporaryDirectory(prefix="download-",dir=self.state) as temporary:
@@ -374,12 +436,22 @@ class Client:
                             component_dir=directory/offer["component"];component_dir.mkdir(mode=0o700)
                             files.extend(self.commands.download(a,component_dir) for a in manifest["artifacts"])
                             job["phase"]="installing"
+                        if migration is not None:
+                            apps_dir=directory/'apps';apps_dir.mkdir(mode=0o700)
+                            files.extend(migration.download(apps_dir));migration.phase('applying')
                         self.save()
-                        self.commands.install(files,any(o["rollback"] for o,_,_ in changed))
+                        if migration is None:self.commands.install(files,any(o["rollback"] for o,_,_ in changed))
+                        else:
+                            targets={a['package']:a['version'] for _,manifest,_ in plan for a in manifest['artifacts']}
+                            targets.update({app['package']:app['version'] for app in migration.descriptors})
+                            self.commands.install_migration(files,migration.descriptors,targets)
                 observed={i["component"]:i["version"] for i in self.commands.installed()}
                 require(all(observed.get(o["component"])==o["version"] for o,_,_ in plan),"dpkg_manual_repair_required" if getattr(self.commands,"incomplete",set()) else "installed_version_mismatch")
+                if migration is not None:migration.assert_installed()
                 for _,_,job in plan:job["phase"]="installed"
-                self.save();self.commands.activate(observed.get("studentcore"))
+                self.save()
+                if migration is None:self.commands.activate(observed.get('studentcore'))
+                else:migration.activate(observed.get('studentcore'))
                 observed={i["component"]:i["version"] for i in self.commands.installed()}
                 for offer,_,job in plan:
                     require(observed.get(offer["component"])==offer["version"],"installed_version_mismatch")

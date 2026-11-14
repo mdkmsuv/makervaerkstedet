@@ -116,6 +116,9 @@ class DebianPackages(unittest.TestCase):
         self.assertFalse(any((unpacked / p).exists() for p in ("etc", "var", "home")))
         metadata = subprocess.check_output(["dpkg-deb", "--field", str(self.root / "first.deb"), "Depends"], text=True)
         self.assertEqual(metadata.strip(), "python3 (>= 3.11)")
+        installed_size=subprocess.check_output(['dpkg-deb','--field',str(self.root/'first.deb'),'Installed-Size'],text=True).strip()
+        self.assertTrue(installed_size.isdigit(),'APT must know the native payload size together with OS dependencies')
+        self.assertGreaterEqual(int(installed_size)*1024,len(self.source.read_bytes()))
 
 if __name__ == "__main__":
     unittest.main()

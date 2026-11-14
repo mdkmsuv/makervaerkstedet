@@ -6,11 +6,14 @@ _layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
 from repository import source_path, repo_root
 import importlib.util
 import json
+import io
+import lzma
 from pathlib import Path
 import shutil
 import subprocess
 import sys
 import tempfile
+import tarfile
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
@@ -40,6 +43,30 @@ class AppArchiveTests(unittest.TestCase):
     def test_valid_archive_contains_bound_descriptor_and_only_owned_files(self):
         result=archive.inspect_deb(self.deb(),self.app)
         self.assertEqual(result['regular_files'],2)
+
+    def test_both_tar_streams_bound_pax_before_the_metadata_parser_allocates(self):
+        original=self.deb()
+        streams={name:subprocess.run(['dpkg-deb',flag,str(original)],check=True,capture_output=True).stdout
+                 for name,flag in [('control.tar.xz','--ctrl-tarfile'),('data.tar.xz','--fsys-tarfile')]}
+        for target in streams:
+            output=io.BytesIO();injected=False
+            with tarfile.open(fileobj=io.BytesIO(streams[target])) as source,tarfile.open(fileobj=output,mode='w',format=tarfile.PAX_FORMAT) as dest:
+                for item in source:
+                    if item.isfile() and not injected:
+                        item.pax_headers={'comment':'x'*(128*1024)};injected=True
+                    dest.addfile(item,source.extractfile(item) if item.isfile() else None)
+            members={'debian-binary':b'2.0\n',**{name:lzma.compress(output.getvalue() if name==target else raw)
+                                                        for name,raw in streams.items()}}
+            package=bytearray(b'!<arch>\n')
+            for name,raw in members.items():
+                package.extend(f'{name+"/":<16}{0:<12}{0:<6}{0:<6}{"100644":<8}{len(raw):<10}`\n'.encode())
+                package.extend(raw)
+                if len(raw)%2:package.extend(b'\n')
+            malicious=self.root/(target+'.deb');malicious.write_bytes(package)
+            with self.subTest(stream=target),patch.object(archive,'MAX_EXPANDED',16*1024),patch.object(
+                    tarfile.TarInfo,'_proc_pax',side_effect=AssertionError('unbounded metadata parser reached')):
+                with self.assertRaisesRegex(ValueError,'app_archive_expansion_limit'):
+                    archive.inspect_deb(malicious,self.app)
     def test_maintainer_scripts_are_rejected(self):
         with self.assertRaisesRegex(ValueError,'app_control_entry_forbidden'):archive.inspect_deb(self.deb(script=True),self.app)
     def test_other_program_files_are_rejected(self):

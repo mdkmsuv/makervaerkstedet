@@ -108,6 +108,14 @@ class CatalogContractTests(unittest.TestCase):
         with self.assertRaisesRegex(catalog.CatalogError,'duplicate_catalog_project_format'):
             catalog.validate_catalog(value,repository=REPOSITORY)
 
+    def test_catalog_rejects_suffix_overlap_in_either_order(self):
+        alpha=descriptor('alpha',8890);alpha['project']['extension']='.mkv'
+        beta=descriptor('beta',8891);beta['project']['extension']='.beta.mkv'
+        for first,second in ((alpha,beta),(beta,alpha)):
+            value=envelope(first);value['apps'].append(envelope(second)['apps'][0])
+            with self.assertRaisesRegex(catalog.CatalogError,'duplicate_catalog_project_format'):
+                catalog.validate_catalog(value,repository=REPOSITORY)
+
     def test_local_start_is_strictly_loopback_and_does_not_claim_system_ports(self):
         for start in ('https://example.com/', 'http://localhost:8799/',
                       'http://127.0.0.1:8790/', 'http://127.0.0.1:8791/',
@@ -125,7 +133,8 @@ class CatalogContractTests(unittest.TestCase):
                 catalog.validate_app_descriptor(value)
 
     def test_new_project_format_cannot_claim_another_app_or_generic_file_type(self):
-        for kind,extension in (('scratch','.noter.json'),('noter','.sb3'),('noter','.json')):
+        for kind,extension in (('scratch','.noter.json'),('noter','.sb3'),('noter','.json'),
+                               ('noter','.cad.stl'),('noter','.v2.hex'),('noter','.note.svg'),('noter','.note.laser.json')):
             value=descriptor();value['project'].update(kind=kind,extension=extension)
             with self.subTest(kind=kind,extension=extension),self.assertRaises(ValueError):catalog.validate_app_descriptor(value)
         for content in ({'kind': 'noter', 'extension': '../x', 'max_bytes': 100},

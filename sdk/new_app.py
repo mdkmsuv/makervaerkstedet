@@ -14,7 +14,7 @@ from urllib.parse import urlsplit
 ROOT = Path(__file__).absolute().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'system')]
 from repository import repo_root
-from app.app_catalog import SDK_VERSION, SDK_MIN_CORE, validate_app_descriptor
+from app.app_catalog import SDK_VERSION, SDK_MIN_CORE, validate_app_descriptor,project_extensions_overlap
 
 TEMPLATES = Path(__file__).with_name('templates')
 
@@ -59,7 +59,7 @@ def create_app(app_id, name, port, *, project=False, root=None):
             other = validate_app_descriptor(json.loads(plain(manifest).read_text(encoding='utf-8')))
             if urlsplit(other['start']).port == port:
                 raise ValueError('sdk_port_already_used')
-            if project and other.get('project') and other['project']['extension'] == descriptor['project']['extension']:
+            if project and other.get('project') and project_extensions_overlap(other['project']['extension'],descriptor['project']['extension']):
                 raise ValueError('sdk_project_extension_already_used')
     mode = 'notes' if project else 'quiz'
     replacements = {'__APP_NAME_HTML__': html.escape(name, quote=True),

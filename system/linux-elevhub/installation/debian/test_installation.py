@@ -70,9 +70,14 @@ class Installation(unittest.TestCase):
         (repo/"Release").write_text("SHA256:\n"+"".join(" "+build_iso.sha(repo/name)+" "+str((repo/name).stat().st_size)+" "+name+"\n" for name in ("Packages","Packages.gz")))
         for name in ("InRelease","Release.gpg"):(repo/name).write_text("synthetic parser fixture, not signature evidence")
         receipt=self.root/"gate.json";receipt.write_text(json.dumps({"schema":1,"target":"debian13-amd64-empty-status","all_packages_simulated":True,"actual_install":False,"packages":entries}))
-        packages,_=build_iso.validated_repository(repo,receipt,build_iso.sha(receipt));self.assertEqual(len(packages),4)
+        # Parser-only historical fixture; test_bare_iso separately verifies real
+        # native GPG signatures for modern and explicit legacy repositories.
+        with patch.object(build_iso,'verify_repository_signatures'):
+            packages,_=build_iso.validated_repository(repo,receipt,build_iso.sha(receipt),release_set='legacy')
+        self.assertEqual(len(packages),4)
         (repo/"Packages").write_text("changed")
-        with self.assertRaisesRegex(ValueError,"index_hash_mismatch"):build_iso.validated_repository(repo,receipt,build_iso.sha(receipt))
+        with patch.object(build_iso,'verify_repository_signatures'),self.assertRaisesRegex(ValueError,"index_hash_mismatch"):
+            build_iso.validated_repository(repo,receipt,build_iso.sha(receipt),release_set='legacy')
 
     def test_late_command_disables_installer_cdrom_before_payload_apt(self):
         # Reproduce Debian finish-install ordering: 07preseed precedes the

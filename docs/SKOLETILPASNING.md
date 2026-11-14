@@ -46,104 +46,88 @@ profilen med ejerskabsmarkøren og afviser en uventet skole, rolle, server eller
 subnet. En kodeagent skal ændre valideringen og skabelonen samlet, hvis
 profilformatet ændres; den må ikke skrive en ny privat profil ud fra gæt.
 
-## Offentlig standard og skolens lokale udseende
+## Lærerens skoleprofil
 
-Den offentlige Makerværkstedet-udgave skal bruge projektets eksisterende
-Bauhaus-inspirerede skins som standard. Den lokale Klostermarksskolen-profil er
-installationsdata, som skolen vælger og vedligeholder lokalt. Den skal ikke
-gøres til standardtema eller kopieres ind i den offentlige kilde- eller
-udgivelsesbygning. Den offentlige udgave bevarer krediteringen af
-Klostermarksskolen og ophavet til Makerværkstedet, Mathias Kusk Damgaard.
+I det aktuelle lærerpanel vælges **Skoleprofil**. Udfyld skolens navn,
+vælg et PNG-logo, en temafarve og en af de tilgængelige skrifttyper:
+**Standard**, **Manrope** eller **Metrophobic**. Et nyt PNG må højst være
+2 MB og 2048 × 2048 pixels; gennemsigtighed understøttes. Serveren
+validerer og genkoder billedet, så skjulte billedmetadata ikke følger med.
 
-En installeret Windows-komponent kan have mappen `local-appearance` i hver af
-de tre dataområder: Elevhub, det centrale designværksted og Printvaerksted.
-Mappen indeholder et `manifest.json` og de lokale filer, som manifestet
-beskriver. En neutral manifeststruktur kan for eksempel se sådan ud:
+Forhåndsvisningen viser navn, logo, farve og skrifttype før **Gem
+skoleprofil**. Farven bruges som accent; systemet finder mørkere
+knap-/tekstnuancer ved behov for læsbarhed. Skrifttypen gælder
+brugerfladen, ikke skrifter inde i elevernes tegninger eller projekter.
+De medfølgende lokale fonte kræver ingen ekstern fonttjeneste.
 
-```json
-{
-  "schemaVersion": 1,
-  "school_name": "Eksempelskolen",
-  "theme": "green",
-  "style": {
-    "website_css": "website.css",
-    "website_css_sha256": "<sha256>",
-    "logo": "logo.svg",
-    "logo_sha256": "<sha256>"
-  }
-}
-```
+**Indlæs gemt profil** henter de senest gemte valg; fladen beskytter
+ugemte ændringer med sin afslutningsdialog. Ved ukendt svar på gemning
+bruges **Afklar samme gemning**, som genbruger samme kommando og indhold.
+En anden administrator kan have ændret revisionen; indlæs da frisk
+status og vælg på ny. En forhåndsvisning er ikke en gemt profil.
 
-`app/school_appearance.py` læser kun almindelige lokale filer, afviser
-reparse points og ugyldige relative stier, begrænser filstørrelser og
-kontrollerer SHA-256-værdien fra manifestet. `web/school-theme.js` henter den
-valgte skoleidentitet fra appearance-endpointet. Et lokalt stylesheet og logo
-bliver derefter serveret fra den validerede mappe. Findes ingen lokal
-appearance-mappe, kan skoleprofilens navn og farvetema bruges. Findes mappen
-med et manglende eller beskadiget manifest, afviser fladen med HTTP 503;
-den skifter ikke automatisk til udgivelsens standardudseende.
+Kilden ligger i
+[school_profile_admin.py](../system/linux-elevhub/server/elevhub/school_profile_admin.py)
+og [school-profile.js](../system/linux-elevhub/server/elevhub/web/school-profile.js).
+API'et er `GET/POST /api/admin/school-profile` med lærerlogin og samme
+Origin. Det accepterer navn, farve, et af de faste fontvalg og logo-
+handling; ingen vilkårlige serverstier, CSS eller downloadadresser.
 
-En eksisterende lokal appearance skal behandles som driftsdata. Den må ikke
-overskrives af release-skindata, når programkoden opdateres. Den eksisterende
-Windows-opdaterer tager derfor en separat bevaringskopi af eksisterende `school.json`
-og alle filer under de tre `local-appearance`-mapper. Den gemmer en kvittering
-med tidspunkt, format og hash for hver fil, kontrollerer at dataene er
-uændrede før og efter kandidatens migration og kan gendanne den gemte
-appearance ved rollback. En mappe uden `manifest.json` kan ikke indgå i den
-lokale appearance-kopi, og et beskadiget manifest bliver ikke brugt som gyldigt
-udseende af runtime-læseren. En opdatering gætter sig derfor ikke til skolens
-udseende.
+### Distribution og offline
 
-Læg ikke lokale logoer, stylesheets, skoleprofiler eller installationens andre
-appearance-filer i GitHub-udgivelsens generiske eksempeldata. Tilpasningen skal
-kun bruge neutrale eksempelnavne og pladsholdere i kildekode og tests. Den
-beskrevne kildekontrol dokumenterer arkitekturen og bevaringsflowet; den er
-ikke i sig selv bevis på, at en bestemt skoles tema er aktiveret på live-udstyr.
+Den gemte administrerede profil ligger i hubbens private dataområde
+under `local-appearance`; revisions-/gemmejournalen er
+`school-profile-admin.sqlite3`. Profilen er ikke et app- eller
+programartefakt.
 
-Linux bruger ikke automatisk Windows-profilen. På Windows læser
-[`app/school_appearance.py`](../system/app/school_appearance.py) `school.json` fra
-datamappens forælder. På Linux læses den lokale kioskprofil fra
-`/etc/elevhub/kiosk.json`. Den fælles betydning er skolens navn og tema, mens
-serverrolle, elevnet og enrollment hører til serverprofilen.
+Tilmeldte Linux-enheder modtager metadata og indholdsadresserede assets
+via den eksisterende enhedsidentitet og serverens HTTPS/CA:
+`/api/device/school-profile` og faste assetruter. Den native klient
+kontrollerer revision, SHA256, størrelse og manifest, gemmer under
+`/etc/elevhub/local-appearance` og skifter manifest atomisk.
+Sidst validerede profil virker uden serverforbindelse og efter genstart.
+Der kræves ikke en ny tilmelding eller en genstart af kioskbrowseren for
+en almindelig profilændring.
 
-### Skolefarver (privat skin)
+Den relevante klientkode er
+[school_profile_sync.py](../system/linux-elevhub/administration/school_profile_sync.py).
+Appværtens `theme-v1` og de eksisterende temaindgange leverer skolens
+validerede udseende til start, projekthylde og apps.
+En pakkeopdatering må ikke erstatte lokal appearance eller dens nøgler.
 
-De tre Bauhaus-temaer `red`, `yellow` og `green` er den offentlige standard og
-ændres ikke. En skole kan derudover bruge sine egne farver med to valgfri felter
-ved siden af `theme`: `brand` og `brand_dark`. Begge skal skrives som `#rrggbb`
-med små bogstaver, og hvid tekst skal have mindst 4,5:1 i kontrast på begge.
-Enten findes begge felter, eller ingen af dem; `theme` er stadig obligatorisk og
-bruges, hvis farverne mangler eller er ugyldige.
+### Eksisterende private profiler og offentlig standard
 
-Skolens farver er private installationsdata. De må ikke stå i produktkode,
-tests, eksempler eller pakker; brug syntetiske værdier som `#1f5a8c` og
-`#143c5e`. Farverne følger samme vej som `theme`: `school.json` →
-`/api/school-appearance` og lærerpanelet, og `school.json` →
-`school-connection.json` → tilmeldingens `settings` → elevcomputerens
-`/etc/elevhub/kiosk.json`. Siderne bruger dem som `--brand` og `--brand-dark`.
-Flader, som også i de offentlige temaer er røde, bruger `--school-brand` og
-`--school-brand-dark`, som kun sættes, når skolen har egne farver.
-Laserlinjer, fejl- og succesfarver og illustrationer beholder deres farver.
+En tidligere filbaseret skoleprofil beholdes, indtil administratoren
+gemmer formularen. Panellets besked viser denne tilstand. Gamle
+profilfiler bevares også ved den første administrerede gemning.
+En ulæselig eller konfliktende profil må ikke tavst overskrives.
 
-Sådan sættes farverne:
+Den offentlige udgave bruger de eksisterende Bauhaus-inspirerede skins
+med `red`, `yellow` og `green`. Lokale skolelogoer, CSS, navn,
+farver og fontvalg er private installationsdata. Kopiér dem ikke ind i
+Git, eksempler, apppakker eller offentlig kildeeksport. Bevar kreditering
+til Klostermarksskolen og Mathias Kusk Damgaard samt tredjepartslicenser.
 
-- Ny server: `Setup-School.ps1 -Brand '#rrggbb' -BrandDark '#rrggbb'` eller
-  Windows-installationsprogrammet med `/BRAND=#rrggbb /BRANDDARK=#rrggbb`.
-  Guiden har ingen farveside.
-- Eksisterende server: læg en privat fil, fx
-  `{"brand": "#1f5a8c", "brand_dark": "#143c5e"}`, uden for kildekoden og vælg
-  **14. Skolefarver** i `Manage-School.ps1`, eller kør
-  `Manage-School.ps1 -SchoolColoursFile <fil>`. Skriv `FJERN` i menuen eller
-  brug `-ClearSchoolColours` for at vende tilbage til temaets farver. Kun de to
-  felter i `school.json` ændres; nøgler, køer, computere og resten af profilen
-  bevares. En programopdatering bevarer felterne.
-- Elevcomputere, som allerede er tilmeldt, får de nye farver, når de tilmeldes
-  igen med en ny `school-connection.json`.
+Det eksisterende filformat har `schemaVersion: 1`, skoleidentitet og
+en `style` med relative assetstier og SHA256. Læserne i
+[system/app/school_appearance.py](../system/app/school_appearance.py) og
+[hubben](../system/linux-elevhub/server/elevhub/school_appearance.py)
+afviser links, ugyldige stier, for store filer og forkerte hashes.
+En beskadiget appearance-mappe giver synlig fejl; den erstattes ikke
+tavst af standardtemaet. Brug den eksisterende backup-/rollbackvej til
+at bevare `school.json` og lokale appearance-mapper.
+
+`school.json` har fortsat serverrolle, netværk og tilmelding som
+beskrevet ovenfor. Formularen til udseende omkonfigurerer ikke disse
+felter. Den tidligere `Manage-School`-farvefunktion og private
+`brand`/`brand_dark` kan stadig være relevante for ældre installationer;
+brug den leverede versions guide. En `.2`-installation får ikke det nye
+profilpanel ved at redigere kildefilerne.
 
 ## Separat Windows-LAN og serverstart
 
 Den Windows-server, der står på skolens LAN, konfigureres gennem
-[`windows-elevhub/server/install.ps1`](../system/windows-elevhub/server/install.ps1).
+[`system/windows-elevhub/server/install.ps1`](../system/windows-elevhub/server/install.ps1).
 De relevante valg er server-IP, elev-subnet, læreradresse og -port samt
 `PrintBackendPort`, `DesignBackendPort`, `TeacherBackendPort` og eventuelt
 `UseExistingPrintBackend`. Scriptet validerer aktiv IPv4-adresse, subnet,
@@ -152,36 +136,42 @@ en administrator. Under den aktuelle modning arbejder kodeagenten i kildekode
 og isolerede tests; faktisk installation kræver en opgave om den installation.
 
 Den genererede runtime-konfiguration kontrolleres af
-[`windows-elevhub/server/bootstrap.py`](../system/windows-elevhub/server/bootstrap.py).
+[`system/windows-elevhub/server/bootstrap.py`](../system/windows-elevhub/server/bootstrap.py).
 Den kræver lokale TLS-filer og register under `security`, validerer
 `konfiguration.json`, og starter de autoritative lokale tjenester med
 datamapperne `printvaerksted`, `designvaerksted` og `hub`. Et separat LAN
 kræver derfor, at adresser og firewallregler stemmer overens i skoleprofilen,
 Windows-installationen og serverens konfiguration.
 
-[`windows-elevhub/server/hub/konfiguration.windows.json`](../system/windows-elevhub/server/hub/konfiguration.windows.json)
+[`system/windows-elevhub/server/hub/konfiguration.windows.json`](../system/windows-elevhub/server/hub/konfiguration.windows.json)
 er kilde-skabelonen. Den beskriver blandt andet `backend_ports` og apps med
 `port`, `bagved`, `regler` og standardåben. En skolekonfiguration skal holde
 værkstedsappens backend på loopback og lade serverens LAN-adresse være den
 beskyttede lærer-/Elevhub-adresse. Brug
-[`windows-elevhub/server/provision.py`](../system/windows-elevhub/server/provision.py)
+[`system/windows-elevhub/server/provision.py`](../system/windows-elevhub/server/provision.py)
 til enrollmentdata; kopier ikke enrollmentnøgler ind i en generisk pakke.
 
-## Linux-apps og Windows-apps skal være enige
+## Serverindgange og lokale appdescriptors
 
-Linux-kildens tilsvarende appskabelon er
-[`linux-elevhub/server/elevhub/konfiguration.json`](../system/linux-elevhub/server/elevhub/konfiguration.json).
-Sammenlign app-id, type, åbning som standard, elevport, backend, regler og
-visningsnavn med Windows-skabelonen. Tilføj ikke en app i kun den ene platform:
-Elevhub-klienten kan ellers vise en indgang, som serveren ikke kan levere, eller
-serveren kan åbne en backend, som klienten ikke kender.
+Serverens faste LAN-indgange beskrives i Linux- og Windows-skabelonerne:
+[Linux](../system/linux-elevhub/server/elevhub/konfiguration.json) og
+[Windows](../system/windows-elevhub/server/hub/konfiguration.windows.json).
+Ved ændring af en serverindgang skal app-id, port, backend og regler
+følges ad. Hold backends på loopback og serveradressen som den
+beskyttede elev-/lærerindgang.
 
-`deployment/school-setup/Setup-School.ps1` er skoleopsætning; den er ikke en
-makerspace-appgenerator. Linux' kiosk- og appindgange ligger i
-[`linux-elevhub/ansible/roles/kiosk`](../system/linux-elevhub/ansible/roles/kiosk),
-mens lærerens værkstedsstatus går gennem Elevhub-serverens eksisterende
-politik. Ved ændringer skal den relevante platformtest udvides, og den anden
-platforms schema kontrolleres.
+En ny lokal SDK-app registreres derimod gennem sin installerede
+schema-2-descriptor og det signerede appkatalog. Tilføj den ikke til
+faste gamle lister over offlinefliser, projektformater eller backends.
+Se [ny-app-guiden](NY-APP-GUIDE.md) og [appplatformen](APP-PLATFORM.md).
+Lærerens åbning/lukning og installeret softwarebestand er adskilt.
+
+Både Laser og Folie bruger SVG-biblioteket fra den faste
+Skoleværkstedet-hjemmeside. Kildevalget er afgrænset i
+[svg_library.py](../system/app/svg_library.py); lokal cache kan bruges
+uden forbindelse for allerede hentet katalog og figurer. En tom eller
+gammel cache vises som sådan; den er ikke en garanti for alle figurer
+offline. Biblioteket giver ingen rettighed til at aflevere til køen.
 
 ## Maskiner og workflows
 
@@ -230,18 +220,22 @@ for validering og forskellen mellem produktionsindgang og kildeintegration.
 
 ## Hvad der er kilde, drift og fremtidig bygning
 
-Filer under `linux-elevhub/`, `windows-elevhub/`, `deployment/`, `app/` og
-`docs/` er udviklingskilde. `data/`, lokale skoleprofiler, TLS, enrollment,
+Filer under `system/`, `apps/`, `sdk/`, `deployment/` og `docs/` er
+udviklingskilde. `data/`, lokale skoleprofiler, TLS, enrollment,
 bridge-nøgler og SQLite-databaser er driftsdata og må ikke bruges som
 skabeloner. Mapper under `output/` og `dist/` er historiske eller verificerede
 udgivelser; de skal ikke ændres som led i denne tilpasning.
 
-En ændring er først driftsegnet, når relevante tests og kildekontroller er
-bestået. Det er fortsat en udviklingsændring, indtil en senere samlet bygning
-er godkendt. Byg ikke en ISO, Windows-pakke eller downloaddel efter en enkelt
-rettelse. Dokumentér i stedet hvilke tests der kørte, hvilke skoledata der
-ikke blev berørt, og hvilke LAN-, hardware- eller elevudstyrsprøver der stadig
-kræver skolens udstyr.
+Kør relevante tests og kildekontroller. Byg de artefakter, opgaven omfatter:
+en selvstændig app kræver sin egen pakke, mens en kerne-, Windows- eller
+ISO-udgivelse følger den tilsvarende del af
+[udgivelsesprocessen](UDGIVELSESPROCES.md). En almindelig kildeændring
+udløser ikke automatisk en fuld udgivelse. Gennemfør allerede aftalte
+bygge- og testtrin uden en ny generel godkendelsesrunde.
+
+Aflever kildecommit, faktisk kontrol og åbne forhold. Skeln mellem
+bygget pakke, testinstallation og drift; LAN-, hardware- og elevudstyrsprøver
+skal beskrives som udestående, indtil de er udført på det relevante mål.
 
 ## Minimumskontrol for en kodeagent
 

@@ -48,6 +48,61 @@ class AppHTTPTests(existing.Fixture, unittest.TestCase):
         self.assertEqual(self.request(0, '/apt/apps/catalog/' + self.catalog_hash + '.json')[0], 200)
         self.assertEqual(self.request(0, '/apt/apps/catalog/' + '0'*64 + '.json')[0], 404)
 
+    def test_migration_get_uses_native_root_auth_and_exact_immutable_wire(self):
+        from test_app_migration import CORE,PRESERVED,native_report,publish_catalog
+        self.catalog_hash=publish_catalog(self)
+        target=self.release(version=CORE,sequence=3)
+        self.service.poll('pc1',native_report())
+        command=self.order(target,revision=self.service.overview()['revision'])
+        receipt=self.service.order(command)
+        path='/api/device/migration/'+target+'/'+str(receipt['revision'])
+        root={'Authorization':'Bearer '+self.tokens['root'],'X-Elevhub-Computer':'pc1'}
+        ui={'Authorization':'Bearer '+self.tokens['ui'],'X-Elevhub-Computer':'pc1'}
+        self.assertEqual(self.request(0,path)[0],401)
+        self.assertEqual(self.request(0,path,headers=ui)[0],401)
+        self.assertEqual(self.request(0,path,headers={'Cookie':self.cookie})[0],401)
+        self.assertEqual(self.request(0,path,headers=root|{'Origin':'null'})[0],403)
+        self.assertEqual(self.request(0,path,headers=root,method='POST')[0],405)
+        self.assertEqual(self.request(0,path,headers=root,method='HEAD')[0],405)
+        status,raw,_=self.request(0,path,headers=root)
+        self.assertEqual(status,200)
+        expected={'schema':1,'core_manifest_sha256':target,'revision':receipt['revision'],
+                  'catalog_sha256':self.catalog_hash,'apps':PRESERVED,'completed':False}
+        self.assertEqual(json.loads(raw),expected)
+        self.assertNotIn(self.registry.identitet('pc1').encode(),raw)
+        self.assertEqual(self.request(0,path+'?other=1',headers=root)[0],404)
+        self.assertEqual(self.request(0,path.rsplit('/',1)[0]+'/0',headers=root)[0],404)
+        self.assertEqual(self.request(0,'/api/device/migration/'+'0'*64+'/1',headers=root)[0],404)
+        ack={'revision':receipt['revision'],'state':'succeeded','code':None}
+        self.assertEqual(self.request(0,'/api/device/updates',native_report(core=CORE,result=ack),root)[0],200)
+        self.assertIs(json.loads(self.request(0,path,headers=root)[1])['completed'],False)
+        from test_app_migration import BRIDGE
+        inventory={'schema':1,'capabilities':['apps-v1'],'updater_version':BRIDGE,'core_version':CORE,
+            'installed':[{'id':name,'package':self.entries[name]['package'],'version':self.entries[name]['version'],'state':'installed'} for name in PRESERVED],
+            'issues':[],'result':None}
+        self.assertEqual(self.request(0,'/api/device/apps',inventory,root)[0],200)
+        status,raw,_=self.request(0,path,headers=root)
+        self.assertEqual((status,json.loads(raw)),(200,expected|{'completed':True}))
+
+    def test_stopping_migration_retries_requires_teacher_origin_and_preserves_native_status(self):
+        from test_app_migration import CORE,native_report,publish_catalog
+        publish_catalog(self);target=self.release(version=CORE,sequence=3)
+        self.service.poll('pc1',native_report())
+        receipt=self.service.order(self.order(target,revision=self.service.overview()['revision']))
+        path='/api/admin/updates/cancel-migration'
+        body={'command_id':str(uuid.uuid4()),'expected_revision':self.service.overview()['revision'],
+              'device':'pc1','core_manifest_sha256':target,'migration_revision':receipt['revision']}
+        self.assertEqual(self.request(1,path,body)[0],401)
+        self.assertEqual(self.request(1,path,body,{'Cookie':self.cookie})[0],403)
+        self.assertEqual(self.request(1,path,body,self.auth|{'Origin':'https://foreign.invalid'})[0],403)
+        self.assertEqual(self.request(1,path,headers=self.auth)[0],405)
+        one=self.request(1,path,body,self.auth);two=self.request(1,path,body,self.auth)
+        self.assertEqual((one[0],two[0]),(200,200));self.assertEqual(json.loads(one[1]),json.loads(two[1]))
+        root={'Authorization':'Bearer '+self.tokens['root'],'X-Elevhub-Computer':'pc1'}
+        status,raw,_=self.request(0,'/api/device/migration/'+target+'/'+str(receipt['revision']),headers=root)
+        self.assertEqual((status,json.loads(raw)),(404,{'error':'migration_not_found'}))
+
+
     def test_profile_editor_is_authenticated_origin_checked_and_delivers_long_name(self):
         path = '/api/admin/school-profile'
         self.assertEqual(self.request(1, path)[0], 401)

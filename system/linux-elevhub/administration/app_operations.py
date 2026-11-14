@@ -26,6 +26,27 @@ def require(ok, code):
     if not ok: raise ValueError(code)
 
 
+def load_verified_catalog(legacy,digest):
+    """Immutable signed metadata survives an interrupted authorized operation."""
+    require(type(digest) is str and HEX.fullmatch(digest),'invalid_app_catalog_hash')
+    cache=plain(legacy.state/'app-catalogs');cache.mkdir(exist_ok=True,mode=0o700)
+    message=plain(cache/(digest+'.json'));sigfile=plain(cache/(digest+'.minisig'))
+    cached=message.exists() and sigfile.exists()
+    if cached:
+        require(protected(message,private=True).stat().st_size<=MAX_MANIFEST
+                and protected(sigfile,private=True).stat().st_size<=MAX_SIGNATURE,'cached_app_catalog_too_large')
+        raw=message.read_bytes();signature=sigfile.read_bytes()
+    else:
+        path='/apt/apps/catalog/'+digest
+        raw=legacy.transport.get(path+'.json',MAX_MANIFEST)
+        signature=legacy.transport.get(path+'.minisig',MAX_SIGNATURE)
+    require(hashlib.sha256(raw).hexdigest()==digest,'app_catalog_hash_mismatch')
+    catalog=verify_catalog(raw,signature,minisign_exe=legacy.minisign,minisign_sha256=MINISIGN_SHA256,
+                           public_key=legacy.public_key,repository=REPOSITORY)
+    if not cached:atomic(message,raw,0o600);atomic(sigfile,signature,0o600)
+    return catalog
+
+
 def validate_offer(offer):
     require(type(offer) is dict and set(offer) == {'job_id','revision','action','app_id','catalog_sha256'}, 'invalid_app_job')
     require(type(offer['job_id']) is str and JOB.fullmatch(offer['job_id'])
@@ -91,13 +112,19 @@ class Executor:
         self.state = plain(state); self.state.mkdir(parents=True, exist_ok=True, mode=0o700)
         self.path = plain(self.state/'apps-ledger.json'); self.commands = commands
         self.ledger = json.loads(self.path.read_bytes()) if self.path.exists() else {'schema':1,'jobs':{},'highwater':{},'outbox':[]}
-        require(type(self.ledger) is dict and set(self.ledger) in ({'schema','jobs','highwater','outbox'},{'schema','jobs','highwater','outbox','approved'})
+        base={'schema','jobs','highwater','outbox'}
+        require(type(self.ledger) is dict and base<=set(self.ledger)<=base|{'approved','identity_sha256'}
                 and self.ledger['schema'] == 1 and type(self.ledger['jobs']) is dict
                 and type(self.ledger['highwater']) is dict and type(self.ledger['outbox']) is list, 'invalid_app_ledger')
         self.ledger.setdefault('approved',{})
         require(type(self.ledger['approved']) is dict,'invalid_app_ledger')
 
     def save(self): atomic(self.path, json_bytes(self.ledger), 0o600)
+
+    def bind_identity(self,identity):
+        from identity_state import scoped_ledger
+        scoped=scoped_ledger(self.state,self.ledger,identity,kind='apps')
+        if scoped is not self.ledger:self.ledger=scoped;self.save()
 
     def reject(self, offer, error):
         validate_offer(offer)
@@ -199,6 +226,7 @@ class AppClient:
 
     def tick(self):
         old = self.legacy
+        self.executor.bind_identity(getattr(old.transport,'identity_sha256',None))
         current = {item['component']:item['version'] for item in old.commands.installed()}
         issues=[]
         root_error=False
@@ -232,6 +260,8 @@ class AppClient:
         for offer in response['jobs']: validate_offer(offer)
         if pending:
             self.executor.ledger['outbox'].pop(0); self.executor.save()
+        if getattr(old,'migration_pending',False):
+            return {'state':'migration_pending','jobs':len(response['jobs'])}
         for offer in response['jobs']:
             try:
                 previous=self.executor.ledger['jobs'].get(offer['job_id'])
@@ -240,23 +270,7 @@ class AppClient:
                     if previous['result'] not in self.executor.ledger['outbox']:
                         self.executor.ledger['outbox'].append(previous['result']);self.executor.save()
                     continue
-                digest = offer['catalog_sha256']; path='/apt/apps/catalog/'+digest
-                cache=plain(old.state/'app-catalogs')
-                cache.mkdir(exist_ok=True,mode=0o700)
-                message=plain(cache/(digest+'.json'));sigfile=plain(cache/(digest+'.minisig'))
-                cached=message.exists() and sigfile.exists()
-                if cached:
-                    require(protected(message,private=True).stat().st_size<=MAX_MANIFEST
-                            and protected(sigfile,private=True).stat().st_size<=MAX_SIGNATURE,'cached_app_catalog_too_large')
-                    raw=message.read_bytes();signature=sigfile.read_bytes()
-                else:
-                    raw=old.transport.get(path+'.json',MAX_MANIFEST)
-                    signature=old.transport.get(path+'.minisig',MAX_SIGNATURE)
-                require(hashlib.sha256(raw).hexdigest() == digest, 'app_catalog_hash_mismatch')
-                catalog=verify_catalog(raw,signature,minisign_exe=old.minisign,minisign_sha256=MINISIGN_SHA256,
-                                       public_key=old.public_key,repository=REPOSITORY)
-                if not cached:
-                    atomic(message,raw,0o600);atomic(sigfile,signature,0o600)
+                catalog=load_verified_catalog(old,offer['catalog_sha256'])
                 self.executor.execute(offer,catalog,core_version=current.get('studentcore'))
             except (ValueError,OSError,subprocess.SubprocessError) as error:
                 self.executor.reject(offer,error)

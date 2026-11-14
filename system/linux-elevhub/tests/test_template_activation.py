@@ -47,6 +47,21 @@ class TemplateActivation(unittest.TestCase):
         self.assertIn("http://127.0.0.1:8798/",values["InsecureContentAllowedForUrls"])
         self.assertEqual(policy.stat().st_mode & 0o777,0o644)
 
+    def test_bridge_activates_legacy_core_without_a_modular_only_template(self):
+        runtime=self.root/'usr/share/makervaerkstedet/runtime-release.json'
+        runtime.write_text(json.dumps({'schema':1,'release_id':'2.0.0~20261114.2','role':'student'}))
+        (runtime.parent/'templates/elevhub-svg-library.service.j2').unlink()
+        M.activate(self.root)
+        self.assertFalse((self.root/'etc/systemd/system/elevhub-svg-library.service').exists())
+        self.assertEqual(self.project.read_bytes(),b'synthetic legacy data')
+
+    def test_modular_core_still_requires_its_library_service_template(self):
+        runtime=self.root/'usr/share/makervaerkstedet/runtime-release.json'
+        runtime.write_text(json.dumps({'schema':1,'release_id':'2.1.0~20261114.1','role':'student'}))
+        (runtime.parent/'templates/elevhub-svg-library.service.j2').unlink()
+        with self.assertRaises(FileNotFoundError):M.activate(self.root)
+        self.assertFalse((self.root/'var/lib/makervaerkstedet-updater/activation.json').exists())
+
     def test_modular_bare_activation_needs_only_projects_and_adds_new_app_port(self):
         runtime=self.root/'usr/share/makervaerkstedet/runtime-release.json'
         runtime.write_text(json.dumps({'schema':1,'release_id':'2.1.0~20261114.1','role':'student'}))

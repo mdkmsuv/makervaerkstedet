@@ -1,143 +1,155 @@
-# Værksteder som apps
+# Værksteder som selvstændige apps
 
-Designnote, 12. november 2026. Den beskriver, hvor Makerværkstedet skal hen
-med værkstederne på elevenhederne. Den beskriver også, hvad der findes nu,
-og i hvilken rækkefølge resten bygges. Noten er ikke en udgivelse. Hvert trin
-følger [udgivelsesprocessen](UDGIVELSESPROCES.md).
+Kildearkitektur ajourført 14. november 2026. Hovedsystem, apps og SDK er
+fysisk adskilt i Git. Dette dokument beskriver kildekontrakten; en ny
+modulær installationsudgivelses native installation, migration og ISO-boot
+skal fremgå af dens egen kvittering. En eksisterende EXE/ISO med
+versionsslutning `.2` får ikke disse ændringer ved at kilden ændres.
 
-Statusafgrænsning ajourført 14. november: opdeling i hovedsystem og selvstændige
-tilvalgsapps er fastholdt af brugeren, men er endnu ikke gennemført i Git eller
-installationsmodellen. Pakke pr. app, centralt valg af
-installerede apps og en tom grund-ISO er fortsat mål. De nuværende fire
-Debian-pakker indeholder installerede app-manifester. En designretning her
-er ikke dokumentation for en færdig installation. Den private projektrod har
-den fælles `LEVERANCE.md` med aktuelle kandidater og prøver.
+## Ejerskab og versionsgrænser
 
-## Retning (fastlagt af projektejeren)
-
-- **Serveren er altid tændt og ejer køerne.** Print, laser, godkendelser og
-  maskiner styres centralt. Køerne flyttes ikke ud på enhederne.
-- **Elevenheden kan bruges uden server.** Værkstederne kører lokalt.
-  Afleveringer gemmes i en lokal udbakke og sendes, når serveren svarer.
-- **Hvert værksted er en app-pakke.** Skolen vælger centralt, hvilke apps
-  enhederne har. Grund-ISO'en er en tom tavle, og en ny enhed får skolens
-  valgte apps ved tilmelding.
-- **3D-print som upload findes ikke på elevenheden.** Den erstattes af
-  3D-værkstedet (`web/model3d.html`) med *Send til print*. Den offentlige
-  printside (`web/index.html`) bliver på serveren til elever og lærere uden
-  elevenhed.
-- **Åbent økosystem.** Andre skal kunne lave apps. Indtil videre kommer en ny
-  app som commit på GitHub. Claude eller Codex gennemgår den, og
-  projektejeren godkender den. Et fælles katalog kommer senere.
-
-## Funktionsoversigt — kilde og udeståender
-
-| Del | Nu | Mangler |
+| Kilde | Ansvar | Pakke |
 |---|---|---|
-| Laserværkstedet | Ny lokal editor i `web/laservaerksted/`. Fælles metadata, `.laser.json`, hylde/direkte genåbning og fortsæt/gem/kassér er afprøvet i faktisk Chrome; UI/UX-review ved 1024×688. | Samlet elev-/lærerforløb i den valgte nye installation. Kompatibilitet med gamle laserprojekter er fravalgt ved overgangen til 2.0. |
-| Laser-udbakke | `laser_local` validerer lokalt med `clean_svg`, gemmer i `/var/lib/elevhub-design/udbakke` ved manglende forbindelse, svarer 202 og sender igen hvert 30. s med samme `requestId`. | Visning i editoren af, hvor mange afleveringer der venter. |
-| Folieværkstedet | Fælles projektflow i den fortsat understøttede SVG-editor (`web/laser.html`, serveret på `/folie.html`) samt SVG-download. Gem/genåbn er også efterprøvet lokalt 14. november. | Eksport og sikker USB-fjernelse på en installeret elevcomputer. |
-| 3D-værkstedet | Lokal port 8798, STL-import og vedvarende print-udbakke. Fælles metadata, redigerbare `.mkv3d`, revisioner og ren næste elev. Gem/genåbn efter tjenestegenstart består i den installerede WSL-kandidat fra 14. november. Ny ISO er bygget, signeret, installeret og bootet i test-VM; ISO-prøven dækker offlineindgang og Laser, ikke 3D. | WebGL/3D på fysisk elevhardware. Den tidligere ISO fra 13. november kunne ikke tegne 3D i Hyper-V, men viste fejlen synligt. WSL- og VM-prøver beviser ikke fysisk GPU-understøttelse. |
-| Installeret app-katalog | Fem manifester i de eksisterende core- og Scratch-pakker. Autentificeret lokal `GET /apps` læser dem ved hvert kald; startsiden bruger kataloget både online og offline og bevarer lærerens aktuelle lukning. Faktisk WSL-opgradering, Scratch-fjernelse/geninstallation uden kataloggenstart og bevarelse af profil, CA, projekter og ventende print er afprøvet. Renderede browserprøver og UI/UX-review er udført. Grafisk opstart og en ny lokalt signeret kandidat er afprøvet. | Offentlig udgivelse og appopdeling mangler. Et installeret katalog er ikke selvstændige tilvalgsapps. |
-| App-pakker | Fire faste Debian-pakker; bygge-, installations- og opdateringskode læser samme `DEBIAN_COMPONENTS` i `app/simple_release.py`. | Pakke pr. app, skolens valg og tom produkt-ISO. |
+| `system/` | Lærerpanel, enhedsidentitet, projekthylde, lokal appvært, køgateways og opdaterer | `makervaerkstedet-elev`, `makervaerkstedet-updater` samt Windows-server |
+| `apps/<id>/` | Appens brugerflade, descriptor, præcis filliste og egne byggeinputs | `makervaerkstedet-app-<id>` |
+| `sdk/` | Opretter, kontrollør, lokal prøve, skabeloner og integrationskontrakter | Udviklingsværktøjer |
+| `deployment/`, `scripts/`, `tests/` | Opsætning, udgivelsesværktøjer og fælles kontrol | Udvælges af den relevante bygger |
 
-## App-pakken
+De fem medfølgende appkilder er `laser`, `folie`, `3dprint`,
+`scratch` og `microbit`. En app ændrer sin egen version, descriptor og
+artefakt. Det kræver ingen ny hovedsystemversion eller registrering i en
+fast liste. `REPOSITORY-LAYOUT.json` beskriver kildernes placering og de
+gamle logiske sti-aliaser. Alias er kompatibilitet i byggeværktøjer,
+ikke en ekstra kildekopi.
 
-En app er én signeret Debian-pakke `makervaerkstedet-app-<id>` med:
+Appens `app.json` har schema 2 og binder identitet, pakkenavn, version,
+arkitektur, SDK-version, mindste kerne, loopback-startadresse, offline- og
+internetkrav, projektformat og capabilities. `files.json` afgrænser
+ejerskabet til appens egen kildemappe og installerede træ under
+`/usr/share/makervaerkstedet/apps/<id>/`. Kernen importerer ikke appkode.
+Installerede systemstier og eksisterende projekt-/datastier bevares;
+flytning i Git er ikke en flytning af elevens filer.
 
-- `usr/share/makervaerkstedet/apps/<id>/app.json`: manifestet.
-- Appens statiske filer og eventuelt en lokal tjeneste med egen systemd-unit
-  (`DynamicUser`, kun loopback og skolens server, som `elevhub-design`).
+Se [ny-app-guiden](NY-APP-GUIDE.md) for de præcise SDK-, bygge- og
+udgivelseskommandoer og [kodekortet](KODEKORT.md) for systemets filer.
 
-Manifestet (første udgave):
+## Elevens indgang og projekter
 
-```json
-{
-  "schema": 1,
-  "id": "laser",
-  "navn": "Laser",
-  "version": "2.0.0",
-  "start": "http://127.0.0.1:8795/",
-  "offline": true,
-  "aflevering": "laser-submit",
-  "kraever_internet": false,
-  "licens": "se pakkens copyright-fil"
-}
-```
+Startsiden bygger sine værksteder fra faktisk installerede, gyldige
+descriptors. Appvært, projektåbning og lokale tjenester følger samme
+registrering. En tom basis kan derfor vise start, Internet og projekthylde
+uden et installeret værksted. Et projekt til en fjernet app bevares;
+åbning kræver, at den passende app igen er installeret.
 
-- `id` er unikt og matcher hubbens app-id, så lærerens åben/luk-knap virker
-  uændret.
-- `aflevering` er én af de faste udbakketyper nedenfor. En app får ingen
-  anden vej til serveren.
-- Startsiden (`start.html.j2`) bygges fra de installerede manifester i stedet
-  for den faste `OFFLINE_APPS`-liste.
+**Installeret** og **åben i undervisningen** er forskellige tilstande.
+Appkataloget ændrer softwarebestanden. **Apps og internet** styrer
+lærerens aktuelle adgang. En lukning afinstallerer intet. Ved tab af
+serverforbindelsen åbner de installerede lokale apps og Internet; en app
+med eksterne tjenester kan stadig kræve internet. Micro:bit har en lokal
+indgang, mens MakeCode kræver netværk.
 
-I den nuværende overgang ligger laser, folie, 3D og micro:bit stadig i
-core-pakken, mens Scratch har sin egen pakke. Manifestet beskriver installeret
-indhold; det giver ikke tilladelse til at installere en vilkårlig pakke.
-`offline` betyder adgang uden skoleforbindelse. Micro:bits lokale indgang
-kræver stadig internet til selve MakeCode-editoren (`kraever_internet`).
-Et manglende eller ugyldigt katalog giver ingen gamle lokale app-fliser;
-Internet-indgangen forbliver tilgængelig.
+Appen kan være uden lagring eller deklarere et typet projekt.
+`projects-v1` giver den eksisterende projekt-/sessionbro: navngivning,
+gem, genåbn, revisioner og elevskift. Adapteren validerer egne opaque
+bytes før import og nulstiller indhold og navn ved elevskift. Den forrige
+elevs dokument åbnes ikke automatisk. Systemets øvre filgrænse er 50 MiB;
+appen må vælge en lavere.
 
-## Udbakken
+## Afgrænsede capabilities
 
-Udbakken ligger i den lokale tjeneste og ikke i browseren. Så overlever en
-aflevering, at fanen lukkes, at eleven logger ud, og at enheden genstartes.
+Aktuel SDK er 1, nye apps kræver mindst core `2.1.0~`. Capabilities
+deklareres som `required` eller `optional`; ukendte nødvendige
+capabilities afvises.
 
-Fælles regler (implementeret for laser i `app/laser_local.py`):
+| Capability | Adgang |
+|---|---|
+| `projects-v1` | Fælles typede projekt- og sessionfunktioner |
+| `theme-v1` | Valideret skoleidentitet, logo, farver og lokal skrifttype |
+| `svg-library-v1` | Det afgrænsede SVG-bibliotek; ingen kørettighed |
+| `laser-submit-v1` | Den eksisterende lokale laseraflevering |
+| `print-job-v1` | Den eksisterende lokale STL-aflevering |
 
-1. Tjenesten validerer afleveringen med serverens egne regler, før den
-   gemmes. Noget, serveren altid vil afvise, kommer aldrig i køen.
-2. Kan serveren ikke nås, gemmes afleveringen som én fil pr. `requestId`, og
-   browseren får **202** `{"queued": true}`.
-3. En baggrundstråd sender igen med samme `requestId`. Serveren dedublerer,
-   så et nyt forsøg aldrig giver to job.
-4. Afviser serveren selve afleveringen (400/413 med en besked), flyttes filen
-   til `afvist/`, og hændelsen logges. Her bevares højst 200 afviste filer.
-   Er værkstedet lukket (423), venter filen. Ved 429 springes filen over i
-   denne runde; uventede svar gemmes til et senere forsøg.
-5. Udbakken har et loft (50), og eleven får en dansk besked, når den er fuld.
+Der er ingen shellkommandoer, vilkårlige serveradresser, installationshooks
+eller nye brugeridentiteter i manifestet. Skolens nøgler og elevdata er
+installationsdata og indgår aldrig i apppakken.
 
-Udbakketyper: `laser-submit` (JSON til `/api/laser/submit`) og `print-job`
-(binær STL til `/api/jobs` med `X-Request-ID`). Print opbevarer STL som
-base64 i én atomisk JSON-fil. Laser beholder sit eksisterende filformat;
-print har egen undermappe og afsendelsesrunde, så lukning af ét værksted
-ikke spærrer det andet. Genbrug af et ventende request-id med ændret indhold
-afvises uden at overskrive den oprindelige aflevering.
+## Køer og arbejde uden forbindelse
 
-## Skolens valg og tilmelding
+Serveren ejer printkø og laser-Inbox. Appen kan valgfrit bruge en lokal
+gateway, som validerer og bevarer afleveringer i en udbakke. Udbakken
+overlever browserlukning og genstart, også når den afsendende app fjernes.
+Samme konkrete aflevering beholder sit `requestId` under genforsøg.
 
-- Kontrolpanelet får en liste over godkendte apps. Skolen vælger
-  standardsættet.
-- Opdateringskanalen (`makervaerkstedet-updater`) installerer og fjerner
-  app-pakker efter skolens valg. En ny enhed får sættet ved første kontakt
-  efter tilmelding.
-- `DEBIAN_COMPONENTS` udvides fra en fast liste til et signeret katalog over
-  tilladte app-pakker. Kun pakker i kataloget kan installeres.
+- **202, queued: true** betyder gemt lokalt og afventende forbindelse.
+- **Modtaget i køen** kræver en konkret kvittering fra serveren.
+- Fysisk udførelse og færdigmelding følger lærerens maskinflow.
 
-## Tillid til apps fra andre
+En afvisning skal bevare elevens arbejde; lærerens lukning er ikke en
+netværksfejl. SDK'ets køeksempel må prøves med mocks eller aftalt testmiljø.
+En rigtig aflevering er en reel køhandling.
 
-Det her er en sikkerhedsbeslutning, ikke en detalje.
+## Godkendt katalog og lærerens valg
 
-- **Nu:** En app er et commit i projektets GitHub-repo. Claude eller Codex
-  gennemgår den, og projektejeren accepterer den. Den bygges og signeres med
-  projektets nøgle som alle andre pakker.
-- **Krav til en app:** Den lokale tjeneste kører som `DynamicUser` uden
-  adgang til elevens hjemmemappe. Netværk er kun tilladt til loopback og
-  skolens server. Afleveringer går kun gennem en udbakketype. Appen må ikke
-  indeholde skoledata eller nøgler. Tredjepartslicenser følger med.
-- **Senere:** et fælles katalog med udgiversignatur, review og
-  tilbagekaldelse. Det kræver en særskilt beslutning om nøgler og ansvar.
+Udgiveren bygger én app, kontrollerer de native pakkefelter og binder
+descriptor, kildecommit, størrelse og SHA256 i et minisign-signeret
+appkatalog. Apt-repositoryet har sin særskilte native GPG-signatur.
+Eksisterende nøgler, repositoryidentitet og tillidsankre genbruges.
 
-## Rækkefølge
+I **Appkatalog** ser læreren installerede og tilgængelige apps med den
+rapporterede tilstand pr. computer, også blandede versioner og ukendt eller
+offline status. Læreren vælger app og computere og bestiller
+**Installér**, **Opdatér** eller **Afinstallér**. En bestilling er ikke en
+færdig installation. Ved ukendt udfald afklares samme bestilling med samme
+id; en ny bestilling må ikke skabe en dublet.
 
-1. UI/UX-review og afprøvning af den nye laser-editor og *Send til print*
-   på en testenhed.
-2. Lokal servering af 3D-værkstedet i designtjenesten med `print-job`-udbakke,
-   så 3D virker uden server.
-3. App-manifest i de eksisterende pakker og en startside bygget fra
-   manifesterne.
-4. Opdel elevpakken i app-pakker, og gør ISO'en til en tom tavle.
-5. Skolens valg i kontrolpanelet og tildeling ved tilmelding.
-6. Fælles katalog.
+Skolens standardsæt gælder nye tilmeldte enheder. Det installerer ikke
+tavst apps på alle eksisterende computere. En afinstallation bevarer
+projekter, lokal skoleprofil og ventende afleveringer.
+
+## Basis og overgang fra den gamle samlede kerne
+
+Den modulære basis består af tre pakker: elevkerne, opdaterer og Matchbox.
+Et app-byggesæt er basis plus én app; et migrationsbyggesæt indeholder
+basis plus alle fem indbyggede apps. Byggesættets otte pakker er ikke et
+krav om permanent installation af alle apps.
+
+Overgangen skal ske i rækkefølge: bro-opdaterer først, derefter verificeret
+split-kerne og bevarede apps i én afgrænset native apt-transaktion.
+Eksisterende Laser, Folie, 3D og micro:bit bevares; Scratch følger kun med,
+hvis det faktisk var installeret. Skolens standardvalg erstatter ikke den
+gamle enheds bestand. Afbrudt migration skal genoptage og kontrollere
+appbestanden, selv hvis kernens versionsnummer allerede matcher.
+
+Ved en vedvarende migrationsfejl åbner læreren **Teknik → Opdateringer**,
+finder computerens seneste resultat og vælger **Stop genforsøg** på den
+pågældende computer. Serveren trækker kun det afventende forsøg tilbage.
+En apt-installation, som allerede kører på computeren, afbrydes ikke;
+installerede pakker, projekter og fejlhistorik bevares. Vent på en ny
+rapport fra computeren, ret årsagen og bestil først derefter igen.
+`insufficient_migration_space` kræver mere ledig diskplads;
+`migration_installed_set_changed` kræver kontrol af de faktisk installerede
+apps. `dpkg_manual_repair_required` kræver teknisk reparation af den
+ufuldstændige pakkeinstallation, før nye pakkehandlinger kan gennemføres.
+Genindlæs status, hvis en anden lærer allerede har ændret bestillingen.
+
+Den historiske schema-1-coreprotokol bevares; den får ikke et schema-2-
+appkatalog. Nye appordrer bruger den separate autentificerede appkanal.
+Se [apt-kontrakten](APT-REPOSITORY.md) og
+[udgivelsesprocessen](UDGIVELSESPROCES.md) for kvitteringer og native prøver.
+
+## Skoleprofil og SVG-bibliotek
+
+Læreren kan forhåndsvise og gemme navn, PNG-logo, temafarve og få lokale
+skrifttyper i **Skoleprofil**. Den administrerede profil distribueres via
+den tilmeldte servers HTTPS/CA, verificeres og gemmes lokalt til offline
+brug. En tidligere privat profil beholdes, indtil læreren gemmer den nye.
+Se [skoletilpasning](SKOLETILPASNING.md).
+
+Både Laser og Folie åbner SVG-biblioteket direkte fra den faste
+Skoleværkstedet-hjemmeside gennem den afgrænsede gateway. Cache er lokal,
+ikke en kopi publiceret af hovedserveren. Sidst hentede katalog og figurer
+kan bruges uden forbindelse; figurer, der aldrig er hentet, er ikke
+garanteret offline. Fladen viser, når cachen er gammel eller tom.
+
+Bevar [kreditering](../CREDITS.md), [licensafgrænsning](../LICENSE-SCOPE.md)
+og hver apps tredjepartslicenser ved ændring og distribution.

@@ -44,6 +44,19 @@ class DynamicAppTests(unittest.TestCase):
         self.assertEqual(host.discover_apps(self.root/'apps'),[])
         self.assertEqual(host.runtime_endpoints([]),[(8791,'/_elevhub/health','elevhub-lokal','projekter')])
 
+    def test_suffix_overlapping_formats_are_isolated_and_never_misclassify_a_file(self):
+        alpha=descriptor('alpha',8890);alpha['project']['extension']='.mkv'
+        beta=descriptor('beta',8891);beta['project']['extension']='.beta.mkv'
+        self.install(alpha);self.install(beta)
+        with self.assertRaisesRegex(ValueError,'duplicate_app_project_format'):
+            host.discover_apps(self.root/'apps')
+        self.assertEqual(host.discover_apps(self.root/'apps',strict=False),[])
+        from filtyper import association,project_kind
+        self.assertEqual(association('example.beta.mkv','beta',b'opaque',[alpha,beta])['program'],'andet')
+        self.assertEqual(project_kind('example.beta.mkv','beta',b'opaque',[alpha,beta]),'andet')
+        with self.assertRaisesRegex(ValueError,'project_format_conflict'):
+            Projektarkiv(self.root/'ambiguous-store',apps=[alpha,beta])
+
     def test_new_app_is_discovered_and_project_format_saves_reopens_and_finishes(self):
         self.install();apps=host.discover_apps(self.root/'apps')
         self.assertEqual(apps[0]['id'],'noter')

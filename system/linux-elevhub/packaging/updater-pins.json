@@ -12,6 +12,6 @@
   "apt_public_keyring_sha256": "5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f",
   "apt_fingerprint": "E848EE99A4AAA6F272669B37EC9621E2E28EBCDA",
   "app_protocol": "apps-v1",
-  "app_catalog_verifier_sha256": "6f890e2fdab87f4c6e0138dfbedad09c94ea72d70f341ee6a398c864b10da8cd",
+  "app_catalog_verifier_sha256": "bfcc212708eb4bb643d31db796405c8a3f35c5c1f1d290db5bc7155770f56e1a",
   "bridge_min_core": "2.0.0~20261114.2"
 }

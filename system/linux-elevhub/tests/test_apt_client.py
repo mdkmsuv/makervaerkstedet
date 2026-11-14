@@ -127,7 +127,9 @@ class AptClient(unittest.TestCase):
         self.assertEqual(self.commands.installs,1)
         self.assertEqual(self.commands.events[-2],("apt-install",1,True))
     def test_crash_after_version_commit_resumes_activation_and_preserves_report_on_network_loss(self):
-        self.transport.response["desired"]=[self.signed("updater",revision=9)]
+        # This exercises legacy schema1 self-update recovery. Modern bridge
+        # prerequisites are covered by the separate migration regressions.
+        self.transport.response["desired"]=[self.signed("updater",version="1.0.0",revision=9)]
         self.commands.crash=True
         with self.assertRaises(SystemExit):self.client.tick()
         self.assertEqual(self.commands.installs,1)

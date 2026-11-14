@@ -6,6 +6,10 @@ import mimetypes
 from pathlib import Path
 from urllib.parse import urlsplit
 from app_manifests import load_manifests
+try:
+    from app.app_catalog import project_extensions_overlap
+except ModuleNotFoundError:
+    from app_catalog import project_extensions_overlap
 
 PROJECT_BRIDGE='<link rel="stylesheet" href="/_elevhub/projekter/bridge.css"><script src="/_elevhub/projekter/bridge.js" defer></script>'
 SHARED=frozenset(('/school-theme.js','/school-theme.css','/favicon.svg','/project-import.js',
@@ -52,7 +56,8 @@ def discover_apps(root=Path('/usr/share/makervaerkstedet/apps'),legacy_root=Path
     for index,app in enumerate(result):
         for other in result[index+1:]:
             conflict='duplicate_app_port' if app['port']==other['port'] else None
-            if app.get('project') and other.get('project') and (app['project']['kind']==other['project']['kind'] or app['project']['extension']==other['project']['extension']):
+            if app.get('project') and other.get('project') and (app['project']['kind']==other['project']['kind']
+                    or project_extensions_overlap(app['project']['extension'],other['project']['extension'])):
                 conflict='duplicate_app_project_format'
             if conflict:
                 if strict:raise ValueError(conflict)

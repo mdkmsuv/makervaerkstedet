@@ -24,24 +24,28 @@ def contract():
 
 
 class AppAdmin:
-    def __init__(self,service,*,verifier=None):
+    def __init__(self,service,*,verifier=None,db=None):
         self.service=service;self.contract=contract();self.verifier=verifier or self.contract.verify_catalog
         self.catalog_observer=None
         self.artifact_checks={}
-        with service.transaction() as db:
-            fresh=db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='apps_meta'").fetchone() is None
-            db.executescript('''
-                CREATE TABLE IF NOT EXISTS apps_meta(id INTEGER PRIMARY KEY CHECK(id=1),highwater TEXT NOT NULL,catalog_hash TEXT,defaults TEXT NOT NULL);
-                INSERT OR IGNORE INTO apps_meta VALUES(1,'{}',NULL,'[]');
-                CREATE TABLE IF NOT EXISTS apps_catalogs(hash TEXT PRIMARY KEY,document TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS apps_reports(device TEXT PRIMARY KEY,body TEXT NOT NULL,seen TEXT NOT NULL);
-                CREATE TABLE IF NOT EXISTS apps_enrolled(device TEXT PRIMARY KEY,defaults_done INTEGER NOT NULL);
-                CREATE TABLE IF NOT EXISTS apps_jobs(job_id TEXT PRIMARY KEY,device TEXT NOT NULL,app_id TEXT NOT NULL,
-                    action TEXT NOT NULL,catalog_hash TEXT NOT NULL,revision INTEGER NOT NULL,state TEXT NOT NULL,
-                    code TEXT,created TEXT NOT NULL);
-            ''')
-            if fresh:
-                for device in service.devices(db):db.execute('INSERT OR IGNORE INTO apps_enrolled VALUES(?,1)',(device,))
+        if db is not None:self._initialize(db)
+        else:
+            with service.transaction() as connection:self._initialize(connection)
+
+    def _initialize(self,db):
+        # executescript implicitly commits: individual statements preserve a core
+        # order's existing transaction and shared revision when initialized lazily.
+        fresh=db.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name='apps_meta'").fetchone() is None
+        statements=(
+            "CREATE TABLE IF NOT EXISTS apps_meta(id INTEGER PRIMARY KEY CHECK(id=1),highwater TEXT NOT NULL,catalog_hash TEXT,defaults TEXT NOT NULL)",
+            "INSERT OR IGNORE INTO apps_meta VALUES(1,'{}',NULL,'[]')",
+            "CREATE TABLE IF NOT EXISTS apps_catalogs(hash TEXT PRIMARY KEY,document TEXT NOT NULL)",
+            "CREATE TABLE IF NOT EXISTS apps_reports(device TEXT PRIMARY KEY,body TEXT NOT NULL,seen TEXT NOT NULL)",
+            "CREATE TABLE IF NOT EXISTS apps_enrolled(device TEXT PRIMARY KEY,defaults_done INTEGER NOT NULL)",
+            "CREATE TABLE IF NOT EXISTS apps_jobs(job_id TEXT PRIMARY KEY,device TEXT NOT NULL,app_id TEXT NOT NULL,action TEXT NOT NULL,catalog_hash TEXT NOT NULL,revision INTEGER NOT NULL,state TEXT NOT NULL,code TEXT,created TEXT NOT NULL)")
+        for statement in statements:db.execute(statement)
+        if fresh:
+            for device in self.service.devices(db):db.execute('INSERT OR IGNORE INTO apps_enrolled VALUES(?,1)',(device,))
 
     def _revision(self,db):return db.execute('SELECT revision FROM meta WHERE id=1').fetchone()[0]
 
@@ -195,6 +199,7 @@ class AppAdmin:
             entry=self._entry(db,body['app_id'],body['catalog_sha256'],current=current,remove=body['action']=='remove')
             for device in body['devices']:
                 require(device in self._devices(db),'unknown_app_device',403)
+                require(not self.service.migration_active(db,device),'migration_in_progress',409)
                 report,_=self._report(db,device)
                 require(self._capable(db,device,report),'app_updater_bridge_required',409)
                 if body['action']!='remove':
@@ -269,11 +274,13 @@ class AppAdmin:
                             actual['state']=='installed' and actual['version']==expected['version'] and actual['package']==expected['package'])
                         if not ok:state,code='failed','app_observed_state_mismatch'
                     db.execute('UPDATE apps_jobs SET state=?,code=? WHERE job_id=?',(state,code,job['job_id']))
+            self.service.complete_migration(db,device,admin=self)
+            migrating=self.service.migration_active(db,device)
             marker=db.execute('SELECT defaults_done FROM apps_enrolled WHERE device=?',(device,)).fetchone()
             if marker is None:db.execute('INSERT INTO apps_enrolled VALUES(?,0)',(device,));done=False
             else:done=bool(marker[0])
             capable=self._capable(db,device,body)
-            if not done and capable and current is not None:
+            if not done and capable and current is not None and not migrating:
                 selected=json.loads(db.execute('SELECT defaults FROM apps_meta WHERE id=1').fetchone()[0])
                 available={entry['descriptor']['id']:entry['descriptor'] for entry in current['apps']}
                 if all(app_id in available and self.contract.compatibility(available[app_id],core_version=body['core_version'])['compatible'] for app_id in selected):
@@ -284,7 +291,7 @@ class AppAdmin:
                         for app_id in missing:self._queue(db,device,app_id,'install',current['_manifest_sha256'],revision)
                     db.execute('UPDATE apps_enrolled SET defaults_done=1 WHERE device=?',(device,))
             jobs=[]
-            if capable:
+            if capable and not migrating:
                 for row in db.execute("SELECT * FROM apps_jobs WHERE device=? AND state='queued' ORDER BY revision,job_id LIMIT 16",(device,)):
                     jobs.append({'job_id':row['job_id'],'revision':row['revision'],'action':row['action'],
                                  'app_id':row['app_id'],'catalog_sha256':row['catalog_hash']})

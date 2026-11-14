@@ -88,10 +88,14 @@ def build(spec, output):
                 raise ValueError("copied_input_hash_mismatch")
             target.chmod(entry["mode"])
         control = root / "DEBIAN"
+        # Deterministic 4 KiB allocation estimate. APT combines this native
+        # payload with dependency Installed-Size before applying a transaction.
+        installed_size=4+sum(4 if path.is_dir() else 4*((path.stat().st_size+4095)//4096)
+                             for path in root.rglob('*'))
         control.mkdir()
         content = (f"Package: {spec['package']}\nVersion: {spec['version']}\n"
             f"Architecture: {spec['architecture']}\nMaintainer: Makervaerkstedet <noreply@example.invalid>\n"
-            "Section: education\nPriority: optional\n"
+            f"Section: education\nPriority: optional\nInstalled-Size: {installed_size}\n"
             + ("Depends: " + ", ".join(spec["depends"]) + "\n" if spec["depends"] else "")
             + ("Breaks: makervaerkstedet-elev (<< 2.1.0~)\nReplaces: makervaerkstedet-elev (<< 2.1.0~)\n" if app and spec['app_descriptor']['id'] != 'scratch' else "")
             + "Description: Makervaerkstedet student program component\n Public program files only; pupil data and local identity are external.\n")

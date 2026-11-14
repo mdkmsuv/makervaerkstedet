@@ -41,6 +41,13 @@ def tekst(value, maximum, field):
 class Projektarkiv:
     def __init__(self, root, max_total=MAX_TOTAL, retention_days=RETENTION_DAYS, *, apps=None):
         self.apps=apps or []
+        try:
+            from app.app_catalog import project_extensions_overlap
+        except ModuleNotFoundError:
+            from app_catalog import project_extensions_overlap
+        formats=[app['project']['extension'] for app in self.apps if app.get('project')]
+        if any(project_extensions_overlap(extension,other) for i,extension in enumerate(formats) for other in formats[i+1:]):
+            raise ValueError('project_format_conflict')
         self.app_formats={app['project']['kind']:app['project'] for app in self.apps if app.get('project')}
         self.root = Path(root).resolve()
         self.root.mkdir(parents=True, exist_ok=True)

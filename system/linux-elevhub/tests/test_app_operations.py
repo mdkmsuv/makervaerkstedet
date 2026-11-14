@@ -158,6 +158,9 @@ class AppOperationsTests(unittest.TestCase):
         existing=descriptor('alpha',8800)
         (folder/'app.json').write_text(json.dumps(existing))
         with self.assertRaisesRegex(ValueError,'app_project_format_conflict'):native.preflight_app(self.catalog['apps'][0]['descriptor'])
+        candidate=descriptor('beta',8891);candidate['project']['extension']='.beta.mkv'
+        existing['project']['extension']='.mkv';(folder/'app.json').write_text(json.dumps(existing))
+        with self.assertRaisesRegex(ValueError,'app_project_format_conflict'):native.preflight_app(candidate)
 
     def test_bad_catalog_download_is_reported_and_survives_lost_poll_response(self):
         class Transport:

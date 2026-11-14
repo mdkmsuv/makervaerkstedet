@@ -5,10 +5,14 @@ import re
 import subprocess
 import tarfile
 import threading
+import time
 from urllib.parse import urlsplit
 from app_catalog import validate_app_descriptor, _relative
 
 MAX_EXPANDED=2*1024**3
+MAX_METADATA=64*1024
+MAX_METADATA_TOTAL=32*1024**2
+MAX_HEADERS=100000
 
 
 def require(ok,code):
@@ -16,14 +20,36 @@ def require(ok,code):
 
 
 def _stream(path,flag,visit):
+    state={'headers':0,'metadata':0,'bytes':0};deadline=time.monotonic()+60
+    class BoundedInfo(tarfile.TarInfo):
+        def _proc_member(item,stream):
+            state['headers']+=1
+            require(state['headers']<=MAX_HEADERS and 0<=item.size<=MAX_EXPANDED,'app_archive_expansion_limit')
+            require(item.type!=tarfile.GNUTYPE_SPARSE,'app_archive_path_forbidden')
+            if item.type in (tarfile.XHDTYPE,tarfile.XGLTYPE,tarfile.GNUTYPE_LONGNAME,tarfile.GNUTYPE_LONGLINK):
+                state['metadata']+=item.size
+                require(item.size<=MAX_METADATA and state['metadata']<=MAX_METADATA_TOTAL,'app_archive_expansion_limit')
+            return super()._proc_member(stream)
+        def _proc_gnusparse_00(self,*args):raise ValueError('app_archive_path_forbidden')
+        def _proc_gnusparse_01(self,*args):raise ValueError('app_archive_path_forbidden')
+        def _proc_gnusparse_10(self,*args):raise ValueError('app_archive_path_forbidden')
     process=subprocess.Popen(['/usr/bin/dpkg-deb',flag,str(path)],stdout=subprocess.PIPE,stderr=subprocess.DEVNULL)
     timer=threading.Timer(60,process.kill);timer.daemon=True;timer.start()
+    class BoundedStream:
+        def read(self,size=-1):
+            require(time.monotonic()<deadline,'app_archive_timeout')
+            require(0<=size<=1024**2,'app_archive_expansion_limit')
+            raw=process.stdout.read(size);state['bytes']+=len(raw)
+            require(state['bytes']<=MAX_EXPANDED+(MAX_HEADERS+1)*1024+MAX_METADATA_TOTAL,'app_archive_expansion_limit')
+            return raw
     total=0;count=0
     try:
-        with tarfile.open(fileobj=process.stdout,mode='r|') as stream:
+        with tarfile.open(fileobj=BoundedStream(),mode='r|',tarinfo=BoundedInfo) as stream:
             for member in stream:
                 count+=1;total+=member.size
-                require(count<=100000 and total<=MAX_EXPANDED,'app_archive_expansion_limit')
+                require(count<=MAX_HEADERS and 0<=member.size and total<=MAX_EXPANDED,'app_archive_expansion_limit')
+                require(not member.sparse and not any(key.startswith('GNU.sparse') for key in member.pax_headers),
+                        'app_archive_path_forbidden')
                 visit(stream,member)
         require(process.wait(timeout=5)==0,'invalid_app_archive')
     except (tarfile.TarError,EOFError) as error:raise ValueError('invalid_app_archive') from error
@@ -52,7 +78,10 @@ def inspect_deb(path,descriptor):
         key,value=line.split(': ',1)
         require(key not in fields,'duplicate_app_control_field')
         fields[key]=value;current=key
-    require(set(fields)<=set(('Package','Version','Architecture','Depends','Maintainer','Section','Priority','Description','Breaks','Replaces')),'app_control_field_forbidden')
+    require(set(fields)<=set(('Package','Version','Architecture','Depends','Maintainer','Section','Priority','Installed-Size','Description','Breaks','Replaces')),'app_control_field_forbidden')
+    if 'Installed-Size' in fields:
+        require(re.fullmatch('[0-9]{1,10}',fields['Installed-Size']) is not None
+                and 0<int(fields['Installed-Size'])<=MAX_EXPANDED//1024+400000,'invalid_app_control')
     require((fields.get('Package'),fields.get('Version'),fields.get('Architecture'))==
             (app['package'],app['version'],app['architecture']),'app_archive_identity_mismatch')
     require(fields.get('Depends')==f"makervaerkstedet-elev (>= {app['min_core']})",'app_archive_dependencies_mismatch')
@@ -85,6 +114,9 @@ def inspect_deb(path,descriptor):
             require(item.size<=16384,'app_descriptor_too_large')
             manifest=json.loads(stream.extractfile(item).read())
     _stream(path,'--fsys-tarfile',data_member)
+    if 'Installed-Size' in fields:
+        require(int(fields['Installed-Size'])*1024>=sum(item['bytes'] for item in allocation.values()),
+                'app_archive_installed_size_mismatch')
     require(manifest==app,'app_archive_descriptor_mismatch')
     start=urlsplit(app['start']).path.lstrip('/') or 'index.html'
     if urlsplit(app['start']).path=='/':
