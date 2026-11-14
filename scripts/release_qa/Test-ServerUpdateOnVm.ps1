@@ -176,6 +176,7 @@ $holdFree = $after.rows -notmatch '"maintenance_hold": [1-9]'
 if (-not $holdFree) { $problems += 'køspærring er ikke ophævet' }
 $rowsBefore = $before.rows -replace '"maintenance_hold": \d+', ''
 $rowsAfter = $after.rows -replace '"maintenance_hold": \d+', ''
+if ($rowsBefore -ne $rowsAfter) { $problems += 'queue rows changed during update' }
 $result = [ordered]@{
     schema = 1; vm = $VMName; from = $before.release; to = $after.release; passed = ($problems.Count -eq 0)
     problems = $problems
