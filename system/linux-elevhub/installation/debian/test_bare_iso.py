@@ -130,6 +130,15 @@ class BareISO(unittest.TestCase):
                         '--output',str(self.repo/'Release.gpg'),str(self.repo/'Release')],check=True,capture_output=True)
         with self.assertRaisesRegex(ValueError,'signed_release_content_mismatch'): self.validate()
 
+    def test_cleartext_signer_framing_newline_keeps_exact_detached_release_verified(self):
+        self.seal()
+        # The real Windows GPG signer produced this one terminal framing LF.
+        # Both signatures remain genuine; no arbitrary content is normalized.
+        framed=self.root/'framed-release';framed.write_bytes((self.repo/'Release').read_bytes()+b'\n')
+        subprocess.run(['gpg','--homedir',str(self.home),'--batch','--yes','--clearsign',
+                        '--output',str(self.repo/'InRelease'),str(framed)],check=True,capture_output=True)
+        self.assertEqual(len(self.validate()[0]),3)
+
     def test_archive_and_recipe_index_tampering_rejected(self):
         self.seal()
         for name in ('Packages', 'pool/'+next(iter(self.entries.values()))['file']):

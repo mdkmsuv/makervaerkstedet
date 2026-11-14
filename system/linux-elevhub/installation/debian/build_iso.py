@@ -41,7 +41,11 @@ def verify_repository_signatures(repo):
                           ['--output','-','--decrypt',str(repo/'InRelease')]):
             result=subprocess.run([*common,*arguments],capture_output=True)
             if result.returncode:raise ValueError('repository_signature_invalid')
-            if arguments[0]=='--output' and result.stdout!=(repo/'Release').read_bytes():raise ValueError('signed_release_content_mismatch')
+            if arguments[0]=='--output':
+                release=(repo/'Release').read_bytes()
+                # The Windows signer can include one terminal framing LF.
+                # Detached verification above still authenticates exact bytes.
+                if result.stdout not in (release,release+b'\n'):raise ValueError('signed_release_content_mismatch')
 
 
 def validated_repository(repo,receipt,receipt_sha,release_set='base'):
