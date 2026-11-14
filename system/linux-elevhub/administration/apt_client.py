@@ -517,7 +517,7 @@ def main():
         print(json.dumps({"state":"configured"}));return
     if args.check_runtime:
         current={i["component"]:i["version"] for i in client.commands.installed()}
-        result=wait_ready(current.get("studentcore"),lambda argv:client.commands.call(argv,timeout=5))
+        result=wait_ready(current.get("studentcore"),lambda argv:client.commands.call(argv,timeout=5),legacy_scratch='scratch' in current)
         print(json.dumps({"state":"ready",**result}));return
     lock=plain(client.state/"client.lock")
     with lock.open("a+b") as handle:

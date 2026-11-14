@@ -343,6 +343,21 @@ class HTTPSAndCommands(unittest.TestCase):
                 adapter.activate('2.0.0~20261114.2')
             self.assertEqual(health.call_args.kwargs['legacy_scratch'],scratch)
 
+    def test_diagnostic_cli_uses_the_same_actual_legacy_scratch_inventory(self):
+        import io
+        from types import SimpleNamespace
+        config=self.root/'diagnostic.json';config.write_text('{}')
+        for scratch in (False,True):
+            installed=[{'component':'studentcore','version':'2.0.0~20261114.2'}]
+            if scratch:installed.append({'component':'scratch','version':'15.1.1+local.20261112.2'})
+            adapter=SimpleNamespace(installed=lambda:installed,call=lambda *a,**kw:'')
+            with patch.object(sys,'argv',['apt-client','--config',str(config),'--check-runtime']),patch.object(
+                    M,'verify_host'),patch.object(M,'configured',return_value=SimpleNamespace(commands=adapter)),patch.object(
+                    M,'wait_ready',return_value={'core_version':'2.0.0~20261114.2'}) as health,patch.object(sys,'stdout',io.StringIO()) as output:
+                M.main()
+            self.assertEqual(health.call_args.kwargs['legacy_scratch'],scratch)
+            self.assertEqual(json.loads(output.getvalue())['state'],'ready')
+
     def test_readonly_os_preflight_rejects_wrong_baseline_before_install(self):
         file=self.root/"os-release";file.write_text('ID=debian\nVERSION_ID="13"\n')
         M.verify_host(file)
