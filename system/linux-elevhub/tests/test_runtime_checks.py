@@ -1,9 +1,15 @@
 """Version/PID bound readiness without any host service operations."""
 import importlib.util
 from pathlib import Path
+import sys
 import unittest
 from urllib.parse import urlsplit
 import uuid
+
+ROOT = next(p for p in Path(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+sys.path.insert(0, str(ROOT))
+from repository import source_path
+sys.path.insert(0, str(source_path('app', ROOT)))
 
 SOURCE=Path(__file__).parents[1]/"administration/runtime_checks.py"
 SPEC=importlib.util.spec_from_file_location("student_runtime_checks",SOURCE)

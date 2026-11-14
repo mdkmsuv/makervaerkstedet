@@ -266,6 +266,11 @@ class MigrationClientTests(unittest.TestCase):
         self.assertTrue(install_plan('Inst makervaerkstedet-elev ['+LEGACY+'] ('+MODULAR+' local [all]) []\n'
                                     'Conf makervaerkstedet-app-laser (1.0.0 local [all]) [python3 on makervaerkstedet-elev]',targets))
 
+    def test_actual_debian_legacy_to_four_app_simulation_is_accepted(self):
+        from app_migration import install_plan
+        captured=json.loads((Path(__file__).parent/'fixtures/migration_apt_output.json').read_bytes())
+        self.assertTrue(install_plan(captured['output'],captured['targets']))
+
     def test_expanded_space_is_aggregated_for_apps_on_the_same_volume(self):
         commands=M.Commands(app_root=self.root)
         archive={'allocation':{'app':{'bytes':60*1024**2,'files':1,'directories':1}}}

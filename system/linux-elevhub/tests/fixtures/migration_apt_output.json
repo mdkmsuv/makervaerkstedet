@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "provenance": "Actual apt-get --simulate in isolated Debian 13, legacy .2 to split core with four apps; no Scratch",
+  "targets": {
+    "makervaerkstedet-elev": "2.1.0~20261114.1",
+    "makervaerkstedet-app-laser": "1.0.0",
+    "makervaerkstedet-app-folie": "1.0.0",
+    "makervaerkstedet-app-3dprint": "1.0.0",
+    "makervaerkstedet-app-microbit": "1.0.0"
+  },
+  "output": "Inst makervaerkstedet-elev [2.0.0~20261114.2] (2.1.0~20261114.1 Makervaerkstedet:localhost, local-deb [all])\nInst makervaerkstedet-app-3dprint (1.0.0 Makervaerkstedet:localhost, local-deb [all])\nInst makervaerkstedet-app-folie (1.0.0 Makervaerkstedet:localhost, local-deb [all])\nInst makervaerkstedet-app-laser (1.0.0 Makervaerkstedet:localhost, local-deb [all])\nInst makervaerkstedet-app-microbit (1.0.0 Makervaerkstedet:localhost, local-deb [all])\nConf makervaerkstedet-elev (2.1.0~20261114.1 Makervaerkstedet:localhost, local-deb [all])\nConf makervaerkstedet-app-3dprint (1.0.0 Makervaerkstedet:localhost, local-deb [all])\nConf makervaerkstedet-app-folie (1.0.0 Makervaerkstedet:localhost, local-deb [all])\nConf makervaerkstedet-app-laser (1.0.0 Makervaerkstedet:localhost, local-deb [all])\nConf makervaerkstedet-app-microbit (1.0.0 Makervaerkstedet:localhost, local-deb [all])\n"
+}
