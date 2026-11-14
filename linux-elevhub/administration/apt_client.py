@@ -68,7 +68,7 @@ class HTTPS:
         require(path.startswith("/") and not path.startswith("//") and "\\" not in path,"unsafe_server_path")
         headers={"Accept":"application/json"}
         if body is not None:
-            require(path==API,"fixed_poll_path_required")
+            require(path in (API,'/api/device/apps'),"fixed_poll_path_required")
             headers.update({"Authorization":"Bearer "+self.token,"X-Elevhub-Computer":self.computer})
         data=None if body is None else json_bytes(body)
         if data is not None:headers["Content-Type"]="application/json"
@@ -79,6 +79,7 @@ class HTTPS:
             raw=response.read(limit+1);require(0<len(raw)<=limit,"response_too_large")
             return raw
     def poll(self,body):return strict_json(self.request(API,MAX_MANIFEST,body))
+    def poll_apps(self,body):return strict_json(self.request('/api/device/apps',MAX_MANIFEST,body))
     def get(self,path,limit):return self.request(path,limit)
 
 def apt_options(origin,ca,source=Path("/etc/apt/sources.list.d/makervaerkstedet.sources"),keyring=Path("/etc/apt/keyrings/makervaerkstedet.gpg")):
@@ -136,6 +137,32 @@ class Commands:
         p=subprocess.run(["/usr/bin/dpkg","--compare-versions",version(wanted),"lt",version(current)],stdin=subprocess.DEVNULL,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
         require(p.returncode in (0,1),"invalid_debian_version")
         return p.returncode==0
+    def app_inventory(self,descriptors):
+        from app_catalog import validate_app_descriptor
+        result=[]
+        for descriptor in descriptors:
+            app=validate_app_descriptor(descriptor)
+            p=subprocess.run(['/usr/bin/dpkg-query','-W','-f=${Status}\t${Version}\t${Architecture}',app['package']],
+                capture_output=True,text=True,env={'PATH':'/usr/bin:/bin','LC_ALL':'C'})
+            if p.returncode:
+                require(p.returncode==1 and ('no packages found matching '+app['package']) in p.stderr,'app_inventory_failed')
+                status='absent';current=None
+            else:
+                parts=p.stdout.split('\t')
+                require(len(parts)==3,'app_inventory_failed')
+                status='installed' if parts[0]=='install ok installed' else ('absent' if parts[0] in ('deinstall ok config-files','unknown ok not-installed') else 'incomplete')
+                current=version(parts[1]) if status!='absent' else None
+                require(status=='absent' or parts[2]==app['architecture'],'installed_architecture_mismatch')
+            result.append({'id':app['id'],'package':app['package'],'version':current,'state':status})
+        return result
+    def remove_app(self,descriptor):
+        from app_operations import removal_plan
+        from app_catalog import validate_app_descriptor
+        app=validate_app_descriptor(descriptor)
+        args=[*self.apt(),'--yes','-o','APT::Get::AutomaticRemove=false']
+        simulated=self.call([*args,'--simulate','remove',app['package']])
+        removal_plan(simulated,app)
+        self.call([*args,'remove',app['package']])
     def download(self,artifact,directory):
         before=set(directory.glob("*.deb"))
         self.call([*self.apt(),"download",artifact["package"]+"="+version(artifact["version"])],cwd=directory)
@@ -230,6 +257,11 @@ class Client:
                 pending["state"]="failed";pending["code"]="installed_version_mismatch";self.save()
         body={"schema":1,"installed":installed,"result":{k:v for k,v in pending.items() if k!="component"} if pending else None}
         response=validate_response(self.transport.poll(body))
+        # Schema1 Scratch desires belong to the bundled generation. Once the
+        # split core is installed only the app journal may select/remove it.
+        from app_catalog import compare_versions
+        if 'studentcore' in current and compare_versions(current['studentcore'],'2.1.0~')>=0:
+            response['desired']=[o for o in response['desired'] if o['component']!='scratch']
         if pending:self.ledger["outbox"].pop(0);self.save()
         plan=[];bad=False
         for offer in response["desired"]:
@@ -340,6 +372,9 @@ def main():
         os.chmod(lock,0o600)
         try:fcntl.flock(handle,fcntl.LOCK_EX|fcntl.LOCK_NB)
         except BlockingIOError:raise UpdateError("updater_already_running")
-        print(json.dumps(client.tick()))
+        result=client.tick()
+        from app_operations import AppClient
+        result['apps']=AppClient(client).tick()
+        print(json.dumps(result))
 
 if __name__=="__main__":main()

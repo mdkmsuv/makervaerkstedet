@@ -12,7 +12,7 @@ UPDATER_VERSION = "1.1.0~20261114.1"
 SCRATCH_RECEIPT_SHA256 = "e6526962d7114eb8547b527c41cbed348f1cc8fb8c4d44c635dfb8cb0aa00677"
 
 SPECS = {
-    "updater": (DEBIAN_COMPONENTS["updater"][0], UPDATER_VERSION, DEBIAN_COMPONENTS["updater"][1], ["python3 (>= 3.13)", "python3-jinja2", "apt", "dpkg", f"makervaerkstedet-elev (>= {CORE_VERSION})"]),
+    "updater": (DEBIAN_COMPONENTS["updater"][0], UPDATER_VERSION, DEBIAN_COMPONENTS["updater"][1], ["python3 (>= 3.13)", "python3-jinja2", "apt", "dpkg", "makervaerkstedet-elev (>= 2.0.0~20261114.2)"]),
     "core": (DEBIAN_COMPONENTS["studentcore"][0], CORE_VERSION, DEBIAN_COMPONENTS["studentcore"][1], ["python3 (>= 3.11)", "python3-pil", "python3-tk", "python3-xlib", "python3-affine", "python3-qrcode", "python3-shapely", "python3-typing-extensions", "chromium", "xserver-xorg-core", "xserver-xorg-input-libinput", "xinit", "x11-xserver-utils", "x11-xkb-utils", "x11-utils", "xdotool", "udiskie", "udisks2", "polkitd", "sudo", "makervaerkstedet-matchbox (= 1.2.2+git20200512+guard.20261104.1)"]),
     "scratch": (DEBIAN_COMPONENTS["scratch"][0], "15.1.1+local.20261112.2", DEBIAN_COMPONENTS["scratch"][1], []),
     "matchbox": (DEBIAN_COMPONENTS["matchbox"][0], "1.2.2+git20200512+guard.20261105.1", DEBIAN_COMPONENTS["matchbox"][1], ["libc6", "libmatchbox1", "libx11-6", "libxext6", "libxfixes3", "libstartup-notification0", "libexpat1"]),
@@ -181,7 +181,8 @@ def main():
             add(args.minisign_provenance,"usr/share/doc/"+package+"/minisign-provenance.json")
             add(args.public_trust_dir/"minisign.pub","usr/share/makervaerkstedet/trust/minisign.pub","44de94f24b5a84e5dd35d81d7a90052e45a9950c51f93584ad79c4e4019f4aa5")
             add(args.public_trust_dir/"makervaerkstedet.gpg","usr/share/makervaerkstedet/trust/makervaerkstedet.gpg","5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f")
-            for name in ("apt_client.py","template_activation.py","runtime_checks.py","os_maintenance.py"):
+            add(args.updater_source/'app/app_catalog.py','usr/lib/makervaerkstedet/updater/app_catalog.py')
+            for name in ("apt_client.py","app_operations.py","template_activation.py","runtime_checks.py","os_maintenance.py"):
                 add(args.updater_source/"linux-elevhub/administration"/name,"usr/lib/makervaerkstedet/updater/"+name)
             add(args.updater_source/"app/school_appearance.py","usr/lib/makervaerkstedet/updater/school_appearance.py")
             add(args.updater_source/"linux-elevhub/projekter/student_appearance.py","usr/lib/makervaerkstedet/updater/student_appearance.py")

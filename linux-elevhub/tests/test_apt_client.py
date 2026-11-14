@@ -78,6 +78,13 @@ class AptClient(unittest.TestCase):
         self.assertEqual(self.transport.sent[-1]["result"],{"revision":7,"state":"succeeded","code":None})
         self.assertEqual(self.transport.sent[-1]["installed"],[{"component":"studentcore","version":"2.0.0"}])
         self.assertEqual(self.commands.installs,1);self.assertFalse(self.client.ledger["outbox"])
+
+    def test_modular_core_does_not_reinstall_removed_scratch_from_legacy_desire(self):
+        self.commands.versions['studentcore']='2.1.0~20261114.1'
+        self.transport.response['desired']=[self.signed(component='scratch',version='15.1.1',revision=8)]
+        self.client.tick()
+        self.assertNotIn('scratch',self.commands.versions)
+        self.assertEqual(self.commands.installs,0)
     def test_two_successive_core_updates_and_runtime_failure_never_false_success(self):
         self.client.tick()
         self.transport.response["desired"]=[self.signed(version="2.0.1",sequence=5,revision=8)]

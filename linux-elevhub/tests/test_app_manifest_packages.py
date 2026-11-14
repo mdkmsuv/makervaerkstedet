@@ -53,7 +53,7 @@ class PackageManifests(unittest.TestCase):
             # that the updater requires the core it was built with.
             self.assertRegex(prepare_inputs.CORE_VERSION, r'^2\.1\.0~\d{8}\.\d+$')
             self.assertRegex(prepare_inputs.UPDATER_VERSION, r'^1\.1\.0~\d{8}\.\d+$')
-            self.assertIn('makervaerkstedet-elev (>= ' + prepare_inputs.CORE_VERSION + ')', prepare_inputs.SPECS['updater'][3])
+            self.assertIn('makervaerkstedet-elev (>= 2.0.0~20261114.2)', prepare_inputs.SPECS['updater'][3])
 
 class ScratchInventory(unittest.TestCase):
     def test_scratch_accepts_only_pinned_release_inventory(self):

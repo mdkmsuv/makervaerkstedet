@@ -10,5 +10,8 @@
   "trust": "Publisher public key and apt trust configuration are provisioned separately; no production signing key is packaged.",
   "minisign_public_key_sha256": "44de94f24b5a84e5dd35d81d7a90052e45a9950c51f93584ad79c4e4019f4aa5",
   "apt_public_keyring_sha256": "5b9ee5f0ca01ff2d52c311e99f71b6eefd69ed8d9149ef7cef5d80cf89a27f1f",
-  "apt_fingerprint": "E848EE99A4AAA6F272669B37EC9621E2E28EBCDA"
+  "apt_fingerprint": "E848EE99A4AAA6F272669B37EC9621E2E28EBCDA",
+  "app_protocol": "apps-v1",
+  "app_catalog_verifier_sha256": "8e16efa33f8d77d9605c30ba40e5e830bd324fd4b5b0e489220caa32cad9fc29",
+  "bridge_min_core": "2.0.0~20261114.2"
 }
