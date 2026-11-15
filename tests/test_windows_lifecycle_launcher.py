@@ -156,6 +156,8 @@ class BuilderInputTests(unittest.TestCase):
         compiler=self.root/'compiler';compiler.mkdir();(compiler/'ISCC.exe').write_bytes(b'synthetic compiler; never executed')
         package=self.root/'package';package.mkdir();self.package=package
         required={'runtime/python.exe','runtime/python314.dll','runtime/python314.zip','runtime/python314._pth','elevhub-package.json','school-package.json','makerspace-release.json','integrity.json','CREDITS.md','server/install.ps1','server/public-apt-cache-acl.ps1','server/verify.py','deployment/school-setup/Setup-School.ps1','deployment/school-setup/enrollment.py','hub/konfiguration.windows.json','hub/simple_updates.py','app/simple_release.py'}
+        from app.laser_station_install import REQUIRED as station_required
+        required |= station_required | {'deployment/school-setup/Setup-LaserStation.ps1'}
         for name in required:
             file=package/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(b'synthetic fixture')
         (package/'elevhub-package.json').write_text(json.dumps({'requiresGenerationLayout':False}),encoding='utf-8')
@@ -187,6 +189,19 @@ class BuilderInputTests(unittest.TestCase):
         helper.unlink();del self.value['files']['server/public-apt-cache-acl.ps1']
         with self.assertRaisesRegex(ValueError,'complete_role_runtime_required'):
             build.validate(self.value,test_artifact=True)
+    def test_both_exe_roles_require_complete_station_assets_before_build(self):
+        # Server EXE also offers the all-in-one role, which starts a local station.
+        for role in ('server','laser_station'):
+            with self.subTest(role=role):
+                self.value['role']=role
+                build.validate(self.value,test_artifact=True)
+                css=self.package/'web/laser.css';original=css.read_bytes()
+                css.unlink();del self.value['files']['web/laser.css']
+                try:
+                    with self.assertRaisesRegex(ValueError,'complete_role_runtime_required'):
+                        build.validate(self.value,test_artifact=True)
+                finally:
+                    css.write_bytes(original);self.value['files']['web/laser.css']=build.sha(css)
     def test_server_exe_rejects_generation_only_or_invalid_layout_before_build(self):
         marker=self.package/'elevhub-package.json'
         for flag in (True,'true',1,None):

@@ -69,6 +69,9 @@ def validate(value,*,test_artifact=False):
     inventory(compiler,value['compiler_files']);inventory(package,value['files'])
     if 'ISCC.exe' not in value['compiler_files']:raise ValueError('inno_compiler_required')
     required={'runtime/python.exe','runtime/python314.dll','runtime/python314.zip','runtime/python314._pth','elevhub-package.json','school-package.json','makerspace-release.json','integrity.json','CREDITS.md'}
+    # Both EXEs can install a station: the server's makerspace role is local.
+    from app.laser_station_install import REQUIRED as station_required
+    required |= station_required
     if value['role']=='server':required|={'server/install.ps1','server/public-apt-cache-acl.ps1','server/verify.py','deployment/school-setup/Setup-School.ps1','deployment/school-setup/enrollment.py','hub/konfiguration.windows.json','hub/simple_updates.py','app/simple_release.py'}
     else:required|={'app/laser_station_install.py','deployment/school-setup/Setup-LaserStation.ps1'}
     if not required<=set(value['files']):raise ValueError('complete_role_runtime_required')

@@ -791,6 +791,9 @@ def build_server(target, reuse_print_backend=False, artifact_manifest=None):
     runtime(target, server=True, inputs=inputs)
     for folder in ('app', 'web'):
         copy_tree(source_path(folder,ROOT), target / folder)
+    # The teacher queue and native station share this stylesheet with Folie.
+    # Its app owns the source; native runtime staging still needs the asset.
+    shutil.copy2(source_path('web/laser.css', ROOT), target / 'web/laser.css')
     # The ABox adapter imports this vendored source at runtime. Include the
     # corresponding source and licence with the Windows distribution as well.
     copy_tree(source_path('third_party/boxes.py/boxes', ROOT), target / 'third_party/boxes.py/boxes')

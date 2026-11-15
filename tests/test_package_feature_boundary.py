@@ -11,6 +11,9 @@ from pathlib import Path
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
+
+from app import laser_station_install as station
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -43,6 +46,26 @@ class PackageFeatureBoundaryTests(unittest.TestCase):
             builder.copy_tree(source, root / 'package')
             self.assertEqual({p.name for p in (root / 'package').iterdir()}, {'laser_server.py'})
             self.assertTrue((source / 'local_ai.py').exists())
+
+    def test_server_package_contains_station_web_dependencies_without_optional_editors(self):
+        # Exercise the real source/documentation staging. Only binary/tool edges
+        # are replaced; a source layout change must not silently break a station.
+        with tempfile.TemporaryDirectory() as temporary:
+            target = Path(temporary) / 'package'
+            target.mkdir()
+            artifacts = {name: {'version': 'fixture'} for name in ('server.tools', 'server.licenses')}
+            with patch.object(builder, 'load_artifact_manifest', return_value={}), \
+                 patch.object(builder, 'require_artifacts', return_value=artifacts), \
+                 patch.object(builder, 'validate_build_inputs'), \
+                 patch.object(builder, 'runtime'), \
+                 patch.object(builder, 'copy_artifact', side_effect=lambda name, value, output: output.mkdir(parents=True, exist_ok=True)):
+                builder.build_server(target)
+            missing = sorted(name for name in station.WEB_FILES if not (target / name).is_file())
+            self.assertEqual(missing, [], 'Native teacher/station assets must remain complete after app separation')
+            for name in station.WEB_FILES:
+                self.assertEqual((target / name).read_bytes(), source_path(name, ROOT).read_bytes())
+            for name in ('web/laser.html', 'web/model3d.html', 'web/laservaerksted'):
+                self.assertFalse((target / name).exists(), name)
 
     def test_external_artifacts_cannot_smuggle_private_models_or_runtime(self):
         for name in ('model.onnx', 'local_ai.py', 'plate_camera_client.py', 'camera-batch.js', 'plate-camera.js', 'torch/__init__.py', 'timm/__init__.py', 'safetensors/__init__.py', 'ai/model.bin'):
