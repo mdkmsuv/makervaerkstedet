@@ -8,6 +8,16 @@ Denne vejledning gælder en færdig leverance med
 en installationspakke. Følg også leverancens README for præcis version,
 filplaceringer, prøver og begrænsninger.
 
+Vælg først, hvad du skal sætte op:
+
+- **Alt på én Windows-computer:** Følg afsnit 1 og vælg **Alt på én computer**.
+  Hovedsystem og lokal laserstation er med i server-EXE'en. Du behøver ingen
+  separat servercomputer eller Debian-installation til denne opsætning.
+- **Server og laserstation på hver sin computer:** Følg afsnit 1 på serveren
+  og derefter **Separat laserstation på Windows** på lasercomputeren.
+- **Debian-elevcomputere:** Sæt først hovedsystemet op i en af de to
+  Windows-opsætninger. Følg derefter afsnit 2 og 3 på elevcomputerne.
+
 ## Vælg guiden til den leverede version
 
 | Leverance | Første elevstart |
@@ -47,28 +57,63 @@ opdatering af en elevcomputer.
 2. Guiden viser **Ny installation**. Viser den **Opdatering fundet**, findes
    der allerede en kendt installation. Stop en planlagt ren prøve her og få
    testgrundlaget kontrolleret.
-3. På **Skolens opsætning** indtastes skolens/teststedets navn, serverens
-   IPv4-adresse og elevsubnet i CIDR-format. En klargjort VM-prøves README
-   angiver dens værdier. Brug egne netoplysninger på fysisk udstyr.
-4. På **Computerens rolle** vælges **Server med separat laserstation
-   (VM/server)** til en server-VM. **Fælles makerspace-computer med lokal
-   laserstation** er det andet valg. En separat laserstation installeres
-   senere med sin egen EXE og forbindelsesfil.
+3. På **Computerens rolle** vælges **Server · laserstationen er på en anden
+   computer** til en separat server eller server-VM. Vælg **Alt på én computer
+   · server og laserstation sammen**, hvis denne Windows-computer skal gøre
+   begge dele.
+4. På **Skolens opsætning** indtastes skolens/teststedets navn, **denne
+   computers** faste IPv4-adresse og elevcomputernes netværk, fx
+   `192.0.2.0/24` (dokumentationseksempel). Få netoplysningerne fra den IT-ansvarlige. En klargjort
+   VM-prøves README angiver dens værdier. Fejl i formatet forklares, og fokus
+   flyttes til feltet, så det kan rettes før installationen. Ældre EXE'er kan vise rolle og netværk
+   i omvendt rækkefølge; følg den valgte leverances README.
 5. Vælg **Skolens farvetema** og **Lasermodel**. Brug testens angivne valg
    ved en syntetisk prøve. Dette starter ingen fysisk laser.
-6. Gennemse valgene og start installationen. Vent på afslutning og
-   efterkontrol; luk ikke VM'en undervejs. Ved fejl bevares data og logs.
-7. Åbn skrivebordsgenvejen **Makerværkstedet**, vælg selv en lærerkode på
-   mindst otte tegn og kontrollér lærerens panel.
+6. På **Klar til at installere** kontrolleres opsummeringen. Brug **Tilbage**,
+   hvis et valg skal ændres, eller **Installer** for at begynde. Efter
+   udpakningen sætter guiden systemet op og kontrollerer opstarten. Denne
+   fase kan tage nogle minutter; vent, mens markeringen bevæger sig.
+7. Fortsæt først, når siden siger **Makerværkstedet er klar**. Vælg **Åbn
+   lærerpanel**, eller brug skrivebordsgenvejen **Makerværkstedet**. Vælg selv
+   en lærerkode på mindst otte tegn og kontrollér lærerens panel.
+8. **Alt på én computer:** Vælg **Åbn laserstation** på afslutningssiden eller
+   genvejen **Elevhub Laserstation** på skrivebordet. Log ind med samme
+   lærerkode. Der skal ikke køres en separat laserstations-EXE på denne pc.
+   **Separat lasercomputer:** Brug **Vis forbindelsesfil** og fortsæt nedenfor.
 
 Serveren opretter `school-connection.json` i
 `C:\Users\Public\Documents\Elevvaerkstedet`. Det er den offentlige skolefil
 til eleverne. Private nøgler og serverdata i ProgramData bliver på serveren.
 `laser-station-connection.json` er en anden fil til Windows-laserstationen.
+Hvis filen allerede findes, får den nye eksport en dato i navnet. Brug den
+fil, afslutningssiden peger på, og hold hver skoles forbindelsesfiler adskilt.
 
 `START.cmd` åbner den udpakkede programmappes særskilte guide. Følg
 EXE-forløbet her, når leverancen indeholder EXE'en; guiderne har forskellige
 sider og forskelligt tidspunkt for Windows-godkendelsen.
+
+## Separat laserstation på Windows
+
+Dette afsnit gælder, når laserstationen og hovedsystemet er på hver sin
+computer. Hovedsystemet skal allerede være sat op og kunne nås fra lasercomputeren.
+
+1. Kopiér den nye `laser-station-connection.json` fra serveren til
+   lasercomputeren. Brug serverguidens **Vis forbindelsesfil**; filnavnet kan
+   have en dato. Filen indeholder den offentlige CA og stationstilknytning,
+   aldrig serverens private nøgle.
+2. Start **Makervaerkstedet-laser_station-Setup.exe** på lasercomputeren som
+   den Windows-bruger, der skal bruge stationen. Det er denne brugers
+   installation; der skal ikke installeres en ny server.
+3. På **Skolens laserforbindelse** vælges filen med **Gennemse**. Kontrollér
+   filen i opsummeringen og vælg **Installer**. En kendt station viser i
+   stedet **Opdatering fundet** og bevarer sin forbindelse og gemte plader.
+4. Når siden siger **Makerværkstedet er klar**, vælg **Åbn Makerværkstedet**
+   eller brug skrivebordsgenvejen. Log ind med skolens lærerkode. Kontrollér,
+   at skolen og lasermodellen er de forventede, og at serverens kø kan hentes.
+5. En rigtig prøve med Beam Studio, materialer og fysisk laserstart foretages
+   særskilt med læreren. En tom, tilgængelig kø beviser ikke fysisk forbindelse
+   til laseren. Se [de to opsætninger](TO-OPSAETNINGER.md) for maskinprogrammer
+   og stationens brug.
 
 ## 2. Installér Debian-eleven
 
@@ -140,6 +185,14 @@ Se [skoletilpasning](SKOLETILPASNING.md) for grænser og eksisterende
 private profiler.
 
 ## Opdatering og fejl
+
+Viser EXE'en **Installationen blev ikke færdig**, er programmet ikke meldt
+klar. Vælg **Vis installationslog** for at åbne den konkrete log, eller kopiér
+filstien. Få den IT-ansvarlige til at kontrollere årsagen og eventuel delvis
+installation før et nyt forsøg. Den nye guide bevarer den native fejl i
+loggen og afslutter med fejlkode `20`; en færdig udpakning er ikke en
+vellykket installation. Ældre kandidater skal vurderes efter leverancens
+testkvittering, også selv om de viser en generisk færdigside.
 
 Hvis en overgang til tilvalgsapps bliver ved med at fejle, kan læreren i
 **Teknik → Opdateringer** læse computerens fejlkode og vælge **Stop genforsøg**.

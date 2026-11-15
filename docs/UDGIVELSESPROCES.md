@@ -99,6 +99,21 @@ vedligeholdelsesoperator og kan ikke installeres af denne EXE. Byggeren
 afviser `requiresGenerationLayout: true` før kompilering; ændr ikke
 flaget i en færdig pakke, men byg pakken igen med de korrekte valg.
 
+Begge EXE-roller skal indeholde laserstationens komplette runtime- og
+webaktiver; server-EXE'en tilbyder også alt-i-én-rollen. Byggeren kontrollerer
+denne kontrakt før kompilering. Kør også den afgrænsede native portkontrol
+på Windows, så en skrivefri preflight ikke opretter en netværkslistener:
+
+```
+powershell.exe -NoProfile -File tests/test_windows_install_port_probe.ps1
+```
+
+Den faktiske EXE-prøve skal skelne udpakning fra native succes: en kontrolleret
+native fejl skal vises som **Installationen blev ikke færdig**, have den rigtige
+log og give exitkode `20`. Først et bestået native trin må vise klar-siden.
+Prøv både separat server/laserstation og Windows alt på én computer, herunder
+afslutningens genveje, lærerlogin og opstart efter genstart.
+
 ```
 python -B system/windows/inno/build.py --inputs <inputs.json> --output <exe-mappe> --payload-output <payload-mappe>
 system/windows/inno/Test-InstallOnVm.ps1 -VMName <test-VM> -Checkpoint <rent øjebliksbillede> -CredentialFile <privat fil> -Payloads <A.zip>,<B.zip>,<C.zip> -ResultFile <resultat.json>

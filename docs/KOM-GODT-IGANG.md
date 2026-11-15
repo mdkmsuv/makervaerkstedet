@@ -2,6 +2,8 @@
 
 **Færdig Setup.exe og elev-ISO:** følg først
 [EXE-/ISO-vejledningen](INSTALLATION-FRA-EXE-OG-ISO.md) og leverancens README.
+Windows med alt på én computer er beskrevet dér; den opsætning kræver hverken
+en separat servercomputer eller en Debian-elevinstallation.
 START.cmd-trinene nedenfor beskriver den udpakkede programmappe. EXE'en har
 sin egen guide og beder om administratorgodkendelse ved opstart.
 

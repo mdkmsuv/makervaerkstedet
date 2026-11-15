@@ -97,7 +97,7 @@ class InstallerProfileTests(unittest.TestCase):
         recipe=(source_path('windows/inno/Makervaerkstedet.iss', ROOT)).read_text('utf-8')
         self.assertNotIn('ModePage',recipe)
         self.assertIn("+ 'auto' +",recipe)
-        for text in ('Skolens opsætning','Rød','Grøn','køpause','RolePage','ThemePage','MachinePage'):
+        for text in ('Skolens opsætning','Rød','Grøn','forbliver pauset','RolePage','ThemePage','MachinePage'):
             self.assertIn(text,recipe)
         self.assertNotIn('koepause',recipe)
         # Private colours come from command-line parameters, never from a wizard page.

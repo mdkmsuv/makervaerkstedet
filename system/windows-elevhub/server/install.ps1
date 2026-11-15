@@ -129,8 +129,14 @@ function Assert-TeacherAddress {
 }
 function Assert-PortsFree {
     foreach ($binding in $PortBindings) {
-        $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Parse($binding.Address), [int]$binding.Port)
-        try { $listener.Start() } catch { throw "Port $($binding.Port) er allerede i brug på $($binding.Address)." } finally { try { $listener.Stop() } catch {} }
+        # Reserve the exact endpoint without listening. TcpListener.Start()
+        # needlessly prompts for broad firewall access for PowerShell itself.
+        $socket = [Net.Sockets.Socket]::new([Net.Sockets.AddressFamily]::InterNetwork, [Net.Sockets.SocketType]::Stream, [Net.Sockets.ProtocolType]::Tcp)
+        try {
+            $socket.ExclusiveAddressUse = $true
+            $socket.Bind([Net.IPEndPoint]::new([Net.IPAddress]::Parse($binding.Address), [int]$binding.Port))
+        } catch { throw "Adressen $($binding.Address) eller port $($binding.Port) kan ikke bruges. Kontroller computerens adresse, og om porten allerede er optaget." }
+        finally { $socket.Dispose() }
     }
 }
 function Assert-ExistingPrintBackend {
