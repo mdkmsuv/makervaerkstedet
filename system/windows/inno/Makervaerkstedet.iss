@@ -76,7 +76,7 @@ begin
   if Unicast then Result := Result and (First > 0) and (First < 224) and (First <> 127);
 end;
 function ValidSubnet(Value: String): Boolean;
-var Slash, Prefix, I: Integer; Network, Mask: String;
+var Slash, Prefix, I, Separator: Integer; Network, Mask, Token: String; Address, HostSize: Int64;
 begin
   Result := False; Slash := Pos('/', Value);
   if Slash = 0 then Exit;
@@ -84,7 +84,17 @@ begin
   if not ValidIPv4(Network, True) or (Mask = '') or (Length(Mask) > 2) then Exit;
   for I := 1 to Length(Mask) do if (Mask[I] < '0') or (Mask[I] > '9') then Exit;
   Prefix := StrToIntDef(Mask, -1);
-  Result := (Prefix >= 1) and (Prefix <= 32);
+  if (Prefix < 8) or (Prefix > 32) then Exit;
+  Address := 0;
+  for I := 1 to 4 do begin
+    Separator := Pos('.', Network);
+    if Separator = 0 then begin Token := Network; Network := ''; end
+    else begin Token := Copy(Network, 1, Separator - 1); Delete(Network, 1, Separator); end;
+    Address := Address * 256 + StrToIntDef(Token, -1);
+  end;
+  HostSize := 1;
+  for I := Prefix to 31 do HostSize := HostSize * 2;
+  Result := (Address mod HostSize) = 0;
 end;
 function JSONString(Value: String): String;
 begin
@@ -228,7 +238,7 @@ begin
       MsgBox('Skriv denne computers faste IPv4-adresse, fx 192.0.2.20. Brug ikke localhost, 127.0.0.1 eller en webadresse.', mbError, MB_OK); WizardForm.ActiveControl := SchoolPage.Edits[1]; Exit;
     end;
     if not ValidSubnet(SchoolPage.Values[2]) then begin
-      MsgBox('Skriv elevnettets adresse og /maske, fx 192.0.2.0/24. Masken skal være mellem /1 og /32. Få oplysningerne fra den IT-ansvarlige.', mbError, MB_OK); WizardForm.ActiveControl := SchoolPage.Edits[2]; Exit;
+      MsgBox('Skriv elevnettets netværksadresse med /maske fra /8 til /32, fx 192.0.2.0/24. Adressen skal være starten af nettet; få den hos den IT-ansvarlige.', mbError, MB_OK); WizardForm.ActiveControl := SchoolPage.Edits[2]; Exit;
     end;
     Result := True;
   end;

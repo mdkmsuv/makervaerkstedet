@@ -202,6 +202,29 @@ class BuilderInputTests(unittest.TestCase):
                         build.validate(self.value,test_artifact=True)
                 finally:
                     css.write_bytes(original);self.value['files']['web/laser.css']=build.sha(css)
+    def test_fresh_package_gets_role_identity_during_staging_for_both_roles(self):
+        # The documented school producer has no role-specific runtime identity.
+        # Inno staging creates it after validating the producer's input files.
+        identity=self.package/'runtime-release.json';identity.unlink()
+        del self.value['files']['runtime-release.json']
+        config=self.package/'hub/konfiguration.windows.json'
+        config.write_text(json.dumps({'apps':[]}),encoding='utf-8')
+        self.value['files']['hub/konfiguration.windows.json']=build.sha(config)
+        def compile_fixture(arguments,**kwargs):
+            out=Path(next(arg.split('=',1)[1] for arg in arguments if arg.startswith('/DOutputRoot=')))
+            label=next(arg.split('=',1)[1] for arg in arguments if arg.startswith('/DOutputName='))
+            (out/(label+'.exe')).write_bytes(b'synthetic compiler result; never executed')
+        from app.laser_station_install import REQUIRED as station_required
+        for role in ('server','laser_station'):
+            with self.subTest(role=role):
+                self.value['role']=role
+                payload=self.root/(role+'-payload')
+                with patch.object(build.subprocess,'run',side_effect=compile_fixture):
+                    build.build(self.value,self.root/(role+'-output'),test_artifact=True,payload_output=payload)
+                staged=payload/'package'
+                self.assertEqual(json.loads((staged/'runtime-release.json').read_text()),
+                                 {'schema':1,'role':role,'release_id':self.value['version']})
+                self.assertTrue(all((staged/name).is_file() for name in station_required))
     def test_server_exe_rejects_generation_only_or_invalid_layout_before_build(self):
         marker=self.package/'elevhub-package.json'
         for flag in (True,'true',1,None):

@@ -71,7 +71,8 @@ def validate(value,*,test_artifact=False):
     required={'runtime/python.exe','runtime/python314.dll','runtime/python314.zip','runtime/python314._pth','elevhub-package.json','school-package.json','makerspace-release.json','integrity.json','CREDITS.md'}
     # Both EXEs can install a station: the server's makerspace role is local.
     from app.laser_station_install import REQUIRED as station_required
-    required |= station_required
+    # The role identity is generated below, not supplied by the school producer.
+    required |= station_required - {'runtime-release.json'}
     if value['role']=='server':required|={'server/install.ps1','server/public-apt-cache-acl.ps1','server/verify.py','deployment/school-setup/Setup-School.ps1','deployment/school-setup/enrollment.py','hub/konfiguration.windows.json','hub/simple_updates.py','app/simple_release.py'}
     else:required|={'app/laser_station_install.py','deployment/school-setup/Setup-LaserStation.ps1'}
     if not required<=set(value['files']):raise ValueError('complete_role_runtime_required')
@@ -116,6 +117,9 @@ def build(value,output,*,test_artifact=False,payload_output=None):
             config_path.write_text(json.dumps(config,ensure_ascii=False,indent=2),encoding='utf-8')
         (target/'runtime-release.json').write_text(json.dumps({'schema':1,'release_id':value['version'],'role':value['role']},sort_keys=True)+'\n',encoding='utf-8')
         shutil.copyfile(source_path('app/runtime_health.py', ROOT),target/'app/runtime_health.py')
+        from app.laser_station_install import REQUIRED as station_required
+        if not all((target/name).is_file() for name in station_required):
+            raise ValueError('complete_staged_station_runtime_required')
         if not test_artifact:
             # Reseal using the established school-package format after adding
             # public trust/helper files. Source inputs remain untouched.
