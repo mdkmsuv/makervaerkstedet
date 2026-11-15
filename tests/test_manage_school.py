@@ -173,12 +173,12 @@ class ManageSchoolBindingTest(unittest.TestCase):
         self.assertIn("Invoke-SchoolAdmin 'urls'", source)
         self.assertIn("Open-LocalUrl $urls.teacher -Teacher", source)
 
-    def test_flat_laser_menu_uses_saved_fallback_port(self):
+    def invoke_flat_laser_menu(self, configuration):
         station = self.data / 'laserstation'
-        station.mkdir()
-        (station / 'laser-installation.json').write_text(json.dumps({'port': 49160}), encoding='utf-8')
+        station.mkdir(exist_ok=True)
+        (station / 'laser-installation.json').write_text(json.dumps(configuration), encoding='utf-8')
         launcher = self.installed / 'deployment' / 'school-setup' / 'Start-LaserStation.ps1'
-        shutil.copy2(SCRIPT.with_name('Start-LaserStation.ps1'), launcher)
+        launcher.write_text("throw 'ADMIN_LAUNCH_FORBIDDEN'", encoding='ascii')
         harness = self.root / 'laser-menu.ps1'
         harness.write_text(r'''param($Source,$DataRoot,$PackageRoot)
 $ErrorActionPreference='Stop'
@@ -193,16 +193,28 @@ function Get-CimInstance {}
 function Start-Process {
     param($FilePath,$ArgumentList,$WorkingDirectory,$WindowStyle,$RedirectStandardOutput,$RedirectStandardError,[switch]$PassThru)
     if($FilePath -like 'http*'){Write-Output ('BROWSER='+$FilePath)}
-    else {[pscustomobject]@{HasExited=$false;ExitCode=0}}
+    else {throw 'Only the browser URL may be opened from the elevated menu.'}
 }
 Invoke-Expression $nodes[0].Extent.Text
 ''', encoding='utf-8-sig')
         env = {**os.environ, 'LOCALAPPDATA': str(self.root / 'local')}
-        result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+        return subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
                                  '-File', str(harness), str(SCRIPT), str(self.data), str(self.installed)],
                                 capture_output=True, text=True, timeout=20, env=env)
+
+    def test_flat_laser_menu_uses_saved_fallback_port(self):
+        result = self.invoke_flat_laser_menu({'port': 49160})
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn('BROWSER=http://127.0.0.1:49160/', result.stdout)
+
+    def test_flat_laser_menu_rejects_invalid_saved_port_without_launch(self):
+        for configuration in ({}, {'port': '49160'}, {'port': True}, {'port': 49160.5},
+                              {'port': 1023}, {'port': 65536}, None):
+            with self.subTest(configuration=configuration):
+                result = self.invoke_flat_laser_menu(configuration)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertNotIn('BROWSER=', result.stdout)
+                self.assertNotIn('ADMIN_LAUNCH_FORBIDDEN', result.stderr)
 
     def test_generation_inspect_identity_mismatch_is_rejected(self):
         self.enable_generation_fixture(wrong_identity=True)

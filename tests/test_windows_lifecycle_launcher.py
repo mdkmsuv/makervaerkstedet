@@ -277,7 +277,7 @@ class BuilderInputTests(unittest.TestCase):
     def test_nonfixture_build_rejects_fake_runtime(self):
         with self.assertRaisesRegex(ValueError,'invalid_python_executable'):build.validate(self.value)
     def test_generic_package_never_contains_private_identity_or_retired_java(self):
-        for name,error in [('device.key','private_state'),('runtime/jre21/java.exe','removed_native_3d_runtime')]:
+        for name,error in [('device.key','private_state'),('school-setup-state.json','private_state'),('runtime/jre21/java.exe','removed_native_3d_runtime')]:
             path=self.package/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_bytes(b'synthetic');self.value['files'][name]=build.sha(path)
             with self.assertRaisesRegex(ValueError,error):build.validate(self.value,test_artifact=True)
             path.unlink();del self.value['files'][name]

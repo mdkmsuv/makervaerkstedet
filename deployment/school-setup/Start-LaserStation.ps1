@@ -1,10 +1,11 @@
-param(
+﻿param(
     [string]$ConfigPath,
     [Parameter(Mandatory)][string]$Root,
     [switch]$ActiveGeneration,
     [string]$InstallationId,
     [string]$ExpectedSelectionSha256,
-    [switch]$OpenBrowser
+    [switch]$OpenBrowser,
+    [switch]$NoBrowser
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -60,6 +61,7 @@ function Get-ActiveCommand([string]$Root, [string]$InstallationId, [string]$Entr
         -not (Test-ArgumentPair $list '--expected-selection' $ExpectedSelection)) {
         throw 'Aktiv generationsstart er ikke bundet til samme generationsvalg.'
     }
+    if ($Entry -eq 'laser-station' -and -not (Test-ArgumentPair $list '--runtime-role' 'server')) { throw 'Alt-i-én-starten mangler den forventede serverrolle.' }
     Assert-GenerationCommandCoherence $command $Root
     if (-not (Test-Path -LiteralPath ([string]$command.Execute) -PathType Leaf)) { throw 'Aktiv generationsstartens runtime mangler.' }
     return $command
@@ -83,6 +85,39 @@ function Get-ActiveLaserUrl([string]$Root, [string]$InstallationId, [string]$Exp
     }
 }
 
+function Wait-StationReady([string]$Url, [object]$Config, [object]$Process, [string]$ErrorLog, [int[]]$ExpectedPids) {
+    $expectedServer = 'http://127.0.0.1:8767'
+    if ($null -ne $Config.PSObject.Properties['server']) { $expectedServer = [string]$Config.server }
+    $machine = 'fbb2'
+    if ($null -ne $Config.PSObject.Properties['machine']) { $machine = [string]$Config.machine }
+    $stationId = 'laser-' + $machine
+    if ($null -ne $Config.PSObject.Properties['station_id']) { $stationId = [string]$Config.station_id }
+    $deadline = [DateTime]::UtcNow.AddSeconds(120)
+    do {
+        if ($null -ne $Process -and $Process.HasExited) { throw ('Laserstationen stoppede under start. Se ' + $ErrorLog) }
+        $state = $null
+        try { $state = Invoke-RestMethod -Uri ($Url.TrimEnd('/') + '/api/station/state') -TimeoutSec 1 } catch { }
+        if ($null -ne $state) {
+            if ($null -eq $state.PSObject.Properties['server'] -or $null -eq $state.PSObject.Properties['stationId']) { throw 'Porten svarer ikke som en laserstation.' }
+            if (([string]$state.server).TrimEnd('/') -cne $expectedServer.TrimEnd('/')) { throw 'Porten bruges af en station med en anden server.' }
+            if ([string]$state.stationId -cne $stationId) { throw 'Porten bruges af en anden laserstation.' }
+            $health = $null
+            try { $health = Invoke-RestMethod -Uri ($Url.TrimEnd('/') + '/api/runtime/health') -TimeoutSec 1 } catch { }
+            if ($null -eq $health) { Start-Sleep -Milliseconds 250; continue }
+            if ($null -eq $health.PSObject.Properties['service'] -or $null -eq $health.PSObject.Properties['pid'] -or
+                $health.service -cne 'laser_station' -or ($health.pid -isnot [int] -and $health.pid -isnot [long]) -or $ExpectedPids -notcontains [int]$health.pid) { throw 'Porten ejes ikke af den forventede stationsproces.' }
+            return
+        }
+        Start-Sleep -Milliseconds 250
+    } while ([DateTime]::UtcNow -lt $deadline)
+    throw ('Laserstationen svarer ikke efter 120 sekunder. Se ' + $ErrorLog)
+}
+
+$launcherLog = $null
+try {
+    $logDir = Join-Path $env:LOCALAPPDATA 'Elevhub\Laserstation'
+    New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+    $launcherLog = Join-Path $logDir ('launcher-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '-' + $PID + '.log')
 $Root = [IO.Path]::GetFullPath($Root)
 $control = Join-Path $Root 'control'
 $controlEntry = @(Get-ChildItem -LiteralPath $Root -Force -ErrorAction SilentlyContinue | Where-Object { $_.Name -eq 'control' })
@@ -109,9 +144,18 @@ if ($ActiveGeneration) {
         [string]::IsNullOrWhiteSpace([string]$snapshot.selection_sha256)) { throw 'Den aktive generation passer ikke til laserstationen.' }
     if (-not [string]::IsNullOrWhiteSpace($ExpectedSelectionSha256) -and [string]$snapshot.selection_sha256 -ine $ExpectedSelectionSha256) { throw 'Generationsvalget ændredes før laserstart.' }
     $selectionHash = [string]$snapshot.selection_sha256
-    $station = Get-ActiveCommand $Root $InstallationId 'laser-station' @() $selectionHash
+    $station = Get-ActiveCommand $Root $InstallationId 'laser-station' @('--runtime-role', 'server') $selectionHash
     $python = [string]$station.Execute
     $urls = Get-ActiveLaserUrl $Root $InstallationId $selectionHash
+    if ($null -eq $urls) { throw 'Den aktive generation har ingen lokal laserstation.' }
+    $activeConfigPath = Join-Path ([string]$snapshot.data_root) 'laserstation\laser-installation.json'
+    $config = Get-Content -LiteralPath $activeConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+    if ($null -eq $config -or $config -isnot [pscustomobject]) { throw 'Laserstationens konfiguration skal være et JSON-objekt.' }
+    $port = 8790
+    if ($null -ne $config.PSObject.Properties['port']) { $port = Assert-LocalPort $config.port }
+    if (([Uri]$urls).Port -ne $port) { throw 'Generationsforespørgslens port matcher ikke laserstationens konfiguration.' }
+    $process = $null
+    $stderr = $launcherLog
     $processes = @(Get-CimInstance Win32_Process)
     $activeArgumentsPattern = [regex]::Escape([string]$station.Arguments)
     $stationEntryPattern = '(?:^|\s|")laser-station(?:\s|$|")'
@@ -132,10 +176,10 @@ if ($ActiveGeneration) {
         $stdout = Join-Path $logDir "station-$stamp.out.log"; $stderr = Join-Path $logDir "station-$stamp.err.log"
         $process = Start-Process -FilePath $python -ArgumentList ([string]$station.Arguments) -WorkingDirectory ([string]$station.WorkingDirectory) -WindowStyle Hidden `
             -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
-        Start-Sleep -Milliseconds 250
-        if ($process.HasExited -and $process.ExitCode -ne 0) { throw "Laserstationen kunne ikke starte. Se $stderr" }
     }
-    if ($OpenBrowser -and $null -ne $urls) { Start-Process $urls }
+    $expectedPids = if ($null -ne $process) { @([int]$process.Id) } else { @($active | ForEach-Object { [int]$_.ProcessId }) }
+    Wait-StationReady $urls $config $process $stderr $expectedPids
+    if ($OpenBrowser -and -not $NoBrowser) { Start-Process $urls }
     } finally {
         Close-GenerationLease -Lease $lease
     }
@@ -147,7 +191,7 @@ $ConfigPath = [IO.Path]::GetFullPath($ConfigPath)
 try { $config = Get-Content -LiteralPath $ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json } catch { throw 'Laserstationens konfiguration kunne ikke læses.' }
 if ($null -eq $config -or $config -isnot [pscustomobject]) { throw 'Laserstationens konfiguration skal være et JSON-objekt.' }
 $port = 8790
-if ($config.PSObject.Properties.Name -contains 'port') { $port = $config.port }
+if ($null -ne $config.PSObject.Properties['port']) { $port = $config.port }
 $port = Assert-LocalPort $port
 $python = Join-Path $Root 'runtime\python.exe'
 if (-not (Test-Path -LiteralPath $python -PathType Leaf) -or -not (Test-Path -LiteralPath $ConfigPath -PathType Leaf)) { throw 'Laserstationens runtime eller konfiguration mangler.' }
@@ -156,12 +200,26 @@ $existing = @(Get-CimInstance Win32_Process | Where-Object {
     $_.ExecutablePath -eq $python -and $_.CommandLine -match '\bapp\.laser_station\b' -and
     $_.CommandLine -match [regex]::Escape($ConfigPath)
 })
+$process = $null
+$stderr = $launcherLog
 if (-not $existing.Count) {
     $stamp = Get-Date -Format 'yyyyMMdd-HHmmss-fff'
     $stdout = Join-Path $logDir "station-$stamp.out.log"; $stderr = Join-Path $logDir "station-$stamp.err.log"
-    $arguments = '-B -m app.laser_station --config "{0}"' -f $ConfigPath
+    $arguments = '-B -m app.laser_station --runtime-role server --config "{0}"' -f $ConfigPath
     $process = Start-Process -FilePath $python -ArgumentList $arguments -WorkingDirectory $Root -WindowStyle Hidden -RedirectStandardOutput $stdout -RedirectStandardError $stderr -PassThru
-    Start-Sleep -Milliseconds 250
-    if ($process.HasExited -and $process.ExitCode -ne 0) { throw "Laserstationen kunne ikke starte. Se $stderr" }
 }
-if ($OpenBrowser) { Start-Process ('http://127.0.0.1:{0}/' -f $port) }
+$url = 'http://127.0.0.1:{0}/' -f $port
+$expectedPids = if ($null -ne $process) { @([int]$process.Id) } else { @($existing | ForEach-Object { [int]$_.ProcessId }) }
+Wait-StationReady $url $config $process $stderr $expectedPids
+if ($OpenBrowser -and -not $NoBrowser) { Start-Process $url }
+} catch {
+    $message = 'Laserstationen kunne ikke åbnes. ' + $_.Exception.Message
+    if ($launcherLog) {
+        try { [IO.File]::WriteAllText($launcherLog, $message + [Environment]::NewLine, [Text.UTF8Encoding]::new($false)) } catch { }
+        $message += "`nLog: " + $launcherLog
+    }
+    if ($OpenBrowser -and -not $NoBrowser) {
+        try { $shell = New-Object -ComObject WScript.Shell; $null = $shell.Popup($message, 0, 'Laserstationen kunne ikke åbnes', 16) } catch { Write-Warning $message }
+    }
+    throw $message
+}

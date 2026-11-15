@@ -291,7 +291,16 @@ switch ($choice) {
       Start-Process ('http://127.0.0.1:' + $teacherBackendPort)
       $school = Get-Content -LiteralPath (Join-Path $DataRoot 'school.json') -Raw | ConvertFrom-Json
       if ($school.role -eq 'makerspace') {
-        & (Join-Path $PackageRoot 'deployment\school-setup\Start-LaserStation.ps1') -Root $PackageRoot -ConfigPath (Join-Path $DataRoot 'laserstation\laser-installation.json') -OpenBrowser
+        $laserConfig = Get-Content -LiteralPath (Join-Path $DataRoot 'laserstation\laser-installation.json') -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($null -eq $laserConfig -or $laserConfig -isnot [pscustomobject] -or
+            ($laserConfig.port -isnot [int] -and $laserConfig.port -isnot [long]) -or
+            $laserConfig.port -lt 1024 -or $laserConfig.port -gt 65535) {
+          throw 'Laserstationens gemte port er ugyldig. Kontrollér laser-installation.json i skolens datamappe.'
+        }
+        # Administrationen er hævet. Åbn kun adressen; stationen startes af
+        # brugerens egen genvej eller ved næste logon med brugerrettigheder.
+        Write-Host 'Hvis laserstationens side ikke svarer: åbn Elevhub Laserstation på skrivebordet hos den bruger, der betjener laseren.'
+        Start-Process ('http://127.0.0.1:{0}/' -f [int]$laserConfig.port)
       }
     }
   }

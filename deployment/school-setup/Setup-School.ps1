@@ -95,6 +95,82 @@ function Assert-GenerationCommandCoherence([object]$command, [string]$Root) {
     $expectedArguments = [string](& $formatter.Name -Values @($command.ArgumentList))
     if ([string]$command.Arguments -cne $expectedArguments) { throw 'Generationskommandoets argumenter stemmer ikke med argumentlisten.' }
 }
+
+function Get-SchoolSetupReceipt([string]$Path, [string]$OwnerId) {
+    if (-not (Test-Path -LiteralPath $Path)) { return $null }
+    $item = Get-Item -LiteralPath $Path -Force
+    if ($item -isnot [IO.FileInfo] -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) { throw 'Skoleopsætningens kvittering er ikke en almindelig fil.' }
+    try { $receipt = Get-Content -LiteralPath $Path -Raw -Encoding UTF8 | ConvertFrom-Json } catch { throw 'Skoleopsætningens kvittering er ugyldig; den er bevaret til eftersyn.' }
+    if ($null -eq $receipt -or $receipt -isnot [pscustomobject] -or
+        @('schemaVersion','product','ownerId','state','settings' | Where-Object { $_ -notin $receipt.PSObject.Properties.Name }).Count -gt 0 -or
+        $receipt.schemaVersion -ne 1 -or $receipt.product -cne 'ElevhubSchoolSetup' -or
+        $receipt.ownerId -cne $OwnerId -or $receipt.state -notin @('preparing','complete') -or
+        $receipt.settings -isnot [pscustomobject]) {
+        throw 'Skoleopsætningens kvittering tilhører ikke denne installation eller er ugyldig; den er bevaret.'
+    }
+    return $receipt
+}
+
+function Assert-SchoolSetupChoices([object]$Receipt, [System.Collections.IDictionary]$Choices) {
+    if ($null -eq $Receipt) { return }
+    foreach ($key in $Choices.Keys) {
+        if ($key -notin $Receipt.settings.PSObject.Properties.Name -or [string]$Receipt.settings.$key -cne [string]$Choices[$key]) {
+            throw 'Resume må ikke ændre den påbegyndte skoleopsætning. Brug de oprindelige skolevalg.'
+        }
+    }
+}
+
+function Set-SchoolSetupState([string]$Path, [string]$OwnerId, [ValidateSet('preparing','complete')][string]$State, [System.Collections.IDictionary]$Choices) {
+    $before = Get-SchoolSetupReceipt $Path $OwnerId
+    Assert-SchoolSetupChoices $before $Choices
+    $value = [ordered]@{schemaVersion=1;product='ElevhubSchoolSetup';ownerId=$OwnerId;state=$State;settings=$Choices}
+    $temporary = $Path + '.' + [Guid]::NewGuid().ToString('N') + '.tmp'
+    try {
+        $bytes = [Text.UTF8Encoding]::new($false).GetBytes(($value | ConvertTo-Json -Depth 4) + "`n")
+        $stream = [IO.File]::Open($temporary, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+        try { $stream.Write($bytes,0,$bytes.Length); $stream.Flush($true) } finally { $stream.Dispose() }
+        if ($null -ne $before) { [IO.File]::Replace($temporary,$Path,[NullString]::Value) }
+        else { [IO.File]::Move($temporary,$Path) }
+    } finally {
+        if (Test-Path -LiteralPath $temporary) { Remove-Item -LiteralPath $temporary -Force }
+    }
+}
+
+function Export-LaserConnectionReference([object]$ConnectionValue, [string]$CaPath, [string]$OutputDirectory) {
+    # SHA-1 is only the visual reference shown in Windows' existing certificate
+    # import dialog. It does not select a signing algorithm or weaken TLS.
+    $pem = Get-Content -LiteralPath $CaPath -Raw -Encoding ASCII
+    if ($pem -cne [string]$ConnectionValue.caCertificatePem) { throw 'Serverens CA blev ændret under eksporten. Eksportér forbindelsen igen.' }
+    $certificateMatch = [regex]::Match($pem, '-----BEGIN CERTIFICATE-----\s*(?<der>[A-Za-z0-9+/=\s]+?)\s*-----END CERTIFICATE-----')
+    if (-not $certificateMatch.Success) { throw 'Serverens offentlige CA-certifikat kunne ikke læses.' }
+    $der = [Convert]::FromBase64String($certificateMatch.Groups['der'].Value)
+    $certificate = [Security.Cryptography.X509Certificates.X509Certificate2]::new($der)
+    try { $fingerprint = $certificate.Thumbprint.ToUpperInvariant() } finally { $certificate.Dispose() }
+    if ($fingerprint -cnotmatch '^[0-9A-F]{40}$') { throw 'Serverens CA-aftryk kunne ikke beregnes.' }
+    $baseName = 'laser-station-connection'
+    while ($true) {
+        $connectionPath = Join-Path $OutputDirectory ($baseName + '.json')
+        $referencePath = Join-Path $OutputDirectory ($baseName + '.fingerprint.txt')
+        if (-not (Test-Path -LiteralPath $connectionPath) -and -not (Test-Path -LiteralPath $referencePath)) { break }
+        $baseName = 'laser-station-connection-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '-' + [Guid]::NewGuid().ToString('N').Substring(0,8)
+    }
+    $reference = "Laserstation - serverens offentlige CA`r`nForbindelsesfil: $([IO.Path]::GetFileName($connectionPath))`r`nSkole: $($ConnectionValue.school_name)`r`nSHA-1: $fingerprint`r`nSammenlign SHA-1 med Aftryk i Windows' certifikatdialog, før du vælger Ja.`r`nSHA-1 er kun en visuel reference; TLS og signaturer er uændrede.`r`n"
+    $utf8 = [Text.UTF8Encoding]::new($false)
+    # CreateNew protects earlier exports, including exports from another school.
+    $stream = [IO.File]::Open($connectionPath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try {
+        $bytes = $utf8.GetBytes(($ConnectionValue | ConvertTo-Json -Depth 4) + "`n")
+        $stream.Write($bytes, 0, $bytes.Length)
+    } finally { $stream.Dispose() }
+    $stream = [IO.File]::Open($referencePath, [IO.FileMode]::CreateNew, [IO.FileAccess]::Write, [IO.FileShare]::None)
+    try {
+        $bytes = $utf8.GetBytes($reference)
+        $stream.Write($bytes, 0, $bytes.Length)
+    } finally { $stream.Dispose() }
+    Write-Output "Kopiér den offentlige laserforbindelse og aftryksfil til lasercomputeren: $connectionPath ; $referencePath"
+    Write-Output "CA-aftryk (SHA-1, Windows): $fingerprint"
+    Write-Output "MKV_LASER_CA_SHA1=$fingerprint"
+}
 if ($AcceptInstall -and @(@($SchoolName,$Role,$RoleIp,$StudentSubnet,$Theme) | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count) {
     throw 'AcceptInstall kræver SchoolName, Role, RoleIp, StudentSubnet og Theme som eksplicitte parametre.'
 }
@@ -207,6 +283,10 @@ $ownerMarker = Join-Path $DataRoot 'installation-owner.json'; $resumeExisting = 
 $installedRoot = [IO.Path]::GetFullPath((Join-Path $env:ProgramFiles 'ElevhubServer'))
 $existingProfile = $null
 $resumeNeedsServer = $false
+$setupReceiptPath = Join-Path $DataRoot 'school-setup-state.json'
+$setupChoices = [ordered]@{school_name=$SchoolName;role=$Role;theme=$Theme;server=$RoleIp;student_subnet=$StudentSubnet;
+    remote_laser_station=[bool]$RemoteLaserStation;machine=$Machine;print_backend_port=$PrintBackendPort;
+    design_backend_port=$DesignBackendPort;teacher_backend_port=$TeacherBackendPort;teacher_port=$TeacherPort;brand=$Brand;brand_dark=$BrandDark}
 if ($resumeExisting) {
     if (-not (Test-Path -LiteralPath $ownerMarker -PathType Leaf)) { throw 'Resume kræver en eksisterende, ejet ElevhubServer-installation.' }
     $owner = Get-Content -LiteralPath $ownerMarker -Raw -Encoding UTF8 | ConvertFrom-Json
@@ -259,8 +339,17 @@ if ($resumeExisting) {
             if ($recordedPort -ne $port.expected) { throw 'Resume må ikke ændre skolens serverporte.' }
         }
     }
+    $setupReceipt = Get-SchoolSetupReceipt $setupReceiptPath ([string]$owner.ownerId)
+    if (-not $Brand -and -not $BrandDark -and $null -ne $setupReceipt -and
+        'brand' -in $setupReceipt.settings.PSObject.Properties.Name -and 'brand_dark' -in $setupReceipt.settings.PSObject.Properties.Name) {
+        $Brand = [string]$setupReceipt.settings.brand; $BrandDark = [string]$setupReceipt.settings.brand_dark
+        $setupChoices['brand'] = $Brand; $setupChoices['brand_dark'] = $BrandDark
+        Assert-SchoolBrandColours $Brand $BrandDark
+    }
+    Assert-SchoolSetupChoices $setupReceipt $setupChoices
 }
 if (-not $resumeExisting) {
+    if (Test-Path -LiteralPath $setupReceiptPath) { throw 'Der findes allerede en skoleopsætningskvittering. Filen er bevaret; brug den oprindelige installation og -Resume.' }
     if (Test-Path -LiteralPath $ownerMarker) { throw 'Der findes allerede en Elevhub-installation. Brug -Resume efter en afbrudt opsætning.' }
     $installArgs = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$serverInstall,
         '-PackageRoot',$PackageRoot,'-RoleIp',$RoleIp,'-StudentSubnet',$StudentSubnet,
@@ -312,6 +401,7 @@ if ($startupMode -eq 'generation-v1') {
     }
 }
 $installedPython = Join-Path $installedRoot 'runtime\python.exe'; $installedEnrollment = Join-Path $installedRoot 'deployment\school-setup\enrollment.py'
+Set-SchoolSetupState $setupReceiptPath ([string]$owner.ownerId) preparing $setupChoices
 $security = Join-Path $DataRoot 'security'; $sshRoot = Join-Path $DataRoot 'admin-ssh'; New-Item -ItemType Directory -Force -Path $DataRoot,$security,$sshRoot | Out-Null
 $privateKey = Join-Path $sshRoot 'id_ed25519'; $publicKey = "$privateKey.pub"
 & icacls.exe $sshRoot /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' | Out-Null
@@ -422,6 +512,13 @@ if ($Role -eq 'makerspace') {
     $shell = New-Object -ComObject WScript.Shell; $shortcut = $shell.CreateShortcut((Join-Path $startup 'Elevhub Laserstation.lnk')); $shortcut.TargetPath = 'powershell.exe'; $shortcut.Arguments = $laserArgs; $shortcut.WorkingDirectory = $installedRoot; $shortcut.Save()
     $browserShortcut = $shell.CreateShortcut((Join-Path $env:Public 'Desktop\Elevhub Laserstation.lnk'))
     $browserShortcut.TargetPath = 'powershell.exe'; $browserShortcut.Arguments = $laserArgs + ' -OpenBrowser'; $browserShortcut.WorkingDirectory = $installedRoot; $browserShortcut.Save()
+    if ($startupMode -eq 'legacy') {
+        $stopShortcut = $shell.CreateShortcut((Join-Path $env:Public 'Desktop\Stop laserstation.lnk'))
+        $stopShortcut.TargetPath = 'powershell.exe'
+        $stopShortcut.Arguments = '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}" -Root "{1}" -ConfigPath "{2}"' -f (Join-Path $installedRoot 'deployment\school-setup\Stop-LaserStation.ps1'),$installedRoot,$laserConfigPath
+        $stopShortcut.WorkingDirectory = $installedRoot
+        $stopShortcut.Save()
+    }
 }
 $publicDir = Join-Path $env:Public 'Documents\Elevvaerkstedet'; New-Item -ItemType Directory -Force -Path $publicDir | Out-Null
 $connection = Join-Path $publicDir 'school-connection.json'; if (Test-Path -LiteralPath $connection) { $connection = Join-Path $publicDir ('school-connection-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '.json') }
@@ -434,11 +531,9 @@ if ($startupMode -eq 'generation-v1') {
 }
 if ($LASTEXITCODE -ne 0) { throw 'school-connection.json kunne ikke eksporteres.' }
 if ($RemoteLaserStation) {
-    $laserConnection = Join-Path $publicDir 'laser-station-connection.json'
-    if (Test-Path -LiteralPath $laserConnection) { $laserConnection = Join-Path $publicDir ('laser-station-connection-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff') + '.json') }
-    $laserConnectionValue = New-LaserStationConnection $SchoolName $RoleIp $TeacherPort (Get-Content -LiteralPath (Join-Path $security 'ca.crt') -Raw -Encoding ASCII) $Machine
-    [IO.File]::WriteAllText($laserConnection, ($laserConnectionValue | ConvertTo-Json -Depth 4) + "`n", [Text.UTF8Encoding]::new($false))
-    Write-Output "Kopiér den offentlige laserforbindelse til lasercomputeren: $laserConnection"
+    $caPath = Join-Path $security 'ca.crt'
+    $laserConnectionValue = New-LaserStationConnection $SchoolName $RoleIp $TeacherPort (Get-Content -LiteralPath $caPath -Raw -Encoding ASCII) $Machine
+    Export-LaserConnectionReference $laserConnectionValue $caPath $publicDir
 }
 foreach ($item in @(
     @{Name='Elevhub skoleopsætning.lnk';Target=(Join-Path $installedRoot 'deployment\school-setup\Start.cmd')},
@@ -452,6 +547,7 @@ foreach ($item in @(
     if ($item.ContainsKey('Arguments')) { $shortcut.Arguments = [string]$item.Arguments } else { $shortcut.Arguments = '' }
     $shortcut.Save()
 }
+Set-SchoolSetupState $setupReceiptPath ([string]$owner.ownerId) complete $setupChoices
 Write-Output "Skoleopsætning er klar. Profil: $profilePath. Privat nøgle: $privateKey. Forbindelse: $connection"
 } finally {
     if ($null -ne $generationLease) { Close-GenerationLease -Lease $generationLease }

@@ -84,7 +84,7 @@ def validate(value,*,test_artifact=False):
             raise ValueError('server_installer_requires_flat_layout')
     for name in value['files']:
         review.reject_removed_runtime(name)
-        if Path(name).suffix.lower() in ('.key','.pfx','.p12','.sqlite','.sqlite3','.db') or Path(name).name in ('school.json','installation-owner.json','server-launch.json','windows.json'):raise ValueError('private_state_in_package')
+        if Path(name).suffix.lower() in ('.key','.pfx','.p12','.sqlite','.sqlite3','.db') or Path(name).name in ('school.json','school-setup-state.json','installation-owner.json','server-launch.json','windows.json'):raise ValueError('private_state_in_package')
     if not test_artifact:
         if not (package/'runtime/python.exe').read_bytes().startswith(b'MZ'):raise ValueError('invalid_python_executable')
         with zipfile.ZipFile(package/'runtime/python314.zip') as archive:

@@ -7,8 +7,11 @@ from repository import source_path, repo_root
 import importlib.util
 from contextlib import closing
 import json
+import os
 from pathlib import Path
+import shutil
 import sqlite3
+import subprocess
 import tempfile
 import unittest
 import uuid
@@ -31,6 +34,28 @@ class InstallerProfileTests(unittest.TestCase):
         (self.state/'installation-owner.json').write_text(json.dumps(owner),encoding='utf-8')
         (self.state/'konfiguration.json').write_text('{}',encoding='utf-8')
         return owner
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows native PowerShell boundary')
+    def test_native_script_error_is_readable_and_arguments_remain_literal(self):
+        folder = self.root / "QA's [script]"
+        folder.mkdir()
+        script = folder / 'fail.ps1'
+        script.write_text("param([string]$OutputFile,[string]$Value,[switch]$RequireBound)\n"
+                          "if(-not $RequireBound){throw 'Required switch was not bound.'}\n"
+                          "[IO.File]::WriteAllText($OutputFile,$Value,[Text.UTF8Encoding]::new($false))\n"
+                          "throw 'Skolens opsætning mangler. Prøv igen.'\n", encoding='utf-8-sig')
+        output = folder / 'received.txt'
+        value = "literal '; throw 'unexpected code' ; $(Get-Date)"
+        native = life.NativeWindows.__new__(life.NativeWindows)
+        native.powershell = Path(shutil.which('powershell.exe'))
+        original_run = subprocess.run
+        def capture(*args, **kwargs):
+            kwargs.update(stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace')
+            return original_run(*args, **kwargs)
+        with patch.object(life.subprocess, 'run', side_effect=capture), self.assertRaises(subprocess.CalledProcessError) as failure:
+            native.command(script, '-OutputFile', output, '-Value', value, '-RequireBound')
+        self.assertEqual(output.read_text(encoding='utf-8'), value)
+        self.assertIn('MKV_INSTALL_ERROR=Skolens opsætning mangler. Prøv igen.', failure.exception.stderr)
 
     def test_empty_roots_install_and_known_identity_updates_without_mutation(self):
         self.assertEqual(life.detect_action('server',self.program,self.state),'install')

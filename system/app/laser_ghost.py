@@ -137,7 +137,8 @@ class FluxGhost:
 
     def __init__(self, executable=None, workdir=None):
         self.executable = Path(executable) if executable else DEFAULT_EXECUTABLE
-        self.workdir = Path(workdir) if workdir else None
+        self.workdir = Path(workdir) if workdir else (
+            Path(os.environ.get('LOCALAPPDATA', Path.home())) / 'Makervaerkstedet' / 'laserstation' / 'flux')
         self.process = None
         self.port = None
         self.lock = threading.Lock()

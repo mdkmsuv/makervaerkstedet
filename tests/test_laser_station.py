@@ -176,6 +176,129 @@ class FakeGhost:
         return {'seconds': 42.0, 'bytes': 1000, 'metadata': {'min_x': '1', 'min_y': '2', 'max_x': '3', 'max_y': '4'}, 'fcode': b''}
 
 
+class StationRuntimeIdentityTests(unittest.TestCase):
+    def test_all_in_one_stop_is_cooperative_and_bound_to_own_config(self):
+        from unittest.mock import patch
+        from app.laser_station import main, stop_local_station, local_station_control_path
+        import time
+        with tempfile.TemporaryDirectory() as folder, patch.dict('os.environ', {'LOCALAPPDATA': folder}):
+            root = Path(folder)
+            config = root / 'station.json'
+            plates = root / 'plates'
+            config.write_text(json.dumps({'plates': str(plates), 'port': 54321}))
+            errors = []
+            def run():
+                try:
+                    main(['--config', str(config)])
+                except Exception as error:
+                    errors.append(error)
+            thread = threading.Thread(target=run, daemon=True)
+            # No driver or queue operation is needed: substitute only the HTTP
+            # listener's port, so the real main/control shutdown path still runs.
+            original = create_station_server
+            with patch('app.laser_station.create_station_server', side_effect=lambda station, port, **kw: original(station, 0, **kw)):
+                thread.start()
+                control = local_station_control_path(config)
+                deadline = time.monotonic() + 5
+                while not (control / 'running.json').exists() and time.monotonic() < deadline:
+                    time.sleep(0.02)
+                self.assertTrue((control / 'running.json').is_file(), errors)
+                other = root / 'other.json'
+                self.assertTrue(stop_local_station(other)['already_stopped'])
+                self.assertTrue(thread.is_alive())
+                result = stop_local_station(config, timeout=5)
+                self.assertTrue(result['stopped'])
+                thread.join(timeout=5)
+                self.assertFalse(thread.is_alive())
+                self.assertEqual(errors, [])
+                self.assertFalse((control / 'running.json').exists())
+                self.assertTrue(plates.is_dir())
+
+    def test_local_stop_refuses_stale_or_swapped_descriptor_and_preserves_files(self):
+        from unittest.mock import patch
+        from app.laser_station import local_station_control_path, stop_local_station
+        with tempfile.TemporaryDirectory() as folder, patch.dict('os.environ', {'LOCALAPPDATA': folder}):
+            config = Path(folder) / 'station.json'
+            control = local_station_control_path(config)
+            control.mkdir(parents=True)
+            descriptor = {'format': 1, 'kind': 'makervaerkstedet-local-station',
+                          'config': str(config), 'nonce': 'a' * 32}
+            (control / 'running.json').write_text(json.dumps(descriptor))
+            with self.assertRaisesRegex(ValueError, 'forældet'):
+                stop_local_station(config, timeout=1)
+            descriptor['config'] = str(Path(folder) / 'other.json')
+            (control / 'running.json').write_text(json.dumps(descriptor))
+            with self.assertRaisesRegex(ValueError, 'tilhører'):
+                stop_local_station(config, timeout=1)
+            self.assertTrue((control / 'running.json').exists())
+
+    def test_local_control_ignores_wrong_nonce_and_preserves_unknown_request(self):
+        from unittest.mock import patch
+        from app.laser_station import LocalStationControl, stop_local_station
+        with tempfile.TemporaryDirectory() as folder, patch.dict('os.environ', {'LOCALAPPDATA': folder}):
+            config = Path(folder) / 'station.json'
+            control = LocalStationControl(config)
+            try:
+                self.assertEqual(control.root.parent, Path(folder) / 'Makervaerkstedet' / 'laserstation' / 'local-stations')
+                self.assertFalse((Path(folder) / 'MakervaerkstedetLaserstation').exists())
+                wrong = {**control.record, 'nonce': 'f' * 32}
+                control.request_path.write_text(json.dumps(wrong))
+                self.assertFalse(control.requested.wait(0.2))
+                with self.assertRaisesRegex(ValueError, 'overskrives ikke'):
+                    stop_local_station(config, timeout=1)
+                self.assertEqual(json.loads(control.request_path.read_text()), wrong)
+            finally:
+                control.close()
+
+    def test_installer_stop_event_does_not_create_all_in_one_control(self):
+        from unittest.mock import patch
+        from app.laser_station import main
+        with tempfile.TemporaryDirectory() as folder:
+            config = Path(folder) / 'station.json'
+            config.write_text(json.dumps({'plates': str(Path(folder) / 'plates')}))
+            requested = threading.Event()
+            requested.set()
+            original = create_station_server
+            with (patch('app.laser_station.LocalStationControl', side_effect=AssertionError('extra protocol')),
+                  patch('app.laser_station.create_station_server', side_effect=lambda station, port, **kw: original(station, 0, **kw))):
+                main(['--config', str(config)], stop_event=requested)
+
+    def test_flux_workdir_uses_modern_user_data_without_touching_legacy(self):
+        from unittest.mock import patch
+        with tempfile.TemporaryDirectory() as folder, patch.dict('os.environ', {'LOCALAPPDATA': folder}):
+            legacy = Path(folder) / 'Laserstation' / 'flux'
+            legacy.mkdir(parents=True)
+            marker = legacy / 'keep.txt'
+            marker.write_text('existing')
+            ghost = FluxGhost()
+            self.assertEqual(ghost.workdir, Path(folder) / 'Makervaerkstedet' / 'laserstation' / 'flux')
+            self.assertEqual(marker.read_text(), 'existing')
+            self.assertFalse(ghost.workdir.exists())
+
+    def test_server_release_is_accepted_only_with_explicit_server_runtime_role(self):
+        from unittest.mock import patch
+        with self.assertRaises(ValueError):
+            create_station_server(object(), 0, runtime_role='student')
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            descriptor = root / 'runtime-release.json'
+            descriptor.write_text(json.dumps({'schema': 1, 'release_id': '2.0.1', 'role': 'server'}))
+            with patch('app.laser_station.ROOT', root):
+                for runtime_role, expected in [('laser_station', None), ('server', '2.0.1')]:
+                    server = create_station_server(object(), 0, runtime_role=runtime_role)
+                    try:
+                        self.assertEqual(server.runtime_health['release_id'], expected)
+                        self.assertEqual(server.runtime_health['service'], 'laser_station')
+                    finally:
+                        server.server_close()
+                descriptor.write_text(json.dumps({'schema': 1, 'release_id': '2.0.1', 'role': 'student'}))
+                server = create_station_server(object(), 0, runtime_role='server')
+                try:
+                    self.assertIsNone(server.runtime_health['release_id'])
+                finally:
+                    server.server_close()
+
+
 class StationHttpTests(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

@@ -207,6 +207,31 @@ def assert_port_free(port):
                              'og prøv igen. Ved en ny installation kan du vælge en anden stationsport.') from error
 
 
+def pending_installation(root):
+    """Recognize only this root's interrupted installation, without changing it."""
+    root = plain(root)
+    pending = read_json(root / 'installation-pending.json')
+    if (pending.get('kind') != KIND + '-pending' or pending.get('install_root') != str(root)
+            or not re.fullmatch('[a-f0-9]{32}', str(pending.get('candidate_id', '')))
+            or not re.fullmatch('[a-f0-9]{32}', str(pending.get('installation_id', '')))
+            or not re.fullmatch('[a-f0-9]{64}', str(pending.get('source_manifest_sha256', '')))):
+        raise ValueError('Genoptagelse kræver stationens egen installationsjournal.')
+    connection = validate_connection(pending['connection'])
+    config = pending['config']
+    if (not isinstance(config, dict) or config.get('role') != 'Station'
+            or config.get('server') != connection['server_url']
+            or config.get('station_id') != connection['station_id'] or config.get('machine') != connection['machine']
+            or type(config.get('port')) is not int or not 1024 <= config['port'] <= 65535
+            or not isinstance(config.get('plates'), str) or not Path(config['plates']).is_absolute()):
+        raise ValueError('Installationsjournalens stationsopsætning er ugyldig.')
+    if (root / 'active.json').exists():
+        active = active_record(root)
+        if (active['installation_id'] != pending['installation_id']
+                or active['source_manifest_sha256'] != pending['source_manifest_sha256']):
+            raise ValueError('Installationsjournalen matcher ikke den valgte station.')
+    return pending
+
+
 def install(package, root, *, action, connection_file=None, plates=None, beam_studio=None,
             flux_api=None, port=8790, check_only=False):
     package, root = plain(package), plain(root)
@@ -245,19 +270,10 @@ def install(package, root, *, action, connection_file=None, plates=None, beam_st
     else:
         if any(value is not None for value in (connection_file, plates, beam_studio, flux_api)) or port != 8790:
             raise ValueError('Genoptagelse bruger den journalførte forbindelse og opsætning.')
-        pending = read_json(root / 'installation-pending.json')
-        if (pending.get('kind') != KIND + '-pending' or pending.get('install_root') != str(root)
-                or not re.fullmatch('[a-f0-9]{32}', str(pending.get('candidate_id', '')))
-                or not re.fullmatch('[a-f0-9]{32}', str(pending.get('installation_id', '')))):
-            raise ValueError('Genoptagelse kræver stationens egen installationsjournal.')
+        pending = pending_installation(root)
         connection = validate_connection(pending['connection'])
         # Preserve the journal bytes while adding defaults to this candidate.
         config = dict(pending['config'])
-        if (config.get('role') != 'Station' or config.get('server') != connection['server_url']
-                or config.get('station_id') != connection['station_id'] or config.get('machine') != connection['machine']
-                or type(config.get('port')) is not int or not 1024 <= config['port'] <= 65535
-                or not isinstance(config.get('plates'), str) or not Path(config['plates']).is_absolute()):
-            raise ValueError('Installationsjournalens stationsopsætning er ugyldig.')
         plate_root = plain(config['plates'])
     if plate_root == root or root in plate_root.parents or plate_root in root.parents:
         raise ValueError('Programmappe og plademappe skal være adskilte.')
@@ -482,7 +498,7 @@ def stop_station(root, *, timeout=15, expected_nonce=None):
 def run_station(root):
     root = plain(root)
     with InstanceLock(root, filename='station.lock'):
-        active, version, _, _ = active_installation(root)
+        active, version, config, _ = active_installation(root)
         expected = version / 'program'
         if plain(Path(__file__).parents[1]) != expected:
             raise ValueError('Stationsversionen ændredes under start. Åbn genvejen igen.')
@@ -493,6 +509,16 @@ def run_station(root):
             if previous['installation_id'] != active['installation_id']:
                 raise ValueError('En anden installations stationskontrol overskrives ikke.')
             remove_own_control(root, previous)
+        # A saved loopback port can become unavailable after an OS restart.
+        # Only this local transport changes, while holding the lifetime lease.
+        selected_port = choose_local_port(config['port'])
+        if selected_port != config['port']:
+            config_path = version / 'laser-installation.json'
+            if read_json(config_path) != config:
+                raise ValueError('Stationsopsætningen ændredes under start. Åbn genvejen igen.')
+            config['port'] = selected_port
+            atomic_json(config_path, config)
+            print(f'Stationens tidligere lokale adresse var optaget. Ny adresse: http://127.0.0.1:{selected_port}/', flush=True)
         descriptor = {'format': 1, 'kind': KIND + '-running', 'root': str(root),
                       'installation_id': active['installation_id'], 'version_directory': active['version_directory'],
                       'nonce': uuid.uuid4().hex}

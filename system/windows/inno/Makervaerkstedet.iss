@@ -40,12 +40,12 @@ DialogFontSize=10
 [Files]
 Source: "{#PayloadRoot}\*"; DestDir: "{tmp}\mkv-payload"; Flags: recursesubdirs createallsubdirs deleteafterinstall
 [Code]
-var ExistingInstallation: Boolean;
+var ExistingInstallation, ResumingInstallation: Boolean;
 var InfoPage: TOutputMsgWizardPage;
 var NativeAttempted, NativeSucceeded: Boolean;
-var FailureReason, ConnectionExportPath: String;
+var FailureReason, NativeError, ConnectionExportPath, CaFingerprint: String;
 var OpenButton, LaserButton, ConnectionButton, LogButton: TNewButton;
-var LogPathEdit: TNewEdit;
+var LogPathEdit, CaFingerprintEdit: TNewEdit;
 #if AppRole == "server"
 var SchoolPage: TInputQueryWizardPage;
 var RolePage, ThemePage, MachinePage: TInputOptionWizardPage;
@@ -152,6 +152,7 @@ end;
 function InitializeSetup: Boolean;
 var ProgramRoot, DataRoot, Marker: String; HasProgram, HasData: Boolean;
 begin
+  ResumingInstallation := False;
 #if AppRole == "server"
   ProgramRoot := ExpandConstant('{commonpf}\ElevhubServer');
   DataRoot := ExpandConstant('{commonappdata}\ElevhubServer');
@@ -160,18 +161,22 @@ begin
   ProgramRoot := ExpandConstant('{localappdata}\MakervaerkstedetLaserstation');
   DataRoot := ProgramRoot;
   Marker := ProgramRoot + '\active.json';
+  ResumingInstallation := FileExists(ProgramRoot + '\installation-pending.json');
 #endif
   HasProgram := DirExists(ProgramRoot) or FileExists(ProgramRoot);
   HasData := DirExists(DataRoot) or FileExists(DataRoot);
   ExistingInstallation := HasProgram and HasData and FileExists(Marker);
-  Result := ((not HasProgram) and (not HasData)) or ExistingInstallation;
-  if not Result then MsgBox('Der findes en ufuldstændig eller ukendt installation. Mapperne er bevaret. Åbn den eksisterende administration, og få installationen kontrolleret før du fortsætter.', mbError, MB_OK);
+  Result := ((not HasProgram) and (not HasData)) or ExistingInstallation or ResumingInstallation;
+  if not Result then MsgBox('Der findes en ufuldstændig eller ukendt installation. Dine filer er bevaret. Få den IT-ansvarlige til at kontrollere installationen, før du fortsætter.', mbError, MB_OK);
 end;
 procedure InitializeWizard;
 begin
-  NativeAttempted := False; NativeSucceeded := False;
+  NativeAttempted := False; NativeSucceeded := False; NativeError := ''; CaFingerprint := '';
   WizardForm.ReadyMemo.WordWrap := True; WizardForm.ReadyMemo.ScrollBars := ssVertical;
-  if ExistingInstallation then
+  if ResumingInstallation then
+    InfoPage := CreateOutputMsgPage(wpWelcome, 'Genoptag installationen', 'Dine oprindelige valg beholdes.',
+      'Der findes en journal fra en afbrudt stationsinstallation. Guiden kontrollerer den og genoptager præcis den samme udgivelse med den oprindelige forbindelse og opsætning.' + #13#10#13#10 + 'Brug samme EXE-fil som sidst. Der bliver ikke valgt en ny server eller flyttet gemte plader.')
+  else if ExistingInstallation then
     InfoPage := CreateOutputMsgPage(wpWelcome, 'Opdatering fundet', 'Din eksisterende opsætning beholdes.',
 #if AppRole == "server"
       'Guiden opdaterer hovedsystemet. Skoleprofil, identitet, projekter og indstillinger bevares.' + #13#10#13#10 + 'Køerne sættes på pause under opdateringen og forbliver pauset bagefter. Læreren kontrollerer dem, før arbejdet fortsætter.')
@@ -212,19 +217,22 @@ begin
   LogPathEdit := TNewEdit.Create(WizardForm); LogPathEdit.Parent := WizardForm.FinishedPage;
   LogPathEdit.Left := WizardForm.FinishedLabel.Left; LogPathEdit.Width := WizardForm.FinishedLabel.Width;
   LogPathEdit.ReadOnly := True; LogPathEdit.Visible := False;
+  CaFingerprintEdit := TNewEdit.Create(WizardForm); CaFingerprintEdit.Parent := WizardForm.FinishedPage;
+  CaFingerprintEdit.Left := WizardForm.FinishedLabel.Left; CaFingerprintEdit.Width := WizardForm.FinishedLabel.Width;
+  CaFingerprintEdit.ReadOnly := True; CaFingerprintEdit.Visible := False;
 end;
 function ShouldSkipPage(PageID: Integer): Boolean;
 begin
 #if AppRole == "server"
   Result := ExistingInstallation and ((PageID = SchoolPage.ID) or (PageID = RolePage.ID) or (PageID = ThemePage.ID) or (PageID = MachinePage.ID));
 #else
-  Result := ExistingInstallation and (PageID = ConnectionPage.ID);
+  Result := (ExistingInstallation or ResumingInstallation) and (PageID = ConnectionPage.ID);
 #endif
 end;
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
-  if ExistingInstallation then Exit;
+  if ExistingInstallation or ResumingInstallation then Exit;
 #if AppRole == "server"
   if CurPageID = SchoolPage.ID then begin
     SchoolPage.Values[0] := Trim(SchoolPage.Values[0]);
@@ -253,6 +261,10 @@ end;
 function UpdateReadyMemo(Space, NewLine, MemoUserInfoInfo, MemoDirInfo, MemoTypeInfo, MemoComponentsInfo, MemoGroupInfo, MemoTasksInfo: String): String;
 begin
   Result := 'Makerværkstedet {#RoleName} · {#ProductVersion}' + NewLine + NewLine;
+  if ResumingInstallation then begin
+    Result := Result + 'Genoptagelse med den oprindelige forbindelse og opsætning.' + NewLine + 'Den gemte journal og udgivelse kontrolleres, før noget genoptages.';
+    Exit;
+  end;
   if ExistingInstallation then begin
     Result := Result + 'Opdatering af den eksisterende installation.' + NewLine + 'Skoleprofil og gemt arbejde bevares.';
 #if AppRole == "server"
@@ -275,9 +287,19 @@ begin
 #endif
 end;
 procedure NativeOutput(const S: String; const Error, FirstLine: Boolean);
-var Start: Integer; Path, Folder: String;
+var Start, I: Integer; Path, Folder, Value: String; Valid: Boolean;
 begin
   Log(S);
+  if Pos('MKV_INSTALL_ERROR=', S) = 1 then begin
+    NativeError := Trim(Copy(S, Length('MKV_INSTALL_ERROR=') + 1, Length(S)));
+    if Length(NativeError) > 320 then NativeError := Copy(NativeError, 1, 317) + '…';
+  end;
+  if Pos('MKV_LASER_CA_SHA1=', S) = 1 then begin
+    Value := Trim(Copy(S, Length('MKV_LASER_CA_SHA1=') + 1, Length(S)));
+    Valid := Length(Value) = 40;
+    for I := 1 to Length(Value) do if Pos(Copy(Value, I, 1), '0123456789ABCDEF') = 0 then Valid := False;
+    if Valid then CaFingerprint := Value;
+  end;
   { Keep the actual export, including a possible date suffix. No guessed file. }
   if Pos('laser-station-connection', S) = 0 then Exit;
   Start := Pos(':\', S); if Start < 2 then Exit;
@@ -304,7 +326,7 @@ begin
   WizardForm.ProgressGauge.Style := npbstMarquee;
   try
   Profile := '{}';
-  if not ExistingInstallation then begin
+  if not ExistingInstallation and not ResumingInstallation then begin
 #if AppRole == "server"
     ServerMode := 'vm'; if RolePage.SelectedValueIndex = 1 then ServerMode := 'makerspace';
     Theme := 'red'; if ThemePage.SelectedValueIndex = 1 then Theme := 'yellow'; if ThemePage.SelectedValueIndex = 2 then Theme := 'green';
@@ -324,7 +346,10 @@ begin
   Arguments := '-B "' + ExpandConstant('{tmp}\mkv-payload\lifecycle.py') + '" --payload "' + ExpandConstant('{tmp}\mkv-payload') + '" --payload-sha256 {#PayloadSha256} --action ' + 'auto' + ' --profile "' + ExpandConstant('{tmp}\mkv-profile.json') + '" --apply';
   if not ExecAndLogOutput(Tool, Arguments, '', SW_SHOWNORMAL, ewWaitUntilTerminated, ExitCode, @NativeOutput) then
     RaiseException('Klargøringen kunne ikke startes. ' + SysErrorMessage(ExitCode));
-  if ExitCode <> 0 then RaiseException('Klargøringen afsluttede med fejlkode ' + IntToStr(ExitCode) + '.');
+  if ExitCode <> 0 then begin
+    if NativeError <> '' then RaiseException(NativeError)
+    else RaiseException('Klargøringen afsluttede med fejlkode ' + IntToStr(ExitCode) + '.');
+  end;
   NativeSucceeded := True;
   except
     FailureReason := GetExceptionMessage; Log('MKV_NATIVE_FAILED: ' + FailureReason);
@@ -345,7 +370,7 @@ begin
   if CurPageID <> wpFinished then Exit;
   if not NativeSucceeded then begin
     WizardForm.FinishedHeadingLabel.Caption := 'Installationen blev ikke færdig';
-    WizardForm.FinishedLabel.Caption := FailureReason + #13#10#13#10 + 'Makerværkstedet er ikke meldt klar. Få den IT-ansvarlige til at kontrollere loggen, før installationen genkøres.' + #13#10#13#10 + 'Installationslog (filstien kan kopieres):';
+    WizardForm.FinishedLabel.Caption := FailureReason + #13#10#13#10 + 'Makerværkstedet er ikke meldt klar. Følg beskeden ovenfor. Hvis du ikke kan komme videre, skal skolens IT-ansvarlige bruge logfilen.' + #13#10#13#10 + 'Installationslog (filstien kan kopieres):';
     WizardForm.NextButton.Caption := '&Luk guiden';
     WizardForm.AdjustLabelHeight(WizardForm.FinishedLabel);
     LogPathEdit.Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(8);
@@ -364,8 +389,14 @@ begin
 #else
   WizardForm.FinishedLabel.Caption := 'Laserstationen er installeret med skolens forbindelsesfil.' + #13#10#13#10 + 'Åbn Makerværkstedet og log ind med skolens lærerkode. Genvejen findes også på skrivebordet.';
 #endif
+  if CaFingerprint <> '' then
+    WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 + 'Skolens certifikataftryk (SHA-1). Kontrollér det på lasercomputeren, før Windows-certifikatet godkendes:';
   WizardForm.AdjustLabelHeight(WizardForm.FinishedLabel);
   Top := WizardForm.FinishedLabel.Top + WizardForm.FinishedLabel.Height + ScaleY(16);
+  if CaFingerprint <> '' then begin
+    CaFingerprintEdit.Top := Top; CaFingerprintEdit.Text := CaFingerprint; CaFingerprintEdit.Visible := True;
+    Top := Top + CaFingerprintEdit.Height + ScaleY(12);
+  end;
   OpenButton.Top := Top; OpenButton.Visible := True;
 #if AppRole == "server"
   if FileExists(ExpandConstant('{commondesktop}\Elevhub Laserstation.lnk')) and

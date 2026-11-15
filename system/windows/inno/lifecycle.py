@@ -5,6 +5,7 @@ edge. Program rollback never restores project data or queue databases.
 """
 from __future__ import annotations
 import argparse
+import base64
 from contextlib import closing
 import ctypes
 import hashlib
@@ -105,6 +106,9 @@ def detect_action(role,program,state):
         else:
             require(role=='laser_station',message)
             from app import laser_station_install as station
+            if (program/'installation-pending.json').is_file():
+                station.pending_installation(program)
+                return 'resume'
             station.active_installation(program)
     except (OSError,ValueError,TypeError,KeyError):
         raise LifecycleError(message) from None
@@ -432,7 +436,24 @@ class NativeWindows:
     def command(self,script,*arguments):
         environment=dict(os.environ);environment['PSModulePath']=str(Path(os.environ['SystemRoot'])/'System32/WindowsPowerShell/v1.0/Modules')
         environment['PATH']=str(Path(os.environ['SystemRoot'])/'System32')+';'+str(self.powershell.parent)+';'+str(Path(os.environ['SystemRoot'])/'System32/OpenSSH')
-        subprocess.run([str(self.powershell),'-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',str(plain(script)),*map(str,arguments)],check=True,
+        # Literal PS arguments keep quotes, dollar signs and school names as data.
+        # The wrapper emits the actual exception as UTF-8, before the generic exit.
+        values=[str(plain(script)),*map(str,arguments)]
+        require(all('\0' not in value for value in values),'invalid_native_argument')
+        quoted=["'"+value.replace("'","''")+"'" for value in values]
+        wrapper=("[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false);$OutputEncoding=[Console]::OutputEncoding;"
+            "$ErrorActionPreference='Stop';$global:LASTEXITCODE=0;try{"
+            "$script="+quoted[0]+";$items=@("+','.join(quoted[1:])+");"
+            "$definition=Get-Command -Name ([Management.Automation.WildcardPattern]::Escape($script)) -CommandType ExternalScript;"
+            "$bound=@{};for($i=0;$i -lt $items.Count;$i++){"
+            "$flag=[string]$items[$i];if($flag -notmatch '^-[a-zA-Z][a-zA-Z0-9]*$'){throw 'Ugyldigt installationsargument.'};"
+            "$name=$flag.Substring(1);if(-not $definition.Parameters.ContainsKey($name)){throw 'Ukendt installationsargument.'};"
+            "if($definition.Parameters[$name].ParameterType -eq [Management.Automation.SwitchParameter]){$bound.Add($name,$true)}"
+            "else{$i++;if($i -ge $items.Count){throw 'Et installationsargument mangler sin værdi.'};$bound.Add($name,$items[$i])}};"
+            "& $script @bound;if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}}catch{"
+            "[Console]::Error.WriteLine('MKV_INSTALL_ERROR='+($_.Exception.Message -replace '[\\r\\n]+',' '));exit 1}")
+        encoded=base64.b64encode(wrapper.encode('utf-16-le')).decode('ascii')
+        subprocess.run([str(self.powershell),'-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand',encoded],check=True,
             creationflags=subprocess.CREATE_NO_WINDOW,stdin=subprocess.DEVNULL,env=environment)
     def protect_journal(self,journal):
         tool=Path(os.environ['SystemRoot'])/'System32/icacls.exe'
@@ -445,7 +466,7 @@ class NativeWindows:
         require(owner.get('state')=='installed' and owner.get('product')=='ElevhubServer'
                 and os.path.normcase(owner.get('installRoot',''))==os.path.normcase(str(program))
                 and os.path.normcase(owner.get('dataRoot',''))==os.path.normcase(str(self.state)),'existing_installation_owner_mismatch')
-        self.command(self.payload/'task_control.ps1','-Action','Inspect','-Journal',journal)
+        self.command(self.payload/'task_control.ps1','-Action','PreflightUpdate','-Journal',journal)
         config=read(self.state/'konfiguration.json')
         require_local_print_ownership(owner)
         from mkv2.control_plane.maintenance import MachineMaintenanceBarrier
@@ -501,9 +522,19 @@ class NativeWindows:
         return {'status':'installed','role':'server'}
     def laser(self,package,action,profile):
         from app import laser_station_install as station
-        require(action in ('install','update'),'unsupported_action')
+        require(action in ('install','update','resume'),'unsupported_action')
+        if action=='resume':
+            require(not profile,'Genoptagelse bevarer journalens forbindelse og opsætning. Brug samme EXE uden nye valg.')
+            result=station.install(package,self.program,action='ResumeInstall')
+            self.command(package/'deployment/school-setup/Setup-LaserStation.ps1','-Action','Update','-InstallPath',self.program,'-FinishSetup')
+            return result
         if action=='install':
-            require(not (Path(os.environ['LOCALAPPDATA'])/'Laserstation').exists(),'older_laser_station_must_be_removed_first; existing station and plates are preserved')
+            legacy=plain(Path(os.environ['LOCALAPPDATA'])/'Laserstation')
+            # Historical FLUX runtime cache is not an installed station. Leave
+            # it untouched; refuse any other old contents instead of adopting data.
+            cache_only=not legacy.exists() or (legacy.is_dir() and all(
+                item.name=='flux' and plain(item).is_dir() for item in legacy.iterdir()))
+            require(cache_only,'Der findes en ældre laserstation. Dens filer og plader er bevaret. Få den IT-ansvarlige til at kontrollere den før en ny installation.')
             require(set(profile)<={'connection_file','plates','beam_studio','flux_api'} and profile.get('connection_file'),'laser_connection_required')
             result=station.install(package,self.program,action='Install',port=station.choose_local_port(),**profile)
             self.command(package/'deployment/school-setup/Setup-LaserStation.ps1','-Action','Update','-InstallPath',self.program,'-FinishSetup')
@@ -518,6 +549,10 @@ class NativeWindows:
         except BaseException:
             # This selector is program/config metadata; plates and central queues
             # are never restored. Existing installer keeps previous versions.
+            try:
+                station.stop_station(self.program)
+            except BaseException as stop_error:
+                raise LifecycleError('Den valgte station kunne ikke stoppes sikkert efter opdateringsfejlen. Versionsvalget er bevaret. Brug Stop laserstation og få hjælp til loggen.') from stop_error
             station.atomic_json(self.program/'active.json',old)
             raise
 
@@ -549,7 +584,7 @@ def installation_lock_name(role,program):
 
 def run(payload,expected,action,profile=None,*,apply=False):
     value=verify_payload(payload,expected);role=value['role'];package=Path(payload)/'package'
-    require(action in ('auto','install','update'),'unsupported_action')
+    require(action in ('auto','install','update','resume'),'unsupported_action')
     if not apply:return {'status':'validated_only','role':role,'action':action,'version':value['version']}
     require(value['test_artifact'] is False,'test_artifact_installation_forbidden')
     sys.path.insert(0,str(package));sys.path.insert(0,str(package/'hub'))
@@ -566,7 +601,11 @@ def run(payload,expected,action,profile=None,*,apply=False):
         return update_server(package,native.program,journal,native,expected_files=expected_files)
 
 if __name__=='__main__':
+    sys.stdout.reconfigure(encoding='utf-8');sys.stderr.reconfigure(encoding='utf-8')
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--payload',required=True,type=Path);parser.add_argument('--payload-sha256',required=True)
-    parser.add_argument('--action',choices=('auto','install','update'),default='auto');parser.add_argument('--profile',type=Path);parser.add_argument('--apply',action='store_true');args=parser.parse_args()
+    parser.add_argument('--action',choices=('auto','install','update','resume'),default='auto');parser.add_argument('--profile',type=Path);parser.add_argument('--apply',action='store_true');args=parser.parse_args()
     try:print(json.dumps(run(args.payload,args.payload_sha256,args.action,read(args.profile) if args.profile else None,apply=args.apply)))
-    except (ValueError,OSError,sqlite3.Error,subprocess.CalledProcessError) as error:parser.exit(2,str(error)+'\n')
+    except (ValueError,OSError,sqlite3.Error,subprocess.CalledProcessError) as error:
+        if not isinstance(error,subprocess.CalledProcessError):
+            print('MKV_INSTALL_ERROR='+str(error).replace('\r',' ').replace('\n',' '),file=sys.stderr)
+        parser.exit(2,str(error)+'\n')

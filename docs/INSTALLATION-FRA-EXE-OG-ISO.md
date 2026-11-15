@@ -96,11 +96,16 @@ sider og forskelligt tidspunkt for Windows-godkendelsen.
 
 Dette afsnit gælder, når laserstationen og hovedsystemet er på hver sin
 computer. Hovedsystemet skal allerede være sat op og kunne nås fra lasercomputeren.
+Lasercomputeren skal være på det elevnet, som blev angivet i serverguiden;
+serverens firewall giver adgang fra dette net.
 
 1. Kopiér den nye `laser-station-connection.json` fra serveren til
    lasercomputeren. Brug serverguidens **Vis forbindelsesfil**; filnavnet kan
    have en dato. Filen indeholder den offentlige CA og stationstilknytning,
    aldrig serverens private nøgle.
+   Tag også filen med samme navn og endelsen `.fingerprint.txt` fra serveren.
+   Serverens færdigside viser det samme SHA-1-aftryk. Brug værdien fra den
+   kendte server som reference, når Windows spørger om certifikatet.
 2. Start **Makervaerkstedet-laser_station-Setup.exe** på lasercomputeren som
    den Windows-bruger, der skal bruge stationen. Det er denne brugers
    installation; der skal ikke installeres en ny server.
@@ -111,6 +116,8 @@ computer. Hovedsystemet skal allerede være sat op og kunne nås fra lasercomput
    CA-certifikat. Vinduet kan ligge bag guiden, som venter på dit svar.
    Kontrollér med skolens IT, at fingeraftrykket tilhører forbindelsesfilens
    certifikat, og vælg **Ja**. Vent derefter på guidens afslutning.
+   Er installationen tidligere afbrudt, viser samme EXE **Genoptag installationen**.
+   Den genbruger den journalførte forbindelse og kræver præcis samme udgivelse.
 4. Når siden siger **Makerværkstedet er klar**, vælg **Åbn Makerværkstedet**
    eller brug skrivebordsgenvejen. Log ind med skolens lærerkode. Kontrollér,
    at skolen og lasermodellen er de forventede, og at serverens kø kan hentes.
@@ -118,6 +125,24 @@ computer. Hovedsystemet skal allerede være sat op og kunne nås fra lasercomput
    særskilt med læreren. En tom, tilgængelig kø beviser ikke fysisk forbindelse
    til laseren. Se [de to opsætninger](TO-OPSAETNINGER.md) for maskinprogrammer
    og stationens brug.
+
+Brug skrivebordsgenvejen, når stationen skal åbnes. Hvis Windows har optaget
+dens tidligere lokale adresse, vælger en separat station en ny ledig adresse
+ved start. Server, lærerkode og gemte plader bevares. En gammel browserbogmærkeadresse
+kan derfor holde op med at virke; genvejen bruger den aktuelle adresse.
+
+## Før Windows-serveren opdateres
+
+På en opsætning med alt på én computer: vælg **Stop laserstation** hos den
+daglige Windows-bruger, før serverens EXE køres. Browserfanen alene stopper
+ikke stationen. Guiden afviser opdatering, hvis stationen eller en anden
+ukontrolleret programproces stadig kører; køer og server er da endnu ikke stoppet.
+En ældre station uden den nye stopfunktion skal afsluttes ved Windows-udlogning;
+lad skolens IT gennemføre den første opdatering fra en separat administratorsession.
+
+Hvis en tidligere skoleopsætning ikke blev færdig, skal den færdiggøres med
+`Setup-School.ps1 -Resume` og de oprindelige skolevalg før en opdatering.
+En halvfærdig skoleopsætning bliver afvist og meldes ikke som opdateret.
 
 ## 2. Installér Debian-eleven
 

@@ -28,13 +28,13 @@ class StartLaserStationTests(unittest.TestCase):
     def _quote(value):
         return str(value).replace("'", "''")
 
-    def _run(self, root, args, *, helper=None, processes=(), browser=False, prelude=""):
+    def _run(self, root, args, *, helper=None, processes=(), browser=False, prelude="", script_path=SCRIPT):
         if helper is not None:
             server = root / "server"
             server.mkdir(exist_ok=True)
             (server / "generation-startup.ps1").write_text(helper, encoding="utf-8")
         process_setup = "\n".join(
-            "$global:mockGenerationProcesses += [pscustomobject]@{{ExecutablePath='{}'; CommandLine='{}'}}".format(
+            "$global:mockGenerationProcesses += [pscustomobject]@{{ExecutablePath='{}'; CommandLine='{}'; ProcessId=123}}".format(
                 self._quote(item["ExecutablePath"]), self._quote(item["CommandLine"]))
             for item in processes)
         script = f"""
@@ -43,9 +43,22 @@ $global:mockLaunches = @()
 $global:mockBrowsers = @()
 $global:mockGenerationProcesses = @()
 $global:leaseClosed = 0
+$global:mockReads = 0
+$global:unreadyReads = 0
+$global:mockServer = 'http://127.0.0.1:8767'
+$global:mockStationId = 'laser-fbb2'
+$global:mockHealthPid = 123
+$global:mockPopups = @()
 {process_setup}
 function Get-CimInstance {{ $global:mockGenerationProcesses }}
 function Start-Sleep {{ param([int]$Milliseconds) }}
+function Invoke-RestMethod {{
+  param([string]$Uri, [int]$TimeoutSec)
+  if ($Uri -like '*/api/runtime/health') {{ return [pscustomobject]@{{service='laser_station';pid=$global:mockHealthPid}} }}
+  $global:mockReads++
+  if ($global:mockReads -le $global:unreadyReads) {{ throw 'not ready' }}
+  [pscustomobject]@{{server=$global:mockServer;stationId=$global:mockStationId}}
+}}
 function Start-Process {{
   param([string]$FilePath, [object[]]$ArgumentList, [string]$WorkingDirectory,
         [string]$WindowStyle, [string]$RedirectStandardOutput,
@@ -56,7 +69,7 @@ function Start-Process {{
     return [pscustomobject]@{{HasExited=$true; ExitCode=0}}
   }}
   $global:mockLaunches += (($FilePath + ' ' + (($ArgumentList | ForEach-Object {{ [string]$_ }}) -join ' ')).Trim())
-  [pscustomobject]@{{HasExited=$false; ExitCode=0}}
+  [pscustomobject]@{{HasExited=$false; ExitCode=0; Id=123}}
 }}
 __PRELUDE__
 try {{ & '__SCRIPT__' {args} }} catch {{ Write-Output ('ERROR=' + $_.Exception.Message) }}
@@ -64,8 +77,10 @@ try {{ & '__SCRIPT__' {args} }} catch {{ Write-Output ('ERROR=' + $_.Exception.M
 ('BROWSERS=' + ($global:mockBrowsers -join '|'))
 ('COMMAND=' + ($global:mockLaunches -join '|'))
 ('CLOSED=' + $global:leaseClosed)
+('READS=' + $global:mockReads)
+('POPUPS=' + $global:mockPopups.Count)
 """
-        script = script.replace("__SCRIPT__", self._quote(SCRIPT)).replace("__PRELUDE__", prelude)
+        script = script.replace("__SCRIPT__", self._quote(script_path)).replace("__PRELUDE__", prelude)
         env = os.environ.copy()
         local = root / "localappdata"
         env["LOCALAPPDATA"] = str(local)
@@ -76,6 +91,9 @@ try {{ & '__SCRIPT__' {args} }} catch {{ Write-Output ('ERROR=' + $_.Exception.M
         root = Path(tempfile.mkdtemp(prefix="laser-active-"))
         (root / "runtime").mkdir()
         (root / "runtime" / "python.exe").write_bytes(b"fixture")
+        config = root / 'data' / 'laserstation' / 'laser-installation.json'
+        config.parent.mkdir(parents=True)
+        config.write_text(json.dumps({'port': 9876}), encoding='utf-8')
         helper = r'''
 function Get-GenerationCommand {
   param([string]$InstallRoot, [string]$InstallationId, [string]$Entry, [object[]]$Arguments, [string]$ExpectedSelection)
@@ -107,6 +125,168 @@ function Close-GenerationLease { param($Lease) $global:leaseClosed++ }
             self.assertNotIn("ERROR=", result.stdout)
             self.assertIn("http://127.0.0.1:8911/", result.stdout)
 
+    def _separate_fixture(self, root, *, running=False):
+        active = {'format': 1, 'kind': 'makervaerkstedet-laserstation',
+                  'installation_id': INSTALLATION_ID, 'version_directory': 'versions/' + 'a' * 32}
+        version = root / active['version_directory']
+        program = version / 'program'
+        (program / 'runtime').mkdir(parents=True)
+        (program / 'runtime' / 'python.exe').write_bytes(b'fixture')
+        (root / 'active.json').write_text(json.dumps(active))
+        (version / 'laser-installation.json').write_text(json.dumps({
+            'port': 8911, 'server': 'http://127.0.0.1:8767', 'station_id': 'laser-fbb2'}))
+        descriptor = {'format': 1, 'kind': 'makervaerkstedet-laserstation-running', 'root': str(root),
+                      'installation_id': INSTALLATION_ID, 'version_directory': active['version_directory'], 'nonce': 'b' * 32}
+        if running:
+            (root / 'running.json').write_text(json.dumps(descriptor))
+        process = {'ExecutablePath': str(program / 'runtime' / 'python.exe'),
+                   'CommandLine': '-B -m app.laser_station_install run --install-root "' + str(root) + '"'}
+        return version, descriptor, process
+
+    def test_separate_launcher_reuses_only_own_process_and_waits_without_duplicate(self):
+        opener = SCRIPT.with_name('Open-LaserStation.ps1')
+        with tempfile.TemporaryDirectory(prefix='laser-open-') as folder:
+            root = Path(folder)
+            _, _, process = self._separate_fixture(root, running=True)
+            result = self._run(root, f"-InstallPath '{self._quote(root)}'", processes=[process], script_path=opener,
+                               prelude='$global:unreadyReads = 3')
+            self.assertNotIn('ERROR=', result.stdout)
+            self.assertIn('LAUNCHES=0', result.stdout)
+            self.assertIn('READS=4', result.stdout)
+            self.assertIn('BROWSERS=http://127.0.0.1:8911/makervaerkstedet.html', result.stdout)
+            result = self._run(root, f"-InstallPath '{self._quote(root)}' -NoBrowser", processes=[process], script_path=opener,
+                               prelude='$global:mockHealthPid = 999')
+            self.assertIn('ERROR=', result.stdout)
+            self.assertIn('ejes ikke', result.stdout)
+            self.assertNotIn('BROWSERS=http', result.stdout)
+
+    def test_separate_launcher_starts_own_station_and_follows_repaired_port(self):
+        opener = SCRIPT.with_name('Open-LaserStation.ps1')
+        with tempfile.TemporaryDirectory(prefix='laser-open-') as folder:
+            root = Path(folder)
+            version, descriptor, process = self._separate_fixture(root, running=True)
+            (root / 'running.json').write_text(json.dumps({**descriptor, 'version_directory': 'versions/' + 'c' * 32}))
+            prelude = r'''
+function Start-Process {
+  param([string]$FilePath, [object[]]$ArgumentList, [string]$WorkingDirectory,
+        [string]$WindowStyle, [string]$RedirectStandardOutput,
+        [string]$RedirectStandardError, [switch]$PassThru)
+  if ($FilePath -like 'http://*') { $global:mockBrowsers += $FilePath; return }
+  $global:mockLaunches += $FilePath
+  [IO.File]::WriteAllText('__CONFIG__', '__CONFIGJSON__')
+  [IO.File]::WriteAllText('__RUNNING__', '__DESCRIPTOR__')
+  $global:mockGenerationProcesses += [pscustomobject]@{ExecutablePath=$FilePath;CommandLine=('-B -m app.laser_station_install run --install-root "__ROOT__"');ProcessId=123}
+  [pscustomobject]@{HasExited=$false;ExitCode=0;Id=123}
+}
+'''.replace('__CONFIG__', self._quote(version / 'laser-installation.json')).replace('__CONFIGJSON__',
+                self._quote(json.dumps({'port': 8912, 'server': 'http://127.0.0.1:8767', 'station_id': 'laser-fbb2'}))).replace(
+                '__RUNNING__', self._quote(root / 'running.json')).replace('__DESCRIPTOR__', self._quote(json.dumps(descriptor))).replace('__ROOT__', self._quote(root))
+            result = self._run(root, f"-InstallPath '{self._quote(root)}'", script_path=opener, prelude=prelude)
+            self.assertNotIn('ERROR=', result.stdout)
+            self.assertIn('LAUNCHES=1', result.stdout)
+            self.assertIn('BROWSERS=http://127.0.0.1:8912/makervaerkstedet.html', result.stdout)
+
+    def test_no_browser_failure_exits_nonzero_and_writes_exact_log(self):
+        opener = SCRIPT.with_name('Open-LaserStation.ps1')
+        with tempfile.TemporaryDirectory(prefix='laser-open-error-') as folder:
+            result = subprocess.run([self.powershell, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+                                     '-File', str(opener), '-InstallPath', folder, '-NoBrowser'], capture_output=True, text=True, timeout=20)
+            self.assertNotEqual(result.returncode, 0)
+            logs = list((Path(folder) / 'logs').glob('launcher-*.log'))
+            self.assertEqual(len(logs), 1)
+            self.assertIn(str(logs[0]), result.stderr)
+            self.assertIn('Laserstationen kunne ikke', logs[0].read_text(encoding='utf-8'))
+
+    def test_generation_selector_preserves_explicit_server_runtime_role(self):
+        from app.generation_selection import bind_arguments
+        with tempfile.TemporaryDirectory() as folder:
+            data = Path(folder)
+            (data / 'laserstation').mkdir()
+            plates = data / 'Laserplader'
+            plates.mkdir()
+            config = data / 'laserstation' / 'laser-installation.json'
+            config.write_text(json.dumps({'plates': str(plates)}))
+            args = bind_arguments({'data_root': str(data)}, 'laser-station', ['--runtime-role', 'server'])
+            self.assertEqual(args, ['--runtime-role', 'server', '--config', str(config)])
+
+    def test_shortcut_errors_show_danish_message_and_still_throw(self):
+        with tempfile.TemporaryDirectory(prefix='laser-popup-') as folder:
+            root = Path(folder)
+            prelude = r'''
+function New-Object {
+  param([string]$ComObject)
+  $shell = [pscustomobject]@{}
+  $shell | Add-Member -MemberType ScriptMethod -Name Popup -Value {
+    param($message, $seconds, $title, $style)
+    $global:mockPopups += $message
+    return 1
+  }
+  return $shell
+}
+'''
+            for script_path, args in (
+                (SCRIPT, f"-Root '{self._quote(root)}' -OpenBrowser"),
+                (SCRIPT.with_name('Open-LaserStation.ps1'), f"-InstallPath '{self._quote(root)}'"),
+            ):
+                result = self._run(root, args, prelude=prelude, script_path=script_path)
+                self.assertIn('ERROR=Laserstationen kunne ikke', result.stdout)
+                self.assertIn('POPUPS=1', result.stdout)
+                self.assertIn('Log:', result.stdout)
+                self.assertNotIn('BROWSERS=http', result.stdout)
+
+    def test_zero_exit_before_readiness_is_a_launch_failure(self):
+        with tempfile.TemporaryDirectory(prefix='laser-exited-') as folder:
+            root = Path(folder)
+            (root / 'runtime').mkdir()
+            (root / 'runtime' / 'python.exe').write_bytes(b'fixture')
+            config = root / 'station.json'
+            config.write_text('{}')
+            prelude = r'''
+function Start-Process {
+  param([string]$FilePath, [object[]]$ArgumentList, [string]$WorkingDirectory,
+        [string]$WindowStyle, [string]$RedirectStandardOutput,
+        [string]$RedirectStandardError, [switch]$PassThru)
+  [pscustomobject]@{HasExited=$true;ExitCode=0;Id=123}
+}
+'''
+            result = self._run(root, f"-Root '{self._quote(root)}' -ConfigPath '{self._quote(config)}' -OpenBrowser -NoBrowser", prelude=prelude)
+            self.assertIn('ERROR=', result.stdout)
+            self.assertIn('stoppede under start', result.stdout)
+            self.assertIn('.err.log', result.stdout)
+            self.assertNotIn('BROWSERS=http', result.stdout)
+
+    def test_stop_does_not_claim_success_for_older_matching_process_without_control(self):
+        stop = SCRIPT.with_name('Stop-LaserStation.ps1')
+        source = stop.read_text(encoding='utf-8-sig')
+        invocation = '$resultText = & $python -B -m app.laser_station --stop-config $config --stop-timeout 15 2> $stopLog'
+        self.assertIn(invocation, source)
+        source = source.replace(invocation, '$resultText = \'{"stopped":true,"already_stopped":true}\'; $global:LASTEXITCODE = 0')
+        with tempfile.TemporaryDirectory(prefix='laser-stop-') as folder:
+            root = Path(folder)
+            (root / 'runtime').mkdir()
+            python = root / 'runtime' / 'python.exe'
+            python.write_bytes(b'fixture')
+            config = root / 'station.json'
+            for own in (False, True):
+                process_config = config if own else root / 'another-station.json'
+                command_line = '-B -m app.laser_station --config "' + str(process_config) + '"'
+                script = """
+function Get-CimInstance { [pscustomobject]@{ExecutablePath='__PYTHON__';CommandLine='__COMMAND__'} }
+try { & ([ScriptBlock]::Create('__SOURCE__')) -Root '__ROOT__' -ConfigPath '__CONFIG__' -NoDialog } catch { Write-Output ('ERROR=' + $_.Exception.Message) }
+"""
+                for key, value in (('__PYTHON__', python), ('__COMMAND__', command_line), ('__SOURCE__', source),
+                                   ('__ROOT__', root), ('__CONFIG__', config)):
+                    script = script.replace(key, self._quote(value))
+                env = os.environ.copy()
+                env['LOCALAPPDATA'] = str(root / 'localappdata')
+                result = subprocess.run([self.powershell, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+                                         '-Command', script], capture_output=True, text=True, timeout=20, env=env)
+                if own:
+                    self.assertIn('ERROR=', result.stdout)
+                    self.assertIn('Log af Windows', result.stdout)
+                else:
+                    self.assertNotIn('ERROR=', result.stdout)
+
     def test_active_generation_builds_fixed_command_and_url_metadata(self):
         root, helper = self._fixture()
         try:
@@ -118,6 +298,23 @@ function Close-GenerationLease { param($Lease) $global:leaseClosed++ }
             self.assertIn("--entry laser-station", result.stdout)
             self.assertIn("http://127.0.0.1:9876/", result.stdout)
             self.assertIn("CLOSED=1", result.stdout)
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+    def test_browser_waits_for_matching_station_response(self):
+        root, helper = self._fixture()
+        try:
+            result = self._run(root, f"-Root '{self._quote(root)}' -ActiveGeneration -InstallationId {INSTALLATION_ID} -OpenBrowser -NoBrowser", helper=helper,
+                               prelude='$global:unreadyReads = 3')
+            self.assertNotIn('ERROR=', result.stdout)
+            self.assertIn('READS=4', result.stdout)
+            self.assertIn('--runtime-role server', result.stdout)
+            result = self._run(root, f"-Root '{self._quote(root)}' -ActiveGeneration -InstallationId {INSTALLATION_ID} -OpenBrowser -NoBrowser", helper=helper,
+                               prelude="$global:mockStationId = 'another-station'")
+            self.assertIn('ERROR=', result.stdout)
+            self.assertIn('anden laserstation', result.stdout)
+            self.assertNotIn('BROWSERS=http', result.stdout)
+            self.assertIn('.log', result.stdout)
         finally:
             shutil.rmtree(root, ignore_errors=True)
 
@@ -208,8 +405,8 @@ function Close-GenerationLease { param($Lease) $global:leaseClosed++ }
         helper_path.write_text(helper, encoding="utf-8")
         prelude = """
 . '{helper}'
-$cmd = Get-GenerationCommand -InstallRoot '{root}' -InstallationId '{id}' -Entry 'laser-station' -ExpectedSelection ('a' * 64) -Arguments @()
-$global:mockGenerationProcesses += [pscustomobject]@{{ExecutablePath=$cmd.Execute; CommandLine=($cmd.Execute + ' ' + $cmd.Arguments)}}
+$cmd = Get-GenerationCommand -InstallRoot '{root}' -InstallationId '{id}' -Entry 'laser-station' -ExpectedSelection ('a' * 64) -Arguments @('--runtime-role','server')
+$global:mockGenerationProcesses += [pscustomobject]@{{ExecutablePath=$cmd.Execute; CommandLine=($cmd.Execute + ' ' + $cmd.Arguments);ProcessId=123}}
 function ConvertTo-GenerationCommandLine {{
   param([object[]]$Values)
   ($Values | ForEach-Object {{ [string]$_ }}) -join ' '

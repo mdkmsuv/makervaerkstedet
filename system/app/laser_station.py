@@ -803,8 +803,10 @@ class Handler(BaseHTTPRequestHandler):
         self.reply(404, {'error': 'Funktionen findes ikke.'})
 
 
-def create_station_server(station, port=8790):
-    identity = runtime_snapshot(ROOT / 'runtime-release.json', expected_role='laser_station', service='laser_station')
+def create_station_server(station, port=8790, *, runtime_role='laser_station'):
+    if runtime_role not in ('laser_station', 'server'):
+        raise ValueError('Laserstationen kræver en stations- eller serverruntime.')
+    identity = runtime_snapshot(ROOT / 'runtime-release.json', expected_role=runtime_role, service='laser_station')
     server = ThreadingHTTPServer(('127.0.0.1', port), Handler)
     server.runtime_health = identity
     server.daemon_threads = False
@@ -818,8 +820,127 @@ def default_plates_dir():
     return (documents if documents.is_dir() else Path.home()) / 'Laserplader'
 
 
+def local_station_control_path(config_path):
+    """A per-user channel for one absolute all-in-one configuration, never active.json."""
+    from app.laser_station_install import plain
+    config = plain(config_path)
+    key = hashlib.sha256(os.path.normcase(str(config)).encode('utf-8')).hexdigest()
+    return plain(Path(os.environ.get('LOCALAPPDATA', Path.home())) /
+                 'Makervaerkstedet' / 'laserstation' / 'local-stations' / key)
+
+
+def _local_descriptor(root, config_path):
+    from app.laser_station_install import plain, read_json
+    try:
+        record = read_json(root / 'running.json')
+    except FileNotFoundError:
+        return None
+    if (set(record) != {'format', 'kind', 'config', 'nonce'} or type(record['format']) is not int
+            or record['format'] != 1 or record['kind'] != 'makervaerkstedet-local-station'
+            or os.path.normcase(record['config']) != os.path.normcase(str(plain(config_path)))
+            or not isinstance(record['nonce'], str) or not re.fullmatch('[a-f0-9]{32}', record['nonce'])):
+        raise ValueError('Stationskontrollen tilhører en anden konfiguration.')
+    return record
+
+
+class LocalStationControl:
+    """Cooperative stop for the current user's directly launched station only."""
+    def __init__(self, config_path):
+        from app.laser_station_install import plain, atomic_json, read_json
+        self.root = local_station_control_path(config_path)
+        self.root.mkdir(parents=True, exist_ok=True)
+        self.lease = InstanceLock(self.root)
+        self.requested = threading.Event()
+        self.finished = threading.Event()
+        try:
+            previous = _local_descriptor(self.root, config_path)
+            if previous:
+                (self.root / 'running.json').unlink()
+            self.record = {'format': 1, 'kind': 'makervaerkstedet-local-station',
+                           'config': str(plain(config_path)), 'nonce': uuid.uuid4().hex}
+            self.request_path = self.root / ('stop-' + self.record['nonce'] + '.json')
+            atomic_json(self.root / 'running.json', self.record)
+            def watch():
+                while not self.finished.wait(0.1):
+                    try:
+                        if read_json(self.request_path) == self.record:
+                            self.requested.set()
+                            return
+                    except (OSError, ValueError):
+                        pass
+            self.watcher = threading.Thread(target=watch, name='local-station-stop', daemon=True)
+            self.watcher.start()
+        except BaseException:
+            self.lease.close()
+            raise
+
+    def close(self):
+        from app.laser_station_install import read_json
+        self.finished.set()
+        self.watcher.join(timeout=2)
+        try:
+            for path in (self.request_path, self.root / 'running.json'):
+                try:
+                    if read_json(path) == self.record:
+                        path.unlink()
+                except (OSError, ValueError):
+                    pass
+        finally:
+            self.lease.close()
+
+
+def stop_local_station(config_path, *, timeout=15):
+    from app.laser_station_install import plain, read_json
+    if type(timeout) not in (float, int) or not 0 < timeout <= 60:
+        raise ValueError('Stop skal vente fra over 0 til højst 60 sekunder.')
+    root = local_station_control_path(config_path)
+    if not root.exists():
+        return {'stopped': True, 'already_stopped': True}
+    record = _local_descriptor(root, config_path)
+    try:
+        probe = InstanceLock(root)
+    except RuntimeError:
+        probe = None
+    if probe is not None:
+        probe.close()
+        if record is not None:
+            raise ValueError('Stationskontrollen er forældet; ingen kørende station ejer låsen.')
+        return {'stopped': True, 'already_stopped': True}
+    if record is None:
+        raise ValueError('Stationen er ved at starte eller stoppe. Prøv Stop laserstation igen.')
+    request_path = plain(root / ('stop-' + record['nonce'] + '.json'))
+    try:
+        with request_path.open('x', encoding='utf-8') as stream:
+            json.dump(record, stream)
+            stream.flush()
+            os.fsync(stream.fileno())
+    except FileExistsError:
+        if read_json(request_path) != record:
+            raise ValueError('En anden lokal stopanmodning overskrives ikke.') from None
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        current = _local_descriptor(root, config_path)
+        if current is not None and current != record:
+            raise ValueError('Stationsinstansen skiftede; den nye instans bliver ikke stoppet.')
+        try:
+            probe = InstanceLock(root)
+        except RuntimeError:
+            time.sleep(0.05)
+            continue
+        with probe:
+            current = _local_descriptor(root, config_path)
+            if current is not None and current != record:
+                raise ValueError('Stationsinstansen skiftede; den nye instans bliver ikke stoppet.')
+            return {'stopped': True, 'already_stopped': False}
+    raise TimeoutError('Laserstationen er endnu ikke stoppet. Afvent igangværende arbejde og prøv igen; ingen proces er tvangsafsluttet.')
+
+
 def main(argv=None, stop_event=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('--runtime-role', choices=('laser_station', 'server'), default='laser_station',
+                        help='Installeret runtime-rolle; server bruges af alt-i-én-starten')
+    parser.add_argument('--stop-config', type=Path, help='Stop denne brugers station med den præcise konfigurationssti')
+    parser.add_argument('--stop-timeout', type=float, default=15)
     parser.add_argument('--config', type=Path, default=None, help='JSON-konfiguration for stationen')
     parser.add_argument('--server', default=None, help='Designværkstedets lærerside med laserkøen')
     parser.add_argument('--port', type=int, default=None)
@@ -828,6 +949,11 @@ def main(argv=None, stop_event=None):
     parser.add_argument('--flux-api', type=Path, default=None, help='FLUX-programmet fra Beam Studio (flux_api.exe)')
     parser.add_argument('--ca-file', type=Path, default=None, help='Skolens CA-certifikat, når køen nås over HTTPS')
     args = parser.parse_args(argv)
+    if args.stop_config:
+        if args.config or stop_event is not None:
+            parser.error('Stop må ikke kombineres med stationsstart.')
+        print(json.dumps(stop_local_station(args.stop_config, timeout=args.stop_timeout)))
+        return
     config = {}
     if args.config:
         try:
@@ -851,18 +977,21 @@ def main(argv=None, stop_event=None):
     assert_not_restored(plates)
     plates.mkdir(parents=True, exist_ok=True)
     lock = InstanceLock(plates)
-    server = ghost = None
+    server = ghost = local_control = None
     stop_watcher = None
     watcher_finished = threading.Event()
     try:
+        if args.config and stop_event is None:
+            local_control = LocalStationControl(args.config)
+            stop_event = local_control.requested
         assert_not_restored(plates)
         write_protocol(plates, 'laser_station')
-        ghost = FluxGhost(flux_api, workdir=Path(os.environ.get('LOCALAPPDATA', Path.home())) / 'Laserstation' / 'flux')
+        ghost = FluxGhost(flux_api)
         station = Station(QueueClient(server_url, ca_file=ca_file), plates, ghost=ghost, beam_studio=beam_studio,
                           transfer=FluxTransfer(config.get('direct_transfer')),
                           machine=config.get('machine', 'fbb2'), station_id=config.get('station_id'),
                           navigation_config=config.get('navigation_config'))
-        server = create_station_server(station, port)
+        server = create_station_server(station, port, runtime_role=args.runtime_role)
         print(f'Laserstation: http://127.0.0.1:{port}/', flush=True)
         print(f'Afleveringskø: {server_url}', flush=True)
         print(f'Laserplader gemmes i {plates}', flush=True)
@@ -885,6 +1014,8 @@ def main(argv=None, stop_event=None):
             if ghost: ghost.stop()
         finally:
             lock.close()
+            if local_control:
+                local_control.close()
         if stop_watcher:
             stop_watcher.join(timeout=2)
 

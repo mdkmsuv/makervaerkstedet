@@ -1,5 +1,5 @@
 ﻿[CmdletBinding()]
-param([Parameter(Mandatory=$true)][ValidateSet('Inspect','Stop','Restore','ConfigureSimple','RestoreSimple','Hold')][string]$Action,
+param([Parameter(Mandatory=$true)][ValidateSet('Inspect','PreflightUpdate','Stop','Restore','ConfigureSimple','RestoreSimple','Hold')][string]$Action,
       [Parameter(Mandatory=$true)][string]$Journal, [string]$PackageRoot)
 $ErrorActionPreference='Stop'
 $expected=[IO.Path]::GetFullPath((Join-Path $env:ProgramFiles 'ElevhubServer'))
@@ -63,7 +63,7 @@ if($enrollment){
  $argvMatches=([string]$enrollment.Actions[0].Arguments -ceq $argsExpected)
  if(@($enrollment.Actions).Count -ne 1 -or (Resolve-TaskPrincipalSid $enrollment.Principal.UserId) -ne 'S-1-5-18' -or
     $enrollment.Description -cne 'Elevhub skole-enrollment' -or [IO.Path]::GetFullPath([string]$enrollment.Actions[0].Execute) -ine (Join-Path $expected 'runtime\python.exe') -or
-    [IO.Path]::GetFullPath([string]$enrollment.Actions[0].WorkingDirectory) -ine $expected -or -not $argvMatches){throw 'Enrollment task ownership/action changed; stop refused'}
+    [IO.Path]::GetFullPath([string]$enrollment.Actions[0].WorkingDirectory) -ine $expected -or -not $argvMatches){throw 'Tilmeldingsopgaven matcher ikke installationen. Kontrollér opgaven og genoptag skoleopsætningen med Setup-School.ps1 -Resume før opdatering.'}
  $owned+=,$enrollment
 }
 
@@ -74,6 +74,111 @@ if($owner.adoptedPrinterLights){
     $lights.Description -cne ('Makervaerkstedet printer lights owner='+$owner.ownerId) -or [IO.Path]::GetFullPath($lights.Actions[0].Execute) -ine (Join-Path $expected 'runtime\python.exe') -or
     [IO.Path]::GetFullPath($lights.Actions[0].WorkingDirectory) -ine $expected -or $lights.Actions[0].Arguments -cne $argsLights){throw 'Owned printer light task changed'}
  $owned+=,$lights
+}
+if($Action -eq 'PreflightUpdate'){
+ $resumeHint='Kør skoleopsætningen igen med Setup-School.ps1 -Resume og de samme skolevalg, før du opdaterer.'
+ $schoolPath=Join-Path $env:ProgramData 'ElevhubServer\school.json'
+ try{$school=Get-Content -LiteralPath $schoolPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw "Skoleopsætningen er ufuldstændig: school.json mangler eller kan ikke læses. $resumeHint"}
+ if($null -eq $school -or $school -isnot [pscustomobject] -or $school.schemaVersion -ne 1 -or
+    [string]::IsNullOrWhiteSpace([string]$school.school_name) -or $school.role -notin @('vm','makerspace') -or
+    [string]::IsNullOrWhiteSpace([string]$school.admin_public_key) -or $school.server -cne $config.elev_adresse){
+  throw "Skoleopsætningen er ufuldstændig: school.json er ugyldig. $resumeHint"
+ }
+ if(-not $enrollment){throw "Skoleopsætningen er ufuldstændig: tilmeldingsopgaven mangler. $resumeHint"}
+ $receiptPath=Join-Path $env:ProgramData 'ElevhubServer\school-setup-state.json'
+ if(Test-Path -LiteralPath $receiptPath){
+  try{$receipt=Get-Content -LiteralPath $receiptPath -Raw -Encoding UTF8|ConvertFrom-Json}catch{throw "Skoleopsætningens kvittering er ugyldig. $resumeHint"}
+  if($null -eq $receipt -or $receipt -isnot [pscustomobject] -or $receipt.schemaVersion -ne 1 -or
+     $receipt.product -cne 'ElevhubSchoolSetup' -or $receipt.ownerId -cne $owner.ownerId -or $receipt.state -cne 'complete' -or
+     $receipt.settings -isnot [pscustomobject] -or $receipt.settings.school_name -cne $school.school_name -or
+     $receipt.settings.role -cne $school.role -or $receipt.settings.server -cne $school.server){
+   throw "Skoleopsætningen er ikke færdig, eller dens kvittering matcher ikke installationen. $resumeHint"
+  }
+ }else{
+  # Older releases have no completion receipt. Read their actual public
+  # exports and shortcuts; another school's dated export is not evidence.
+  $publicDir=Join-Path $env:Public 'Documents\Elevvaerkstedet'
+  $caPath=Join-Path $env:ProgramData 'ElevhubServer\security\ca.crt'
+  try{$caIdentity=((Get-Content -LiteralPath $caPath -Raw -Encoding ASCII) -replace '\s','')}catch{throw "Skolens offentlige CA mangler. $resumeHint"}
+  if($caIdentity -notmatch '^-----BEGINCERTIFICATE-----.+-----ENDCERTIFICATE-----$'){throw "Skolens offentlige CA er ugyldig. $resumeHint"}
+  $schoolKey=(@(([string]$school.admin_public_key).Trim() -split '\s+')[0..1] -join ' ')
+  $hasSchoolConnection=$false; $hasLaserConnection=$false
+  $remoteLaser=($school.remote_laser_station -eq $true)
+  foreach($file in @(Get-ChildItem -LiteralPath $publicDir -Filter '*connection*.json' -File -ErrorAction SilentlyContinue)){
+   if(($file.Attributes -band [IO.FileAttributes]::ReparsePoint) -ne 0){continue}
+   try{$connection=Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8|ConvertFrom-Json}catch{continue}
+   if($null -eq $connection -or $connection.schemaVersion -ne 1 -or $connection.school_name -cne $school.school_name -or
+      (([string]$connection.caCertificatePem) -replace '\s','') -cne $caIdentity){continue}
+   if($file.Name -like 'school-connection*.json' -and $connection.kind -ceq 'elevhub-school-connection' -and
+      $connection.server -ceq $school.server -and $connection.enrollment_port -eq 8774 -and $connection.admin_public_key -ceq $schoolKey){$hasSchoolConnection=$true}
+   if($remoteLaser -and $file.Name -like 'laser-station-connection*.json' -and $connection.kind -ceq 'makervaerkstedet-laserstation-connection' -and
+      $connection.server_url -ceq ('https://{0}:{1}' -f $school.server,$config.laerer_port) -and
+      $connection.machine -ceq $school.laser_machine -and $connection.station_id -ceq $school.laser_station_id){$hasLaserConnection=$true}
+  }
+  if(-not $hasSchoolConnection -or ($remoteLaser -and -not $hasLaserConnection)){throw "Skoleopsætningen mangler en offentlig forbindelsesfil, der matcher skolens CA og adresse. $resumeHint"}
+  try{
+   $shell=New-Object -ComObject WScript.Shell
+   function Assert-SchoolShortcut([string]$Path,[string]$Target,[string]$Arguments){
+    if(-not(Test-Path -LiteralPath $Path -PathType Leaf)){throw "Genvejen mangler: $Path"}
+    $link=$shell.CreateShortcut($Path)
+    if([string]$link.TargetPath -ine $Target -or [string]$link.Arguments -cne $Arguments -or [string]$link.WorkingDirectory -ine $expected){throw "Genvejen matcher ikke skoleopsætningen: $Path"}
+   }
+   $desktop=Join-Path $env:Public 'Desktop'
+   Assert-SchoolShortcut (Join-Path $desktop 'Elevhub skoleopsætning.lnk') (Join-Path $expected 'deployment\school-setup\Start.cmd') ''
+   Assert-SchoolShortcut (Join-Path $desktop 'Elevhub skoleadmin.lnk') (Join-Path $expected 'deployment\school-setup\Manage-School.cmd') ''
+   Assert-SchoolShortcut (Join-Path $desktop 'Makerværkstedet.lnk') (Join-Path $expected 'deployment\school-setup\Open-ControlPanel.cmd') ('-Port {0} -Address {1}' -f $config.laerer_port,$config.laerer_adresse)
+   if($school.role -eq 'makerspace'){
+    $localConfig=Join-Path $env:ProgramData 'ElevhubServer\laserstation\laser-installation.json'
+    $station=Get-Content -LiteralPath $localConfig -Raw -Encoding UTF8|ConvertFrom-Json
+    $backendPort=if($school.PSObject.Properties.Name -contains 'teacher_backend_port'){$school.teacher_backend_port}else{8767}
+    if($station.role -cne 'Station' -or $station.server -cne ('http://127.0.0.1:'+$backendPort) -or
+       $station.machine -notin @('fbb2','fhexa1') -or ($station.port -isnot [int] -and $station.port -isnot [long]) -or
+       $station.port -lt 1024 -or $station.port -gt 65535){throw 'Den lokale laserstation matcher ikke skoleopsætningen.'}
+    $laserArgs='-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "{0}" -ConfigPath "{1}" -Root "{2}"' -f (Join-Path $expected 'deployment\school-setup\Start-LaserStation.ps1'),$localConfig,$expected
+    $powershell=(Get-Command powershell.exe -ErrorAction Stop).Source
+    Assert-SchoolShortcut (Join-Path $desktop 'Elevhub Laserstation.lnk') $powershell ($laserArgs+' -OpenBrowser')
+    Assert-SchoolShortcut (Join-Path $env:ProgramData 'Microsoft\Windows\Start Menu\Programs\Startup\Elevhub Laserstation.lnk') $powershell $laserArgs
+   }
+  }catch{throw "Skoleopsætningens genveje eller lokale laserstation er ufuldstændige: $($_.Exception.Message) $resumeHint"}
+ }
+ # Read only: no task disable/stop/export, queue changes, journal or process kill.
+ # Root commands are the validated task actions above. Their runtime children
+ # belong to the same controlled tree; anything else under runtime must close.
+ $processes=@(Get-CimInstance Win32_Process)
+ $controlled=@{}
+ foreach($item in $owned){
+  $execute=[string]$item.Actions[0].Execute
+  $arguments=[string]$item.Actions[0].Arguments
+  foreach($process in $processes){
+   if([string]$process.ExecutablePath -ine $execute){continue}
+   $command=[string]$process.CommandLine
+   if($command -ceq ('"'+$execute+'" '+$arguments) -or $command -ceq ($execute+' '+$arguments)){
+    $controlled[[string]$process.ProcessId]=$true
+   }
+  }
+ }
+ do{
+  $added=$false
+  foreach($process in $processes){
+   $pidKey=[string]$process.ProcessId
+   if(-not $controlled.ContainsKey($pidKey) -and $controlled.ContainsKey([string]$process.ParentProcessId)){
+    $controlled[$pidKey]=$true; $added=$true
+   }
+  }
+ }while($added)
+ $runtimeRoot=(Join-Path $expected 'runtime\')
+ $stationConfig=Join-Path $env:ProgramData 'ElevhubServer\laserstation\laser-installation.json'
+ $stationCommand='(?:^|\s)-m\s+app\.laser_station\s+--config\s+(?:"'+[regex]::Escape($stationConfig)+'"|'+[regex]::Escape($stationConfig)+')(?:\s|$)'
+ foreach($process in $processes){
+  $exe=[string]$process.ExecutablePath
+  if(-not $exe.StartsWith($runtimeRoot,[StringComparison]::OrdinalIgnoreCase) -or $controlled.ContainsKey([string]$process.ProcessId)){continue}
+  if($exe -ieq (Join-Path $expected 'runtime\python.exe') -and [string]$process.CommandLine -match $stationCommand){
+   throw 'Luk laserstationen først med genvejen Stop laserstation på den bruger, der startede den. På en ældre udgave uden stopgenvej: log stationsbrugeren helt af, og kør den første opdatering fra en separat administratorsession. Serveren og køerne er ikke ændret.'
+  }
+  throw "Et program fra serverens runtime kører uden for de styrede serveropgaver (proces $($process.ProcessId)). Luk programmet, og prøv opdateringen igen. Serveren og køerne er ikke ændret."
+ }
+ Write-Output 'complete-school-setup-and-controlled-runtime'
+ exit 0
 }
 if($Action -eq 'Hold'){foreach($item in $owned){Disable-ScheduledTask -TaskName $item.TaskName -TaskPath '\'|Out-Null;Stop-ScheduledTask -TaskName $item.TaskName -TaskPath '\'};exit 0}
 # Windows omits Settings/Enabled from the exported XML while a task is enabled

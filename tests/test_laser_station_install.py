@@ -173,6 +173,91 @@ class LaserStationInstallTests(unittest.TestCase):
         station.active_installation(self.install_root)
         self.assertFalse((self.install_root / 'installation-pending.json').exists())
 
+    def test_native_exe_resumes_its_own_interrupted_install_without_new_profile(self):
+        from tests.test_windows_installer_profile import life
+        with patch.object(station, 'probe_runtime', side_effect=OSError('interrupted copy')), self.assertRaises(OSError):
+            self.fresh()
+        before = station.read_json(self.install_root / 'installation-pending.json')
+        self.assertEqual(life.detect_action('laser_station', self.install_root, self.install_root), 'resume')
+        native = life.NativeWindows.__new__(life.NativeWindows)
+        native.program = self.install_root
+        commands = []
+        native.command = lambda *args: commands.append(args)
+        native.laser(self.package, 'resume', {})
+        active, _, config, connection = station.active_installation(self.install_root)
+        self.assertEqual(active['installation_id'], before['installation_id'])
+        self.assertEqual(config['port'], before['config']['port'])
+        self.assertEqual(connection, before['connection'])
+        self.assertFalse((self.install_root / 'installation-pending.json').exists())
+        self.assertIn('-FinishSetup', commands[0])
+
+    def test_native_update_stops_new_runtime_before_restoring_old_selection(self):
+        from tests.test_windows_installer_profile import life
+        self.fresh()
+        previous = (self.install_root / 'active.json').read_bytes()
+        self.seal('second-release')
+        native = life.NativeWindows.__new__(life.NativeWindows)
+        native.program = self.install_root
+        def fail_after_launch(*_):
+            raise ValueError('finish failed after new runtime started')
+        native.command = fail_after_launch
+        stopped_releases = []
+        def stop_current(*_):
+            stopped_releases.append(station.active_record(self.install_root)['release'])
+        with patch.object(station, 'stop_station', side_effect=stop_current), self.assertRaisesRegex(ValueError, 'finish failed'):
+            native.laser(self.package, 'update', {})
+        self.assertEqual(stopped_releases, ['test-release', 'second-release'])
+        self.assertEqual((self.install_root / 'active.json').read_bytes(), previous)
+
+    def test_start_repairs_occupied_port_without_changing_station_identity(self):
+        self.fresh()
+        active, version, before, _ = station.active_installation(self.install_root)
+        selected_bytes = (self.install_root / 'active.json').read_bytes()
+        selected_ports = []
+        def inspect_start(argv, stop_event):
+            config = station.read_json(Path(argv[1]))
+            selected_ports.append(config['port'])
+            self.assertNotEqual(config['port'], self.port)
+            with socket.socket() as probe:
+                probe.bind(('127.0.0.1', config['port']))
+        with socket.socket() as owner:
+            owner.bind(('127.0.0.1', self.port))
+            with patch.object(station, '__file__', str(version / 'program/app/laser_station_install.py')), \
+                    patch('app.laser_station.main', side_effect=inspect_start):
+                station.run_station(self.install_root)
+            self.assertEqual(owner.getsockname()[1], self.port)
+        after = station.read_json(version / 'laser-installation.json')
+        self.assertEqual({k:v for k,v in before.items() if k != 'port'}, {k:v for k,v in after.items() if k != 'port'})
+        self.assertEqual(after['port'], selected_ports[0])
+        self.assertEqual((self.install_root / 'active.json').read_bytes(), selected_bytes)
+
+    def test_legacy_flux_cache_is_preserved_without_blocking_native_install(self):
+        from tests.test_windows_installer_profile import life
+        local = self.root / 'user-data'
+        cache = local / 'Laserstation/flux/cache.txt'
+        cache.parent.mkdir(parents=True)
+        cache.write_bytes(b'existing cache, never an installation')
+        native = life.NativeWindows.__new__(life.NativeWindows)
+        native.program = self.install_root
+        native.command = lambda *_: None
+        with patch.dict('os.environ', {'LOCALAPPDATA':str(local)}):
+            native.laser(self.package, 'install', {'connection_file':self.connection, 'plates':self.plates})
+        self.assertEqual(cache.read_bytes(), b'existing cache, never an installation')
+        station.active_installation(self.install_root)
+
+    def test_real_legacy_station_is_still_preserved_and_refused(self):
+        from tests.test_windows_installer_profile import life
+        local = self.root / 'user-data'
+        legacy = local / 'Laserstation/laser-installation.json'
+        legacy.parent.mkdir(parents=True)
+        legacy.write_bytes(b'old installation is not adopted implicitly')
+        native = life.NativeWindows.__new__(life.NativeWindows)
+        native.program = self.install_root
+        with patch.dict('os.environ', {'LOCALAPPDATA':str(local)}), self.assertRaises(life.LifecycleError):
+            native.laser(self.package, 'install', {'connection_file':self.connection, 'plates':self.plates})
+        self.assertEqual(legacy.read_bytes(), b'old installation is not adopted implicitly')
+        self.assertFalse(self.install_root.exists())
+
     def test_port_taken_during_update_preserves_active_version_and_plates(self):
         self.fresh()
         self.plates.mkdir()
@@ -614,6 +699,42 @@ Write-Output ('SHORTCUTS=' + ($global:saved -join '|'))
                 self.assertNotIn('/kontrolpanel', result.stdout)
             self.assertEqual(before, (self.install_root / 'active.json').read_bytes())
 
+    def _launcher_owner_mocks(self, current, config, *, running=False):
+        active = station.active_record(self.install_root)
+        descriptor = {'format': 1, 'kind': station.KIND + '-running', 'root': str(self.install_root),
+                      'installation_id': active['installation_id'], 'version_directory': active['version_directory'],
+                      'nonce': 'a' * 32}
+        script = r'''
+$global:ownRunning = __RUNNING__; $global:popupText = ''
+function Set-OwnStationControl {
+  [IO.File]::WriteAllText('__CONTROL__', '__DESCRIPTOR__')
+  $global:ownRunning = $true
+}
+function Get-CimInstance {
+  if ($global:ownRunning) {
+    [pscustomobject]@{ExecutablePath='__PYTHON__';CommandLine='-B -m app.laser_station_install run --install-root "__INSTALL__"';ProcessId=123}
+  }
+}
+function Invoke-RestMethod {
+  param($Uri, $TimeoutSec)
+  if ($Uri -like '*/api/runtime/health') { return [pscustomobject]@{service='laser_station';pid=123} }
+  [pscustomobject]@{server='__SERVER__';stationId='__ID__'}
+}
+function New-Object {
+  param([string]$ComObject)
+  $shell = [pscustomobject]@{}
+  $shell | Add-Member ScriptMethod Popup { param($message,$seconds,$title,$style) $global:popupText=$message; return 1 }
+  return $shell
+}
+if ($global:ownRunning) { Set-OwnStationControl }
+'''
+        for key, value in (('__RUNNING__', '$true' if running else '$false'),
+                           ('__CONTROL__', self.install_root / 'running.json'), ('__DESCRIPTOR__', json.dumps(descriptor)),
+                           ('__PYTHON__', current / 'program/runtime/python.exe'), ('__INSTALL__', self.install_root),
+                           ('__SERVER__', config['server']), ('__ID__', config['station_id'])):
+            script = script.replace(key, str(value).replace("'", "''"))
+        return script
+
     def test_shortcut_to_retained_launcher_resolves_new_active_runtime(self):
         powershell = shutil.which('powershell.exe') or shutil.which('pwsh')
         if not powershell:
@@ -624,17 +745,12 @@ Write-Output ('SHORTCUTS=' + ($global:saved -join '|'))
         _, current, config, _ = station.active_installation(self.install_root)
         old_launcher = old_version / 'program' / station.LAUNCHER
         shutil.copy2(ROOT / station.LAUNCHER, old_launcher)
-        script = r'''
-$global:requests = 0; $global:launched = ''
-function Invoke-RestMethod {
-  param($Uri, $TimeoutSec)
-  $global:requests++
-  if ($global:requests -eq 1) { throw 'not running yet' }
-  [pscustomobject]@{server='__SERVER__';stationId='__ID__'}
-}
+        script = self._launcher_owner_mocks(current, config) + r'''
+$global:launched = ''
 function Start-Process {
   param($FilePath,$ArgumentList,$WorkingDirectory,$WindowStyle,[switch]$PassThru,$RedirectStandardOutput,$RedirectStandardError)
   $global:launched = $FilePath + '|' + $ArgumentList + '|' + $WorkingDirectory
+  Set-OwnStationControl
   [pscustomobject]@{HasExited=$false}
 }
 try { & '__LAUNCHER__' -InstallPath '__INSTALL__' -NoBrowser } catch { Write-Output ('ERROR=' + $_.Exception.Message) }
@@ -652,38 +768,36 @@ Write-Output ('LAUNCHED=' + $global:launched)
         self.assertIn(str(current / 'program/runtime/python.exe'), result.stdout)
         self.assertIn('--install-root "' + str(self.install_root) + '"', result.stdout)
 
-    def test_launcher_without_desktop_session_reports_address_instead_of_failing(self):
-        # A scheduled installation has no desktop: Start-Process on a URL throws.
-        # The station already runs, so the installer must not report failure.
+    def test_launcher_desktop_failure_reports_address_log_and_nonzero_but_no_browser_is_headless(self):
         powershell = shutil.which('powershell.exe') or shutil.which('pwsh')
         if not powershell:
             self.skipTest('PowerShell unavailable')
         self.fresh()
         _, current, config, _ = station.active_installation(self.install_root)
-        script = r'''
-function Invoke-RestMethod {
-  param($Uri, $TimeoutSec)
-  [pscustomobject]@{server='__SERVER__';stationId='__ID__'}
-}
+        script = self._launcher_owner_mocks(current, config, running=True) + r'''
 function Start-Process {
   param($FilePath)
   throw 'The operation attempted is not supported.'
 }
-try { & '__LAUNCHER__' -InstallPath '__INSTALL__' 3>&1 } catch { Write-Output ('ERROR=' + $_.Exception.Message) }
+try { & '__LAUNCHER__' -InstallPath '__INSTALL__' __OPTIONS__ } finally { Write-Output ('POPUP=' + $global:popupText) }
 '''
         for key, value in (('__SERVER__', config['server']), ('__ID__', config['station_id']),
                            ('__LAUNCHER__', ROOT / station.LAUNCHER), ('__INSTALL__', self.install_root)):
             script = script.replace(key, str(value).replace("'", "''"))
-        harness = self.root / 'no-desktop-test.ps1'
-        harness.write_text('[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)\n' + script,
-                           encoding='utf-8-sig')
-        result = subprocess.run([powershell, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(harness)],
-                                capture_output=True, text=True, encoding='utf-8', timeout=20)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertNotIn('ERROR=', result.stdout)
-        # The console wraps a long warning and repeats its prefix on each line.
-        shown = result.stdout.replace('\r', '').replace('\nWARNING: ', '').replace('\n', '')
-        self.assertIn('http://127.0.0.1:' + str(config['port']) + '/makervaerkstedet.html', shown)
+        for no_browser in (False, True):
+            harness = self.root / ('no-desktop-' + str(no_browser) + '-test.ps1')
+            harness.write_text('[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)\n' +
+                               script.replace('__OPTIONS__', '-NoBrowser' if no_browser else ''), encoding='utf-8-sig')
+            result = subprocess.run([powershell, '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', str(harness)],
+                                    capture_output=True, text=True, encoding='utf-8', timeout=20)
+            if no_browser:
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(result.stdout.strip(), 'POPUP=')
+            else:
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn('POPUP=Laserstationen kunne ikke åbnes.', result.stdout)
+                self.assertIn('http://127.0.0.1:' + str(config['port']) + '/makervaerkstedet.html', result.stdout)
+                self.assertIn('Log: ' + str(self.install_root / 'logs'), result.stdout)
 
     def start_real_station(self, *, hold_request=False):
         # Use real station sources and our existing test interpreter. No bundled
