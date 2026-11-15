@@ -30,6 +30,30 @@ from tests import test_release_compatibility as fixtures
 ROOT = Path(__file__).resolve().parents[1]
 
 
+class LocalPortSelectionTests(unittest.TestCase):
+    def test_available_preferred_port_is_retained(self):
+        with socket.socket() as probe:
+            probe.bind(('127.0.0.1', 0))
+            preferred = probe.getsockname()[1]
+        self.assertEqual(station.choose_local_port(preferred), preferred)
+
+    def test_occupied_port_gets_a_free_loopback_alternative_without_stopping_owner(self):
+        with socket.socket() as owner:
+            owner.bind(('127.0.0.1', 0))
+            preferred = owner.getsockname()[1]
+            selected = station.choose_local_port(preferred)
+            self.assertNotEqual(selected, preferred)
+            self.assertTrue(1024 <= selected <= 65535)
+            with socket.socket() as probe:
+                probe.bind(('127.0.0.1', selected))
+            self.assertEqual(owner.getsockname()[1], preferred)
+
+    def test_invalid_preferred_port_is_rejected(self):
+        for value in (True, 0, 1023, 65536, '8790'):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                station.choose_local_port(value)
+
+
 class LaserStationInstallTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

@@ -505,7 +505,7 @@ class NativeWindows:
         if action=='install':
             require(not (Path(os.environ['LOCALAPPDATA'])/'Laserstation').exists(),'older_laser_station_must_be_removed_first; existing station and plates are preserved')
             require(set(profile)<={'connection_file','plates','beam_studio','flux_api'} and profile.get('connection_file'),'laser_connection_required')
-            result=station.install(package,self.program,action='Install',**profile)
+            result=station.install(package,self.program,action='Install',port=station.choose_local_port(),**profile)
             self.command(package/'deployment/school-setup/Setup-LaserStation.ps1','-Action','Update','-InstallPath',self.program,'-FinishSetup')
             return result
         require(not profile,'update_preserves_existing_configuration')

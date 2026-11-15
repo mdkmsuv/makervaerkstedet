@@ -180,6 +180,24 @@ def probe_runtime(program):
         raise ValueError('Stationens kopierede runtime kunne ikke indlæses: ' + result.stderr[-2000:])
 
 
+def choose_local_port(preferred=8790):
+    """Keep the usual local URL when possible; let the OS choose a free fallback."""
+    if type(preferred) is not int or not 1024 <= preferred <= 65535:
+        raise ValueError('Stationsporten skal være mellem 1024 og 65535.')
+    for port in (preferred, 0):
+        with socket.socket() as probe:
+            if hasattr(socket, 'SO_EXCLUSIVEADDRUSE'):
+                probe.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+            try:
+                probe.bind(('127.0.0.1', port))
+            except OSError:
+                continue
+            selected = probe.getsockname()[1]
+            if 1024 <= selected <= 65535:
+                return selected
+    raise ValueError('Der kunne ikke findes en ledig lokal port til laserstationen.')
+
+
 def assert_port_free(port):
     with socket.socket() as listener:
         try:
@@ -541,8 +559,12 @@ def main():
     stop.add_argument('--install-root', type=Path, required=True)
     stop.add_argument('--timeout', type=float, default=15)
     stop.add_argument('--nonce')
+    port_choice = commands.add_parser('choose-port')
+    port_choice.add_argument('--preferred', type=int, default=8790)
     args = parser.parse_args()
-    if args.command == 'run':
+    if args.command == 'choose-port':
+        print(choose_local_port(args.preferred))
+    elif args.command == 'run':
         run_station(args.install_root)
     elif args.command == 'stop':
         print(json.dumps(stop_station(args.install_root, timeout=args.timeout, expected_nonce=args.nonce)))

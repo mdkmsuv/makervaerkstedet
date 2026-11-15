@@ -117,7 +117,7 @@ Write-Output 'Setup firewall host-form /32 branch passed.'
       harness_path = Path(temporary) / 'setup-firewall-branch.ps1'
       harness_path.write_text(harness, encoding='utf-8')
       env = {**os.environ, 'SETUP_SCRIPT': str(SETUP / 'Setup-School.ps1'),
-             'GUARD_SCRIPT': str(ROOT / 'windows-elevhub' / 'server' / 'school-uninstall-guards.ps1')}
+             'GUARD_SCRIPT': str(ROOT / 'system' / 'windows-elevhub' / 'server' / 'school-uninstall-guards.ps1')}
       result = subprocess.run([powershell, '-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', str(harness_path)], capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=30, env=env)
       self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
       self.assertIn('Setup firewall host-form /32 branch passed.', result.stdout)
@@ -145,7 +145,7 @@ Write-Output 'Setup firewall host-form /32 branch passed.'
       self.assertEqual(target.read_text(encoding='utf-8'), 'TEACHER_CODE = None\n')
       # The current implementation generates a code on first start and preserves
       # existing local codes. Packaging must leave that behavior intact.
-      source = (ROOT / 'app' / 'server.py').read_text(encoding='utf-8')
+      source = (ROOT / 'system' / 'app' / 'server.py').read_text(encoding='utf-8')
       target.write_text(source, encoding='utf-8')
       builder.neutralize_teacher_code(target)
       self.assertEqual(target.read_text(encoding='utf-8'), source)

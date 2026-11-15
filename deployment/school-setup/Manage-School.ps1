@@ -290,7 +290,9 @@ switch ($choice) {
       $teacherBackendPort = if ($owner.PSObject.Properties.Name -contains 'teacherBackendPort') { [int]$owner.teacherBackendPort } else { 8767 }
       Start-Process ('http://127.0.0.1:' + $teacherBackendPort)
       $school = Get-Content -LiteralPath (Join-Path $DataRoot 'school.json') -Raw | ConvertFrom-Json
-      if ($school.role -eq 'makerspace') { Start-Process 'http://127.0.0.1:8790/' }
+      if ($school.role -eq 'makerspace') {
+        & (Join-Path $PackageRoot 'deployment\school-setup\Start-LaserStation.ps1') -Root $PackageRoot -ConfigPath (Join-Path $DataRoot 'laserstation\laser-installation.json') -OpenBrowser
+      }
     }
   }
   '7' {

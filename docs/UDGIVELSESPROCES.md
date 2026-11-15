@@ -113,6 +113,9 @@ native fejl skal vises som **Installationen blev ikke færdig**, have den rigtig
 log og give exitkode `20`. Først et bestået native trin må vise klar-siden.
 Prøv både separat server/laserstation og Windows alt på én computer, herunder
 afslutningens genveje, lærerlogin og opstart efter genstart.
+Prøv også en optaget standardport på lasercomputeren: en ny station skal vælge
+en ledig lokal port, og både genvej og skoleadministration skal åbne den gemte
+adresse. Opdatering og genoptagelse skal bevare en eksisterende stationsport.
 
 ```
 python -B system/windows/inno/build.py --inputs <inputs.json> --output <exe-mappe> --payload-output <payload-mappe>

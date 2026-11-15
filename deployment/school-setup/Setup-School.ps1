@@ -384,16 +384,25 @@ if ($existingRule) {
 Start-ScheduledTask -TaskName $taskName
 if ($Role -eq 'makerspace') {
     $laserRoot = Join-Path $DataRoot 'laserstation'; $plates = Join-Path $DataRoot 'Laserplader'; New-Item -ItemType Directory -Force -Path $laserRoot,$plates | Out-Null
-    $laserConfig = [ordered]@{role='Station';server=('http://127.0.0.1:' + $TeacherBackendPort);plates=$plates;port=8790;machine=$Machine}
+    $laserConfigPath = Join-Path $laserRoot 'laser-installation.json'
+    if (Test-Path -LiteralPath $laserConfigPath -PathType Leaf) {
+        $oldLaser = Get-Content -LiteralPath $laserConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if (($oldLaser.port -isnot [int] -and $oldLaser.port -isnot [long]) -or $oldLaser.port -lt 1024 -or $oldLaser.port -gt 65535) { throw 'Den eksisterende laserstations port er ugyldig; opsætningen er bevaret.' }
+        $laserPort = [int]$oldLaser.port
+    } else {
+        $laserPortText = & $installedPython -B -m app.laser_station_install choose-port
+        if ($LASTEXITCODE -ne 0) { throw 'Laserstationens lokale port kunne ikke vælges.' }
+        $laserPort = 0
+        if (-not [int]::TryParse(($laserPortText -join '').Trim(), [ref]$laserPort) -or $laserPort -lt 1024 -or $laserPort -gt 65535) { throw 'Laserstationens portvalg gav et ugyldigt svar.' }
+    }
+    $laserConfig = [ordered]@{role='Station';server=('http://127.0.0.1:' + $TeacherBackendPort);plates=$plates;port=$laserPort;machine=$Machine}
     & icacls.exe $laserRoot /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-19:(OI)(CI)M' '*S-1-5-32-545:(OI)(CI)RX' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Laserstationens konfigurationsmappe kunne ikke beskyttes.' }
     & icacls.exe $plates /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-19:(OI)(CI)M' '*S-1-5-32-545:(OI)(CI)M' | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Laserpladernes mappe kunne ikke åbnes for lokale brugere.' }
-    $laserConfigPath = Join-Path $laserRoot 'laser-installation.json'
     if (Test-Path -LiteralPath $laserConfigPath -PathType Leaf) {
-        $oldLaser = Get-Content -LiteralPath $laserConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
         if ($oldLaser.role -ne 'Station' -or $oldLaser.server -ne $laserConfig.server -or
-            $oldLaser.plates -ne $plates -or $oldLaser.port -ne 8790 -or $oldLaser.machine -ne $Machine) {
+            $oldLaser.plates -ne $plates -or $oldLaser.port -ne $laserPort -or $oldLaser.machine -ne $Machine) {
             throw 'Resume må ikke ændre den eksisterende laserstation. Vælg samme lasermodel.'
         }
     } else {
