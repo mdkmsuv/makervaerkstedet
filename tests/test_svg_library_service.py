@@ -9,7 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from app.svg_library import Library, ORIGIN
+from app.svg_library import CacheSecurityError, Library, ORIGIN
 from app.svg_library_service import UnixLibraryClient, create_server, MAX_RESPONSE_BYTES
 from tests.test_svg_library_cache import HTML, SVG, ITEM_ID, online, offline
 
@@ -86,6 +86,35 @@ class ServiceTests(unittest.TestCase):
         with patch('app.svg_library_service.Library', side_effect=ValueError('invalid cache')):
             with self.assertRaises(ValueError):
                 create_server(path)
+        self.assertFalse(os.path.lexists(path))
+
+    def test_default_cache_opens_dynamic_user_state_without_following_public_link(self):
+        # Model systemd's DynamicUser + StateDirectory layout without touching
+        # host state. The service must open the private directory directly.
+        root = Path(self.temp.name) / 'system-root'
+        private = root / 'var/lib/private/elevhub-svg-library'
+        private.mkdir(parents=True)
+        public = root / 'var/lib/elevhub-svg-library'
+        public.symlink_to('private/elevhub-svg-library', target_is_directory=True)
+        seed = Library(cache_dir=private)
+        seed.read = online
+        expected_svg = seed.svg(ITEM_ID)
+        with self.assertRaises(CacheSecurityError):
+            Library(cache_dir=public)
+
+        abspath = os.path.abspath
+
+        def in_system_root(path):
+            absolute = abspath(path)
+            return str(root) + absolute if absolute.startswith('/var/lib/') else absolute
+
+        path = str(Path(self.temp.name) / 'default.sock')
+        with patch('app.svg_library.os.path.abspath', side_effect=in_system_root):
+            with create_server(path) as server:
+                server.library.read = offline
+                self.assertEqual(server.library.status()['cache_state'], 'stale')
+                self.assertEqual(server.library.svg(ITEM_ID), expected_svg)
+        self.assertTrue(public.is_symlink())
         self.assertFalse(os.path.lexists(path))
 
     def test_server_refuses_oversized_response(self):

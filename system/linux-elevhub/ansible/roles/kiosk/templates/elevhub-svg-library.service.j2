@@ -7,6 +7,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 DynamicUser=yes
+# app.svg_library_service opens /var/lib/private/elevhub-svg-library directly;
+# DynamicUser makes /var/lib/elevhub-svg-library a symlink rejected by its cache.
 StateDirectory=elevhub-svg-library
 StateDirectoryMode=0700
 RuntimeDirectory=elevhub-svg-library

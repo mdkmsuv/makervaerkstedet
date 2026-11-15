@@ -14,8 +14,8 @@ _model3d_gate=build_gate('3dprint')
 validate_model3d_bundle=_model3d_gate.validate_model3d_bundle
 MODEL3D_OUTPUTS=_model3d_gate.MODEL3D_OUTPUTS
 
-CORE_VERSION = "2.1.0~20261114.1"
-UPDATER_VERSION = "1.1.0~20261114.3"
+CORE_VERSION = "2.1.0~20261115.1"
+UPDATER_VERSION = "1.1.0~20261115.1"
 SCRATCH_RECEIPT_SHA256 = "e6526962d7114eb8547b527c41cbed348f1cc8fb8c4d44c635dfb8cb0aa00677"
 
 SPECS = {

@@ -22,7 +22,10 @@ from pathlib import Path
 from .svg_library import Library, ORIGIN, MAX_BYTES
 
 DEFAULT_SOCKET = '/run/elevhub-svg-library/library.sock'
-DEFAULT_CACHE = '/var/lib/elevhub-svg-library'
+# DynamicUser + StateDirectory exposes the public path as a symlink. Open the
+# private state directory directly inside the unit's namespace so the cache's
+# O_NOFOLLOW checks stay intact. This is the same persistent directory.
+DEFAULT_CACHE = '/var/lib/private/elevhub-svg-library'
 MAX_RESPONSE_BYTES = 8_000_000
 # One online SVG request may include an 8s catalogue read and an 8s file read.
 TIMEOUT = 20

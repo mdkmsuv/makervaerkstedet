@@ -307,6 +307,12 @@ computernes rapporterede tilstand. Gemte projekter bevares ved fjernelse,
 og et offline apparat venter på forbindelse. Standardsæt gælder nye
 tilmeldte elevenheder, ikke en tavs masseinstallation på eksisterende.
 
+Afinstallation fjerner selve apppakken og programfilerne fra elevenheden.
+Updateren fjerner også appens gamle og aktuelle `.deb`-arkiver fra apt-cachen,
+så installation/opdatering/fjernelse ikke ophober kopier af den app. Andre
+pakkers cache og elevens projekter berøres ikke. Små katalogmetadata og
+handlingskvitteringer bevares til status og sikker genoptagelse.
+
 Den faktiske HTTP-kontrakt er `GET /api/admin/apps` og
 `POST /api/admin/apps/order` med lærerlogin, samme Origin og disse felter:
 

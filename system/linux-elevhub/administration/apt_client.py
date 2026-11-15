@@ -112,7 +112,8 @@ def apt_options(origin,ca,source=Path("/etc/apt/sources.list.d/makervaerkstedet.
 
 class Commands:
     """Fixed argv only; installers are never invoked by tests using this adapter."""
-    def __init__(self,options=None,*,app_root=Path('/usr/share/makervaerkstedet/apps')):self.options=options;self.app_root=app_root
+    def __init__(self,options=None,*,app_root=Path('/usr/share/makervaerkstedet/apps'),archives_root=Path('/var/cache/apt/archives')):
+        self.options=options;self.app_root=app_root;self.archives_root=archives_root
     def apt(self,*,system_dependencies=False):
         require(self.options is not None,"verified_apt_source_required")
         options=self.options
@@ -291,6 +292,15 @@ class Commands:
         apps={app['id']:app for app in [*getattr(self,'migration_survivors',[]),*descriptors]}
         self.activate(core_version,apps=[{**app,'port':urlsplit(app['start']).port} for app in apps.values()])
     def activate_app(self,core_version,descriptor,*,removed=False):
+        # Apt may cache a second archive after our verified temporary download.
+        # It is no longer needed after application/removal; retain other packages.
+        from app_catalog import validate_app_descriptor
+        descriptor=validate_app_descriptor(descriptor)
+        if self.archives_root.exists():
+            cache=protected(self.archives_root,directory=True)
+            for archive in cache.glob(descriptor['package']+'_*.deb'):
+                protected(archive)
+                archive.unlink()
         app={**descriptor,'port':urlsplit(descriptor['start']).port}
         survivors=[{**item,'port':urlsplit(item['start']).port} for item in getattr(self,'app_survivors',[])]
         return self.activate(core_version,apps=survivors+([] if removed else [app]))
@@ -303,7 +313,13 @@ class Commands:
         from app_catalog import compare_versions
         if compare_versions(core_version,'2.1.0~')>=0:
             self.call(["/usr/bin/systemctl","enable","--now","elevhub-svg-library.service"])
-        self.call(["/usr/bin/systemctl","try-restart","elevhub-lokal.service","elevhub-design.service","elevhub-regler.service","getty@tty1.service"])
+        services=['elevhub-lokal.service','elevhub-design.service']
+        for unit in ('elevhub-regler.service','getty@tty1.service'):
+            # Roles such as a WSL test pupil do not install console/network units.
+            # Real units still restart normally and every command failure propagates.
+            if self.call(['/usr/bin/systemctl','show','--property=LoadState','--value',unit]).strip()!='not-found':
+                services.append(unit)
+        self.call(['/usr/bin/systemctl','try-restart',*services])
         try:
             if apps is None and compare_versions(core_version,'2.1.0~')<0:
                 scratch=any(item['component']=='scratch' for item in self.installed())
