@@ -313,6 +313,15 @@ så installation/opdatering/fjernelse ikke ophober kopier af den app. Andre
 pakkers cache og elevens projekter berøres ikke. Små katalogmetadata og
 handlingskvitteringer bevares til status og sikker genoptagelse.
 
+Afprøv hele forløbet **installation → afinstallation → installation igen**
+på den aftalte testelevenhed. Gem pakkens faktiske filliste fra
+`dpkg-query -L <pakkenavn>` før fjernelse, og kontrollér bagefter, at alle
+dens programfiler og programmapper er væk, at appens port er lukket, og at
+dens `.deb`-arkiver er ryddet. Kontrollér også bevarede projekter, skoleprofil,
+enhedsidentitet og øvrige apps. Efter geninstallation skal samme godkendte
+version starte igen. Et grønt serverjob eller et manglende `app.json` alene
+beviser ikke, at alle programfiler er fjernet; en app kan eje flere programrødder.
+
 Den faktiske HTTP-kontrakt er `GET /api/admin/apps` og
 `POST /api/admin/apps/order` med lærerlogin, samme Origin og disse felter:
 
