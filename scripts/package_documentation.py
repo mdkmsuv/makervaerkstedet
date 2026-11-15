@@ -8,7 +8,7 @@ from urllib.parse import unquote, urlsplit
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0]=[str(ROOT),str(ROOT/"system")]
 from repository import source_path
-GUIDES = ('KOM-GODT-IGANG.md', 'TO-OPSAETNINGER.md', 'AGENTINDGANG.md', 'SKOLETILPASNING.md', 'MAKERSPACE-ARKITEKTUR.md',
+GUIDES = ('INSTALLATION-FRA-EXE-OG-ISO.md', 'KOM-GODT-IGANG.md', 'TO-OPSAETNINGER.md', 'AGENTINDGANG.md', 'SKOLETILPASNING.md', 'MAKERSPACE-ARKITEKTUR.md',
           'RELEASE-LICENSER.md', 'GITHUB-OPDATERINGER.md', 'OPDATERINGSKOE.md',
           'PRINTERFRIGIVELSE.md', 'SERVERKONTROLPANEL.md', 'MAKERSPACE-BACKUP.md',
           'MAKERSPACE-OPDATERING.md', 'INSTALLATIONSREPARATION.md')

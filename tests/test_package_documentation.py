@@ -27,6 +27,9 @@ class PackageDocumentationTests(unittest.TestCase):
             (output / 'deployment/school-setup').mkdir(parents=True)
             (output / 'deployment/school-setup/Setup-School.ps1').write_text('# fixture')
             docs.copy_documentation(output)
+            self.assertTrue((output / 'docs/INSTALLATION-FRA-EXE-OG-ISO.md').is_file())
+            self.assertIn('docs/INSTALLATION-FRA-EXE-OG-ISO.md',
+                          (output / 'README.md').read_text(encoding='utf-8'))
             self.assertIn('../docs/MAKERSPACE-OPDATERING.md',
                           (output / 'server/README.md').read_text(encoding='utf-8'))
             self.assertEqual(source_before, source_server_readme.read_bytes())

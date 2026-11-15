@@ -107,6 +107,10 @@ computer. Hovedsystemet skal allerede være sat op og kunne nås fra lasercomput
 3. På **Skolens laserforbindelse** vælges filen med **Gennemse**. Kontrollér
    filen i opsummeringen og vælg **Installer**. En kendt station viser i
    stedet **Opdatering fundet** og bevarer sin forbindelse og gemte plader.
+   Under opsætningen kan Windows vise **Sikkerhedsadvarsel** for skolens lokale
+   CA-certifikat. Vinduet kan ligge bag guiden, som venter på dit svar.
+   Kontrollér med skolens IT, at fingeraftrykket tilhører forbindelsesfilens
+   certifikat, og vælg **Ja**. Vent derefter på guidens afslutning.
 4. Når siden siger **Makerværkstedet er klar**, vælg **Åbn Makerværkstedet**
    eller brug skrivebordsgenvejen. Log ind med skolens lærerkode. Kontrollér,
    at skolen og lasermodellen er de forventede, og at serverens kø kan hentes.

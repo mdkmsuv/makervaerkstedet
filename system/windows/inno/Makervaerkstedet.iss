@@ -176,14 +176,14 @@ begin
 #if AppRole == "server"
       'Guiden opdaterer hovedsystemet. Skoleprofil, identitet, projekter og indstillinger bevares.' + #13#10#13#10 + 'Køerne sættes på pause under opdateringen og forbliver pauset bagefter. Læreren kontrollerer dem, før arbejdet fortsætter.')
 #else
-      'Guiden opdaterer denne laserstation. Skolens forbindelse, maskinopsætning og gemte laserplader bevares. Skolens server og køer bliver ikke geninstalleret.')
+      'Guiden opdaterer denne laserstation. Skolens forbindelse, maskinopsætning og gemte laserplader bevares. Skolens server og køer bliver ikke geninstalleret.' + #13#10#13#10 + 'Windows kan bede om godkendelse af skolens certifikat. Kontrollér aftrykket med skolens IT, før du vælger Ja. Vælg Nej og få hjælp, hvis du er i tvivl.')
 #endif
   else
     InfoPage := CreateOutputMsgPage(wpWelcome, 'Ny installation', 'Gør Makerværkstedet klar på denne computer.',
 #if AppRole == "server"
       'Du vælger computerens rolle, skolens navn og netværk, et farvetema og lasermodel.' + #13#10#13#10 + 'Hav computerens faste IPv4-adresse og elevnettets oplysninger klar. Få dem fra den IT-ansvarlige.' + #13#10#13#10 + 'Efter installationen vælger du skolens lærerkode i lærerpanelet.')
 #else
-      'Denne computer bliver laserstation og forbindes til skolens eksisterende server.' + #13#10#13#10 + 'Hav filen laser-station-connection.json fra serveren klar. Du skal kun vælge filen; serveradresse og lasermodel følger med.')
+      'Denne computer bliver laserstation og forbindes til skolens eksisterende server.' + #13#10#13#10 + 'Hav filen laser-station-connection.json fra serveren klar. Du skal kun vælge filen; serveradresse og lasermodel følger med.' + #13#10#13#10 + 'Windows kan bede om godkendelse af skolens certifikat. Kontrollér aftrykket med skolens IT, før du vælger Ja. Vælg Nej og få hjælp, hvis du er i tvivl.')
 #endif
     ;
 #if AppRole == "server"
@@ -295,7 +295,11 @@ begin
   if CurStep <> ssPostInstall then Exit;
   NativeAttempted := True;
   WizardForm.StatusLabel.Caption := 'Sætter Makerværkstedet op og kontrollerer opstart …';
+#if AppRole == "server"
   WizardForm.FilenameLabel.Caption := 'Det kan tage nogle minutter. Lad guiden blive åben.';
+#else
+  WizardForm.FilenameLabel.Caption := 'Se efter en Sikkerhedsadvarsel på proceslinjen, hvis guiden venter.';
+#endif
   WizardForm.FilenameLabel.Visible := True;
   WizardForm.ProgressGauge.Style := npbstMarquee;
   try

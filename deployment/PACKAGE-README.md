@@ -2,6 +2,11 @@
 
 **Kreditering: Klostermarksskolen.**
 
+Har du en `Setup.exe`, skal du følge
+[installationen fra EXE eller ISO](../docs/INSTALLATION-FRA-EXE-OG-ISO.md).
+Den beskriver EXE'ens sider, rollevalg, afslutning og fejl.
+
+Trinnene nedenfor gælder den udpakkede Windows-skolepakke med `START.cmd`.
 Start med [én eller to computere](../docs/TO-OPSAETNINGER.md). Den gennemgår
 den grafiske installationsguide trin for trin, herunder hvor oplysningerne
 findes. [Kom godt i gang](../docs/KOM-GODT-IGANG.md)
@@ -26,8 +31,9 @@ Elevværkstederne kører kun på Linux; pakken er ikke en Windows-elevklient.
 4. Brug `Manage-School.cmd` til elevtilmelding, offentlig skolefil,
    særskilte printer-/laserkoder og vedligeholdelse. En IT-medarbejder kan
    frivilligt køre `Setup-School.ps1 -CheckOnly` før `START.cmd`.
-   Følg [skoleopsætning](school-setup/README.md). En separat station har desuden
-   genvejen **Laserstation** og opdateres med `Update-LaserStation.cmd`.
+   Følg [skoleopsætning](school-setup/README.md). På en separat station åbner
+   **Makerværkstedet** stationens startside; **Stop laserstation** lukker den.
+   Stationen opdateres med `Update-LaserStation.cmd`.
 
 `START.cmd` opretter en ny installation. Serveropdatering følger sin egen
 formatkontrollerede vej; en stationsopdatering opdaterer ikke hovedsystemet.
