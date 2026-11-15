@@ -1,5 +1,9 @@
 # Lommeregner
 
+**Testapp og SDK-eksempel.** Bruges til at afprøve appguiden, katalogudgivelse
+og installation/afinstallation i QA-miljøet. Den indgår ikke i skolens
+standardinstallation og er ikke bestilt som en produktionsapp.
+
 En dansk, lokal lommeregner til elevkiosken. App-id: `lommeregner`, version
 `1.0.0`, loopback-port `8892`, SDK 1. Der er intet bundlingtrin:
 `web/` indeholder de færdige statiske programfiler.

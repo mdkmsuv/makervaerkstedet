@@ -73,4 +73,18 @@ class RuntimeReadiness(unittest.TestCase):
         with self.assertRaisesRegex(M.RuntimeCheckError,'app_version'):
             M.check_once(self.version,self.call,self.read,apps=[app])
 
+    def test_app_readiness_does_not_require_console_but_full_kiosk_still_does(self):
+        self.version='2.1.0~20261115.1';self.values[8791]['release_id']=self.version
+        visited=[]
+        def no_console(args):
+            visited.append(args[-1])
+            if args[-1]=='getty@tty1.service':return 'ActiveState=inactive\nMainPID=0\n'
+            return self.call(args)
+        with self.assertRaisesRegex(M.RuntimeCheckError,'service_inactive'):
+            M.check_once(self.version,no_console,self.read,apps=[])
+        visited.clear()
+        result=M.wait_ready(self.version,no_console,read=self.read,apps=[],require_console=False,timeout=0)
+        self.assertEqual(result['core_version'],self.version)
+        self.assertNotIn('getty@tty1.service',visited)
+
 if __name__=="__main__":unittest.main()

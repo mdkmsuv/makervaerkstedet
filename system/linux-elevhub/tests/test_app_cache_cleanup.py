@@ -46,6 +46,11 @@ class AppCacheCleanupTests(unittest.TestCase):
         self.assertEqual(outside.read_bytes(), b'preserve')
         self.assertTrue(link.is_symlink())
 
+    def test_app_activation_keeps_console_login_running(self):
+        with patch.object(self.commands,'activate') as activate:
+            self.commands.activate_app('2.1.0~20261115.1',self.app,removed=True)
+        self.assertTrue(activate.call_args.kwargs.get('app_only',False))
+
     def test_absent_platform_units_are_skipped_but_present_rules_are_restarted(self):
         for load_state in ('not-found', 'loaded'):
             with self.subTest(load_state=load_state):

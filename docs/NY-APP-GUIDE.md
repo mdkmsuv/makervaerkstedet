@@ -1,6 +1,6 @@
 # Sådan laver du en ny app til Makerværkstedet
 
-Aktuel kildeopdeling, 14. november 2026. Kommandoerne køres fra produktroden,
+Aktuel kildeopdeling, 15. november 2026. Kommandoerne køres fra produktroden,
 som indeholder `REPOSITORY-LAYOUT.json`. `system/` ejer hovedsystemet,
 `apps/<id>/` ejer appens kode og pakkemanifester, og `sdk/` indeholder
 udviklingsskabeloner. Installerede Linux-stier er uændrede. Se også
@@ -51,7 +51,7 @@ Den erstatter ikke en installeret prøve med elevbjælke, offline genstart
 og lærerens adgangsstyring.
 
 Preview bruger en frossen kopi af appen. Stop med Ctrl+C og start igen efter
-kildeændringer; der er ingen automatisk genindlæsning. Den færdige
+kildeændringer; der er ingen automatisk genindlæsning. Den lille
 [lommeregner](../apps/lommeregner/README.md) er et eksempel på at erstatte
 quizindholdet med en anden stateless app uden at ændre hovedsystemet.
 

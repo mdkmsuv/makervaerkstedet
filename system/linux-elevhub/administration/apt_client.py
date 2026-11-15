@@ -303,8 +303,8 @@ class Commands:
                 archive.unlink()
         app={**descriptor,'port':urlsplit(descriptor['start']).port}
         survivors=[{**item,'port':urlsplit(item['start']).port} for item in getattr(self,'app_survivors',[])]
-        return self.activate(core_version,apps=survivors+([] if removed else [app]))
-    def activate(self,core_version,*,apps=None):
+        return self.activate(core_version,apps=survivors+([] if removed else [app]),app_only=True)
+    def activate(self,core_version,*,apps=None,app_only=False):
         # Use the newly installed activator after self-update, including its
         # publisher keyring pin, rather than stale imported process code.
         self.call(["/usr/bin/python3","-B",str(Path(__file__).with_name("template_activation.py"))])
@@ -314,14 +314,16 @@ class Commands:
         if compare_versions(core_version,'2.1.0~')>=0:
             self.call(["/usr/bin/systemctl","enable","--now","elevhub-svg-library.service"])
         services=['elevhub-lokal.service','elevhub-design.service']
-        for unit in ('elevhub-regler.service','getty@tty1.service'):
+        optional=('elevhub-regler.service',)+(('getty@tty1.service',) if not app_only else ())
+        for unit in optional:
             # Roles such as a WSL test pupil do not install console/network units.
             # Real units still restart normally and every command failure propagates.
             if self.call(['/usr/bin/systemctl','show','--property=LoadState','--value',unit]).strip()!='not-found':
                 services.append(unit)
         self.call(['/usr/bin/systemctl','try-restart',*services])
         try:
-            if apps is None and compare_versions(core_version,'2.1.0~')<0:
+            if app_only:wait_ready(core_version,lambda argv:self.call(argv,timeout=5),apps=apps,require_console=False)
+            elif apps is None and compare_versions(core_version,'2.1.0~')<0:
                 scratch=any(item['component']=='scratch' for item in self.installed())
                 wait_ready(core_version,lambda argv:self.call(argv,timeout=5),legacy_scratch=scratch)
             elif apps is None:wait_ready(core_version,lambda argv:self.call(argv,timeout=5))
