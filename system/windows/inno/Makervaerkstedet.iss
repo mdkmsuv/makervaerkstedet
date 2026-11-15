@@ -301,11 +301,16 @@ begin
     if Valid then CaFingerprint := Value;
   end;
   { Keep the actual export, including a possible date suffix. No guessed file. }
-  if Pos('laser-station-connection', S) = 0 then Exit;
-  Start := Pos(':\', S); if Start < 2 then Exit;
-  Path := Trim(Copy(S, Start - 1, Length(S)));
+  if Pos('MKV_LASER_CONNECTION_PATH=', S) = 1 then
+    Path := Trim(Copy(S, Length('MKV_LASER_CONNECTION_PATH=') + 1, Length(S)))
+  else begin
+    if Pos('laser-station-connection', S) = 0 then Exit;
+    Start := Pos(':\', S); if Start < 2 then Exit;
+    Path := Trim(Copy(S, Start - 1, Length(S)));
+  end;
   Folder := ExpandConstant('{commondocs}\Elevvaerkstedet\');
-  if (CompareText(Copy(Path, 1, Length(Folder)), Folder) = 0) and FileExists(Path) then ConnectionExportPath := Path;
+  if (CompareText(Copy(Path, 1, Length(Folder)), Folder) = 0) and
+      (CompareText(ExtractFileExt(Path), '.json') = 0) and FileExists(Path) then ConnectionExportPath := Path;
 end;
 procedure CurStepChanged(CurStep: TSetupStep);
 var Profile, Arguments, Tool: String;

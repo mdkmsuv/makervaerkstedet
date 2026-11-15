@@ -550,10 +550,15 @@ class NativeWindows:
             # This selector is program/config metadata; plates and central queues
             # are never restored. Existing installer keeps previous versions.
             try:
+                selected=station.active_record(self.program)
                 station.stop_station(self.program)
+                # A shortcut can race the stopped process. Reclaim the same
+                # lifetime lease and hold it through the selector replacement.
+                with station.InstanceLock(self.program,filename='station.lock'):
+                    require(station.active_record(self.program)==selected,'Stationsversionen ændredes under tilbagerulning.')
+                    station.atomic_json(self.program/'active.json',old)
             except BaseException as stop_error:
                 raise LifecycleError('Den valgte station kunne ikke stoppes sikkert efter opdateringsfejlen. Versionsvalget er bevaret. Brug Stop laserstation og få hjælp til loggen.') from stop_error
-            station.atomic_json(self.program/'active.json',old)
             raise
 
 class WindowsInstallLock:

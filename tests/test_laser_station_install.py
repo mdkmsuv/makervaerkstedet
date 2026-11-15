@@ -209,6 +209,26 @@ class LaserStationInstallTests(unittest.TestCase):
         self.assertEqual(stopped_releases, ['test-release', 'second-release'])
         self.assertEqual((self.install_root / 'active.json').read_bytes(), previous)
 
+    def test_rollback_refuses_a_competing_start_after_stop(self):
+        from tests.test_windows_installer_profile import life
+        self.fresh()
+        self.seal('second-release')
+        native = life.NativeWindows.__new__(life.NativeWindows)
+        native.program = self.install_root
+        def fail_after_launch(*_):
+            raise ValueError('finish failed')
+        native.command = fail_after_launch
+        competing = []
+        def stop_current(*_):
+            if station.active_record(self.install_root)['release'] == 'second-release':
+                lease = station.InstanceLock(self.install_root, filename='station.lock')
+                competing.append(lease)
+                self.addCleanup(lease.close)
+        with patch.object(station, 'stop_station', side_effect=stop_current), self.assertRaises(life.LifecycleError):
+            native.laser(self.package, 'update', {})
+        self.assertTrue(competing)
+        self.assertEqual(station.active_record(self.install_root)['release'], 'second-release')
+
     def test_start_repairs_occupied_port_without_changing_station_identity(self):
         self.fresh()
         active, version, before, _ = station.active_installation(self.install_root)

@@ -170,6 +170,7 @@ function Export-LaserConnectionReference([object]$ConnectionValue, [string]$CaPa
     Write-Output "Kopiér den offentlige laserforbindelse og aftryksfil til lasercomputeren: $connectionPath ; $referencePath"
     Write-Output "CA-aftryk (SHA-1, Windows): $fingerprint"
     Write-Output "MKV_LASER_CA_SHA1=$fingerprint"
+    Write-Output "MKV_LASER_CONNECTION_PATH=$connectionPath"
 }
 if ($AcceptInstall -and @(@($SchoolName,$Role,$RoleIp,$StudentSubnet,$Theme) | Where-Object { [string]::IsNullOrWhiteSpace($_) }).Count) {
     throw 'AcceptInstall kræver SchoolName, Role, RoleIp, StudentSubnet og Theme som eksplicitte parametre.'

@@ -173,6 +173,11 @@ Invoke-Expression $branches[0].Extent.Text
       result = self.powershell(harness, str(SETUP / 'Setup-School.ps1'), str(SETUP / 'school-layout.ps1'), str(root))
       self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
       self.assertEqual(result.stdout.count('MKV_LASER_CA_SHA1=' + fingerprint), 2)
+      exported_paths = [line.split('=', 1)[1] for line in result.stdout.splitlines()
+                        if line.startswith('MKV_LASER_CONNECTION_PATH=')]
+      self.assertEqual(len(exported_paths), 2)
+      self.assertEqual(len(set(exported_paths)), 2)
+      self.assertTrue(all(Path(path).is_file() and Path(path).suffix == '.json' for path in exported_paths))
       self.assertEqual(previous.read_bytes(), b'previous school export')
       self.assertEqual(previous_reference.read_bytes(), b'previous school reference')
       connections = [p for p in exports.glob('*.json') if p != previous]
