@@ -1,4 +1,8 @@
 """Public contracts for independently published, optional kiosk apps."""
+from pathlib import Path as _LayoutPath
+import sys as _layout_sys
+_LAYOUT_ROOT = next(p for p in _LayoutPath(__file__).resolve().parents if (p / 'REPOSITORY-LAYOUT.json').is_file())
+_layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
 import copy
 import hashlib
 import importlib

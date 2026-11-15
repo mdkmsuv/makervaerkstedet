@@ -50,6 +50,11 @@ opdateringstjeneste eller installation og afviser apps med køcapabilities.
 Den erstatter ikke en installeret prøve med elevbjælke, offline genstart
 og lærerens adgangsstyring.
 
+Preview bruger en frossen kopi af appen. Stop med Ctrl+C og start igen efter
+kildeændringer; der er ingen automatisk genindlæsning. Den færdige
+[lommeregner](../apps/lommeregner/README.md) er et eksempel på at erstatte
+quizindholdet med en anden stateless app uden at ændre hovedsystemet.
+
 ## 2. Appens egne filer og kontrakt
 
 Opretteren giver følgende filer:
@@ -200,6 +205,12 @@ python -B system/linux-elevhub/packaging/build_debian.py \
   --output out/app-idebog/makervaerkstedet-app-idebog_1.0.0_all.deb
 ```
 
+Ved kildeudgivelse skal den reviewede `apps/<id>/README.md` også tilføjes
+til `explicitFiles` i `deployment/public-source-manifest.json`, ligesom
+projektets øvrige offentlige vejledninger. Programfilerne under `apps/`
+medtages allerede; dokumenter kræver et udtrykkeligt valg. Kontrollen skal
+bestå, før en offentlig eksport kan indeholde links til appens vejledning.
+
 Det bygger ingen hovedsystempakke og installerer intet. Inputlock og
 `.inputs.json` er byggekvitteringer, ikke skolekonfiguration. En appændring
 må ikke ændre hovedsystemets kildehash eller version. Ved 3D-pakning fra
@@ -241,7 +252,7 @@ python -B scripts/build_app_catalog.py \
 ```
 
 Det resultat er endnu usigneret. Den eksisterende udgivelsesvej samler
-basis + én app (`--release-set app`) eller det samlede migrationssæt og
+basis + en eller flere apps (`--release-set app`) eller det samlede migrationssæt og
 kører isoleret apt-simulering med de præcise pakker:
 
 ```bash
@@ -251,6 +262,16 @@ python -B system/linux-elevhub/packaging/build_release.py \
   --output-dir /privat/byg/release --report-dir /privat/byg/reports \
   --debian-keyring /sti/til/verificeret/debian-archive-keyring.gpg
 ```
+
+Et katalog beskriver hele det aktuelle udvalg. For at **tilføje** en app og
+bevare de eksisterende valg skal deres input-locks og descriptors også med i
+udgivelsen; ellers er det et nyt udvalg med kun den ene app. Tilføj de øvrige
+app-locks efter `--input-locks`, og brug samme fulde appudvalg i katalog- og
+apt-inputtet. Allerede byggede pakker kan genbruges i outputmappen, når deres
+kvitteringer og hashes matcher. En ny app kræver dermed ikke en ny version
+eller genbygning af kernen. Gaten kontrollerer stadig alle pakkeidentiteter,
+fil-ejerskab og den rigtige isolerede apt-simulering; vilkårlige pakker tillades
+ikke. `migration` er fortsat det faste sæt til de fem oprindelige apps.
 
 GPG-signeret apt-repository fremstilles med `scripts/build_apt_repository.py`
 (`--inputs`, `--output`, `--gpg-exe`, `--gpg-sha256`, `--gnupg-home`,

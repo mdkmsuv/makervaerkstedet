@@ -127,7 +127,7 @@ def release_packages(specs, release_set='legacy'):
             apps.append(validate_spec(spec)['id'])
     if release_set == 'legacy': valid = names == LEGACY_PACKAGES
     elif release_set == 'base': valid = names == BASE_PACKAGES
-    elif release_set == 'app': valid = BASE_PACKAGES <= names and len(apps) == 1 and len(names) == 4
+    elif release_set == 'app': valid = BASE_PACKAGES <= names and bool(apps) and len(names) == len(BASE_PACKAGES) + len(apps)
     elif release_set == 'migration': valid = BASE_PACKAGES <= names and set(apps) == BUILTIN_APPS and len(names) == 8
     else: raise ValueError('invalid_release_set')
     if not valid: raise ValueError('exact_release_package_set_required')

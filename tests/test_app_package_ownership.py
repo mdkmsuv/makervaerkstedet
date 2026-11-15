@@ -71,6 +71,19 @@ class AppOwnershipTests(unittest.TestCase):
         with self.assertRaises(ValueError): packages.release_packages(base+[app], 'base')
         with self.assertRaises(ValueError): packages.release_packages(base+[{'package': 'curl'}], 'app')
 
+    def test_app_release_can_add_a_new_app_without_dropping_existing_choices(self):
+        base = [{'package': name} for name in packages.BASE_PACKAGES]
+        specs = []
+        for index, app_id in enumerate(('idebog', 'lommeregner')):
+            specs.append(packages.prepare(self.root, descriptor(app_id, 8890 + index, project=False),
+                self.records(f'usr/share/makervaerkstedet/apps/{app_id}/www/index.html'),
+                self.root / app_id))
+        self.assertEqual(packages.release_packages(base + specs, 'app'),
+                         packages.BASE_PACKAGES | {spec['package'] for spec in specs})
+        with self.assertRaises(ValueError): packages.release_packages(base, 'app')
+        with self.assertRaises(ValueError): packages.release_packages(base[:-1] + specs, 'app')
+        with self.assertRaises(ValueError): packages.release_packages(base + specs + [specs[0]], 'app')
+
     def test_repository_descriptors_are_independent_and_base_allowlist_has_no_app_ui(self):
         ids = set()
         for folder in sorted((ROOT/'apps').iterdir()):
@@ -78,7 +91,7 @@ class AppOwnershipTests(unittest.TestCase):
             packages.validate_app_descriptor(app); ids.add(app['id'])
             manifest = json.loads((folder/'files.json').read_text())
             self.assertTrue(manifest['files'] or app['id'] == 'scratch')
-        self.assertEqual(ids, {'laser', 'folie', '3dprint', 'scratch', 'microbit'})
+        self.assertTrue(packages.BUILTIN_APPS <= ids)
         allowlist = json.loads((source_path('linux-elevhub/packaging/base-design-files.json', ROOT)).read_text())
         app_ui = {'web/laser.html', 'web/laservaerksted', 'web/model3d.html', 'web/model3d.css'}
         self.assertFalse(app_ui.intersection(allowlist))

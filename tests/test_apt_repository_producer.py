@@ -19,10 +19,10 @@ class ModernGateTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory(); self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
 
-    def inputs(self, release_set):
-        descriptors = []
-        if release_set == 'app': descriptors = [descriptor()]
-        if release_set == 'migration':
+    def inputs(self, release_set, app_descriptors=None):
+        descriptors = [] if app_descriptors is None else app_descriptors
+        if release_set == 'app' and app_descriptors is None: descriptors = [descriptor()]
+        if release_set == 'migration' and app_descriptors is None:
             descriptors = [descriptor(identity, 8800 + index) for index, identity in
                            enumerate(('laser', 'folie', '3dprint', 'scratch', 'microbit'))]
             descriptors[3]['package'] = 'makervaerkstedet-scratch'
@@ -48,6 +48,14 @@ class ModernGateTests(unittest.TestCase):
             with self.subTest(release_set=release_set):
                 self.assertEqual(apt.validate_install_gate(spec['install_gate'], spec['packages'],
                     release_set=release_set, app_descriptors=spec['app_descriptors']), spec['install_gate']['sha256'])
+
+    def test_app_catalog_growth_keeps_all_packages_bound_to_native_gate(self):
+        spec = self.inputs('app', [descriptor(project=False), descriptor('lommeregner', 8890, project=False)])
+        self.assertEqual(apt.validate_install_gate(spec['install_gate'], spec['packages'],
+            release_set='app', app_descriptors=spec['app_descriptors']), spec['install_gate']['sha256'])
+        with self.assertRaises(ValueError):
+            apt.validate_install_gate(spec['install_gate'], spec['packages'][:-1],
+                release_set='app', app_descriptors=spec['app_descriptors'])
 
     def test_modern_receipt_cannot_downgrade_to_legacy_or_cross_release_sets(self):
         spec = self.inputs('base')

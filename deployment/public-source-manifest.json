@@ -21,6 +21,7 @@
     "sdk"
   ],
   "explicitFiles": [
+    "apps/lommeregner/README.md",
     "system/linux-elevhub/server/elevhub/web/assets/workshop-3d-v2.webp",
     "system/linux-elevhub/server/elevhub/web/assets/workshop-folie-v2.webp",
     "system/linux-elevhub/server/elevhub/web/assets/workshop-laser-v2.webp",

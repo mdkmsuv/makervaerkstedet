@@ -58,7 +58,7 @@ def validate_release_packages(packages,release_set,app_descriptors):
         elif name not in base_pairs or entry['architecture']!=base_pairs[name]:raise ValueError('package_not_allowlisted')
     if len(set(names))!=len(names):raise ValueError('duplicate_release_package')
     if set(names)!=BASE_PACKAGES|set(apps):raise ValueError('exact_release_package_set_required')
-    if ((release_set=='base' and apps) or (release_set=='app' and len(apps)!=1)
+    if ((release_set=='base' and apps) or (release_set=='app' and not apps)
             or (release_set=='migration' and (ids!=BUILTIN_APPS or len(apps)!=5))):
         raise ValueError('exact_release_package_set_required')
     return {(entry['package'],entry['architecture']) for entry in packages}

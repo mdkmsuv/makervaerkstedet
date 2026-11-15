@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build/reuse all four pinned inputs, then require the clean Debian13 gate.
+"""Build/reuse the pinned core and selected apps, then require the Debian13 gate.
 
 Individual build_debian.py archives are intermediate artifacts. A releasable
 set requires this command to finish and produce release-build.json. No signing

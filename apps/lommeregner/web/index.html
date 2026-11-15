@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="da" data-school-theme="red">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lommeregner · Makerværkstedet</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <header class="brand">
+    <span class="brand-mark" aria-hidden="true"></span>
+    <span data-school-name>Makerværkstedet</span>
+  </header>
+  <main id="main">
+    <h1>Lommeregner</h1>
+    <p class="intro">Tryk på et tal, vælg +, −, × eller ÷, og skriv næste tal. Tryk = for at se svaret.</p>
+    <section class="calculator" aria-label="Lommeregner">
+      <div class="screen">
+        <p id="expression" class="expression">&nbsp;</p>
+        <output id="display" aria-label="Tal og resultat" aria-live="polite" aria-atomic="true">0</output>
+      </div>
+      <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
+      <div id="keypad" class="keypad">
+        <button type="button" class="utility clear" data-key="clear">Ryd</button>
+        <button type="button" class="utility" data-key="backspace" aria-label="Slet sidste ciffer">Slet</button>
+        <button type="button" class="operator" data-key="/" data-operator aria-label="Divider" aria-pressed="false">÷</button>
+        <button type="button" data-key="7">7</button>
+        <button type="button" data-key="8">8</button>
+        <button type="button" data-key="9">9</button>
+        <button type="button" class="operator" data-key="*" data-operator aria-label="Gang" aria-pressed="false">×</button>
+        <button type="button" data-key="4">4</button>
+        <button type="button" data-key="5">5</button>
+        <button type="button" data-key="6">6</button>
+        <button type="button" class="operator" data-key="-" data-operator aria-label="Minus" aria-pressed="false">−</button>
+        <button type="button" data-key="1">1</button>
+        <button type="button" data-key="2">2</button>
+        <button type="button" data-key="3">3</button>
+        <button type="button" class="operator" data-key="+" data-operator aria-label="Plus" aria-pressed="false">+</button>
+        <button type="button" data-key="sign" aria-label="Skift fortegn">+/−</button>
+        <button type="button" data-key="0">0</button>
+        <button type="button" data-key="," aria-label="Decimalkomma">,</button>
+        <button type="button" class="equals" data-key="=" aria-label="Beregn">=</button>
+      </div>
+    </section>
+    <div class="help">
+      <p>Regner ét trin ad gangen. Fx giver 2 + 3 × 4 svaret 20.</p>
+      <p>Tastatur: tal, +, −, * og /. = giver altid svar. Enter trykker på den valgte knap. Backspace sletter. Esc rydder.</p>
+      <p>Op til 12 cifre. Svar afrundes til 12 betydende cifre. Dine regnestykker gemmes ikke.</p>
+    </div>
+  </main>
+  <footer>Makerværkstedet · Udviklet af Mathias Kusk Damgaard · Kreditering: Klostermarksskolen</footer>
+</body>
+</html>

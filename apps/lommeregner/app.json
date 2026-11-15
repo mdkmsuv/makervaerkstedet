@@ -1,0 +1,25 @@
+{
+  "schema": 2,
+  "id": "lommeregner",
+  "navn": "Lommeregner",
+  "description": "Regn med plus, minus, gange og division. Dine regnestykker gemmes ikke.",
+  "category": "ide",
+  "icon": null,
+  "version": "1.0.0",
+  "package": "makervaerkstedet-app-lommeregner",
+  "architecture": "all",
+  "sdk": 1,
+  "min_core": "2.1.0~",
+  "start": "http://127.0.0.1:8892/",
+  "offline": true,
+  "aflevering": null,
+  "kraever_internet": false,
+  "licens": "GPL-3.0-or-later",
+  "project": null,
+  "capabilities": {
+    "required": [],
+    "optional": [
+      "theme-v1"
+    ]
+  }
+}

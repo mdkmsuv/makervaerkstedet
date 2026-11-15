@@ -1,0 +1,10 @@
+{
+  "schema": 1,
+  "files": [
+    {
+      "source": "apps/lommeregner/web",
+      "path": "usr/share/makervaerkstedet/apps/lommeregner/www",
+      "tree": true
+    }
+  ]
+}
