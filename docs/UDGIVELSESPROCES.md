@@ -91,6 +91,14 @@ Hver tilføjet, fjernet eller ændret fil skal kunne forklares af opgaven. Kan d
 Byggeinput ændres kun som en selvstændig opgave med nyt fingeraftryk i `artifact-manifest.json`.
 
 ### Port 5 — Windows på test-VM
+
+Server-EXE'en bruger den understøttede `school-flat-v1`-installation og
+opdateringsvej. Byg dens skolepakke med `scripts/build_school_package.py`
+**uden `--generation-layout`**. En generationspakke er til den særskilte
+vedligeholdelsesoperator og kan ikke installeres af denne EXE. Byggeren
+afviser `requiresGenerationLayout: true` før kompilering; ændr ikke
+flaget i en færdig pakke, men byg pakken igen med de korrekte valg.
+
 ```
 python -B system/windows/inno/build.py --inputs <inputs.json> --output <exe-mappe> --payload-output <payload-mappe>
 system/windows/inno/Test-InstallOnVm.ps1 -VMName <test-VM> -Checkpoint <rent øjebliksbillede> -CredentialFile <privat fil> -Payloads <A.zip>,<B.zip>,<C.zip> -ResultFile <resultat.json>

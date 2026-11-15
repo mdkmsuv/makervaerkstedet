@@ -72,6 +72,12 @@ def validate(value,*,test_artifact=False):
     if value['role']=='server':required|={'server/install.ps1','server/public-apt-cache-acl.ps1','server/verify.py','deployment/school-setup/Setup-School.ps1','deployment/school-setup/enrollment.py','hub/konfiguration.windows.json','hub/simple_updates.py','app/simple_release.py'}
     else:required|={'app/laser_station_install.py','deployment/school-setup/Setup-LaserStation.ps1'}
     if not required<=set(value['files']):raise ValueError('complete_role_runtime_required')
+    if value['role']=='server':
+        marker=json.loads((package/'elevhub-package.json').read_text(encoding='utf-8'))
+        # The EXE lifecycle installs/updates school-flat-v1. Generation-only
+        # packages use the separate operator, never this installation path.
+        if not isinstance(marker,dict) or marker.get('requiresGenerationLayout',False) is not False:
+            raise ValueError('server_installer_requires_flat_layout')
     for name in value['files']:
         review.reject_removed_runtime(name)
         if Path(name).suffix.lower() in ('.key','.pfx','.p12','.sqlite','.sqlite3','.db') or Path(name).name in ('school.json','installation-owner.json','server-launch.json','windows.json'):raise ValueError('private_state_in_package')

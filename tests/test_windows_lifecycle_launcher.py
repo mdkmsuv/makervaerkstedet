@@ -158,6 +158,7 @@ class BuilderInputTests(unittest.TestCase):
         required={'runtime/python.exe','runtime/python314.dll','runtime/python314.zip','runtime/python314._pth','elevhub-package.json','school-package.json','makerspace-release.json','integrity.json','CREDITS.md','server/install.ps1','server/public-apt-cache-acl.ps1','server/verify.py','deployment/school-setup/Setup-School.ps1','deployment/school-setup/enrollment.py','hub/konfiguration.windows.json','hub/simple_updates.py','app/simple_release.py'}
         for name in required:
             file=package/name;file.parent.mkdir(parents=True,exist_ok=True);file.write_bytes(b'synthetic fixture')
+        (package/'elevhub-package.json').write_text(json.dumps({'requiresGenerationLayout':False}),encoding='utf-8')
         # Keep the real model3d receipt and all hash-bound runtime assets intact.
         receipt=source_path('web/vendor/model3d-vendor-manifest.json', ROOT)
         model3d=json.loads(receipt.read_text(encoding='utf-8'))
@@ -185,6 +186,18 @@ class BuilderInputTests(unittest.TestCase):
         helper=self.package/'server/public-apt-cache-acl.ps1'
         helper.unlink();del self.value['files']['server/public-apt-cache-acl.ps1']
         with self.assertRaisesRegex(ValueError,'complete_role_runtime_required'):
+            build.validate(self.value,test_artifact=True)
+    def test_server_exe_rejects_generation_only_or_invalid_layout_before_build(self):
+        marker=self.package/'elevhub-package.json'
+        for flag in (True,'true',1,None):
+            with self.subTest(flag=flag):
+                marker.write_text(json.dumps({'requiresGenerationLayout':flag}),encoding='utf-8')
+                self.value['files']['elevhub-package.json']=build.sha(marker)
+                with self.assertRaisesRegex(ValueError,'server_installer_requires_flat_layout'):
+                    build.validate(self.value,test_artifact=True)
+        for compatible in ({'requiresGenerationLayout':False},{}):
+            marker.write_text(json.dumps(compatible),encoding='utf-8')
+            self.value['files']['elevhub-package.json']=build.sha(marker)
             build.validate(self.value,test_artifact=True)
     def test_modified_or_added_source_during_copy_cannot_be_resealed(self):
         original_copytree=build.shutil.copytree

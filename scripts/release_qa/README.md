@@ -26,7 +26,9 @@ må aldrig committes.
 ## Rækkefølge i en testkørsel
 
 1. **Byg pakker og installere.** Elevpakker (deb) i WSL og Windows-installere
-   med `windows/inno/build.py`. Se udgivelsesprocessen. Til en signeret
+   med `system/windows/inno/build.py`. Server-EXE'ens skolepakke bygges uden
+   `--generation-layout`; EXE'en installerer/opdaterer `school-flat-v1`.
+   En generationspakke kræver den særskilte operator. Se udgivelsesprocessen. Til en signeret
    kandidat-apt kan `build_signed_apt_candidate.py` bruges (se nedenfor).
 2. **Installationssimulering.** Elevpakkerne simuleres i WSL, før de
    installeres rigtigt. Kvitteringen `install-simulation.json` bruges videre.
@@ -53,7 +55,7 @@ må aldrig committes.
    `Test-ServerUpdateOnVm.ps1`. Den opdaterer en eksisterende server og
    kontrollerer, at profil, nøgler og køer er bevaret.
    For en ren installation fra et checkpoint bruges
-   `windows/inno/Test-InstallOnVm.ps1`.
+   `system/windows/inno/Test-InstallOnVm.ps1`.
 9. **ISO-installation.** Brug en NY, tom Gen-2 VM med Secure Boot.
    Brug aldrig en VM med data. Styr installationen med `HyperVConsole.ps1`
    og `Wait-VmScreen.ps1` (se nedenfor). Vær opmærksom på:
