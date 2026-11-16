@@ -8,6 +8,20 @@ Description: Installationen kunne ikke vælge en intern disk
  .
  ${DETAILS}
 
+Template: elevhub/install-disk
+Type: select
+Choices: ${CHOICES}
+Choices-C: ${CHOICES_C}
+Default: cancel
+Description: Vælg den interne disk til Makerværkstedet
+ Computeren har flere interne diske. Vælg den disk, som skal bruges
+ til systemet. Kontroller diskens navn, størrelse og model.
+ .
+ Kun den valgte disk skal slettes. USB-diske og installationsmediet
+ er udeladt. Du skal bekræfte sletningen på næste skærm.
+ .
+ Vælg Annuller, hvis du er i tvivl. Ingen disk er valgt på forhånd.
+
 Template: elevhub/disk-wipe-confirm
 Type: boolean
 Default: false

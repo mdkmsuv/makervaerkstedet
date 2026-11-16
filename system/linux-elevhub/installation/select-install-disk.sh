@@ -1,5 +1,5 @@
 #!/bin/sh
-# Select exactly one safe Debian installer target.
+# Enumerate or select a safe Debian installer target.
 #
 # Production reads only /sys/block and /proc/mounts.  The ELEVHUB_TEST_* knobs
 # exist solely for the shell fixtures and are never set by the generated ISO.
@@ -10,6 +10,22 @@ mounts=${ELEVHUB_TEST_MOUNTS:-/proc/mounts}
 test_mode=${ELEVHUB_TEST_MODE:-0}
 boot_source=''
 count=''
+mode=automatic
+requested=''
+case "$#:$*" in
+    0:) ;;
+    1:--list-candidates) mode=list ;;
+    *)
+        if [ "$#" -eq 2 ]; then
+            case "$1" in
+                --check|--select) mode=${1#--}; requested=$2 ;;
+                *) echo 'Elevhub: invalid disk selector arguments' >&2; exit 1 ;;
+            esac
+        else
+            echo 'Elevhub: invalid disk selector arguments' >&2
+            exit 1
+        fi ;;
+esac
 
 # One photo of the error screen must be enough to diagnose an unknown PC:
 # advice first, then every disk and every PCI storage controller.
@@ -105,6 +121,7 @@ case "$boot_disk" in
 esac
 
 candidate=''
+candidates=''
 count=0
 for entry in "$sysroot"/block/*; do
     [ -d "$entry" ] || continue
@@ -130,11 +147,31 @@ for entry in "$sysroot"/block/*; do
     esac
     count=$((count + 1))
     candidate=$name
+    candidates="${candidates}${candidates:+
+}/dev/$name"
 done
 
-[ "$count" -eq 1 ] || fail "found $count safe internal disk candidates (boot=$boot_disk)"
+[ "$count" -gt 0 ] || fail "found $count safe internal disk candidates (boot=$boot_disk)"
+if [ "$mode" = list ]; then
+    printf '%s\n' "$candidates"
+    exit 0
+fi
 
 selected=/dev/$candidate
+if [ "$mode" = check ] || [ "$mode" = select ]; then
+    eligible=false
+    for disk in $candidates; do
+        [ "$disk" != "$requested" ] || eligible=true
+    done
+    [ "$eligible" = true ] || fail "requested disk is not a current safe internal target: $requested"
+    selected=$requested
+else
+    [ "$count" -eq 1 ] || fail "found $count safe internal disk candidates (boot=$boot_disk)"
+fi
+if [ "$mode" = check ]; then
+    printf '%s\n' "$selected"
+    exit 0
+fi
 if [ "$test_mode" = 1 ]; then
     printf '%s\n' "$selected"
     exit 0

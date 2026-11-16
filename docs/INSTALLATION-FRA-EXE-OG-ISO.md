@@ -150,8 +150,13 @@ En halvfærdig skoleopsætning bliver afvist og meldes ikke som opdateret.
    samme ISO til en NY Gen-2 VM med Secure Boot og én tom disk.
 2. Start fra mediet. Vælg **Dansk** ved tastaturspørgsmålet, hvis det vises.
    Netværket skal have internet under Debian-installationen.
-3. Kontrollér den viste disks model og størrelse. Sletbekræftelsen står på
-   **Nej**; vælg kun **Ja**, når den aftalte, tomme testdisk er vist.
+3. Har computeren flere interne diske, skal du først vælge systemdisken
+   ud fra navn, størrelse og model. **Annuller** er valgt fra start;
+   USB-diske og installationsmediet kan ikke vælges. Ved én intern disk
+   vælges den automatisk. Kontrollér derefter den viste disks model og
+   størrelse. Sletbekræftelsen står på **Nej**; vælg kun **Ja**, når den
+   aftalte disk er vist, og alle dens data må slettes. De øvrige diske
+   bruges ikke til installationen. Afbryd, hvis du er i tvivl.
 4. Vent, til installeren selv slukker. Fjern USB eller frakobl ISO'en og
    start fra den installerede disk.
 5. Første boot tilbyder **Skoleopsætning: tryk S og Enter inden 10 sekunder**.
