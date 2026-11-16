@@ -60,17 +60,22 @@ Nyt projekt og filimport bryder bindingen til et tidligere gemt projekt.
 Projektbroen leveres af [den lokale tjeneste](../../../system/linux-elevhub/projekter/README.md).
 Den ændrer ikke upstream-pin eller filer i dette repositorys færdige editor.
 
-**Gemning og autogem, kontrolleret i kilden 16. november 2026:** eleven
-navngiver sit projekt ved start, men dette skriver ikke alene en projektfil.
-**Gem projekt** gemmer hele `.sb3` lokalt. Den fælles browserkopi cirka hvert
-15. sekund ved ændringer er kun til gendannelse og opdaterer ikke det gemte
-projekt. Rigtig autogem af navngivne Scratch-projekter er endnu ikke implementeret.
+**Autogem fra app `15.1.1+local.20261116.1` / core `2.1.0~20261116.1`:**
+`../web/creative-app.js` indlæser appens egen `../web/autosave.js`.
+Den gemmer første navngivne projekt og kontrollerer derefter ændringer cirka
+hvert femte sekund. Hele `.sb3` gemmes på elevcomputeren. Eleven venter på
+**Gemt på denne computer** og genåbner gennem **Find mit projekt** på samme enhed.
+Skoleserver og netforbindelse er ikke nødvendige. En afbrudt gemning kan kun
+gendannes frem til seneste færdige gemmekvittering, ikke tastetryk efter den.
 
-Når autogem tilføjes, skal ændringsregistrering, tidsstyring og gemmestatus
-ligge i denne apps integration (`apps/scratch/`), ikke i skolens serverkode.
-Appen må bruge den eksisterende lokale `ElevhubProjectSession.save()` og
-projekthylde til selve skrivningen/versioneringen. Det skal fungere uden
-skoleserver/netforbindelse og bevare det fælles elevskift. Se
+Autogem eksporterer indholdet uden at genindlæse det eller nulstille Fortryd/
+Gentag. Normal manuel **Gem projekt** er fortsat tilgængelig og bevarer en
+manuel version; gentagne automatiske gemninger erstatter den forrige auto-
+arbejdsudgave. Browserens særskilte 15-sekunders gendannelseskopi bevares også.
+Ved åbning af en tidligere version viser appen, at autogem er på pause; eleven
+vælger selv **Gem projekt** eller **Gem kopi**, før der gemmes videre.
+Appsiden ejer timer og status; fælles lokal projekthylde og baggrundsgemmegate
+sørger for sikker skrivning og elevskift. Se
 [appens ansvarsgrænse](../../../docs/APP-PLATFORM.md#autogem-tilhører-appen-og-virker-lokalt).
 
 `dependency.patch` låser desuden hull.js til den rettede Git-commit

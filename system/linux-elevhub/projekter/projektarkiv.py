@@ -1,7 +1,8 @@
-"""Lokale projektfiler med uforanderlige versioner. Ingen personlige elevkonti.
+"""Lokale projektfiler med beskyttede manuelle versioner. Ingen elevkonti.
 
 SQLite (Python standardbibliotek) holder metadata/transaktioner; filer skrives og
-fsync'es før metadata offentliggøres. Historik slettes aldrig via elev-API'et.
+fsync'es før metadata offentliggøres. Gentagne autogemninger erstatter kun den
+umiddelbart forrige autoversion; manuelle versioner bevares via elev-API'et.
 Dette er versionshistorik på elevcomputeren, ikke en separat katastrofebackup.
 """
 from contextlib import contextmanager
@@ -140,19 +141,32 @@ class Projektarkiv:
             if old:
                 if old['kind'] != kind or old['filename'] != filename:
                     raise ValueError('Filtype og filnavn kan ikke skiftes på et eksisterende projekt. Gem en kopi.')
-                latest = db.execute('SELECT digest FROM versions WHERE project=? AND revision=?', (project, revision)).fetchone()
+                latest = db.execute('SELECT digest,source FROM versions WHERE project=? AND revision=?', (project, revision)).fetchone()
                 if latest['digest'] == digest and old['name'] == name and old['folder'] == folder and not old['archived']:
+                    if source == 'browser' and latest['source'] == 'autosave':
+                        # An explicit save protects the current working copy,
+                        # even when its bytes need no second immutable blob.
+                        db.execute('UPDATE versions SET source=? WHERE project=? AND revision=?',
+                                   ('browser', project, revision))
+                        db.commit()
                     return self.meta(project)  # safe retry, no duplicate version
             if expected != revision:
                 raise Konflikt('Der er gemt en nyere version. Åbn den, eller gem dit arbejde som en ny kopi.')
             if old and old['archived']:
                 raise Konflikt('Projektet er arkiveret. Gem dit arbejde som en ny kopi.')
-            # Count actual immutable blobs, including an orphan after a failed write.
+            # Keep room for both copies until commit. Never free quota by
+            # removing the last recoverable autosave before its replacement.
             total = sum(p.stat().st_size for p in self.files.glob('*/*.bin'))
             if total + len(data) > self.max_total:
                 raise OSError('Projektarkivet er fyldt. Bed læreren om hjælp; tidligere versioner bevares.')
-            directory = self.files / project
+            directory = self._archive_directory(project)
             directory.mkdir(exist_ok=True)
+            previous_auto = None
+            if old and source == 'autosave' and latest['source'] == 'autosave':
+                previous_auto = directory / f'{revision}.bin'
+                if (previous_auto.is_symlink() or previous_auto.resolve() != previous_auto
+                        or not previous_auto.is_file()):
+                    raise OSError('Ugyldig versionsfil.')
             revision += 1
             final = directory / f'{revision}.bin'
             temp = directory / f'{uuid.uuid4().hex}.tmp'
@@ -171,9 +185,17 @@ class Projektarkiv:
                     ON CONFLICT(id) DO UPDATE SET name=excluded.name, folder=excluded.folder,
                     revision=excluded.revision, modified=excluded.modified''',
                     (project, name, folder, kind, filename, revision, now))
+                if previous_auto is not None:
+                    db.execute('DELETE FROM versions WHERE project=? AND revision=? AND source=?',
+                               (project, revision - 1, 'autosave'))
                 db.commit()
             finally:
                 temp.unlink(missing_ok=True)
+            if previous_auto is not None:
+                # The new file and metadata are durable first. Interrupted
+                # cleanup can leave an orphan, never remove the current copy.
+                self._archive_directory(project)
+                self._delete_paths([previous_auto])
             return self.meta(project)
 
     def read(self, project, revision=None):

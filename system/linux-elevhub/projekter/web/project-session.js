@@ -16,7 +16,7 @@
   let adapter, bound = null, naming = null, saved = null, initial = null;
   let busy = false, importing = false, approved = false, finishing = null;
   let dialog, status, cancelDialog, currentRequest = null, polling = false, backupBusy = false;
-  let started = false;
+  let started = false, historical = false;
   const node = (tag, text, attrs = {}) => {
     const n = document.createElement(tag);
     if (text !== undefined) n.textContent = text;
@@ -35,9 +35,9 @@
   }
   const post = (action, data) => request(sessions + action, {method:'POST',
     headers:{'Content-Type':'application/json', 'X-Elevhub-Session':'1'}, body:JSON.stringify(data)}).then(r => r.json());
-  async function signature() {
+  async function signature(context) {
     if (adapter.signature) return JSON.stringify({name:adapter.name(), data:await adapter.signature()});
-    const data = await (await adapter.export()).arrayBuffer();
+    const data = await (await adapter.export(context)).arrayBuffer();
     return [...new Uint8Array(await crypto.subtle.digest('SHA-256', data))].join(',');
   }
   const dirty = async () => await signature() !== saved;
@@ -59,7 +59,7 @@
     if (busy || importing || finishing || approved || backupBusy) return;
     backupBusy = true;
     try {
-      if (await dirty()) await recovery('put', {blob:await adapter.export(), bound, naming, saved, time:Date.now(), kind:adapter.type});
+      if (await dirty()) await recovery('put', {blob:await adapter.export(), bound, naming, saved, historical, time:Date.now(), kind:adapter.type});
     } catch (_) { say('Sikkerhedskopien kunne ikke gemmes. Brug Gem projekt.', true); }
     finally { backupBusy = false; }
   }
@@ -69,23 +69,31 @@
     if (dialog.open) dialog.close();
     dialog.replaceChildren(content); dialog.showModal();
   }
-  async function save() {
+  const saveContextReady = () => !!(started && naming && !historical && !importing && !finishing && !approved && !dialog.open);
+  const saveState = () => ({ready:!busy && saveContextReady(), stored:!!bound && Number(bound.expected) > 0, historical});
+  async function save(options = {}) {
     if (!bound || busy) return false;
     busy = true;
     const target = bound;
+    const context = {background:options.background === true};
+    const backgroundCurrent = () => saveContextReady() && naming === options.expectedNaming;
     try {
-      if (adapter.prepareSave) await adapter.prepareSave();
+      if (adapter.prepareSave) await adapter.prepareSave(context);
+      if (options.background === true && !backgroundCurrent()) return null;
       if (naming && adapter.setName && adapter.name()) {
         naming.title = clean(adapter.name(), 100);
         target.name = naming.title; target.filename = fileName(naming);
       }
-      const sig = await signature(), blob = await adapter.export();
+      const sig = await signature(context), blob = await adapter.export(context);
+      if (options.background === true && !backgroundCurrent()) return null;
       if (target !== bound) throw Error('Projektet blev skiftet. Gem det nye projekt igen.');
-      const query = new URLSearchParams({...target, kind:adapter.type});
+      const query = new URLSearchParams({...target, kind:adapter.type,
+        ...(options.background === true ? {autosave:'1'} : {})});
       const meta = await (await request(base + 'save?' + query, {method:'POST',
         headers:{'Content-Type':'application/octet-stream', 'X-Elevhub-Project':'1'}, body:blob})).json();
       if (target !== bound) return false;
       target.expected = meta.revision; saved = sig;
+      if (!context.background) historical = false;
       say('Gemt på denne computer · ' + target.folder + ' · ' + target.name);
       window.dispatchEvent(new CustomEvent('elevhub-project-saved', {detail:naming}));
       return true;
@@ -125,7 +133,7 @@
         try {
           if (adapter.setName) await adapter.setName(value.title);
           if (starting) {
-          initial = saved = await signature(); started = true; approved = false;
+          initial = saved = await signature(); started = true; approved = false; historical = false;
           say(value.classroom + ' · ' + value.student + ' · ' + value.title);
           window.dispatchEvent(new CustomEvent('elevhub-project-named', {detail:value}));
             done(true); return;
@@ -140,12 +148,15 @@
       show(form); classroom.focus();
     });
   }
-  const saveProject = () => {
-    if (bound) return save();
+  const saveProject = (options = {}) => {
+    // Check and acquire save()'s busy lock in one synchronous turn. Apps may
+    // have awaited dirty() while a different pupil or import took over.
+    if (options.background === true && (!saveState().ready || naming !== options.expectedNaming)) return null;
+    if (bound) return save(options);
     if (!naming) return saveDialog();
     bound = {id:crypto.randomUUID().replaceAll('-', ''), name:naming.title,
       folder:naming.classroom + ' · ' + naming.student, filename:fileName(naming), expected:0};
-    return save();
+    return save(options);
   };
   async function clearWork() {
     if (typeof adapter.reset !== 'function') throw Error('Værkstedet er ikke klar til elevskift. Dit arbejde er stadig åbent.');
@@ -155,7 +166,7 @@
       while (backupBusy) await new Promise(r => setTimeout(r, 25));
       await recovery('delete'); await adapter.reset();
       bound = naming = null;
-      started = false;
+      started = false; historical = false;
       sessionStorage.removeItem('elevhub-project-binding-' + key);
       localStorage.removeItem('elevhub-project-folder');
       initial = saved = await signature(); approved = true;
@@ -207,7 +218,7 @@
     importing = true;
     try {
       await build();
-      naming = previousName; bound = null; saved = null; approved = false;
+      naming = previousName; bound = null; saved = null; approved = false; historical = false;
       started = !!naming;
       if (naming) {
         if (adapter.setName) await adapter.setName(naming.title);
@@ -235,7 +246,8 @@
       naming = parts.length === 2 ? {classroom:parts[0], student:parts[1], title:m.name} : null;
       bound = m.filename.toLowerCase().endsWith(adapter.extension.toLowerCase()) ?
         {id:m.id, name:m.name, folder:m.folder, filename:m.filename, expected:m.revision} : null;
-      saved = revision && Number(revision) !== m.revision ? null : await signature(); approved = false;
+      historical = !!(revision && Number(revision) !== m.revision);
+      saved = historical ? null : await signature(); approved = false;
       started = true;
       if (naming) window.dispatchEvent(new CustomEvent('elevhub-project-named', {detail:naming}));
       if (dialog.open) dialog.close(); history.replaceState(null, '', location.pathname);
@@ -316,17 +328,20 @@
         if (await dirty() && !await finish()) return;
         importing = true; await adapter.import(old.blob, old.bound?.name || 'Gendannet projekt');
         bound = old.bound; naming = old.naming; saved = old.saved; approved = false;
+        // Old recovery records did not distinguish dirty work from an opened
+        // historical revision. Keep an ambiguous bound copy read-only to autosave.
+        historical = typeof old.historical === 'boolean' ? old.historical : !!(bound && saved === null);
         started = true; if (dialog.open) dialog.close();
         recover.hidden = true; say('Arbejdet er gendannet. Gem projektet, når du er klar.');
       } catch (e) { say(e.message, true); }
       finally { importing = false; }
     };
     recovery('get').then(v => { recover.hidden = !v; }).catch(() => {});
-    window.ElevhubProjectSession = {finish, save:saveProject, open:shelf, dirty, reset:clearWork,
+    window.ElevhubProjectSession = {finish, save:saveProject, saveState, open:shelf, dirty, reset:clearWork,
       replace:replaceProject, begin:() => { approved = false; return saveDialog(false, true); }, naming:() => naming};
     window.addEventListener('elevhub-project-changed', () => {
       if (importing) return;
-      bound = null; saved = null; approved = false;
+      bound = null; saved = null; approved = false; historical = false;
       sessionStorage.removeItem('elevhub-project-binding-' + key);
       say('Nyt projekt · gem med klasse, navn og projektnavn.');
     });

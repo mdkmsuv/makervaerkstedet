@@ -2,6 +2,11 @@
   "schema": 1,
   "files": [
     {
+      "source": "apps/3dprint/web/autosave.js",
+      "path": "usr/share/makervaerkstedet/apps/3dprint/www/autosave.js",
+      "tree": false
+    },
+    {
       "source": "apps/3dprint/web/model3d.html",
       "path": "usr/share/makervaerkstedet/apps/3dprint/www/model3d.html",
       "tree": false

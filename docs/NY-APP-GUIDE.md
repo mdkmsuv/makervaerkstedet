@@ -136,10 +136,23 @@ skal ikke have autogem-logik eller løbende kopier af elevens projekt. Autogem
 skal virke uden forbindelse til skoleserveren og følge det eksisterende
 elevskift, så næste elev ikke fortsætter i forrige elevs projekt.
 
-Den nuværende fælles browserkopi til gendannelse er ikke autogem til
-projektarkivet. Scratch har endnu kun manuel projektgemning og denne
-sikkerhedskopi; autogem er **ikke implementeret** alene ved at følge adapter-
-kontrakten. Se [ansvarsgrænse og aktuel status](APP-PLATFORM.md#autogem-tilhører-appen-og-virker-lokalt).
+En app, der vælger autogem, skal kræve mindst core `2.1.0~20261116.1` i
+manifestet. `saveState()` fortæller, om sessionen er klar og allerede har en
+bekræftet arkivfil. Gem også første navngivne projekt, når `stored` er falsk.
+Bevar referencen fra `naming()` under en asynkron ændringskontrol, og kald
+`save({background:true,expectedNaming})`. `null` betyder afvist kontekstskift,
+`false` betyder faktisk gemmefejl, og `true` er en kvitteret gemning. Vis ikke
+Gemt, hvis projektet er ændret igen under skrivningen. Adapterens `prepareSave`
+og `export` får `{background:true}` og skal undgå at afbryde aktiv redigering.
+`saveState().historical` angiver en tidligere åbnet version: autogem skal være
+på pause og vise dette, indtil eleven selv gemmer eller laver en kopi. En
+historisk åbning må aldrig automatisk erstatte den nyeste arbejdsudgave.
+
+Scratch og 3D har denne app-ejede integration i `web/autosave.js`. Autogem
+bevarer Fortryd/Gentag i den åbne editor og erstatter kun den forrige
+automatiske arbejdsudgave ved gentagne autogemninger; manuelle versioner
+bevares. Gendan-kopien i browseren er en særskilt sikkerhedsfunktion.
+Se [ansvarsgrænse og versionskrav](APP-PLATFORM.md#autogem-tilhører-appen-og-virker-lokalt).
 
 Appens grænse er 1 MiB og 100.000 tegn i noteseksemplet; øg kun inden for
 systemets grænse på 50 MiB. Ugyldig import skal bevare det åbne dokument.

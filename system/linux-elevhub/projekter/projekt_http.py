@@ -148,13 +148,16 @@ def handle(handler):
         elif h.command == 'POST' and path == '/api/save':
             origin = ('https://' if isinstance(h.connection, ssl.SSLSocket) else 'http://') + h.headers.get('Host', '')
             # Exact origin plus non-simple header. No LAN access or CORS.
-            source = 'browser'
             if h.headers.get('Origin') != origin or h.headers.get('X-Elevhub-Project') != '1':
                 raise PermissionError('Gem fra projektarkivets egen side.')
             if h.headers.get_content_type() != 'application/octet-stream':
                 h.close_connection = True
                 h.svar(415, {'error': 'Forkert filtype i forespørgslen.'})
                 return True
+            autosave = arg('autosave', '0')
+            if autosave not in ('0', '1'):
+                raise ValueError('Ugyldigt valg af autogemning.')
+            source = 'autosave' if autosave == '1' else 'browser'
             data = h.laes_krop(size)
             kind = project_kind(arg('filename'), arg('kind'), data,h.server.projekt_apps)
             try:

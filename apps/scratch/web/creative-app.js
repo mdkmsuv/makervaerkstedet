@@ -3,6 +3,10 @@
   document.body.dataset.creativeApp=name;
   const base=new URL('.',document.currentScript.src);
   const asset=n=>new URL(n,base).href;
+  if(name==='scratch'){
+    const autosave=document.createElement('script');autosave.src=asset('autosave.js');
+    document.head.append(autosave);
+  }
   const header=document.createElement('header');header.id='creative-app-header';
   header.innerHTML='<div class="creative-app-brand"><span class="brand-mark" aria-hidden="true"></span><img class="school-logo" alt="" hidden><div><small data-school-name>Makerværkstedet / VÆRKSTEDET</small><strong></strong></div></div><p></p><button type="button">Idéer & hjælp <span aria-hidden="true">↗</span></button>';
   header.querySelector('strong').textContent=info.name;header.querySelector('p').textContent=info.tag;

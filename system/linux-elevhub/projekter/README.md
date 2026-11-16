@@ -24,7 +24,22 @@ Den lokale tjeneste rydder op efter sine to første scanninger og derefter hver 
 
 Afbrudt oprydning kan fortsættes efter genstart via en lokal `retention_pending`-tabel. En ny gemt ændring annullerer en tidligere, afbrudt oprydning. Skjulte filer, mapper og uregistrerede filer slettes ikke. Reglen gælder også eksisterende registrerede projekter, når den opdaterede tjeneste starter. Der er ingen papirkurv for udløbne projekter.
 
-Når et værksted åbnes, vælger eleven klasse, skriver fornavn (eventuelt med initial) og projektnavn, eller vælger **Åbn projekt**. Navngivning alene opretter ingen tom projektfil. **Gem projekt** gemmer eksplicit på denne computer under `klasse · fornavn`; navnet skal ikke indtastes igen ved afslutning. Scratch gemmer hele `.sb3` med figurer og lyd. Datatræner gemmer træningsdata og kategorier; modellen skal trænes igen efter åbning. Micro:bit gemmer redigerbare MakeCode-kilder, og eksisterende HEX-filer med indlejret kildekode kan åbnes i samme forløb. Selve MakeCode-editoren hentes fortsat online fra Microsoft; den lokale integration opretter ingen cloudkonto eller central projektmappe.
+Når et værksted åbnes, vælger eleven klasse, skriver fornavn (eventuelt med initial) og projektnavn, eller vælger **Åbn projekt**. Uden appens autogem opretter navngivning alene ingen tom projektfil. Scratch og 3D gemmer fra de nye appversioner automatisk efter navngivning; se nedenfor. **Gem projekt** gemmer eksplicit på denne computer under `klasse · fornavn`; navnet skal ikke indtastes igen ved afslutning. Scratch gemmer hele `.sb3` med figurer og lyd. Datatræner gemmer træningsdata og kategorier; modellen skal trænes igen efter åbning. Micro:bit gemmer redigerbare MakeCode-kilder, og eksisterende HEX-filer med indlejret kildekode kan åbnes i samme forløb. Selve MakeCode-editoren hentes fortsat online fra Microsoft; den lokale integration opretter ingen cloudkonto eller central projektmappe.
+
+**Autogem i Scratch og 3D** kræver core `2.1.0~20261116.1` og henholdsvis app
+`15.1.1+local.20261116.1` / `1.0.1`. Appens egen kode gemmer første navngivne
+projekt og kontrollerer ændringer cirka hvert femte sekund. Vent på **Gemt på
+denne computer**, før en planlagt slukning. Efter en uventet afbrydelse åbnes
+seneste færdige gemning fra **Find mit projekt** på samme enhed. Senere
+ændringer uden kvittering kan gå tabt. Der kræves ingen adgang til et skjult
+sikkerhedskopikartotek eller til skolens server.
+
+Fortryd/Gentag i den åbne editor bevares på tværs af autogemninger. Autogem
+udskifter kun den umiddelbart forrige automatiske arbejdsudgave; revisioner
+stiger stadig, og manuelle gemninger bevares. En manuel gemning af uændret
+autoindhold beskytter den som en manuel version. Der slettes ikke generelt i
+ældre historik eller i andre elevers projekter. Browserens gendannelseskopi
+nedenfor er en særskilt funktion.
 
 **Til start**, skift af værksted og lukning bruger samme afslutningskontrol. Ved ændringer er valgene **Gem og afslut**, **Afslut uden at gemme** og **Arbejd videre**. Gemning skal bekræftes, før eleven forlader arbejdet; fejl bevarer det åbne projekt. Afslutning rydder den aktive model, fortryd-historikken og elevens navnefelter. Tidligere gemte projekter bevares efter arkivets almindelige opbevaringsregel. Allerede gemt og uændret arbejde afsluttes uden en ekstra gemmedialog. En ny elev får ikke automatisk sidste elevs projekt åbnet.
 

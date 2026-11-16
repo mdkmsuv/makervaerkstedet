@@ -68,12 +68,28 @@ kører på elevcomputeren; den er ikke skolens server. Appens autogem må ikke
 kræve forbindelse til skoleserveren, en cloudkonto eller nye appregler i
 serverkoden. Særskilt bestilt aflevering til en kø er en anden handling.
 
-**Faktisk Scratch-status 16. november 2026:** den nuværende integration har
-manuel **Gem projekt** og en lokal browserkopi til gendannelse cirka hvert
-15. sekund ved ændringer. Navngivning alene opretter ingen projektfil, og
-browserkopien opdaterer ikke projektarkivets gemte version. Autogem af det
-navngivne projekt er endnu ikke implementeret eller afprøvet. Reglen ovenfor
-fastlægger ejerskabet ved den kommende implementering; den er ikke et færdigbevis.
+**Scratch og 3D fra core `2.1.0~20261116.1`:** appens `web/autosave.js` gemmer
+navngivne projekter i den lokale projekthylde, også første gang før en manuel
+gemning. Ændringer kontrolleres cirka hvert femte sekund; aktiv redigering,
+import og elevskift afsluttes først. Eleven venter på **Gemt på denne computer**
+og genåbner senere gennem **Find mit projekt** på samme enhed. Autogem hverken
+indlæser projektet igen eller tømmer editorens Fortryd-/Gentag-historik.
+
+Gentagne autogemninger erstatter den umiddelbart forrige automatiske
+arbejdsudgave, så hver kontrol ikke ophober en fuld projektkopi. Revisionen
+stiger stadig, og alle manuelle gemninger bevares. **Gem projekt** bevarer
+også en manuel version af uændret indhold. En tidligere auto før en manuel
+gemning med andet indhold kan blive stående; der ryddes ikke generelt i historik.
+Åbning af en tidligere version sætter autogem på pause. Den nyeste arbejdsudgave
+bevares, indtil eleven selv vælger **Gem projekt** eller **Gem kopi**; dette
+gælder også, hvis den gamle version gendannes via browserens sikkerhedskopi.
+
+Projektbroens `saveState()` og `save({background:true,expectedNaming})` er kun
+generiske lokale sikkerhedsfunktioner. Timer, ændringskontrol og brugerstatus
+ejes stadig af hver app. Den særskilte 15-sekunders browserkopi til gendannelse
+er fortsat adskilt fra projektarkivet. Kildeprøver, bygget pakke og faktisk
+installation skal fortsat dokumenteres særskilt; disse ændringer findes ikke
+automatisk i de ældre signerede pakker eller ISO'er.
 
 ## Afgrænsede capabilities
 

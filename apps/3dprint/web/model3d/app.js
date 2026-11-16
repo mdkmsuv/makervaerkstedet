@@ -807,7 +807,13 @@ if (view) {
       }
       if (failed) throw Error('Modellen kunne ikke beregnes. Ret fejlen, før du gemmer.');
     };
-    const prepare = async () => {
+    const canAutoSave = () => projectReady && !printing && !busy() && !queued.length
+      && !view.drag && !view.pendingPreview && !contextLost && !failed;
+    const prepare = async (options = {}) => {
+      if (options.background) {
+        if (!canAutoSave()) throw Error('Modellen redigeres eller beregnes stadig. Vent et øjeblik.');
+        return;
+      }
       if (printing) throw Error('Vent, til afleveringen til print er færdig.');
       clearTimeout(textPause);
       if (document.activeElement?.closest('#text-controls')) updateText();
@@ -833,19 +839,20 @@ if (view) {
       type:'3dprint', extension:'.mkv3d', name:() => modelName,
       setName:name => { modelName = String(name).slice(0, 100); },
       signature:() => model.snapshot(), hasContent:() => Boolean(model.data.roots.length),
+      canAutoSave,
       prepareSave:prepare, prepareFinish:prepare,
-      export:async () => { await prepare(); return new Blob([encodeProject(model.data, assets)], {type:'application/json'}); },
+      export:async options => { await prepare(options); return new Blob([encodeProject(model.data, assets)], {type:'application/json'}); },
       validateImport:async blob => { pendingImports.set(blob, await readProject(blob)); },
       import:async (blob, name) => {
         const next = await readProject(blob); await prepare();
-        replaceScene(next.scene, next.assets, name); await settle(); model.dirty = false;
+        replaceScene(next.scene, next.assets, name); await settle(); model.dirty = false; projectReady = true;
       },
       reset:async () => {
         if (printing) throw Error('Vent, til afleveringen til print er færdig.');
         replaceScene(new SceneModel().data, new Map()); await settle(); projectReady = true;
       }
     };
-    for (const note of document.querySelectorAll('[data-project-save-note]')) note.textContent = 'Gem projekt bevarer alle figurer, tekst og huller, så du kan arbejde videre næste gang. Hent STL laver en fil til print.';
+    for (const note of document.querySelectorAll('[data-project-save-note]')) note.textContent = 'Dit navngivne projekt gemmes automatisk på denne computer. Vent på Gemt, før du slukker. Åbn det igen fra Find mit projekt. Hent STL laver en fil til print.';
   }
   evaluate();
 }
