@@ -164,6 +164,42 @@ assert.equal(text,'Mine idéer 🌱'); console.log('adapter roundtrip and import
                 finally:
                     server.shutdown(); worker.join(timeout=5)
 
+    def test_queue_app_preview_uses_real_gateway_and_never_leaves_the_temporary_outbox(self):
+        from urllib.error import HTTPError
+        from tests.test_laser_outbox import payload
+        with socket.socket() as probe:
+            probe.bind(('127.0.0.1', 0)); port = probe.getsockname()[1]
+        folder = create_app('koe-demo', 'Køprøve', port, root=self.root)
+        descriptor = json.loads((folder / 'app.json').read_text(encoding='utf-8'))
+        descriptor['capabilities']['optional'] += ['laser-submit-v1', 'svg-library-v1']
+        descriptor['aflevering'] = 'laser-submit'
+        (folder / 'app.json').write_text(json.dumps(descriptor, ensure_ascii=False), encoding='utf-8')
+        with preview_server(self.root, 'koe-demo') as server:
+            worker = threading.Thread(target=server.serve_forever, daemon=True); worker.start()
+            try:
+                origin = f'http://127.0.0.1:{port}'
+                page = urlopen(origin + '/').read().decode()
+                self.assertIn('/_elevhub/app.js', page)
+                self.assertIn('/school-theme.js', page)
+                job = payload()
+                request = Request(origin + '/api/laser/submit', data=json.dumps(job).encode(),
+                                  headers={'Origin': origin, 'Content-Type': 'application/json'})
+                with urlopen(request) as response:
+                    self.assertEqual(response.status, 202)
+                    self.assertEqual(json.loads(response.read()), {'queued': True, 'requestId': job['requestId']})
+                self.assertEqual([p.name for p in server.outbox.glob('*.json')], [job['requestId'] + '.json'])
+                for path, status in (('/api/laser/health', 503), ('/api/laser/library/status', 503)):
+                    with self.subTest(path=path), self.assertRaises(HTTPError) as error:
+                        urlopen(origin + path)
+                    self.assertEqual(error.exception.code, status); error.exception.close()
+                # The app declared no print capability, so the print route stays closed.
+                with self.assertRaises(HTTPError) as error:
+                    urlopen(Request(origin + '/api/jobs', data=b'solid', headers={'Origin': origin}))
+                self.assertEqual(error.exception.code, 404); error.exception.close()
+            finally:
+                server.shutdown(); worker.join(timeout=5)
+        self.assertFalse(server.outbox.exists())
+
     def test_queue_example_has_fixed_routes_and_honest_receipts(self):
         script = '''import assert from 'node:assert/strict';
 import {submitLaser,submitPrint} from QUEUE;

@@ -12,7 +12,9 @@ python -B sdk/preview.py --app plantequiz
 Brug `--project` i stedet for `--stateless` for et færdigt eksempel med
 typet gem, genåbn og elevskift. Opretteren skriver kun en ny appmappe.
 Den lokale prøve bruger midlertidige data og den rigtige appvært, tema-
-og projektbro; den installerer intet og starter ingen køhandling.
+og projektbro; den installerer intet. En app med kø eller SVG-bibliotek
+kører bag den rigtige lokale gateway uden skoleforbindelse: afleveringer
+valideres og lægges i en midlertidig udbakke, som aldrig sendes videre.
 Afslut med Ctrl+C.
 
 Læs [hele ny-app-guiden](../docs/NY-APP-GUIDE.md) for manifest,
@@ -24,6 +26,7 @@ ejerskab, katalog og forskellen på installeret og åben i undervisningen.
 - `examples/queue.mjs`: valgfri køintegration uden handling ved import.
 - `web/`: fælles browserkontrakter.
 - `check_app.py`: validerer med systemets faktiske pakkekontrakt.
+- `preview.py`: lokal prøve på manifestets loopback-port.
 
 Aktuel SDK er 1, mindste kerne for nye apps er `2.1.0~`. Appkode,
 appversion og artefakt ejes af appen; en ny app kræver ingen ændring i
