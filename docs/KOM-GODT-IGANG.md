@@ -121,11 +121,19 @@ Engangskoden gælder i 30 minutter. Del kun den aktuelle offentlige
    installationsprogrammet. ISO'en sletter den valgte interne disk efter en
    ekstra bekræftelse og stopper, hvis diskvalget er uklart.
 3. Sørg for internet under Debian-installationen, så netinst-systempakker kan
-   hentes. Værkstederne følger med ISO'en.
-4. Start den installerede Linux-computer, indsæt USB'en med
-   `school-connection.json`, og vælg skolefilen. Indtast computerens unikke
-   navn og engangskoden fra lærerens panel.
-5. Vent på færdig tilmelding, genstart og kontrollér, at elevens værkstedskort
+   hentes. En samlet ISO medbringer værksteder; den modulære basis henter
+   de valgte apps efter tilmelding og opsætning af opdateringer.
+4. Start fra den installerede harddisk, tryk **S og Enter** ved skoleopsætning,
+   og indsæt en almindelig fil-USB med `school-connection.json` fra serveren.
+   Tryk Enter for en ny søgning efter filen. Vælg skolefilen, og indtast
+   computerens unikke navn og engangskoden fra lærerens panel.
+5. Efter tilmelding tilknyttes computeren som **Elevcomputer** i lærerens
+   **Teknik → Opdatér computere → Tilknyt registrerede computere**.
+   Opdatér om nødvendigt først opdateringstjenesten og derefter elevsystemet,
+   så basis passer til appsene. Følg den præcise rækkefølge i
+   [EXE-/ISO-vejledningens afsnit 3](INSTALLATION-FRA-EXE-OG-ISO.md#3-tilmeld-eleven-til-den-nye-server).
+6. Følg de faktiske installationer i **Appkatalog**, genstart efter aftale,
+   og kontrollér, at elevens værkstedskort
    åbner. Gentag med et nyt navn og en ny kode for næste computer.
 
 Ved netudfald skal værksteder og Internet fortsat være åbne, også ved

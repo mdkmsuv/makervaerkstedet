@@ -175,25 +175,36 @@ En halvfærdig skoleopsætning bliver afvist og meldes ikke som opdateret.
    engangskode i serverens administration/`Manage-School.cmd`.
    Koden gælder i 30 minutter.
 2. På fysisk udstyr kopieres den NYE servers `school-connection.json` til
-   en almindelig fil-USB. Installations-USB'en med råt ISO-indhold er et
+   en almindelig fil-USB, fx formateret som FAT32. Installations-USB'en med råt ISO-indhold er et
    andet medie og er ikke en almindelig skrivbar mappe til skolefilen.
 3. **Hyper-V kræver et ekstra overførselstrin.** Filen skal gøres læsbar på
    en kendt sti inde i gæsten, efter serveren har oprettet den. Følg
    VM-prøvens README eller få hjælp til denne handling. Skoleopsætningen
    monterer ikke DVD/VHDX automatisk. Den generiske gæst lover heller ikke
    SSH- eller clipboard-adgang; tilknytning af en DVD er ikke nok.
-4. Genstart den uindmeldte elev, tryk **S og Enter** ved tilbuddet, og vælg
+4. Genstart den uindmeldte elev fra den installerede harddisk uden
+   installations-USB'en. Tryk **S og Enter** ved tilbuddet om skoleopsætning.
+   Indsæt fil-USB'en. Tryk **Enter** ved filvalget for at søge igen, og vælg
    skolefilens nummer eller skriv dens fulde, tilgængelige sti.
 5. Kontrollér vist skolenavn og adresse. Indtast samme computernavn og
    engangskoden; den vises ikke, mens du skriver. Bekræft med **JA** og vent
    på færdig tilmelding.
-6. Kontrollér eleven i lærerens panel. I den modulære udgave får en ny
-   enhed skolens standardapps, når updateren har kontakt. Åbn **Appkatalog**
+6. På serveren åbnes **Teknik → Opdatér computere → Tilknyt registrerede
+   computere** i lærerpanelet. Vælg den nye computer og tilknyt den som
+   **Elevcomputer**. Skolefil og engangskode tilmelder computeren; dette trin
+   angiver dens rolle i opdateringstjenesten.
+7. Hvis ISO'ens basis er ældre end de valgte apps kræver, bestilles først
+   **Opdateringstjeneste** og derefter **Elevsystem** under **Bestil opdatering**.
+   Vælg kun den nye elevcomputer. Vent efter hver bestilling, til den nye
+   version vises som **Installeret, rapporteret af computeren**, og seneste
+   resultat er gennemført, før du fortsætter.
+8. I den modulære udgave får en ny enhed skolens standardapps, når updateren
+   har kontakt og basisversionen passer til appsene. Åbn **Appkatalog**
    og følg den rapporterede status; en ordre eller download er ikke en
    færdig installation. Vælg eventuelt app og computer og bestil
    **Installér på manglende**. Ingen lokal appflise før installation er
    forventet på en tom basis.
-7. Afprøv efter aftale elevskift, gem/genåbn, offline genstart og lærerens
+9. Afprøv efter aftale elevskift, gem/genåbn, offline genstart og lærerens
    adgangslukning i de faktisk installerede apps. Prøv kun aflevering i
    det aftalte testmiljø. **202: gemt i udbakken** betyder afventende
    forbindelse; modtagelse i serverens kø er ikke fysisk færdig produktion.
