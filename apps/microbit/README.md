@@ -34,19 +34,19 @@ Kør fra produktroden:
 ```powershell
 python -B sdk/check_app.py --app microbit
 python -B sdk/preview.py --app microbit
+node apps/microbit/tests/test-protocol.cjs
 node system/linux-elevhub/tests/test_microbit_offline_message.cjs
 ```
+
+`tests/test-protocol.cjs` prøver hele protokollen mod en efterlignet
+MakeCode-ramme: gem, omdøb, import, nulstil og afvisning af fremmede
+afsendere. Prøver ligger i `tests/` og følger ikke med i pakken.
 
 `system/linux-elevhub/tests/integration_makecode_browser.js` er en bevidst
 tilvalgt prøve mod den rigtige MakeCode-tjeneste. Den kræver internet og
 Playwright og bruger hverken login, USB eller en fysisk enhed.
 
-## Kendt oprydning
-
-`web/test-protocol.cjs` er en ældre protokolprøve, som ligger i den pakkede
-mappe og derfor følger med ud til eleverne. Den læser desuden appen på en sti
-fra før appopdelingen og fejler i den aktuelle kilde. Flyt den til
-`apps/microbit/tests/`, ret stien, og bump appens version ved samme lejlighed;
-pakkens indhold ændres, så det kan ikke ske under version `1.0.0`.
+Version `1.0.1` fjerner en protokolprøve, som ved en fejl fulgte med i
+pakken i `1.0.0`. Appens funktion er uændret.
 
 [Opdatér, byg og udgiv appen](../../docs/NY-APP-GUIDE.md)

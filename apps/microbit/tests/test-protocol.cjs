@@ -1,6 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const path = require('node:path');
 const vm = require('node:vm');
 
 const listeners = {};
@@ -8,7 +9,7 @@ const sent = [];
 const frame = {contentWindow: {postMessage: (message, targetOrigin) => sent.push({message, targetOrigin})}};
 const window = {addEventListener: (type, handler) => {listeners[type] = handler;}, dispatchEvent: () => {}};
 const context = {window, document: {getElementById: () => frame}, Event: class Event {constructor(type) {this.type = type;}}, Blob, JSON, Date, structuredClone, setTimeout: () => {}};
-vm.runInNewContext(fs.readFileSync('linux-elevhub/server/microbit-controller/app.js', 'utf8'), context);
+vm.runInNewContext(fs.readFileSync(path.join(__dirname, '../web/app.js'), 'utf8'), context);
 const adapter = window.ElevhubProjectAdapter;
 assert.equal(adapter.type, 'microbit');
 assert.equal(adapter.extension, '.json');

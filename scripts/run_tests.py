@@ -40,7 +40,7 @@ def _standard_cjs_tests() -> list[Path]:
     """Return ordinary CJS fixtures, excluding opt-in browser audits."""
     paths = list((source_path("tests", ROOT)).glob("*.cjs"))
     paths += list((source_path("linux-elevhub", ROOT) / "tests").glob("*.cjs"))
-    paths += list(source_path("linux-elevhub/server/microbit-controller",ROOT).glob("test-*.cjs"))
+    paths += list((ROOT / "apps").glob("*/tests/test-*.cjs"))
     paths += list((source_path("scripts", ROOT)).glob("test_*.cjs"))
     return sorted(path for path in paths if path.is_file())
 
