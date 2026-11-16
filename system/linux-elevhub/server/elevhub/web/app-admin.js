@@ -35,7 +35,9 @@
       return `<button id="app-${esc(app.id)}-${action}" type="button" class="sekundaer" data-app="${esc(app.id)}" data-action="${action}" data-unavailable="${blocked}">${label} (${names.length})</button>`;
     }).join('');
     const versions=installed.map(d=>`${d.device}: ${inventory(d,app.id).version||'version ukendt'}`).join(' · ');
-    return `<article class="catalog-card" data-catalog-app="${esc(app.id)}"><h4>${esc(app.navn)}</h4><p>${esc(app.description)}</p><p class="catalog-version">${entry.retired?'Udgået af kataloget':'Tilgængelig version '+esc(app.version)} · ${app.offline?'Kan bruges uden internet':'Kræver internet'}</p><p>${esc(detail)}</p>${versions?`<details><summary id="app-versions-${esc(app.id)}">Versioner på computere</summary><p>${esc(versions)}</p></details>`:''}<div class="admin-actions">${commands}</div></article>`;
+    // offline = usable without the school server; kraever_internet = needs the internet itself.
+    const reach=app.kraever_internet?'Kræver internet':app.offline?'Kan bruges uden internet':'Kræver forbindelse til skoleserveren';
+    return `<article class="catalog-card" data-catalog-app="${esc(app.id)}"><h4>${esc(app.navn)}</h4><p>${esc(app.description)}</p><p class="catalog-version">${entry.retired?'Udgået af kataloget':'Tilgængelig version '+esc(app.version)} · ${reach}</p><p>${esc(detail)}</p>${versions?`<details><summary id="app-versions-${esc(app.id)}">Versioner på computere</summary><p>${esc(versions)}</p></details>`:''}<div class="admin-actions">${commands}</div></article>`;
   }
   function render(){
     if(!state)return;
