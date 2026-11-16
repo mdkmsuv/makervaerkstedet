@@ -35,6 +35,12 @@ udgivelseskommandoer og [kodekortet](KODEKORT.md) for systemets filer.
 
 ## Elevens indgang og projekter
 
+[Scratchs appbeskrivelse](../apps/scratch/README.md) og
+[3D-værkstedets appbeskrivelse](../apps/3dprint/README.md) forklarer lokal
+gemning og 30-dagesreglen for elever og skoler. Autogem ejes af appen;
+oprydning efter inaktivitet ejes af elevcomputerens fælles projekthylde, så
+den fortsætter, selv om appen ikke åbnes eller er afinstalleret.
+
 Startsiden bygger sine værksteder fra faktisk installerede, gyldige
 descriptors. Appvært, projektåbning og lokale tjenester følger samme
 registrering. En tom basis kan derfor vise start, Internet og projekthylde
