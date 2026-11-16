@@ -1,0 +1,42 @@
+{
+  "schema": 1,
+  "pillow": "12.2.0",
+  "packs": [
+    {
+      "id": "kenney-toon-characters",
+      "archive": "kenney_toonCharacters1.zip",
+      "sha256": "54e585338e05bb4662da78a1b19283a3dda1f90dbe527353b65a4bb88b5f6297",
+      "bytes": 5474292,
+      "author": "Kenney",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source_url": "https://opengameart.org/content/toon-characters-1",
+      "download_url": "https://opengameart.org/sites/default/files/kenney_toonCharacters1.zip",
+      "characters": {
+        "Robot": "Kenney robot",
+        "Female adventurer": "Kenney eventyrer (pige)",
+        "Male adventurer": "Kenney eventyrer (dreng)",
+        "Female person": "Kenney pige",
+        "Male person": "Kenney dreng",
+        "Zombie": "Kenney zombie"
+      }
+    },
+    {
+      "id": "pixel-adventure-1",
+      "archive": "pixel-adventure-1.zip",
+      "sha256": "efafdfc8ed44f2b0ade27c0246e11a2474ce3a793b4f8e16dbe7403824f6e77b",
+      "bytes": 209186,
+      "author": "Pixel Frog",
+      "license": "CC0-1.0",
+      "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "source_url": "https://pixelfrog-assets.itch.io/pixel-adventure-1",
+      "upload_id": "2012517",
+      "characters": {
+        "Mask Dude": "Pixel maskefigur",
+        "Ninja Frog": "Pixel ninja-frø",
+        "Pink Man": "Pixel pink figur",
+        "Virtual Guy": "Pixel virtuel figur"
+      }
+    }
+  ]
+}

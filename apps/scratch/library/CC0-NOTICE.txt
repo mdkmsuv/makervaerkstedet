@@ -1,0 +1,18 @@
+Ekstra figurer til den lokale Scratch-app
+
+Kenney: Toon Characters Pack 1 (2019), CC0 1.0.
+https://opengameart.org/content/toon-characters-1
+https://kenney.nl/assets/toon-characters
+Original License.txt findes i kenney_toonCharacters1.zip.
+
+Pixel Frog: Pixel Adventure 1, CC0 1.0.
+https://pixelfrog-assets.itch.io/pixel-adventure-1
+Ophavsmandens udgivelsesside angiver CC0 og tillader ændring og distribution.
+
+CC0 1.0: https://creativecommons.org/publicdomain/zero/1.0/
+
+Originalarkiverne er bevaret uændret. sources.json registrerer kontrolsummer,
+ophav og kilde. Integrationen udvælger figurer, opdeler animationsark i PNG-
+kostumer og giver kostumerne danske navne. De afledte billeder er også CC0.
+Figurerne indebærer ingen godkendelse af produktet fra ophavsmændene.
+Scratch-programmets og integrationens egne licenser er uændrede.

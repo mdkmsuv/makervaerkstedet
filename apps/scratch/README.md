@@ -3,6 +3,19 @@
 Lav spil og animationer med kodeblokke. Editor, standardfigurer og lyde kan
 bruges lokalt uden internet.
 
+Fra appversion `15.1.1+local.20261116.2` indeholder den almindelige figurvælger
+også **10 ekstra figurer med 442 kostumer** fra Kenney og Pixel Frog.
+Søg efter **Kenney** eller **Pixel** under **Vælg en sprite**. Figurerne har
+ordnede animationsserier, eksempelvis robottens `gå-01` til `gå-08` og
+ninja-frøens `løb-01` til `løb-12`. Kostumerne kan også vælges enkeltvis i
+kostumebiblioteket. Billederne er CC0 og følger med appen, så de virker offline.
+Der er ingen ekstra konto eller download for eleven.
+
+Vælg en figur og brug fanen **Kostumer** til at se de forskellige bevægelser.
+En figur kan have flere forskellige animationsserier; vælg de kostumer,
+der hører til den ønskede bevægelse. Hele figurens billeder følger med,
+når projektet gemmes som `.sb3`.
+
 Eleven vælger klasse, skriver fornavn og giver projektet et navn. Projektet
 gemmes derefter automatisk på denne computer. Vent på **Gemt på denne computer**.
 Næste gang åbnes arbejdet gennem **Find mit projekt** på samme enhed; eleven

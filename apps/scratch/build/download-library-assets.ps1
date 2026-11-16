@@ -33,12 +33,21 @@ $baseUrl = 'https://cdn.assets.scratch.mit.edu/internalapi/asset'
 $results = $assetList | ForEach-Object -Parallel {
     $md5ext = $_
     $destination = Join-Path $using:assetDir $md5ext
+    # App-owned CC0 assets are generated before this step. A matching local
+    # content hash is authoritative; custom assets do not exist on Scratch's CDN.
+    if ((Test-Path -LiteralPath $destination) -and
+        (Get-FileHash -Algorithm MD5 -LiteralPath $destination).Hash.ToLowerInvariant() -eq $md5ext.Split('.')[0]) {
+        return [pscustomobject]@{asset = $md5ext; status = 'local-verified'}
+    }
     # Scratch's asset endpoint requires the md5ext (including the data format).
     # The extensionless endpoint returns a generic placeholder image.
     $url = "$using:baseUrl/$md5ext/get/"
     for ($attempt = 1; $attempt -le 3; $attempt++) {
         try {
             Invoke-WebRequest -Uri $url -OutFile $destination -UseBasicParsing
+            if ((Get-FileHash -Algorithm MD5 -LiteralPath $destination).Hash.ToLowerInvariant() -ne $md5ext.Split('.')[0]) {
+                throw "Content hash does not match asset $md5ext"
+            }
             return [pscustomobject]@{asset = $md5ext; status = 'downloaded'}
         } catch {
             if ($attempt -eq 3) { return [pscustomobject]@{asset = $md5ext; status = 'failed'; error = $_.Exception.Message} }

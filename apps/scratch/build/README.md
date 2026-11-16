@@ -18,7 +18,7 @@ vilje uden for repositoryt i `<LOKAL-TESTMAPPE>\scratch`.
 - corresponding source: `source.zip` (SHA-256 registreret i `installation.json`)
 
 `scratch-gui` ligger nu i dette monorepo; det tidligere selvstændige repository
-er arkiveret. `installation.json` i denne mappe registrerer den faktiske kilde,
+er arkiveret. `installation.json` i outputmappen registrerer den faktiske kilde,
 pin, outputsti og integrationstilpasning. Licens- og varemærkefilerne
 `LICENSE`, `LICENSE-scratch-gui`, `TRADEMARK` og `TRADEMARK-scratch-gui` følger
 med i outputmappen.
@@ -33,13 +33,42 @@ Den fulde kildepakke er i denne pin cirka 83,5 MB (under 128 MiB); den lokale
 
 ## Reproducerbart build til Linux-værkstedet på en Windows-vært
 
-Kør fra produktroden i PowerShell. Scratch-integrationen ejes af `apps/scratch/`:
+Kør fra produktroden i PowerShell. Python, Node/npm, Git og PowerShell 7 er
+udviklingsværktøjer. Den fastlåste Pillow-version bruges kun under byg til
+at opdele Pixel Frogs PNG-animationsark; den installeres ikke på elevenheden.
+Scratch-integrationen ejes af `apps/scratch/`:
 
 ```powershell
-pwsh -File .\apps\scratch\build\build-scratch.ps1
+python -m pip install -r apps/scratch/build/requirements-library.txt
+python -Xutf8 -B apps/scratch/build/fetch_library.py
+python -Xutf8 -B apps/scratch/build/test_extra_library.py
+python -Xutf8 -B apps/scratch/build/test_editor_package.py
+$scratchRoot = Join-Path $env:TEMP 'mkv-scratch-candidate'
+pwsh -File .\apps\scratch\build\build-scratch.ps1 -ScratchRoot $scratchRoot
+pwsh -File .\apps\scratch\build\smoke-test.ps1 -BuildPath (Join-Path $scratchRoot 'scratch-gui-v15.1.1-build')
 ```
 
 Scriptet afviser eksisterende source- og outputmapper for at undgå overskrivning.
+Vælg derfor en ny `ScratchRoot` til et nyt byg. Standardroden ligger i brugerens
+midlertidige mappe; en gammel D:-arbejdskopi er ikke nødvendig. Metadata,
+editor og `source.zip` ligger alle i `scratch-gui-v15.1.1-build/` under den rod.
+En ny kildesamling kan dermed følge opskriften uden lokale filer fra tidligere
+leverancer. Arkivhenteren kontrollerer størrelse/SHA256 før brug; ændrede eller
+manglende udgivelser giver fejl, ikke en tavs opdatering af billedindholdet.
+
+Ved en efterfølgende **ren biblioteksændring** kan det samme fuldførte,
+fastlåste checkout genbruges med en ny outputmappe:
+
+```powershell
+pwsh -File .\apps\scratch\build\build-scratch.ps1 -ScratchRoot $scratchRoot `
+  -ReusePreparedSource -OutputName 'scratch-gui-v15.1.1-library-update'
+```
+
+Det kontrollerer den oprindelige bygkvittering, upstream-commit og source.zip,
+genbygger elevens editor og laver en ny kildepakke. Det genbruger eksisterende
+Node-afhængigheder og integrationspatch. Brug et nyt fuldt byg ved ændring af
+afhængigheder, adapter eller øvrig upstream-integration. Eksisterende output
+overskrives aldrig.
 Det kloner den faste tag, kontrollerer committen, kører `npm ci --ignore-scripts`,
 bygger de nødvendige workspace-pakker og kontrollerer hvert git/npm/node/npx-
 kalds exitkode. Selve skole-entrypointet bygges med
@@ -91,12 +120,48 @@ advisories, kildekontrol og kompatibilitetsprøven.
 
 ## Lokale medier og offline-drift
 
+### Ekstra figurer fra appversion 15.1.1+local.20261116.2
+
+Alt ekstra byggemateriale ejes af denne app:
+
+| Fil | Formål |
+|---|---|
+| `../library/sources.json` | Ophav, CC0-licens, uændrede arkivers størrelser og SHA256 samt figurnavne |
+| `fetch_library.py` og `../archive-cache/*.zip` | Henter og verificerer de originale CC0-arkiver fra ophavsmændene; cache er privat byggemateriale |
+| `../library/CC0-NOTICE.txt` | Kreditering og licensafgrænsning |
+| `extra_library.py` | Omdanner arkiverne til native Scratch-biblioteksposter og PNG-kostumer |
+| `test_extra_library.py` | Rigtige billedceller, animationsrækkefølge, bevaring af standardfigurer, reproducerbare bytes og afvisning af ændret kilde |
+
+De seks Kenney-figurer har hver 45 positurer. Fire Pixel Frog-figurer har
+hver 43 animationsbilleder; hvert 32 × 32-billede skæres ud af sit animationsark
+uden ændring af pixels. Pixel-figurer starter i størrelse 300 %, så de er
+lette at se. Rotationens centrum er ens gennem hver series kostumer.
+Der tilføjes ingen automatisk kode til elevens projekt.
+
+Bygget udvider **den almindelige figur- og kostumevælger** og bevarer de
+officielle standardfigurer. Søg efter `Kenney` eller `Pixel`. Kostumer er
+ordnet pr. handling og nummereret, eksempelvis `gå-01` … `gå-08` eller
+`løb-01` … `løb-12`. `extra-library-manifest.json` i outputtet angiver
+det faktisk genererede antal og pladsforbrug. `EXTRA-LIBRARY-CREDITS.txt`
+og arkiver/konvertering i `source.zip` følger med den færdige app.
+
+For en ny figurudgivelse ændres kun denne app: udskift det relevante
+kildeudgivelse, registrer ny størrelse/SHA256 og kontroller CC0-vilkåret i
+`sources.json`, tilpas konvertering/test ved ændret arkstruktur, og bump
+`../app.json`. Behold upstream-pin og `min_core`, medmindre ændringen faktisk
+kræver andet. Kør ovenstående prøve/byg på ny og afprøv figurvalg, animation,
+gem/genåbn samt offline drift. Pakning og opdatering beskrives nedenfor.
+
+### Standardbiblioteket
+
 `download-library-assets.ps1` udtrækker Scratchs officielle bibliotekslister og
 henter 1.347 standardmedier fra den pinned Scratch assettjeneste: 804 SVG, 193
 PNG og 350 WAV. De ligger under `static/library-assets/` og beskrives i
 `library-assets-manifest.json`. Efter pakken er hentet, kan standardfigurer,
 baggrunde og lyde vælges uden internet fra samme HTTP(S)-origin. Assetserveren
 behøver ingen Node.js ved drift.
+Listen omfatter nu også de ekstra kostumer; deres lokalt genererede filer
+godkendes ved indholdets MD5 og hentes ikke fra Scratchs CDN.
 
 `.sb3`-projekter kan importeres via upload-dialogen og eksporteres via download-
 dialogen. Lokal redigering kræver ingen Scratch-konto, cloudprojekt eller
@@ -109,6 +174,47 @@ funktioner og kan kræve netværk, browser-tilladelser eller eksterne tjenester.
 De lokale standardmedier og kerneeditoren ligger i outputtet. En CSP med
 `default-src 'self' blob: data:` og `connect-src 'self'` kan bruges til at
 verificere, at kerneflowet ikke er afhængigt af udgående netværk.
+
+## Byg kun Scratch-pakken
+
+Kør fra produktroden på Debian 13 amd64/WSL. `SCRATCH_BUILD` er Linux-stien
+til det konkrete Windows-byg, eksempelvis resultatet fra `wslpath -a`.
+`OUT` skal være en ny lokal mappe. Der kræves Python 3 og Debian-pakkeværktøjer
+på byggemaskinen; elevenheden får ingen nye udviklingsafhængigheder.
+
+```bash
+SCRATCH_BUILD='/absolut/linux-sti/til/scratch-gui-v15.1.1-build'
+OUT='/var/tmp/scratch-app-candidate'
+python -B apps/scratch/build/make_editor_lock.py \
+  --build-dir "$SCRATCH_BUILD" --output "$OUT/scratch-editor.json"
+python -B system/linux-elevhub/packaging/prepare_app_inputs.py \
+  --source-root "$PWD" --app scratch --scratch-lock "$OUT/scratch-editor.json" \
+  --output-dir "$OUT/locks"
+python -B system/linux-elevhub/packaging/build_debian.py \
+  --input-lock "$OUT/locks/makervaerkstedet-scratch.json" \
+  --output "$OUT/debian/makervaerkstedet-scratch_15.1.1+local.20261116.2_all.deb"
+```
+
+Ret pakkefilens version til den faktiske `../app.json` ved næste opdatering.
+`make_editor_lock.py` registrerer hver programfils målsti, mode og SHA256 og
+henter version/minimumskerne fra appen. Den private `installation.json` følger
+ikke med elevenhedens pakke. Den efterfølgende fælles pakkekommando tilføjer
+appens egne webfiler og descriptor og kontrollerer det eksisterende
+pakkeejerskab. Ingen hovedsystempakke, historisk filinventar eller tidligere
+Scratch-pakke er byggeinput til denne opskrift.
+
+Appudvikleren skal bruge ovenstående værktøjers grænseflader, ikke rette eller
+gennemlæse deres implementering. Den gamle `prepare_inputs.py --components
+scratch`-vej er til et frosset migrationsinventar og kan afvise nye editorfiler;
+brug den ikke til en ny Scratch-appudgivelse.
+
+Den byggede `.deb` er endnu ikke en signeret udgivelse. Følg afsnit 7 og 8 i
+[appudviklingsvejledningen](../../../docs/NY-APP-GUIDE.md): behold eksisterende
+basis-/app-pakker uændret, udskift kun Scratch i det samlede signerede katalog,
+og bestil **Opdatér** for den aftalte testelevenhed. Brug eksisterende signer og
+tillidsankre. Kontroller faktisk version, native figurvalg, offline genstart,
+gem/genåbn med ekstra kostumer, bevarede projekter og øvrige apps. Kør aldrig
+en manuel `dpkg -i` som bevis for den normale læreropdatering.
 
 ## Hurtig statisk smoke-test
 

@@ -1,4 +1,4 @@
-# Sådan laver du en ny app til Makerværkstedet
+# Sådan udvikler og opdaterer du en app til Makerværkstedet
 
 Aktuel kildeopdeling, 16. november 2026. Kommandoerne køres fra produktroden,
 som indeholder `REPOSITORY-LAYOUT.json`. `system/` ejer hovedsystemet,
@@ -11,6 +11,39 @@ hovedsystemets version eller genbygning af hovedsystemets pakke. Dens
 schema-2-manifest bliver først betroet på en elevenhed gennem det signerede
 katalog og den eksisterende opdateringstjeneste. En lokalt bygget `.deb`
 er en selvstændig byggeprøve; den er ikke en godkendt offentlig udgivelse.
+
+## Opdater en eksisterende app
+
+Start her og i den konkrete `apps/<id>/README.md`. Du skal kunne følge
+appens bygge-/testopskrift derfra; hovedsystemets implementering er ikke
+en forudsætning for at ændre en app.
+
+1. Læs appens `app.json`, `files.json` og README. Følg appens egne byggenoter,
+   hvis den har en editor eller bundling; Scratch har eksempelvis
+   [sin egen opskrift](../apps/scratch/build/README.md).
+2. Ret appens egne filer og bump kun dens `version`. Bevar id, pakke, port,
+   projektformat og eksisterende gemning. Skift kun `min_core`, hvis den nye
+   funktion faktisk kræver en nyere kontrakt.
+3. Kør appens dokumenterede prøver og byg. Kontroller licenser og at nødvendigt
+   indhold følger med til offline brug. Prøv den renderede brugerhandling.
+4. Byg den ene apppakke som beskrevet i afsnit 6 og appens opskrift. En
+   statisk app behøver ingen kernesources eller nyt kernebyg. Scratch har et
+   særskilt editorbyg og en inputlås, som appens egen pakkeopskrift fremstiller.
+5. Brug udgivelsesvejen i afsnit 7 med den nye apppakke og **uændrede input
+   for det øvrige aktuelle udvalg**. Kataloget beskriver hele udvalget,
+   selv når kun én appversion ændres. Genbyg ikke de øvrige pakker.
+6. Bestil **Opdatér** på den aftalte testelevenhed som i afsnit 8. Kontroller
+   den faktisk installerede version og det nye indhold, bevarede projekter
+   og uændrede øvrige apps. Et byg eller et grønt bestillingssvar er ikke
+   i sig selv bevis for installation.
+7. Ajourfør appens README med den nye funktion og prøvekommandoer. Registrer
+   kilde, byg, faktisk installation, åbne forhold og næste arbejde i
+   projektets fælles status. Bevar relevante kvitteringer; ryd egne prøver.
+
+Som eksempel tilføjer Scratch `15.1.1+local.20261116.2` lokale CC0-figurer
+udelukkende gennem `apps/scratch/`. Den ændring kræver ingen ændring eller
+ny version af hovedsystemet. Privat testdistribution og offentlig publicering
+er fortsat forskellige handlinger med hver sit mandat.
 
 ## 1. Opret og prøv den mindste app
 
