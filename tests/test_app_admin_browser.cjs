@@ -28,6 +28,13 @@ async function main(){
   await page.locator('[name=app-device][value=pc1]').uncheck();await page.locator('#apps-refresh').click();await page.waitForFunction(()=>document.querySelector('[data-catalog-app=noter]')?.textContent.includes('Appstatus er ukendt på 1'));
   assert.equal(await page.locator('[data-catalog-app=noter] button').first().isDisabled(),true);await page.screenshot({path:path.join(out,'catalog-unknown.png'),fullPage:true});results.flows.push('unknown app inventory is explicit and action blocked');
   await page.unroute('**/api/admin/apps');await page.locator('#apps-refresh').click();await page.waitForFunction(()=>!document.querySelector('[data-catalog-app=noter]')?.textContent.includes('Appstatus er ukendt'));
+  // The card must use both manifest fields: offline is about the school server, kraever_internet about the internet.
+  const reach=async(flags,expected)=>{await page.route('**/api/admin/apps',async route=>{const response=await route.fetch();const value=await response.json();Object.assign(value.catalog.find(e=>e.descriptor.id==='noter').descriptor,flags);await route.fulfill({response,json:value});});
+   await page.locator('#apps-refresh').click();await page.waitForFunction(text=>document.querySelector('[data-catalog-app=noter] .catalog-version')?.textContent.endsWith(' · '+text),expected);await page.unroute('**/api/admin/apps');};
+  await reach({offline:true,kraever_internet:true},'Kræver internetforbindelse');
+  await reach({offline:false,kraever_internet:false},'Kræver forbindelse til skoleserveren');
+  await reach({offline:false,kraever_internet:true},'Kræver internetforbindelse og forbindelse til skoleserveren');
+  await reach({},'Kan bruges uden internet');results.flows.push('catalog card names internet and school-server needs from both manifest fields');
   await page.getByRole('link',{name:'Skoleprofil',exact:true}).click();await page.locator('#profile-name').waitFor({state:'visible'});await page.waitForFunction(()=>document.querySelector('#profile-name').value==='Syntetisk skole');assert.equal(await page.locator('#profile-legacy').isVisible(),true);
   await page.locator('#profile-name').fill('QA Eksempelskolen');await page.locator('#profile-colour-text').fill('#e8c534');await page.locator('#profile-font').selectOption('manrope');
   await page.locator('#profile-logo').setInputFiles({name:'logo.png',mimeType:'image/png',buffer:Buffer.from(urls.logo_png,'base64')});

@@ -36,7 +36,8 @@
     }).join('');
     const versions=installed.map(d=>`${d.device}: ${inventory(d,app.id).version||'version ukendt'}`).join(' · ');
     // offline = usable without the school server; kraever_internet = needs the internet itself.
-    const reach=app.kraever_internet?'Kræver internet':app.offline?'Kan bruges uden internet':'Kræver forbindelse til skoleserveren';
+    const reach=app.kraever_internet?(app.offline?'Kræver internetforbindelse':'Kræver internetforbindelse og forbindelse til skoleserveren')
+      :app.offline?'Kan bruges uden internet':'Kræver forbindelse til skoleserveren';
     return `<article class="catalog-card" data-catalog-app="${esc(app.id)}"><h4>${esc(app.navn)}</h4><p>${esc(app.description)}</p><p class="catalog-version">${entry.retired?'Udgået af kataloget':'Tilgængelig version '+esc(app.version)} · ${reach}</p><p>${esc(detail)}</p>${versions?`<details><summary id="app-versions-${esc(app.id)}">Versioner på computere</summary><p>${esc(versions)}</p></details>`:''}<div class="admin-actions">${commands}</div></article>`;
   }
   function render(){
