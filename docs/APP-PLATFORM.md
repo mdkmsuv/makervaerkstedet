@@ -1,6 +1,6 @@
 # Værksteder som selvstændige apps
 
-Kildearkitektur ajourført 14. november 2026. Hovedsystem, apps og SDK er
+Kildearkitektur ajourført 16. november 2026. Hovedsystem, apps og SDK er
 fysisk adskilt i Git. Dette dokument beskriver kildekontrakten; en ny
 modulær installationsudgivelses native installation, migration og ISO-boot
 skal fremgå af dens egen kvittering. En eksisterende EXE/ISO med
@@ -54,6 +54,26 @@ gem, genåbn, revisioner og elevskift. Adapteren validerer egne opaque
 bytes før import og nulstiller indhold og navn ved elevskift. Den forrige
 elevs dokument åbnes ikke automatisk. Systemets øvre filgrænse er 50 MiB;
 appen må vælge en lavere.
+
+### Autogem tilhører appen og virker lokalt
+
+Appspecifik autogem implementeres og versionsstyres i `apps/<id>/`, sammen
+med appens ændringsregistrering, gemmetidspunkt og visning af gemmestatus og
+fejl. Scratchs autogem hører derfor til `apps/scratch/`. Hverken skolens server
+eller appkataloget skal styre autogem eller modtage løbende projektindhold.
+
+Appen må genbruge den fælles projekt-/sessionbro og den **lokale** projekthylde
+til navngivning, selve skrivningen, revisioner og elevskift. Denne tjeneste
+kører på elevcomputeren; den er ikke skolens server. Appens autogem må ikke
+kræve forbindelse til skoleserveren, en cloudkonto eller nye appregler i
+serverkoden. Særskilt bestilt aflevering til en kø er en anden handling.
+
+**Faktisk Scratch-status 16. november 2026:** den nuværende integration har
+manuel **Gem projekt** og en lokal browserkopi til gendannelse cirka hvert
+15. sekund ved ændringer. Navngivning alene opretter ingen projektfil, og
+browserkopien opdaterer ikke projektarkivets gemte version. Autogem af det
+navngivne projekt er endnu ikke implementeret eller afprøvet. Reglen ovenfor
+fastlægger ejerskabet ved den kommende implementering; den er ikke et færdigbevis.
 
 ## Afgrænsede capabilities
 

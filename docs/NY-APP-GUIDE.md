@@ -1,6 +1,6 @@
 # Sådan laver du en ny app til Makerværkstedet
 
-Aktuel kildeopdeling, 15. november 2026. Kommandoerne køres fra produktroden,
+Aktuel kildeopdeling, 16. november 2026. Kommandoerne køres fra produktroden,
 som indeholder `REPOSITORY-LAYOUT.json`. `system/` ejer hovedsystemet,
 `apps/<id>/` ejer appens kode og pakkemanifester, og `sdk/` indeholder
 udviklingsskabeloner. Installerede Linux-stier er uændrede. Se også
@@ -126,6 +126,20 @@ Projektbroen ejer klasse/navn/projektnavn, gem/åbn, gendannelse og
 hvert tastetryk: det ophæver den eksisterende projektbinding. Brug eventet,
 når appen selv erstatter projektet uden om broen. Skabelonen behøver det
 ikke under almindelig indtastning.
+
+**Autogem er appens ansvar.** Læg appens ændringsregistrering, tidsstyring og
+gemmestatus i `apps/<id>/`; for Scratch i `apps/scratch/`. Appen kan bruge
+`window.ElevhubProjectSession.save()` til den eksisterende lokale gemmefunktion,
+efter at eleven har navngivet projektet. Selve skrivningen og versioneringen
+må fortsat bruge fælles lokal infrastruktur på elevcomputeren. Skolens server
+skal ikke have autogem-logik eller løbende kopier af elevens projekt. Autogem
+skal virke uden forbindelse til skoleserveren og følge det eksisterende
+elevskift, så næste elev ikke fortsætter i forrige elevs projekt.
+
+Den nuværende fælles browserkopi til gendannelse er ikke autogem til
+projektarkivet. Scratch har endnu kun manuel projektgemning og denne
+sikkerhedskopi; autogem er **ikke implementeret** alene ved at følge adapter-
+kontrakten. Se [ansvarsgrænse og aktuel status](APP-PLATFORM.md#autogem-tilhører-appen-og-virker-lokalt).
 
 Appens grænse er 1 MiB og 100.000 tegn i noteseksemplet; øg kun inden for
 systemets grænse på 50 MiB. Ugyldig import skal bevare det åbne dokument.

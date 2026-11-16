@@ -33,10 +33,10 @@ Den fulde kildepakke er i denne pin cirka 83,5 MB (under 128 MiB); den lokale
 
 ## Reproducerbart build til Linux-værkstedet på en Windows-vært
 
-Kør fra `linux-elevhub`-mappen i PowerShell:
+Kør fra produktroden i PowerShell. Scratch-integrationen ejes af `apps/scratch/`:
 
 ```powershell
-pwsh -File .\server\scratch\build-scratch.ps1
+pwsh -File .\apps\scratch\build\build-scratch.ps1
 ```
 
 Scriptet afviser eksisterende source- og outputmapper for at undgå overskrivning.
@@ -59,6 +59,20 @@ Eksport gemmer hele `.sb3`, og import bruger VM'ens projektindlæsning.
 Nyt projekt og filimport bryder bindingen til et tidligere gemt projekt.
 Projektbroen leveres af [den lokale tjeneste](../../../system/linux-elevhub/projekter/README.md).
 Den ændrer ikke upstream-pin eller filer i dette repositorys færdige editor.
+
+**Gemning og autogem, kontrolleret i kilden 16. november 2026:** eleven
+navngiver sit projekt ved start, men dette skriver ikke alene en projektfil.
+**Gem projekt** gemmer hele `.sb3` lokalt. Den fælles browserkopi cirka hvert
+15. sekund ved ændringer er kun til gendannelse og opdaterer ikke det gemte
+projekt. Rigtig autogem af navngivne Scratch-projekter er endnu ikke implementeret.
+
+Når autogem tilføjes, skal ændringsregistrering, tidsstyring og gemmestatus
+ligge i denne apps integration (`apps/scratch/`), ikke i skolens serverkode.
+Appen må bruge den eksisterende lokale `ElevhubProjectSession.save()` og
+projekthylde til selve skrivningen/versioneringen. Det skal fungere uden
+skoleserver/netforbindelse og bevare det fælles elevskift. Se
+[appens ansvarsgrænse](../../../docs/APP-PLATFORM.md#autogem-tilhører-appen-og-virker-lokalt).
+
 `dependency.patch` låser desuden hull.js til den rettede Git-commit
 `9de6f9549b74fbb68bf4d5a449147b4c1d7cda0a` (version 1.0.10) og bevarer
 Scratchs adfærd for små og tomme figurgrænser. Patchen omfatter package-/
@@ -94,14 +108,14 @@ verificere, at kerneflowet ikke er afhængigt af udgående netværk.
 ## Hurtig statisk smoke-test
 
 ```powershell
-pwsh -File .\server\scratch\smoke-test.ps1
+pwsh -File .\apps\scratch\build\smoke-test.ps1
 ```
 
 Den aktive pilots output har et andet navn end en ny standardbygning. Test
 den konkrete installation med:
 
 ```powershell
-pwsh -File .\server\scratch\smoke-test.ps1 -BuildPath '<LOKAL-TESTMAPPE>\scratch\scratch-gui-v15.1.1-local-projects-build'
+pwsh -File .\apps\scratch\build\smoke-test.ps1 -BuildPath '<LOKAL-TESTMAPPE>\scratch\scratch-gui-v15.1.1-local-projects-build'
 ```
 
 Testen starter kun et midlertidigt loopback-testserver på port 8799. Den
