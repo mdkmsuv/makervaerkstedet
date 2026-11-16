@@ -31,6 +31,8 @@ def make_lock(build_dir):
         if not path.is_file():
             continue
         relative = path.relative_to(build_dir)
+        if relative.parts[0] == "creative":
+            continue  # App-owned resources are supplied and checked by files.json.
         if relative.as_posix() == "installation.json":
             continue  # Private build metadata is a sidecar, never pupil program data.
         if relative.parts[0] not in ("static", "chunks") and relative.as_posix() not in ROOT_FILES:

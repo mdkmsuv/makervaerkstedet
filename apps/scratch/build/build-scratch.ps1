@@ -178,9 +178,24 @@ if (Test-Path (Join-Path $PSScriptRoot 'DEPENDENCY-AUDIT.md')) {
 }
 Copy-Item (Join-Path $extraLibraryDir '*') $outputDir -Recurse -Force
 
+# The app entry must boot the same app-owned header/help/autosave in a fresh
+# build. These resources cannot depend on leftovers in an older editor output.
+$appRoot = Split-Path $PSScriptRoot -Parent
+$appFiles = Get-Content -Raw (Join-Path $appRoot 'files.json') | ConvertFrom-Json
+foreach ($entry in $appFiles.files) {
+    if ($entry.tree -or -not $entry.source.StartsWith('apps/scratch/') -or
+        -not $entry.path.StartsWith('usr/local/share/elevhub/apps/scratch/')) {
+        throw 'Unexpected Scratch app file manifest'
+    }
+    $from = Join-Path $appRoot $entry.source.Substring('apps/scratch/'.Length)
+    $to = Join-Path $outputDir $entry.path.Substring('usr/local/share/elevhub/apps/scratch/'.Length)
+    New-Item -ItemType Directory -Path (Split-Path $to -Parent) -Force | Out-Null
+    Copy-Item -LiteralPath $from -Destination $to
+}
+
 $html = @'
 <!doctype html>
-<html lang="en">
+<html lang="da">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -193,11 +208,14 @@ $html = @'
     .debug-button { display: none !important; }
     body > div:not(#source-credit) { flex: 1 1 auto; min-height: 0 !important; height: auto !important; }
   </style>
-  <title>Scratch editor</title>
+  <title>Scratch</title>
+  <link rel="stylesheet" href="creative/creative-app.css">
 </head>
 <body>
   <div id="source-credit"><span>Lokal Scratch-editor</span><a href="source.zip" rel="license">Kildekode og licens</a></div>
   <script defer src="guistandalone.js"></script>
+  <script defer src="creative/workshops.js"></script>
+  <script defer src="creative/creative-app.js" data-workshop="scratch"></script>
 </body>
 </html>
 '@
@@ -238,6 +256,10 @@ foreach ($file in @('extra_library.py', 'test_extra_library.py', 'requirements-l
 }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot '..\library') -Destination (Join-Path (Split-Path $integrationDir -Parent) 'library') -Recurse
 Copy-Item -LiteralPath $LibraryArchives -Destination (Join-Path (Split-Path $integrationDir -Parent) 'archive-cache') -Recurse
+Copy-Item -LiteralPath (Join-Path $appRoot 'web') -Destination (Join-Path (Split-Path $integrationDir -Parent) 'web') -Recurse
+foreach ($file in @('app.json', 'files.json')) {
+    Copy-Item -LiteralPath (Join-Path $appRoot $file) -Destination (Join-Path (Split-Path $integrationDir -Parent) $file)
+}
 if (Test-Path (Join-Path $PSScriptRoot 'DEPENDENCY-AUDIT.md')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'DEPENDENCY-AUDIT.md') -Destination (Join-Path $integrationDir 'DEPENDENCY-AUDIT.md') -Force
 }

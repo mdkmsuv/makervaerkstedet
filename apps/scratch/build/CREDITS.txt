@@ -1,3 +1,6 @@
+Hjælpebilledet er en af appens Kenney-figurer, CC0.
+Se EXTRA-LIBRARY-CREDITS.txt og appens library/sources.json.
+
 Scratch editor integration credits
 
 The Scratch editor is developed by the Scratch Foundation and its partners and

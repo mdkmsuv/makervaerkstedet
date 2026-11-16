@@ -21,6 +21,8 @@ class EditorPackageTest(unittest.TestCase):
                 (build / name).write_bytes(("syntetisk " + name).encode())
             (build / "static/library-assets").mkdir(parents=True)
             (build / "static/library-assets/new.png").write_bytes(b"new-public-asset")
+            (build / "creative").mkdir()
+            (build / "creative/autosave.js").write_bytes(b"app-owned; added by files.json")
             (build / "installation.json").write_text('{"sourcePath":"privat byggesti"}')
             lock = root / "scratch-editor.json"
             result = subprocess.run([sys.executable, "-Xutf8", "-B", str(Path(__file__).with_name("make_editor_lock.py")),
@@ -36,6 +38,7 @@ class EditorPackageTest(unittest.TestCase):
             for entry in data["files"]:
                 self.assertTrue(entry["path"].startswith("usr/local/share/elevhub/apps/scratch/"))
                 self.assertNotIn("installation.json", entry["path"])
+                self.assertNotIn("/creative/", entry["path"])
                 self.assertEqual(entry["sha256"], hashlib.sha256(Path(entry["source"]).read_bytes()).hexdigest())
                 self.assertEqual(entry["mode"], 0o644)
 

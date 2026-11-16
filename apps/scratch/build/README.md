@@ -120,7 +120,7 @@ advisories, kildekontrol og kompatibilitetsprøven.
 
 ## Lokale medier og offline-drift
 
-### Ekstra figurer fra appversion 15.1.1+local.20261116.2
+### Ekstra figurer fra appversion 15.1.1+local.20261116.3
 
 Alt ekstra byggemateriale ejes af denne app:
 
@@ -177,6 +177,18 @@ verificere, at kerneflowet ikke er afhængigt af udgående netværk.
 
 ## Byg kun Scratch-pakken
 
+Appens startfil indlæser `creative/workshops.js` og derefter
+`creative/creative-app.js` med `data-workshop="scratch"`. Appens hjælpetekster,
+stilark, hjælpebillede og autogem ligger under `../web/` og leveres gennem
+`../files.json`; bygget kopierer dem også til preview-outputtet. Metrophobic
+leveres af SDK'ets lokale `/assets/metrophobic-latin.ttf`-route. Der medfølger
+ingen skolespecifik profil eller logo i Scratchs kildefiler.
+
+Kontrollér navngivning, **Gemt på denne computer** og genåbning fra projekthylden
+efter et frisk byg. Den statiske smoke-test kræver nu også appens egne
+opstartsfiler og HTTP-routes. Editorinputlåsen udelader `creative/`; disse filer
+kontrolleres og tilføjes fra appens eget manifest i næste pakketrin.
+
 Kør fra produktroden på Debian 13 amd64/WSL. `SCRATCH_BUILD` er Linux-stien
 til det konkrete Windows-byg, eksempelvis resultatet fra `wslpath -a`.
 `OUT` skal være en ny lokal mappe. Der kræves Python 3 og Debian-pakkeværktøjer
@@ -192,7 +204,7 @@ python -B system/linux-elevhub/packaging/prepare_app_inputs.py \
   --output-dir "$OUT/locks"
 python -B system/linux-elevhub/packaging/build_debian.py \
   --input-lock "$OUT/locks/makervaerkstedet-scratch.json" \
-  --output "$OUT/debian/makervaerkstedet-scratch_15.1.1+local.20261116.2_all.deb"
+  --output "$OUT/debian/makervaerkstedet-scratch_15.1.1+local.20261116.3_all.deb"
 ```
 
 Ret pakkefilens version til den faktiske `../app.json` ved næste opdatering.

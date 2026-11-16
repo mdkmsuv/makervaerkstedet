@@ -2,6 +2,16 @@
   "schema": 1,
   "files": [
     {
+      "source": "apps/scratch/web/creative-app.css",
+      "path": "usr/local/share/elevhub/apps/scratch/creative/creative-app.css",
+      "tree": false
+    },
+    {
+      "source": "apps/scratch/web/workshops.js",
+      "path": "usr/local/share/elevhub/apps/scratch/creative/workshops.js",
+      "tree": false
+    },
+    {
       "source": "apps/scratch/web/autosave.js",
       "path": "usr/local/share/elevhub/apps/scratch/creative/autosave.js",
       "tree": false

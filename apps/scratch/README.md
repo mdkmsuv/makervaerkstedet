@@ -3,7 +3,7 @@
 Lav spil og animationer med kodeblokke. Editor, standardfigurer og lyde kan
 bruges lokalt uden internet.
 
-Fra appversion `15.1.1+local.20261116.2` indeholder den almindelige figurvælger
+Fra appversion `15.1.1+local.20261116.3` indeholder den almindelige figurvælger
 også **10 ekstra figurer med 442 kostumer** fra Kenney og Pixel Frog.
 Søg efter **Kenney** eller **Pixel** under **Vælg en sprite**. Figurerne har
 ordnede animationsserier, eksempelvis robottens `gå-01` til `gå-08` og

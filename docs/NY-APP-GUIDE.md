@@ -40,7 +40,7 @@ en forudsætning for at ændre en app.
    kilde, byg, faktisk installation, åbne forhold og næste arbejde i
    projektets fælles status. Bevar relevante kvitteringer; ryd egne prøver.
 
-Som eksempel tilføjer Scratch `15.1.1+local.20261116.2` lokale CC0-figurer
+Som eksempel tilføjer Scratch `15.1.1+local.20261116.3` lokale CC0-figurer
 udelukkende gennem `apps/scratch/`. Den ændring kræver ingen ændring eller
 ny version af hovedsystemet. Privat testdistribution og offentlig publicering
 er fortsat forskellige handlinger med hver sit mandat.
