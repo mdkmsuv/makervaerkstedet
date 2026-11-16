@@ -143,9 +143,26 @@ class FolieLibraryGatewayTests(unittest.TestCase):
         self.folie.inbox.server_url = f'http://127.0.0.1:{port}'
         status, _ = self.request(self.folie, 'GET', '/api/folie/library')
         self.assertEqual(status, 503)
-        status, html = self.request(self.folie, 'GET', '/folie.html')
+        # Since the app split the editor ships in the Folie app package and is
+        # served by the installed-app gateway, never by this forwarding server.
+        from app.laser_local import ForwardingInbox, create_installed_servers
+
+        class NoLibrary:
+            def status(self, *_):
+                raise OSError('offline')
+            catalogue_response = svg_response = status
+
+        app = json.loads((ROOT / 'apps/folie/app.json').read_text(encoding='utf-8'))
+        app.update(port=0, assets=str(ROOT / 'apps/folie/web'))
+        inbox = ForwardingInbox(f'http://127.0.0.1:{port}')
+        installed, = create_installed_servers([app], inbox, inbox, runtime={}, library_client=NoLibrary(),
+                                              data_root=Path(self.temp.name) / 'school')
+        self._start(installed)
+        self.assertEqual(self.request(installed, 'GET', '/api/folie/library')[0], 503)
+        status, html = self.request(installed, 'GET', '/')
         self.assertEqual(status, 200)
         self.assertIn(b'<html', html)
+        self.assertIn(b'/_elevhub/app.js', html)
 
 
 if __name__ == '__main__':
