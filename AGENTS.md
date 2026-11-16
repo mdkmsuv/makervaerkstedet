@@ -1,24 +1,30 @@
 # Produktindgang — Makerværkstedet
 
-Arbejdsform og mandat følger projektrodens `AGENTS.md` (mappen over denne):
-hovedagenten udvikler selv, højst tre underagenter og UI/UX-review ved alle
-UI-/flowændringer. Den gamle faste agentfordeling gælder ikke længere.
-Denne fil supplerer reglerne og genindfører ikke et generelt installationsforbud.
-Arbejdsmapper under 2.0 følger også projektrodens regler.
+Arbejdsform: hovedagenten udvikler selv, højst tre underagenter og
+UI/UX-review ved alle UI-/flowændringer. Den gamle faste agentfordeling
+gælder ikke længere. Denne fil genindfører ikke et generelt
+installationsforbud.
 
-For denne OneDrive-arbejdskopi er `LEVERANCE.md` i projektroden den fælles
-aktuelle status for Claude og Codex: kilde, byggede kandidater, faktisk
-kontrol, mangler og næste arbejde. Opdatér den ved statusændringer; de gamle
-statusfiler i `planer/` er historik. Den private projektstatus følger ikke
-med den offentlige produktudgave.
+Git: produktroden er repoet. Commit færdigt og efterprøvet arbejde lokalt i
+logiske commits. Push, pull request og ændring af remote kræver brugerens
+udtrykkelige besked.
+
+**Kun i skolens private arbejdskopi:** mappen over denne indeholder de fulde
+arbejdsregler i `AGENTS.md` og den fælles aktuelle status for Claude og Codex
+i `LEVERANCE.md` (kilde, byggede kandidater, faktisk kontrol, mangler og
+næste arbejde). Opdatér status dér ved statusændringer; de gamle statusfiler
+i `planer/` er historik. Ingen af de to filer følger med den offentlige
+produktudgave. Mangler de i din kopi, gælder denne fil og brugerens konkrete
+bestilling.
 
 ## Læs kun det relevante
 
 | Opgave | Reference |
 |---|---|
 | UI eller brugerflow | [UI/UX-agent](docs/agenter/UI-UX-AGENT.md), relevante [krav](docs/UI-UX-KRAV.md) |
-| Ny app/nyt værksted til elevenhederne | [Sådan laver du en ny app](docs/NY-APP-GUIDE.md) |
-| Arkitektur, kildefiler og testkommandoer | [Agentindgang](docs/AGENTINDGANG.md) |
+| Ny app, eller ændring af en eksisterende app | [Sådan laver du en ny app](docs/NY-APP-GUIDE.md) og appens `apps/<id>/README.md` |
+| Find ansvarlig kildefil og testkommando | [Kodekort](docs/KODEKORT.md) |
+| Tilpasning til en skole: maskiner, workflows og drift | [Agentindgang](docs/AGENTINDGANG.md) |
 | Installation/opdatering og maskinrolle | [Kom godt i gang](docs/KOM-GODT-IGANG.md), [to opsætninger](docs/TO-OPSAETNINGER.md) |
 | Skoleprofil, tema og netværk | [Skoletilpasning](docs/SKOLETILPASNING.md) |
 | Faktisk pakke, udgivelse eller udrulning | Relevante dele af [udgivelsesprocessen](docs/UDGIVELSESPROCES.md) |

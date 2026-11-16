@@ -1,8 +1,8 @@
 # Kodekort for Claude og Codex
 
-Kildekort ajourført 14. november 2026. Alle stier nedenfor er fra
-produktroden med `REPOSITORY-LAYOUT.json`. Læs først [AGENTS.md](../AGENTS.md)
-og [agentindgangen](AGENTINDGANG.md), derefter kun relevante filer.
+Kildekort ajourført 16. november 2026. Alle stier nedenfor er fra
+produktroden med `REPOSITORY-LAYOUT.json`. Læs [AGENTS.md](../AGENTS.md)
+først, og brug derefter kun de rækker, opgaven berører.
 Søg efter symboler med `rg`; kortet erstatter ikke koden.
 
 ## Find den ansvarlige kilde
@@ -34,12 +34,15 @@ Søg efter symboler med `rg`; kortet erstatter ikke koden.
 
 ## De fem appkilder
 
+Hver app har en `README.md` med kilde, byg, kontrakt og prøver. Lommeregneren
+i `apps/lommeregner/` er en sjette testapp og SDK-eksempel.
+
 | App | Rediger her | Byg |
 |---|---|---|
 | Laser | `apps/laser/web/laservaerksted/` | Statiske filer via appens filliste |
-| Folie | `apps/folie/web/` | `npm run build:laser` → `apps/folie/build.mjs` |
+| Folie | `apps/folie/web/`; filerne hedder `laser.*` | `npm run build:laser` → `apps/folie/build.mjs` |
 | 3D-værksted | `apps/3dprint/web/model3d/`, `model3d.html`, `model3d.css` | `npm run build:model3d` → `apps/3dprint/build.mjs` |
-| Scratch | `apps/scratch/web/`, `apps/scratch/build/` | Appens låste upstream-byg og kvittering |
+| Scratch | `apps/scratch/web/`, `apps/scratch/build/` | Appens låste upstream-byg og kvittering; pakkes kun med `--scratch-lock` |
 | micro:bit | `apps/microbit/web/` | Statiske filer; MakeCode er ekstern |
 
 `npm run build` bygger systemets viewer og Folie. Ignorerede
@@ -58,6 +61,7 @@ manglende browserbygning med filer fra en gammel installation.
 | `system/linux-elevhub/administration/` | `/usr/lib/makervaerkstedet/updater/` |
 | `system/linux-elevhub/projekter/` | `/usr/local/lib/elevhub/projekter/` |
 | `apps/<id>/` | `/usr/share/makervaerkstedet/apps/<id>/` |
+| `apps/scratch/` | Manifestet som ovenfor; editor og opstartsfiler i `/usr/local/share/elevhub/apps/scratch/` (eneste undtagelse) |
 
 De tidligere logiske `app/`, `web/` og `linux-elevhub/`-stier findes som
 byggealiaser i layoutfilen. De er ikke den nye fysiske placering i Git.

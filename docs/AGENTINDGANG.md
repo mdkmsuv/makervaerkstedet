@@ -18,11 +18,13 @@ konkrete instruktioner afgør opgaven og hvilke ændringer, der er ønsket.
 
 ## Fælles overdragelse mellem Claude og Codex
 
-I den private OneDrive-projektrod er `LEVERANCE.md` den fælles aktuelle
-status: kildecommit, bygget pakke, testinstallation, faktisk evidens,
-åbne forhold og næste afgrænsede arbejde. Opdatér den før aflevering ved
-statusændring; opret ikke en konkurrerende aktuel status. Den private
-status og rå logs skal ikke indgå i en offentlig kildeudgave.
+Kun i skolens private arbejdskopi: mappen over produktroden har
+`LEVERANCE.md` som fælles aktuel status med kildecommit, bygget pakke,
+testinstallation, faktisk evidens, åbne forhold og næste afgrænsede arbejde.
+Opdatér den før aflevering ved statusændring; opret ikke en konkurrerende
+aktuel status. Den private status og rå logs indgår ikke i en offentlig
+kildeudgave. Findes filen ikke i din kopi, er der ingen fælles status at
+opdatere; aflevér da resultat, kontrol og udeståender direkte til brugeren.
 
 Produktroden indeholder `REPOSITORY-LAYOUT.json`. Kilden ligger i
 `system/`, selvstændige apps i `apps/<id>/` og udviklingsværktøjer
@@ -32,11 +34,14 @@ Læs [kodekortet](KODEKORT.md) for de præcise ejere og
 En tidligere samlet `.2`-leverance er en anden kandidat end den nye
 modulære kilde. Bevar dens kvittering og manuelprøve som særskilt evidens.
 
-## Læs i denne rækkefølge
+## Læs det, opgaven berører
+
+Der er ingen fast rækkefølge. Begynd med produktindgangen, og vælg derefter
+kun de rækker, som den konkrete tilpasning har brug for.
 
 | Dokument | Hvad det afklarer |
 |---|---|
-| [Projektindgang](../AGENTS.md) | Installation, roller og grundlæggende krav ved ændringer. |
+| [Produktindgang](../AGENTS.md) | Arbejdsform, produktgrænser og hvilken vejledning der hører til hvilken opgave. |
 | [Arkitektur](MAKERSPACE-ARKITEKTUR.md) | Komponenter, dataejerskab, maskiner og workflowgrænser. |
 | [Skoletilpasning](SKOLETILPASNING.md) | Skoleprofil, LAN, værksteder og de faktiske generatorer og skabeloner. |
 | [Kodekort](KODEKORT.md) | Kildeejerskab, aktuelle fysiske stier og relevante testkommandoer. |
@@ -88,7 +93,8 @@ programmets funktioner. Det kan ændre igangværende jobs eller miste historik.
 
 ## Kontroller efter ændringer
 
-Kør fra projektroden med projektets Python-miljø. Vælg de prøver, som matcher
+Kør fra produktroden, mappen med `REPOSITORY-LAYOUT.json`, med projektets
+Python-miljø. Vælg de prøver, som matcher
 ændringen; et bestået delområde beviser ikke, at hele systemet er driftsklart.
 
 Testforudsætninger:

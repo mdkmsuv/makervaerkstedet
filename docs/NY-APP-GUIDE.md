@@ -14,9 +14,10 @@ er en selvstændig byggeprøve; den er ikke en godkendt offentlig udgivelse.
 
 ## Opdater en eksisterende app
 
-Start her og i den konkrete `apps/<id>/README.md`. Du skal kunne følge
-appens bygge-/testopskrift derfra; hovedsystemets implementering er ikke
-en forudsætning for at ændre en app.
+Start her og i den konkrete `apps/<id>/README.md`; alle seks apps har én.
+Du skal kunne følge appens bygge-/testopskrift derfra; hovedsystemets
+implementering er ikke en forudsætning for at ændre en app. Bemærk at
+kildefilerne `laser.*` og `npm run build:laser` hører til Folie, ikke Laser.
 
 1. Læs appens `app.json`, `files.json` og README. Følg appens egne byggenoter,
    hvis den har en editor eller bundling; Scratch har eksempelvis
@@ -47,10 +48,26 @@ er fortsat forskellige handlinger med hver sit mandat.
 
 ## 1. Opret og prøv den mindste app
 
-Python 3.13 og Node er udviklingsværktøjer. De statiske skabeloner behøver
-hverken npm-installation, bundling, netværk eller nye konti. Vælg et nyt id
-med små bogstaver, tal og bindestreg og en ledig loopback-port over 1023.
-Port 8790 og 8791 er systemporte; eksisterende apps bruger også egne porte.
+Python 3.13 eller nyere og Node er udviklingsværktøjer; kommandoerne her er
+afprøvet med Python 3.14. De statiske skabeloner behøver hverken
+npm-installation, bundling, netværk eller nye konti. Vælg et nyt id med små
+bogstaver, tal og bindestreg og en ledig loopback-port over 1023.
+
+| Port | Bruges af |
+|---|---|
+| 8790, 8791 | Systemet: elevstartens lokale tjeneste og projekthylden. Afvises i manifestet |
+| 8792 | Scratch |
+| 8795 | Laser |
+| 8796 | Folie |
+| 8797 | micro:bit |
+| 8798 | 3D-værksted |
+| 8799 | Scratchs lokale smoke-test |
+| 8892 | Lommeregner (testapp) |
+
+`new_app.py` afviser kun porte, som apps i samme kildetræ allerede bruger.
+Det signerede katalog afviser to apps på samme port. Udvikler du i et andet
+kildetræ end det, kataloget bygges fra, skal du selv vælge en port uden for
+tabellen.
 
 ```powershell
 python -B sdk/new_app.py --id plantequiz --name "Plantequiz" --port 8890 --stateless
@@ -77,11 +94,22 @@ ikke systemkode, rodfilernes buildkommandoer eller andre apps.
 
 `preview.py` pakker appens filer til en midlertidig mappe, kontrollerer den
 med den rigtige pakkekontrakt og bruger den eksisterende lokale vært,
-temabro og projektbro. Kun loopback-porten i manifestet åbnes. Projektdata
-fra prøven er midlertidige og fjernes ved Ctrl+C. Prøven starter ingen kø,
-opdateringstjeneste eller installation og afviser apps med køcapabilities.
-Den erstatter ikke en installeret prøve med elevbjælke, offline genstart
-og lærerens adgangsstyring.
+temabro og projektbro. Kun loopback-porten i manifestet åbnes; en kø-app får
+desuden en midlertidig port til projekthylden. Projektdata fra prøven er
+midlertidige og fjernes ved Ctrl+C. Prøven starter ingen opdateringstjeneste
+eller installation. Er porten optaget, stopper den med
+`sdk_preview_port_unavailable`.
+
+En app med `laser-submit-v1`, `print-job-v1` eller `svg-library-v1` kører bag
+den rigtige lokale gateway, men **uden skoleforbindelse**. Gatewayen validerer
+afleveringen og svarer `202` med `queued: true`, som når en elevcomputer er
+offline. Udbakken er midlertidig og slettes ved Ctrl+C; intet sendes til en
+kø, en printer eller en laser. SVG-biblioteket svarer `503`. Kvitteringen for
+modtaget i køen (`200`/`201`) og lærerens lukning (`423`) kan derfor kun prøves
+med mocks eller på det aftalte testmiljø.
+
+Forhåndsvisningen erstatter ikke en installeret prøve med elevbjælke, offline
+genstart og lærerens adgangsstyring.
 
 Preview bruger en frossen kopi af appen. Stop med Ctrl+C og start igen efter
 kildeændringer; der er ingen automatisk genindlæsning. Den lille
@@ -110,13 +138,86 @@ faste lister: den installerede descriptor registrerer formatet dynamisk.
 `files.json` læser kun appens egen kildemappe. Pakkens programfiler må kun
 ligge under `usr/share/makervaerkstedet/apps/<id>/`. Der følger ingen
 Python-hooks, shellkommandoer, systemd-filer, profiler, nøgler eller
-elevdata med. Kernen importerer ikke appkode.
+elevdata med. Kernen importerer ikke appkode. En post med `"tree": true`
+pakker alt i mappen, også prøver og noter; læg dem uden for `web/`.
 
 Bump kun appens `version`, når den ændres. Hold `sdk`, `min_core` og
 capabilities i overensstemmelse med den faktisk brugte kontrakt. Den
 aktuelle SDK-version er 1; nye apps kræver mindst core `2.1.0~`.
 Den offentlige katalogvalidering kontrollerer også pakkeidentitet,
 portkonflikter, projektformater, artefakthash og kildecommit.
+
+### Manifestets felter
+
+`app.json` skal indeholde præcis disse 18 felter. Et manglende eller ekstra
+felt afvises med `invalid_app_fields`.
+
+| Felt | Regel |
+|---|---|
+| `schema` | Altid `2` |
+| `id` | Små bogstaver, tal og bindestreg, højst 64 tegn. `catalog`, `internet`, `projekter` og `start` er reserveret |
+| `navn`, `description` | Synlig tekst til elev og lærer; højst 256 og 2048 tegn |
+| `category` | `byg`, `kode` eller `ide`. Bestemmer gruppen på elevens startside |
+| `icon` | `null` eller en relativ sti. Feltet valideres, men startsiden bruger det ikke i dag |
+| `version` | Debian-version. Bump ved enhver ændring af pakkens indhold; samme version med andet indhold afvises af katalogkontrollen |
+| `package` | `makervaerkstedet-app-<id>` |
+| `architecture` | `all` eller `amd64` |
+| `sdk` | `1` |
+| `min_core` | Mindste version af elevsystemet, appen kræver; mindst `2.1.0~` |
+| `start` | `http://127.0.0.1:<port>/`, eventuelt med en relativ sti. Ingen query eller fragment |
+| `offline` | `true`, hvis appen kan bruges, når skoleserveren ikke kan nås. Ved `false` spærrer startsiden flisen, mens serveren er væk |
+| `kraever_internet` | `true`, hvis appen henter noget fra internettet for at virke |
+| `aflevering` | `null`, `laser-submit` eller `print-job`. Kræver den tilsvarende capability |
+| `licens` | Licens eller henvisning; højst 1024 tegn |
+| `project` | `null` eller `{kind, extension, max_bytes}`. `kind` er app-id'et, `max_bytes` er højst 50 MiB, og `projects-v1` skal stå under `required` |
+| `capabilities` | `{"required": [], "optional": []}` med navne som `theme-v1` |
+
+`offline` og `kraever_internet` svarer på to forskellige spørgsmål. micro:bit
+har begge sat til `true`: appen afhænger ikke af skoleserveren, men editoren
+hentes fra internettet.
+
+Systemet kender `projects-v1`, `theme-v1`, `laser-submit-v1`, `print-job-v1`
+og `svg-library-v1`. En capability under `required`, som elevsystemet ikke
+har, gør appen inkompatibel. En under `optional` skal appen selv slå op i
+`window.ElevhubApp.capabilities`, før den bruger funktionen.
+
+### Det giver værten appen
+
+Den lokale appvært (`system/linux-elevhub/projekter/app_host.py`) serverer
+appens `www/`-mappe på manifestets port og indsætter sine egne scripts ved at
+erstatte det første `</head>` i hver HTML-side.
+
+- **Siden skal have et bogstaveligt `</head>` med små bogstaver.** Mangler
+  det, indsættes hverken tema, projektbro eller `ElevhubApp`, og der vises
+  ingen fejl.
+- Altid `/_elevhub/app.js`, som sætter `window.ElevhubApp` til
+  `{id, navn, version, sdk, project, capabilities}`. Scripts i `<body>` og
+  scripts med `defer` kan regne med værdien.
+- Med `theme-v1`: `/school-theme.css` og `/school-theme.js`, medmindre siden
+  selv henviser til `school-theme.js`.
+- Med `project`: `/_elevhub/projekter/bridge.css` og `bridge.js`.
+- Fælles filer, som appen ikke selv skal pakke: `/school-theme.js`,
+  `/school-theme.css`, `/favicon.svg`, `/project-import.js`,
+  `/assets/metrophobic-latin.ttf` og `/assets/Metrophobic-OFL.txt`. Appens
+  egen fil på samme sti vinder.
+- `/` viser stien fra `start`, ellers `/index.html`.
+- Filer over 64 MiB og symbolske links serveres ikke.
+
+### De oprindelige apps er ikke forbilleder
+
+Laser, Folie, 3D-værksted, Scratch og micro:bit fandtes før appopdelingen og
+har faste særregler i `system/`: genveje som `/laser.html`, egne
+projektformater og gamle formatlister. En ny app får ingen af dem. Brug
+skabelonerne og [lommeregneren](../apps/lommeregner/README.md) som forbillede.
+
+Scratch er desuden den ene undtagelse fra pakkereglerne. Pakken hedder
+`makervaerkstedet-scratch` og ejer også `usr/local/share/elevhub/apps/scratch/`,
+hvor editoren lå før opdelingen. Undtagelsen er skrevet ind i
+`system/app/app_catalog.py` og `app_packages.py` og kan ikke bruges af andre
+apps. Scratchs `files.json` oplister kun appens fire egne opstartsfiler;
+editoren kommer fra en inputlås. `prepare_app_inputs.py` afviser derfor at
+pakke Scratch uden `--scratch-lock`, og `sdk/check_app.py --app scratch`
+kontrollerer kun manifestet og de fire filer, ikke editoren.
 
 ## 3. Tema, logo, skrifttype og navigation
 
@@ -191,7 +292,7 @@ Appens grænse er 1 MiB og 100.000 tegn i noteseksemplet; øg kun inden for
 systemets grænse på 50 MiB. Ugyldig import skal bevare det åbne dokument.
 Prøv også afvisning, gemmefejl, genåbning, elevskift og gendannelse.
 
-## 5. Valgfri aflevering til kø
+## 5. Valgfri aflevering til kø og SVG-bibliotek
 
 `sdk/examples/queue.mjs` er et tilvalgseksempel og udfører intet ved
 indlæsning. Kopiér det ind i appens egen `web/`-mappe og deklarér den
@@ -201,11 +302,22 @@ konkrete optional/required capability i `app.json`:
 |---|---|---|
 | `laser-submit-v1` | `POST /api/laser/submit` | JSON med `elevnavn`, `klasse`, `projekt`, `svg`, `requestId` |
 | `print-job-v1` | `POST /api/jobs` | Binær STL; `X-Filename` og `X-Request-ID` |
+| `svg-library-v1` | `GET /api/laser/library`, `/api/laser/library/status` og `/api/laser/library/file/<sha256>` | JSON: katalog med `items` (`id`, `title`, `category`), status, eller én fil med `svg` |
 
 Hvis `aflevering` sættes, er værdien kun `laser-submit` eller `print-job`
 og skal have den tilsvarende capability. Værten vælger den eksisterende
 lokale gateway. Appen får ingen vilkårlig serveradresse, shelladgang eller
 nye endpoints. Indholdet valideres igen af gatewayen.
+
+Biblioteksstierne bærer de oprindelige apps' navne. `/api/folie/library`
+findes også og giver det samme bibliotek; en ny app bruger en af de to. Det
+er kun læseadgang til skolens afgrænsede SVG-samling og giver ingen
+kørettighed. Uden capability er ruten lukket; uden forbindelse svarer den
+`503`. Stierne tager ingen query.
+
+Prøv afleveringen lokalt med `python -B sdk/preview.py --app <id>`, som
+beskrevet i afsnit 1: den rigtige gateway validerer indholdet og svarer som en
+offline elevcomputer.
 
 Opret ét `crypto.randomUUID()` ved elevens konkrete aflevering, og genbrug
 samme id ved afklaring/genforsøg af samme aflevering. Automatisk gentagelse

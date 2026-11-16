@@ -22,7 +22,10 @@
   ],
   "explicitFiles": [
     "apps/3dprint/README.md",
+    "apps/folie/README.md",
+    "apps/laser/README.md",
     "apps/lommeregner/README.md",
+    "apps/microbit/README.md",
     "apps/scratch/README.md",
     "apps/scratch/build/extra_library.py",
     "apps/scratch/build/test_extra_library.py",
