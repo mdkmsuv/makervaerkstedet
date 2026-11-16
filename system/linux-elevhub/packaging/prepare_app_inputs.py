@@ -8,16 +8,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 from app.app_packages import prepare
 
 
-def main():
+def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--source-root', type=Path, required=True)
     p.add_argument('--app', required=True)
     p.add_argument('--output-dir', type=Path, required=True)
     p.add_argument('--scratch-lock', type=Path)
     p.add_argument('--vendor-built-from',type=Path)
-    a = p.parse_args()
+    a = p.parse_args(argv)
     from app.app_catalog import component_for_app
     component_for_app(a.app)
+    if a.app == 'scratch' and a.scratch_lock is None:
+        # apps/scratch/files.json lists only the wrapper. Without the editor
+        # lock the result is a valid-looking package that cannot start Scratch.
+        p.error('scratch_editor_lock_required: brug --scratch-lock fra apps/scratch/build/make_editor_lock.py')
     folder = a.source_root/'apps'/a.app
     spec = prepare(a.source_root, json.loads((folder/'app.json').read_text(encoding='utf-8')),
                    json.loads((folder/'files.json').read_text(encoding='utf-8')), a.output_dir,

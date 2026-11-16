@@ -48,6 +48,16 @@ class AppOwnershipTests(unittest.TestCase):
         entry=next(item for item in spec['files'] if item['path']==target)
         self.assertEqual(entry['source'],str(new));self.assertEqual(len(spec['files']),2)
 
+    def test_scratch_package_inputs_require_the_editor_lock(self):
+        import contextlib, io
+        import prepare_app_inputs
+        message=io.StringIO()
+        with self.assertRaises(SystemExit) as stopped, contextlib.redirect_stderr(message):
+            prepare_app_inputs.main(['--source-root',str(ROOT),'--app','scratch','--output-dir',str(self.root/'locks')])
+        self.assertEqual(stopped.exception.code,2)
+        self.assertIn('scratch_editor_lock_required',message.getvalue())
+        self.assertFalse((self.root/'locks').exists())
+
     def test_app_cannot_own_other_app_system_configuration_or_data(self):
         for target in ('var/lib/elevhub/projekter/a', 'etc/elevhub/client.json',
                        'home/elev/a', 'usr/bin/python3',
