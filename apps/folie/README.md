@@ -56,9 +56,14 @@ python -B -m unittest tests.test_web_build_receipt tests.test_folie_library_gate
 ```
 
 Forhåndsvisningen kører uden skoleforbindelse, så biblioteket svarer, at der
-ikke er forbindelse. De renderede kontroller ligger i
-`scripts/verify_folie_library.mjs`, `scripts/verify_brother_workshop.mjs` og
-`tests/test_folie_project_import_browser.cjs`; de kræver Playwright.
+ikke er forbindelse. Den renderede prøve mod den installerede appkørsel er
+`tests/test_installed_apps_browser.cjs` (sæt `MKV_INSTALLED_APP_FILTER=folie`).
+Den kræver Playwright og kører fixturen i WSL på Windows.
+
+De ældre kontroller `scripts/verify_folie_library.mjs`,
+`scripts/verify_brother_workshop.mjs` og
+`tests/test_folie_project_import_browser.cjs` læser editoren fra stier og
+servere fra før appopdelingen. Regn ikke med dem, før de er flyttet.
 
 [Opdatér, byg og udgiv appen](../../docs/NY-APP-GUIDE.md) ·
 [SVG-bibliotek og ansvar](../../docs/APP-PLATFORM.md)

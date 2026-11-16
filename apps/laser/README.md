@@ -52,10 +52,15 @@ En aflevering valideres og lægges i en midlertidig udbakke, som slettes ved
 Ctrl+C; intet sendes til en kø eller en laser. Biblioteket svarer, at der
 ikke er forbindelse.
 
-De renderede forløb med lærerens indbakke ligger i
-`tests/test_laser_e2_browser.cjs`, `tests/test_laser_submission_browser.cjs`
-og `tests/test_laser_website_library.cjs`. De kræver Playwright og projektets
-testfixture og starter aldrig en fysisk laser.
+De renderede prøver mod den installerede appkørsel er
+`tests/test_installed_apps_browser.cjs` (sæt `MKV_INSTALLED_APP_FILTER=laser`)
+og `tests/test_laser_website_library.cjs`. De kræver Playwright og kører
+fixturen i WSL på Windows. Ingen af dem starter en fysisk laser.
+
+De ældre forløb `tests/test_laser_e2_browser.cjs` og
+`tests/test_laser_submission_browser.cjs` bygger på de tidligere lokale
+servere, som ikke længere finder editorsiderne i kilden efter appopdelingen.
+Regn ikke med dem, før de er flyttet til den installerede appkørsel.
 
 [Opdatér, byg og udgiv appen](../../docs/NY-APP-GUIDE.md) ·
 [Kø, udbakke og ansvar](../../docs/APP-PLATFORM.md)
