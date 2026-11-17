@@ -253,6 +253,7 @@
     "scripts/test_printer_settings.cjs",
     "scripts/test_process_supervisor.py",
     "scripts/test_stl_validation.mjs",
+    "scripts/test_web_receipt.cjs",
     "scripts/test_wsl_supervisor.py",
     "scripts/verify_autostart.py",
     "scripts/verify_brother_workshop.mjs",
