@@ -120,6 +120,46 @@ async function microbitLayout(page) {
     assert(state.frame.height>state.viewport.height/2); assert(state.documentWidth<=state.viewport.width,'Native outer document fits the viewport');
   }
 }
+async function model3dLayout(page) {
+  // School website skins describe document pages. Their late generic main
+  // rule must not turn the installed editor into a centred article column.
+  await page.route('**/school-appearance/website.css', async route => {
+    const response = await route.fetch();
+    await route.fulfill({response, body: await response.text() + '\nmain{max-width:1504px;margin:auto;padding:0 32px}@media(max-width:1150px){main{padding:0 24px}}'});
+  });
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('#object-list')?.children.length === 1);
+  const scene = JSON.parse(await exported(page)).scene;
+  await page.locator('#workspace').focus();
+  await page.keyboard.press('Control+a');
+  report.model3dLayout = [];
+  for (const viewport of [{width:1920,height:1080}, {width:1366,height:768}, {width:1280,height:720}, {width:768,height:1024}]) {
+    await page.setViewportSize(viewport);
+    await page.waitForFunction(() => {
+      const canvas = document.querySelector('#canvas canvas'), host = document.querySelector('#canvas');
+      return canvas && Math.abs(canvas.width / devicePixelRatio - host.clientWidth) <= 1 && Math.abs(canvas.height / devicePixelRatio - host.clientHeight) <= 1;
+    });
+    const layout = await page.evaluate(() => {
+      const box = selector => {const r=document.querySelector(selector).getBoundingClientRect(); return {x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};};
+      return {editor:box('.editor'),workspace:box('#workspace'),canvas:box('#canvas canvas'),status:box('.status-bar'),send:box('#send-print'),snap:box('.snap-control'),scrollWidth:document.documentElement.scrollWidth};
+    });
+    report.model3dLayout.push({viewport,...layout});
+    if (process.env.MKV_BROWSER_REPORT) await page.screenshot({path:path.join(process.env.MKV_BROWSER_REPORT,`3dprint-layout-${viewport.width}.png`),fullPage:true});
+    assert.equal(layout.editor.x,0,'School article margins must not centre the 3D editor');
+    assert.equal(layout.editor.width,viewport.width,'3D editor must use the whole viewport width');
+    assert.equal(layout.canvas.right,viewport.width,'Canvas must reach the right edge');
+    assert(layout.status.bottom <= viewport.height + 1,'Status must fit below the canvas');
+    for (const control of [layout.send,layout.snap]) assert(control.x>=0 && control.right<=viewport.width && control.y>=54 && control.bottom<=viewport.height,'Editor controls must stay on screen');
+    assert.equal(layout.scrollWidth,viewport.width,'Editor must not introduce horizontal page scrolling');
+    assert.equal(await page.evaluate(() => document.activeElement.id),'workspace','Resize must preserve project keyboard focus');
+    assert.equal(await page.locator('#object-list button[aria-pressed=true]').count(),1,'Resize must preserve the selected object');
+    assert.deepEqual(JSON.parse(await exported(page)).scene,scene,'Resize must preserve the editable project');
+  }
+  await page.locator('#elevhub-project-open').click();
+  await page.locator('#project-library-close').click();
+  assert.equal(await page.evaluate(() => document.activeElement.id),'elevhub-project-open','Closing the project picker must return focus');
+}
+
 async function run(id, flow) {
   if (process.env.MKV_INSTALLED_APP_FILTER && process.env.MKV_INSTALLED_APP_FILTER !== id) return;
   const context = await newContext();
@@ -218,6 +258,7 @@ async function main() {
     await page.goto(urls['3dprint'] + '?elevhub_project=' + meta.id);
     await page.waitForFunction(() => document.querySelector('#object-list')?.children.length === 1);
     assert.deepEqual(JSON.parse(await exported(page)).scene, expected.scene);
+    await model3dLayout(page);
   });
   await run('scratch', async page => {
     await page.waitForFunction(() => document.querySelector('#creative-app-header [data-school-name]')?.textContent === 'Syntetisk QA-skole');

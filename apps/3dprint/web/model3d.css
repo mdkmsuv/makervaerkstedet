@@ -281,6 +281,8 @@ svg.i.turn{transform:rotate(-90deg)}
 .name-label{display:block;font-size:14px;margin:0 0 6px}
 .toolbar #send-print{min-height:44px}
 
+/* The editor owns its layout, even when a late school website skin centres ordinary main pages. */
+.editor{width:100%;max-width:none;margin:0;padding:0}
 /* The shared project bar uses 54 px of body padding; keep the 3D workspace in the remaining window. */
 body.elevhub-project-ready:not(.elevhub-project-inline){height:100dvh;display:flex;flex-direction:column;overflow:hidden}
 body.elevhub-project-ready:not(.elevhub-project-inline)>.header,
