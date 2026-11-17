@@ -218,10 +218,26 @@ class ServerUpdateWorkerTests(unittest.TestCase):
         self.assertTrue(Path(plan['exe']).exists())
 
     def test_check_reconciles_completed_crash_without_new_download(self):
-        plan,_=self.prepare();self.complete(plan);previous=list(self.requests)
+        plan,_=self.prepare();journal=self.complete(plan);previous=list(self.requests)
+        value=json.loads((journal/'state.json').read_bytes())
+        # The actual native rollback inventory exceeded 1 MiB, unlike the
+        # small updater request/status files that have a 64 KiB limit.
+        value['program_backup']={'files':{f'web/synthetic-asset-{i}.js':'a'*64 for i in range(15000)}}
+        self.write(journal/'state.json',value)
+        self.assertGreater((journal/'state.json').stat().st_size,1024**2)
         self.request('check');result=self.worker.check()
         self.assertEqual(result['state'],'succeeded');self.assertEqual(result['command_id'],plan['command_id'])
         self.assertEqual(self.requests,previous)
+
+    def test_oversized_native_journal_remains_unresolved_and_preserves_download(self):
+        plan,_=self.prepare();journal=self.complete(plan)
+        value=json.loads((journal/'state.json').read_bytes())
+        value['program_backup']={'synthetic_oversize':'x'*(16*1024**2)}
+        self.write(journal/'state.json',value)
+        result=self.worker.finish(0)
+        self.assertEqual(result['state'],'interrupted')
+        self.assertEqual(result['code'],'metadata_too_large')
+        self.assertTrue(Path(plan['exe']).exists())
 
     def test_lost_finish_reply_cannot_clobber_confirmed_success(self):
         plan,_=self.prepare();self.complete(plan)

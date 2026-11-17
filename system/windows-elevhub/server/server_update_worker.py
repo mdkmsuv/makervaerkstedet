@@ -31,6 +31,7 @@ HASH = re.compile(r'[a-f0-9]{64}')
 VERSION = re.compile(r'(\d+)\.(\d+)\.(\d+)-(\d{8})\.(\d+)')
 REQUEST_FIELDS = {'schema','action','command_id','manifest_sha256'}
 MINIMUM_INSTALLER = '2.1.0-20261117.4' # First native EXE supporting /UPDATEID and the locked version guard.
+NATIVE_JOURNAL_MAXIMUM = 16 * 1024**2 # Per-file rollback inventory exceeds 1 MiB in a normal server package.
 TEMPLATE_SETTINGS = {'repository','minisign_exe','minisign_sha256','public_key','apt_cache','source'}
 
 
@@ -256,7 +257,7 @@ class Worker:
         try:
             installed=self.installed_version()
             path=self.data/'installer-updates'/operation['command_id']/'state.json'
-            journal=read(path) if path.exists() else None
+            journal=read(path,NATIVE_JOURNAL_MAXIMUM) if path.exists() else None
             require(journal is None or journal.get('operation_id')==operation['command_id'],'installer_completion_unconfirmed')
             require(self.protected()==operation['protected'],'protected_data_changed')
             if installed==operation['previous_version']:
