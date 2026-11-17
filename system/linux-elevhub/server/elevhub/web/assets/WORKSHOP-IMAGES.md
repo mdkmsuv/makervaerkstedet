@@ -5,21 +5,23 @@
 De seks `workshop-*-v2`-filer bruges på tværs af skolers farvetemaer. De er
 ikke skolelogoer eller private skoleprofiler. Provenance er registreret ved
 integrationen 13. november 2026; den dato er ikke en påstand om, hvornår
-brugerleverede billeder oprindeligt blev fremstillet.
+billederne oprindeligt blev fremstillet. Ophavskorrektion 17. november 2026:
+Projektejeren har bekræftet, at også Folie-, Laser-, 3D- og Scratch-billederne
+er genereret af projektets AI-assistent til Makerværkstedet.
 
 | Filer | Dokumenteret oprindelse og vilkår |
 | --- | --- |
-| `workshop-folie-v2.webp`, `workshop-laser-v2.webp`, `workshop-3d-v2.webp` | Brugerleveret til denne opgave. Oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. |
-| `workshop-scratch-v2.png` | Brugerleveret til denne opgave. Oprindeligt ophav, licens og eventuel generering er ikke dokumenteret. |
+| `workshop-folie-v2.webp`, `workshop-laser-v2.webp`, `workshop-3d-v2.webp` | AI-genereret til Makerværkstedet af projektets AI-assistent; bekræftet af projektejeren 17. november 2026. CC BY 4.0 med kreditering af Makerværkstedet og Klostermarksskolen. |
+| `workshop-scratch-v2.png` | AI-genereret til Makerværkstedet af projektets AI-assistent; bekræftet af projektejeren 17. november 2026. CC BY 4.0 med kreditering af Makerværkstedet og Klostermarksskolen. |
 | `workshop-microbit-v2.png`, `workshop-internet-v2.png` | Genereret med imagegen i denne session som fælles illustrationsmateriale. Projektets navngivne egne illustrationer distribueres under CC BY 4.0 med kreditering af Makerværkstedet og Klostermarksskolen. |
 
-Der udledes ingen ny licens for de fire brugerleverede billeder. Projektets
-generelle kode- og illustrationslicenser omlicenserer ikke tredjepartsmedier;
+Alle seks v2-billeder deles på projektets CC BY 4.0-vilkår for egne
+illustrationer. Dette ændrer ikke vilkårene for tredjepartsmedier;
 se [licensafgrænsningen](../../../../../../LICENSE-SCOPE.md). Filnavne og nøjagtige
 SHA-256-værdier er fastlåst i
 [`publicImages`](../../../../../../deployment/public-source-manifest.json).
-De filspecifikke oprindelige prompts og produktionsværktøjer for
-brugerleverede billeder er ikke kendt og er derfor ikke rekonstrueret her.
+De oprindelige prompts, genereringsdatoer og præcise billedværktøjer for
+de fire nu afklarede billeder er ikke dokumenteret og rekonstrueres ikke her.
 
 ## Workshop-serien, v1
 

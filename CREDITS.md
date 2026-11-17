@@ -18,9 +18,10 @@ deres egne licenser, notices, tilladelser og øvrige vilkår.
 De navngivne projektillustrationer i [billedoversigten](system/web/assets/PUBLIC-ILLUSTRATIONS.md)
 har CC BY 4.0. Ved deling krediteres Makerværkstedet og Klostermarksskolen;
 licenshenvisning og oplysninger om eventuelle billedændringer bevares.
-De fire brugerleverede v2-billeder til Folie, Laser, 3D og Scratch har ikke
-dokumenteret oprindeligt licensgrundlag og får ingen ny licens gennem
-projektets allowlist; se billedoversigtens særskilte provenance.
+De fire v2-billeder til Folie, Laser, 3D og Scratch er AI-genereret til
+Makerværkstedet af projektets AI-assistent, bekræftet af projektejeren
+17. november 2026. De følger samme CC BY 4.0-vilkår; se billedoversigtens
+særskilte provenance.
 
 ## Elevindgangens skrifttype
 

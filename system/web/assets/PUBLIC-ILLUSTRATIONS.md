@@ -1,6 +1,6 @@
 # Public illustrations
 
-Dette katalog beskriver illustrationer, som public source-eksporten må medtage, fordi de er runtime-assets for Makerværkstedet. Skolelogoer og private skolefotos hører ikke til denne allowlist. Projektets navngivne egne illustrationer distribueres under CC BY 4.0 med kreditering af Klostermarksskolen; den fulde licenstekst ligger i [CC-BY-4.0.txt](CC-BY-4.0.txt). Fire brugerleverede v2-billeder har særskilt, uafklaret oprindeligt licensgrundlag som beskrevet nedenfor; allowlisten giver dem ingen ny licens.
+Dette katalog beskriver illustrationer, som public source-eksporten må medtage, fordi de er runtime-assets for Makerværkstedet. Skolelogoer og private skolefotos hører ikke til denne allowlist. Projektets navngivne egne illustrationer distribueres under CC BY 4.0 med kreditering af Klostermarksskolen; den fulde licenstekst ligger i [CC-BY-4.0.txt](CC-BY-4.0.txt). Ophavet til de fire v2-billeder til Folie, Laser, 3D og Scratch er afklaret af projektejeren 17. november 2026: de er AI-genereret til projektet og deles på samme CC BY 4.0-vilkår.
 
 Hashpins og den komplette allowlist findes i [`deployment/public-source-manifest.json`](../../../deployment/public-source-manifest.json) under `publicImages`. En fil må kun eksporteres, hvis dens sti og SHA-256-pin matcher allowlisten.
 
@@ -8,7 +8,7 @@ Hashpins og den komplette allowlist findes i [`deployment/public-source-manifest
 
 - Maker-serien (`maker-*.webp`) er imagegen-genererede illustrative makerbilleder. De oprindelige noter og billedformål står i [MAKER-IMAGES.md](MAKER-IMAGES.md) og [SOURCES.md](SOURCES.md).
 - Workshop-seriens v1-filer (`workshop-*-v1.webp` og `hub-workbench-v1.webp`) er imagegen-genererede illustrative workshopbilleder beskrevet i [WORKSHOP-IMAGES.md](../../linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md).
-- V2 til den fælles elevindgang består af seks billeder. Folie, Laser, 3D og Scratch er brugerleverede; oprindeligt ophav, licens og eventuel generering er ikke dokumenteret, og ingen ny licens udledes. micro:bit og Internet er imagegen-genererede i den aktuelle session og følger projektets CC BY 4.0-vilkår. Se den særskilte v2-provenance i [WORKSHOP-IMAGES.md](../../linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md). Alle seks filer og SHA-256-pins står i manifestets `publicImages`.
+- V2 til den fælles elevindgang består af seks billeder. Folie, Laser, 3D og Scratch er AI-genereret til projektet af projektets AI-assistent, bekræftet af projektejeren 17. november 2026, og følger projektets CC BY 4.0-vilkår. Oprindelig prompt, genereringsdato og præcist billedværktøj er ikke dokumenteret. micro:bit og Internet er imagegen-genererede i den aktuelle session og følger projektets CC BY 4.0-vilkår. Se den særskilte v2-provenance i [WORKSHOP-IMAGES.md](../../linux-elevhub/server/elevhub/web/assets/WORKSHOP-IMAGES.md). Alle seks filer og SHA-256-pins står i manifestets `publicImages`.
 - `workshop-3d-card.png` er en PNG-afledning af `maker-rover-v1.webp` til native Tk, uden nyt billedindhold.
 - `*-bauhaus-v1.png` og `hub-bauhaus-v1.png` er eksisterende geometriske illustrationer. De er visuelt kontrolleret uden personer eller logoer. Den filspecifikke prompt og genereringsdato er ikke bevaret; dokumentationen opfinder derfor ingen sådanne oplysninger.
 
@@ -60,10 +60,10 @@ V2-filerne under `linux-elevhub/server/elevhub/web/assets/` har følgende pins:
 
 | Fil | SHA-256 | Provenance |
 | --- | --- | --- |
-| `workshop-3d-v2.webp` | `31e42e51a9e49f7efe125812703f97cc37aa12ce3375692601c01ef9c1c7e905` | Brugerleveret; oprindeligt licensgrundlag ikke dokumenteret. |
-| `workshop-folie-v2.webp` | `7606b4813b95486a750ffc365720f2c047afdebb58588b27d28e3ae67f5c0c13` | Brugerleveret; oprindeligt licensgrundlag ikke dokumenteret. |
-| `workshop-laser-v2.webp` | `4d0bc18d2bc0015039c01b2e0fe67cde8a69974cf17baef7afe3f2e665f9dae3` | Brugerleveret; oprindeligt licensgrundlag ikke dokumenteret. |
-| `workshop-scratch-v2.png` | `a984ea8c8f5b91052861137c52ab0d01e7e31e4dad0d0842cfa282774b4e730b` | Brugerleveret; oprindeligt licensgrundlag ikke dokumenteret. |
+| `workshop-3d-v2.webp` | `31e42e51a9e49f7efe125812703f97cc37aa12ce3375692601c01ef9c1c7e905` | AI-genereret til projektet; ophav bekræftet 17. november 2026; CC BY 4.0. |
+| `workshop-folie-v2.webp` | `7606b4813b95486a750ffc365720f2c047afdebb58588b27d28e3ae67f5c0c13` | AI-genereret til projektet; ophav bekræftet 17. november 2026; CC BY 4.0. |
+| `workshop-laser-v2.webp` | `4d0bc18d2bc0015039c01b2e0fe67cde8a69974cf17baef7afe3f2e665f9dae3` | AI-genereret til projektet; ophav bekræftet 17. november 2026; CC BY 4.0. |
+| `workshop-scratch-v2.png` | `a984ea8c8f5b91052861137c52ab0d01e7e31e4dad0d0842cfa282774b4e730b` | AI-genereret til projektet; ophav bekræftet 17. november 2026; CC BY 4.0. |
 | `workshop-microbit-v2.png` | `7b5dc9a6fd6598e71dcdeb0e92f824128f46fad83638b748a65c28cddb0c7b79` | Imagegen-genereret i denne session; CC BY 4.0. |
 | `workshop-internet-v2.png` | `4427433bbcc921cd9863055280f433394d2f2ce9b86d3a97267ec13df81f69ab` | Imagegen-genereret i denne session; CC BY 4.0. |
 
