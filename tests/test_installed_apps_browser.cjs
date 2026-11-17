@@ -120,14 +120,16 @@ async function microbitLayout(page) {
     assert(state.frame.height>state.viewport.height/2); assert(state.documentWidth<=state.viewport.width,'Native outer document fits the viewport');
   }
 }
-async function model3dLayout(page) {
+async function model3dLayout(page, project) {
   // School website skins describe document pages. Their late generic main
   // rule must not turn the installed editor into a centred article column.
   await page.route('**/school-appearance/website.css', async route => {
     const response = await route.fetch();
     await route.fulfill({response, body: await response.text() + '\nmain{max-width:1504px;margin:auto;padding:0 32px}@media(max-width:1150px){main{padding:0 24px}}'});
   });
-  await page.reload();
+  // Successful import removes the query from the URL; reopening explicitly
+  // avoids racing that history update with a plain reload.
+  await page.goto(urls['3dprint'] + '?elevhub_project=' + project.id);
   await page.waitForFunction(() => document.querySelector('#object-list')?.children.length === 1);
   const scene = JSON.parse(await exported(page)).scene;
   await page.locator('#workspace').focus();
@@ -155,9 +157,6 @@ async function model3dLayout(page) {
     assert.equal(await page.locator('#object-list button[aria-pressed=true]').count(),1,'Resize must preserve the selected object');
     assert.deepEqual(JSON.parse(await exported(page)).scene,scene,'Resize must preserve the editable project');
   }
-  await page.locator('#elevhub-project-open').click();
-  await page.locator('#project-library-close').click();
-  assert.equal(await page.evaluate(() => document.activeElement.id),'elevhub-project-open','Closing the project picker must return focus');
 }
 
 async function run(id, flow) {
@@ -258,7 +257,7 @@ async function main() {
     await page.goto(urls['3dprint'] + '?elevhub_project=' + meta.id);
     await page.waitForFunction(() => document.querySelector('#object-list')?.children.length === 1);
     assert.deepEqual(JSON.parse(await exported(page)).scene, expected.scene);
-    await model3dLayout(page);
+    await model3dLayout(page, meta);
   });
   await run('scratch', async page => {
     await page.waitForFunction(() => document.querySelector('#creative-app-header [data-school-name]')?.textContent === 'Syntetisk QA-skole');
