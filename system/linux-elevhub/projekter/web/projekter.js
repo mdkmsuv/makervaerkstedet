@@ -61,7 +61,8 @@ function projectCard(p){
  const options=node('div',undefined,'menu-items'),download=node('a','Hent fil','button secondary');download.href=fileUrl(p);download.download=p.filename;options.append(download);
  const versions=node('button','Tidligere versioner','secondary');versions.onclick=()=>{menu.open=false;history(p);$('history').onclose=()=>summary.isConnected&&summary.focus();};options.append(versions);menu.append(options);footer.append(menu);c.append(footer);
  const expiry=Number(p.expires_at);
- if(Number.isFinite(expiry)&&expiry>0){const days=Math.max(0,Math.ceil((expiry-Date.now()/1000)/86400));const notice=node('p','Slettes '+shortDate(expiry)+(days<=7?' · '+(days===0?'frist udløbet':days===1?'1 dag tilbage':days+' dage tilbage'):''),'project-expiry'+(days<=7?' soon':''));notice.title='Slettes efter 30 dage uden gemte ændringer. Gem en kopi på USB for at beholde projektet.';c.append(notice);}
+ if(p.protected){c.append(node('p','Beskyttet mod automatisk sletning','project-expiry'));}
+ else if(Number.isFinite(expiry)&&expiry>0){const days=Math.max(0,Math.ceil((expiry-Date.now()/1000)/86400));const notice=node('p','Slettes '+shortDate(expiry)+(days<=7?' · '+(days===0?'frist udløbet':days===1?'1 dag tilbage':days+' dage tilbage'):''),'project-expiry'+(days<=7?' soon':''));const period=Number(p.retention_days);notice.title=(Number.isInteger(period)&&period>0?'Slettes efter '+period+(period===1?' dag':' dage')+' uden gemte ændringer.':'Slettes på den viste dato uden nye gemte ændringer.')+' Gem en kopi på USB for at beholde projektet.';c.append(notice);}
  return c;
 }
 function rowLimit(){return picker?2:innerWidth>1100?3:innerWidth>480?2:1;}

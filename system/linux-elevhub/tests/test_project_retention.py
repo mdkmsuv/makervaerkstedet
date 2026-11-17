@@ -1,4 +1,5 @@
 import os
+from contextlib import closing
 import gc
 import hashlib
 import json
@@ -347,6 +348,76 @@ class ProjectRetention(unittest.TestCase):
         scanner.scan()
         self.assertEqual(scanner.cleanup()['deleted'], [])
         self.assertGreater(self.store.list()[0]['expires_at'], time.time()+29*86400)
+
+
+class ExistingArchiveAdoption(unittest.TestCase):
+    """Synthetic schema observed on the unbundled generation; no school data."""
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        with closing(sqlite3.connect(self.root / 'projekter.sqlite3')) as db, db:
+            db.execute('''CREATE TABLE projects (
+                id TEXT PRIMARY KEY,name TEXT NOT NULL,folder TEXT NOT NULL,
+                kind TEXT NOT NULL,filename TEXT NOT NULL,revision INTEGER NOT NULL,
+                modified REAL NOT NULL,archived INTEGER NOT NULL DEFAULT 0,
+                protected INTEGER NOT NULL DEFAULT 0,deleted_at REAL)''')
+            db.execute('CREATE TABLE settings (key TEXT PRIMARY KEY,value INTEGER NOT NULL)')
+            db.execute("INSERT INTO settings VALUES ('retention_days',90)")
+        self.params = dict(project='a'*32,name='Synthetic',folder='QA',kind='andet',
+                           filename='note.txt',expected=0)
+
+    def db_change(self, sql, values=()):
+        with closing(sqlite3.connect(self.root / 'projekter.sqlite3')) as db, db:
+            db.execute(sql, values)
+
+    def test_save_new_and_existing_projects_keeps_extra_columns_and_policy(self):
+        store = Projektarkiv(self.root)
+        store.save(b'old', **self.params)
+        self.db_change('UPDATE projects SET protected=1')
+        saved = store.save(b'new', **{**self.params,'expected':1})
+        self.assertTrue(saved['protected'])
+        self.assertIsNone(saved['expires_at'])
+        self.assertEqual(saved['retention_days'],90)
+        self.assertEqual(store.read(self.params['project'],1)[1],b'old')
+        self.assertEqual(store.read(self.params['project'])[1],b'new')
+
+    def test_persisted_policy_and_protection_control_cleanup(self):
+        store = Projektarkiv(self.root)
+        store.save(b'old', **self.params)
+        now = time.time()
+        self.db_change('UPDATE projects SET modified=?',(now-60*86400,))
+        self.assertEqual(store.cleanup(now=now)['deleted'],[])
+        self.db_change('UPDATE projects SET protected=1,modified=?',(now-100*86400,))
+        self.assertEqual(store.cleanup(now=now)['deleted'],[])
+        self.db_change('UPDATE projects SET protected=0')
+        self.assertEqual(store.cleanup(now=now)['deleted'],[self.params['project']])
+
+    def test_deleted_project_stays_hidden_and_cannot_be_saved_back_into_list(self):
+        store = Projektarkiv(self.root)
+        store.save(b'old', **self.params)
+        self.db_change('UPDATE projects SET deleted_at=123')
+        self.assertEqual(store.list(),[])
+        with self.assertRaises(ValueError):
+            store.save(b'old', **{**self.params,'expected':1})
+        self.assertEqual(store.meta(self.params['project'])['deleted_at'],123)
+        self.assertEqual(store.read(self.params['project'])[1],b'old')
+
+    def test_existing_policy_is_reread_and_invalid_policy_does_not_delete(self):
+        store = Projektarkiv(self.root)
+        store.save(b'old', **self.params)
+        now = time.time()
+        self.db_change('UPDATE projects SET modified=?',(now-60*86400,))
+        self.db_change("UPDATE settings SET value=120 WHERE key='retention_days'")
+        self.assertEqual(store.meta(self.params['project'])['retention_days'],120)
+        self.db_change("UPDATE settings SET value=0 WHERE key='retention_days'")
+        with self.assertRaises(ValueError):store.cleanup(now=now)
+        with closing(sqlite3.connect(self.root/'projekter.sqlite3')) as db:
+            self.assertEqual(db.execute('SELECT COUNT(*) FROM projects').fetchone()[0],1)
+
+    def test_missing_existing_policy_has_no_silent_30_day_fallback(self):
+        self.db_change('DROP TABLE settings')
+        with self.assertRaises(ValueError):Projektarkiv(self.root)
 
 
 if __name__ == '__main__':

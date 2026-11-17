@@ -61,6 +61,14 @@ class Projektarkiv:
         self.retention_days = retention_days
         self.retention_seconds = retention_days * 24 * 60 * 60
         with self.connect() as db:
+            # Unbundled installations can already have trash/protection and a
+            # stored retention rule. Adopt their schema without resetting it.
+            columns = {row['name'] for row in db.execute('PRAGMA table_info(projects)')}
+            legacy = columns & {'protected', 'deleted_at'}
+            if legacy and legacy != {'protected', 'deleted_at'}:
+                raise ValueError('Projektarkivets beskyttelsesfelter er ufuldstændige.')
+            self.legacy_protection = bool(legacy)
+            self._policy_days(db)
             db.executescript('''
                 CREATE TABLE IF NOT EXISTS projects (
                   id TEXT PRIMARY KEY, name TEXT NOT NULL, folder TEXT NOT NULL,
@@ -73,6 +81,21 @@ class Projektarkiv:
                 CREATE TABLE IF NOT EXISTS retention_pending (
                   project TEXT PRIMARY KEY, source_record TEXT NOT NULL);
             ''')
+
+    def _policy_days(self, db):
+        policy = db.execute("SELECT type FROM sqlite_master WHERE name='settings'").fetchone()
+        if policy is None and not self.legacy_protection:
+            return self.retention_days
+        try:
+            if policy is None or policy[0] != 'table':
+                raise ValueError('missing policy table')
+            rows = db.execute("SELECT value FROM settings WHERE key='retention_days'").fetchall()
+            if len(rows) != 1 or type(rows[0][0]) is not int or not 1 <= rows[0][0] <= 3650:
+                raise ValueError('invalid policy')
+            return rows[0][0]
+        except (sqlite3.Error, ValueError):
+            raise ValueError('Den gemte opbevaringsregel er ugyldig eller mangler. '
+                             'Oprydning er stoppet; få reglen kontrolleret.') from None
 
     @contextmanager
     def connect(self):
@@ -88,10 +111,12 @@ class Projektarkiv:
         if not isinstance(query, str) or len(query) > 120:
             raise ValueError('Søgningen er for lang.')
         with self.lock, self.connect() as db:
-            rows = db.execute('SELECT * FROM projects WHERE archived=? ORDER BY modified DESC LIMIT 2000',
+            days = self._policy_days(db)
+            visible = 'deleted_at IS NULL AND ' if self.legacy_protection else ''
+            rows = db.execute('SELECT * FROM projects WHERE '+visible+'archived=? ORDER BY modified DESC LIMIT 2000',
                               (int(archived),)).fetchall()
         q = query.casefold()
-        return [self._public_meta(dict(r)) for r in rows
+        return [self._public_meta(dict(r), days) for r in rows
                 if q in (r['name']+' '+r['folder']+' '+r['kind']).casefold()]
 
     def meta(self, project):
@@ -100,14 +125,14 @@ class Projektarkiv:
             row = db.execute('SELECT * FROM projects WHERE id=?', (project,)).fetchone()
             if row is None:
                 raise KeyError('Projektet findes ikke.')
-            result = self._public_meta(dict(row))
+            result = self._public_meta(dict(row), self._policy_days(db))
             result['versions'] = [dict(v) for v in db.execute(
                 'SELECT revision,size,created,source FROM versions WHERE project=? ORDER BY revision DESC', (project,))]
             return result
 
-    def _public_meta(self, result):
-        result['retention_days'] = self.retention_days
-        result['expires_at'] = result['modified'] + self.retention_seconds
+    def _public_meta(self, result, days):
+        result['retention_days'] = days
+        result['expires_at'] = None if result.get('protected') else result['modified'] + days * 86400
         return result
 
     @staticmethod
@@ -142,7 +167,8 @@ class Projektarkiv:
                 if old['kind'] != kind or old['filename'] != filename:
                     raise ValueError('Filtype og filnavn kan ikke skiftes på et eksisterende projekt. Gem en kopi.')
                 latest = db.execute('SELECT digest,source FROM versions WHERE project=? AND revision=?', (project, revision)).fetchone()
-                if latest['digest'] == digest and old['name'] == name and old['folder'] == folder and not old['archived']:
+                deleted = self.legacy_protection and old['deleted_at'] is not None
+                if latest['digest'] == digest and old['name'] == name and old['folder'] == folder and not old['archived'] and not deleted:
                     if source == 'browser' and latest['source'] == 'autosave':
                         # An explicit save protects the current working copy,
                         # even when its bytes need no second immutable blob.
@@ -152,8 +178,8 @@ class Projektarkiv:
                     return self.meta(project)  # safe retry, no duplicate version
             if expected != revision:
                 raise Konflikt('Der er gemt en nyere version. Åbn den, eller gem dit arbejde som en ny kopi.')
-            if old and old['archived']:
-                raise Konflikt('Projektet er arkiveret. Gem dit arbejde som en ny kopi.')
+            if old and (old['archived'] or deleted):
+                raise Konflikt('Projektet er arkiveret eller i papirkurven. Gem dit arbejde som en ny kopi.')
             # Keep room for both copies until commit. Never free quota by
             # removing the last recoverable autosave before its replacement.
             total = sum(p.stat().st_size for p in self.files.glob('*/*.bin'))
@@ -181,7 +207,8 @@ class Projektarkiv:
                 # A saved edit supersedes an interrupted expiry attempt. Its
                 # new source inventory must be used when it eventually expires.
                 db.execute('DELETE FROM retention_pending WHERE project=?', (project,))
-                db.execute('''INSERT INTO projects VALUES (?,?,?,?,?,?,?,0)
+                db.execute('''INSERT INTO projects (id,name,folder,kind,filename,revision,modified,archived)
+                    VALUES (?,?,?,?,?,?,?,0)
                     ON CONFLICT(id) DO UPDATE SET name=excluded.name, folder=excluded.folder,
                     revision=excluded.revision, modified=excluded.modified''',
                     (project, name, folder, kind, filename, revision, now))
@@ -237,9 +264,11 @@ class Projektarkiv:
         removed, failed = [], []
         with self.lock:
             with self.connect() as db:
+                days = self._policy_days(db)
+                unprotected = 'protected=0 AND ' if self.legacy_protection else ''
                 rows = db.execute(
-                    'SELECT * FROM projects WHERE modified<=? ORDER BY modified ASC',
-                    (current - self.retention_seconds,)).fetchall()
+                    'SELECT * FROM projects WHERE '+unprotected+'modified<=? ORDER BY modified ASC',
+                    (current - days * 86400,)).fetchall()
             for row in rows:
                 project = row['id']
                 try:
