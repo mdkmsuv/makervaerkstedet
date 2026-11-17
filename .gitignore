@@ -29,7 +29,13 @@ megavaerkstedet-backups/
 *.p12
 *.pfx
 *.key
+*.dpapi
+*.dpapi.*
+*.secret
+*.seckey
 **/*private*.json
+/planer/
+/skole-privat/
 
 # Lokale skoleidentiteter, miljøfiler og inventar må ikke versionsstyres.
 .env
