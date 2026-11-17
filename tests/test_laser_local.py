@@ -184,26 +184,17 @@ class LaserLocalTests(unittest.TestCase):
         self.assertEqual(status, 400)
         self.assertEqual(json.loads(body)['error'], OFFLINE)
 
-    # 5. Laserport: sider og routing.
-    def test_laser_port_routes(self):
-        status, headers, _ = self.request(self.laser, 'GET', '/')
-        self.assertEqual(status, 302)
-        self.assertEqual(headers['Location'], '/laser.html')
-        status, _, body = self.request(self.laser, 'GET', '/laser.html')
-        self.assertEqual(status, 200)
-        self.assertIn(b'id="elevhub"', body)
-        self.assertIn(b'#workshop-home', body)
-        self.assertEqual(self.request(self.laser, 'GET', '/folie.html')[0], 404)
-        self.assertEqual(self.request(self.laser, 'GET', '/workshop.html')[0], 404)
+    # 5. Ingen sider: editorerne ligger i app-pakkerne og serveres af den
+    # installerede appkørsel (se test_installed_editor_pages.py).
+    def test_forwarding_servers_serve_no_pages(self):
+        for server in (self.laser, self.folie):
+            for route in ('/', '/laser.html', '/folie.html', '/workshop.html', '/workshop.css',
+                          '/laservaerksted/index.html', '/vendor/laser.js', '/school-theme.css'):
+                with self.subTest(vaerksted=server.vaerksted, route=route):
+                    self.assertEqual(self.request(server, 'GET', route)[0], 404)
 
-    # 6. Folieport: sider og routing.
-    def test_folie_port_routes(self):
-        status, headers, _ = self.request(self.folie, 'GET', '/')
-        self.assertEqual(status, 302)
-        self.assertEqual(headers['Location'], '/folie.html')
-        status, _, body = self.request(self.folie, 'GET', '/folie.html')
-        self.assertEqual(status, 200)
-        self.assertEqual(self.request(self.folie, 'GET', '/laser.html')[0], 404)
+    # 6. Folieport: status, men ingen kø.
+    def test_folie_port_has_health_but_no_queue(self):
         self.assertEqual(self.request(self.folie, 'POST', '/api/laser/submit', payload())[0], 404)
         self.assertEqual(self.request(self.folie, 'GET', '/api/laser/health')[0], 200)
 

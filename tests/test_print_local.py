@@ -11,7 +11,6 @@ from app import laser_local as local
 from app.server import Application, Handler, Server
 from scripts.smoke_slice import cube
 from tests.test_laser_outbox import free_port, start_fake_central
-from tests.test_local_appearance_http import write_manifest
 
 
 class LocalPrintTests(unittest.TestCase):
@@ -54,19 +53,14 @@ class LocalPrintTests(unittest.TestCase):
         self.addCleanup(server.shutdown)
         return application.queue
 
-    def test_offline_model_assets_and_wasm_policy_are_available(self):
-        status, body, headers = self.request('/model3d.html')
+    def test_print_forwarding_server_serves_no_pages(self):
+        # The 3D editor, its model assets and the WASM policy are covered on
+        # the installed-app gateway in test_installed_editor_pages.py.
+        status, body, _ = self.request('/api/runtime/health')
         self.assertEqual(status, 200)
-        self.assertIn(b'/vendor/model3d-app.js', body)
-        self.assertIn(b'/_elevhub/projekter/bridge.js', body)
-        self.assertIn(b'id="elevhub"', body)
-        self.assertIn("'wasm-unsafe-eval'", headers['Content-Security-Policy'])
-        self.assertIn("worker-src 'self'", headers['Content-Security-Policy'])
-        for path in ('/vendor/model3d-app.js', '/vendor/model3d-geometry-worker.js',
-                     '/vendor/model3d-manifold.wasm', '/model3d.css'):
-            with self.subTest(path=path):
-                self.assertEqual(self.request(path)[0], 200)
-        for path in ('/laerer.html', '/api/settings', '/laser.html', '/../app/core.py'):
+        self.assertTrue(json.loads(body)['local'])
+        for path in ('/', '/model3d.html', '/model3d.css', '/vendor/model3d-app.js', '/project-import-config.js',
+                     '/laerer.html', '/api/settings', '/laser.html', '/../app/core.py'):
             with self.subTest(path=path):
                 self.assertEqual(self.request(path)[0], 404)
 
@@ -83,14 +77,6 @@ class LocalPrintTests(unittest.TestCase):
         self.assertEqual(status, 201)
         self.assertTrue(json.loads(response)['id'])
         self.assertEqual(queue.db.execute('SELECT count(*) FROM jobs').fetchone()[0], 1)
-
-    def test_local_school_theme_is_preserved_and_tampering_is_rejected(self):
-        self.server.data_root = self.root / 'appearance'
-        write_manifest(self.server.data_root, css=b'/* synthetic school theme */')
-        self.assertEqual(self.request('/school-theme.css')[:2], (200, b'/* synthetic school theme */'))
-        self.assertEqual(self.request('/school-appearance/logo')[:2], (200, b'logo'))
-        (self.server.data_root / 'local-appearance/files/teacher.css').write_bytes(b'changed')
-        self.assertEqual(self.request('/model3d.html')[0], 503)
 
     def test_invalid_or_conflicting_upload_never_replaces_waiting_model(self):
         self.assertEqual(self.request(body=b'not an STL')[0], 400)

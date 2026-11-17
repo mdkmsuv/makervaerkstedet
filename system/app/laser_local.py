@@ -1,15 +1,16 @@
-"""Kører laser- og folieeditoren lokalt på elevens egen maskine (kun loopback).
-Kun "send til læreren" videresendes til den centrale skoleserver, som stadig
-validerer med clean_svg, dedublerer på requestId og kan lukke værkstedet (423).
-Kan serveren ikke nås, lægges en gyldig aflevering i en lokal udbakke og sendes
-senere med samme requestId, så eleven kan aflevere uden forbindelse.
+"""Lokal gateway for installerede apps på elevens egen maskine (kun loopback).
+
+Appens sider serveres fra dens installerede pakke. Kun de faste SDK-ruter når
+skolens server: laseraflevering, printaflevering og SVG-biblioteket. Serveren
+validerer stadig med clean_svg, dedublerer på requestId og kan lukke værkstedet
+(423). Kan serveren ikke nås, lægges en gyldig aflevering i en lokal udbakke og
+sendes senere med samme requestId, så eleven kan aflevere uden forbindelse.
 """
 import argparse
 import base64
 import http.client
 from http.server import ThreadingHTTPServer
 import json
-import mimetypes
 import os
 from pathlib import Path
 import re
@@ -35,8 +36,6 @@ OUTBOX_KEEP_REJECTED = 200
 REQUEST_ID = re.compile(r'[a-zA-Z0-9-]{16,80}')
 FORWARD_TIMEOUT = 10  # skal blive under laser.js' egen timeout på 15 s
 JOB_ID = re.compile(r'[a-f0-9]{32}')
-ELEVHUB_STYLE = '<style id="elevhub">#workshop-home { display: none !important; }</style>'
-PROJECT_BRIDGE = '<link rel="stylesheet" href="/_elevhub/projekter/bridge.css"><script src="/_elevhub/projekter/bridge.js" defer></script>'
 
 
 def student_identity(service):
@@ -371,16 +370,14 @@ class ForwardingInbox:
 
 
 class LocalDesignHandler(Handler):
-    """Server.vaerksted er 'laser' eller 'folie'; server.port er den bundne port."""
+    """Queue, library and project traffic for one workshop; never an editor page.
+
+    Server.vaerksted er 'laser' eller 'folie'; server.port er den bundne port.
+    """
 
     def reply(self, status, body, mime='application/json; charset=utf-8', headers=None):
         if status == 200 and isinstance(body, dict) and body.get('queued') is True:
             status = 202  # Gemt i udbakken; sendes, når serveren kan nås.
-        if mime.startswith('text/html') and isinstance(body, bytes):
-            text = body.decode('utf-8')
-            text = (text.replace('</head>', ELEVHUB_STYLE + PROJECT_BRIDGE + '</head>', 1) if '</head>' in text
-                    else ELEVHUB_STYLE + text)
-            body = text.encode('utf-8')
         super().reply(status, body, mime, headers)
 
     def _host_ok(self):
@@ -449,12 +446,9 @@ class LocalDesignHandler(Handler):
             return self.reply(status, payload)
         if route.startswith('/api/laser/library') or route.startswith('/api/folie/library'):
             return self.reply(403, {'error': 'Ugyldig biblioteksforespørgsel.'})
-        own_page = '/laser.html' if self.server.vaerksted == 'laser' else '/folie.html'
-        other_page = '/folie.html' if self.server.vaerksted == 'laser' else '/laser.html'
-        if route == '/':
-            return self.reply(302, {}, headers={'Location': own_page})
-        if route in (other_page, '/workshop.html', '/workshop.css') or (
-                self.server.vaerksted == 'folie' and route.startswith('/laservaerksted/')):
+        # Queue, library and school-profile traffic only. The editors ship in
+        # app packages; InstalledHandler serves their pages from the package.
+        if not route.startswith(('/api/', '/school-appearance/', '/school-profile-assets/')):
             return self.reply(404, {'error': 'Siden findes ikke.'})
         if (self.server.vaerksted == 'folie' and route.startswith('/api/')
                 and route not in ('/api/laser/health', '/api/school-appearance')):
@@ -534,7 +528,7 @@ class PrintForwardingInbox(ForwardingInbox):
 
 
 class LocalPrintHandler(LocalDesignHandler):
-    """Only the local editor, project gateway and fixed print submission route."""
+    """Only the project gateway and the fixed print submission route."""
 
     def send_header(self, keyword, value):
         if keyword.lower() == 'content-security-policy':
@@ -547,36 +541,12 @@ class LocalPrintHandler(LocalDesignHandler):
         if self._projects():
             return
         route = unquote(urlsplit(self.path).path)
-        if route == '/':
-            return self.reply(302, {}, headers={'Location': '/model3d.html'})
         if route == '/api/runtime/health':
             return self.reply(200, {'local': True, 'surface': 'student', **self.server.runtime_health})
         if route == '/api/school-appearance':
             return Handler.do_GET(self)
-        if route == '/project-import-config.js':
-            origins = [f'http://{host}:{self.server.projects_port}' for host in ('127.0.0.1', 'localhost')]
-            return self.reply(200, 'window.ElevhubProjectOrigins=' + json.dumps(origins) + ';', 'text/javascript')
-        if school_appearance_manifest_present(self.server.data_root):
-            if school_appearance(self.server.data_root) is None:
-                return self.reply(503, {'error': 'Den lokale skoleprofil kunne ikke valideres.'})
-            asset = route.rsplit('/', 1)[-1] if route.startswith('/school-appearance/') else route
-            overlay = school_appearance_asset(self.server.data_root, asset)
-            if overlay is not None:
-                return self.reply(200, overlay[0], overlay[1])
-        allowed = route in ('/model3d.html', '/model3d.css', '/school-theme.css', '/project-import.js',
-                            '/school-theme.js', '/favicon.svg', '/assets/metrophobic-latin.ttf')
-        allowed = allowed or bool(re.fullmatch(r'/vendor/model3d-[a-zA-Z0-9_.-]+', route))
-        allowed = allowed or bool(re.fullmatch(r'/assets/(?:model3d|licenses/model3d)/[a-zA-Z0-9_./-]+', route))
-        web = Path(__file__).resolve().parents[1] / 'web'
-        target = (web / route.lstrip('/')).resolve()
-        if not allowed or not target.is_relative_to(web) or not target.is_file():
-            return self.reply(404, {'error': 'Siden findes ikke.'})
-        mime = {'.js': 'text/javascript', '.wasm': 'application/wasm'}.get(target.suffix)
-        mime = mime or mimetypes.guess_type(target.name)[0] or 'application/octet-stream'
-        body = target.read_bytes()
-        if mime == 'text/html':
-            body = render_local_html(body, school_appearance(self.server.data_root))
-        return self.reply(200, body, mime)
+        # The 3D editor ships in its app package; InstalledHandler serves it.
+        return self.reply(404, {'error': 'Siden findes ikke.'})
 
     def do_POST(self):
         if not self._host_ok():
@@ -688,12 +658,17 @@ def create_installed_servers(apps,laser,printing,*,runtime=None,projects_port=87
                     return self.reply(404,{'error':'Appen bruger ikke laserkøen.'})
                 if path.startswith('/api/') or path.startswith('/school-appearance/') or path.startswith('/school-profile-assets/'):
                     return LocalDesignHandler.do_GET(self)
+                # Same rule as the shelf: a profile that is present but fails
+                # validation is never silently replaced by the default look.
+                appearance=school_appearance(self.server.data_root)
+                if appearance is None and school_appearance_manifest_present(self.server.data_root):
+                    return self.reply(503,{'error':'Den lokale skoleprofil kunne ikke valideres.'})
                 overlay=school_appearance_asset(self.server.data_root,path)
                 if overlay is not None:return self.reply(200,*overlay)
                 value=host.asset(self.server.descriptor,path,self.server.shared_assets)
                 if value is None:return self.reply(404,{'error':'Siden findes ikke.'})
                 data,mime=value
-                if mime=='text/html':data=render_local_html(data,school_appearance(self.server.data_root))
+                if mime=='text/html':data=render_local_html(data,appearance)
                 return self.reply(200,data,mime)
             def do_POST(self):
                 if self.path=='/api/jobs':
@@ -740,50 +715,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--server-url', required=True)
     parser.add_argument('--ca-file')
-    parser.add_argument('--host', default='127.0.0.1')
-    parser.add_argument('--laser-port', type=int, default=8795)
-    parser.add_argument('--folie-port', type=int, default=8796)
     parser.add_argument('--print-server-url', help='Hubbens printindgang, fx https://server:8770')
-    parser.add_argument('--model3d-port', type=int, default=8798)
     parser.add_argument('--outbox-dir', help='Lokal udbakke til afleveringer uden forbindelse.')
-    parser.add_argument('--manifest-root',type=Path,help='Run only installed apps and independent outbox workers.')
-    args = parser.parse_args()
-    if args.manifest_root is not None:
-        run_installed_apps(args)
-        return
-    laser_server, folie_server = create_local_servers(
-        args.server_url, args.ca_file, args.host, args.laser_port, args.folie_port,
-        outbox_dir=args.outbox_dir)
-    folie_thread = threading.Thread(target=folie_server.serve_forever, daemon=True)
-    folie_thread.start()
-    print_server = None
-    if args.print_server_url:
-        print_server = create_print_server(
-            args.print_server_url, args.ca_file, args.host, args.model3d_port,
-            runtime=laser_server.runtime_health,
-            outbox_dir=Path(args.outbox_dir) / 'print' if args.outbox_dir else None)
-        threading.Thread(target=print_server.serve_forever, daemon=True).start()
-    stop_outbox = threading.Event()
-    inbox = laser_server.inbox
-    if inbox.outbox is not None:
-        threading.Thread(target=inbox.outbox.run, args=(inbox.send, stop_outbox), daemon=True).start()
-    if print_server is not None and print_server.inbox.outbox is not None:
-        inbox_print = print_server.inbox
-        threading.Thread(target=inbox_print.outbox.run, args=(inbox_print.send, stop_outbox), daemon=True).start()
-    print(f'Laserværksted: http://{args.host}:{laser_server.port}/  '
-          f'Folieværksted: http://{args.host}:{folie_server.port}/', flush=True)
-    try:
-        laser_server.serve_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
-        stop_outbox.set()
-        laser_server.server_close()
-        folie_server.shutdown()
-        folie_server.server_close()
-        if print_server is not None:
-            print_server.shutdown()
-            print_server.server_close()
+    parser.add_argument('--manifest-root', type=Path, default=Path('/usr/share/makervaerkstedet/apps'),
+                        help='Mappen med installerede apps. Hver app binder porten fra sit manifest.')
+    # Accepted for older service units and ignored: ports come from app manifests.
+    for legacy in ('--host', '--laser-port', '--folie-port', '--model3d-port'):
+        parser.add_argument(legacy, help=argparse.SUPPRESS)
+    run_installed_apps(parser.parse_args())
 
 
 if __name__ == '__main__':

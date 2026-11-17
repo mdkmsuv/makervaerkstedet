@@ -69,14 +69,18 @@ class LaserInboxTests(unittest.TestCase):
         self.assertNotIn('teacher',json.loads(self.request('/api/laser/health')[2]))
         self.assertEqual(self.request('/api/laser/submit',self.payload(),teacher=True)[0],404)
 
-    def test_workshop_home_and_cutter_routes_stay_on_student_surface(self):
+    def test_workshop_home_stays_on_student_surface_and_editors_are_not_served(self):
         status,_,body=self.request('/')
         self.assertEqual(status,200)
-        self.assertIn(b'/folie.html',body)
-        self.assertIn(b'/laser.html',body)
         self.assertNotIn(b'laser-teacher',body)
-        for route in ['/workshop.html','/workshop.css','/folie.html','/laser.html']:
+        for route in ['/workshop.html','/workshop.css']:
             self.assertEqual(self.request(route)[0],200,route)
+            self.assertEqual(self.request(route,teacher=True)[0],404,route)
+        # The editors ship in the Laser and Folie app packages and run on the
+        # pupil computer; this server keeps the queue and has no editor page.
+        for route in ['/folie.html','/laser.html','/laservaerksted/index.html',
+                      '/laservaerksted/laser-editor.js','/vendor/laser.js','/vendor/laser-trace-worker.js']:
+            self.assertEqual(self.request(route)[0],404,route)
             self.assertEqual(self.request(route,teacher=True)[0],404,route)
         self.assertIn(b'laser-teacher.js',self.request('/',teacher=True)[2])
 

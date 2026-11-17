@@ -76,23 +76,14 @@ class LaserProjectOriginsTests(unittest.TestCase):
                 workers.append(thread)
             try:
                 base = f'http://127.0.0.1:{student.server_port}'
-                for path in ('/laser.html', '/folie.html', '/project-import-config.js'):
+                # The editor pages and their script order are covered on the
+                # installed-app gateway in test_installed_editor_pages.py.
+                for path in ('/', '/project-import-config.js'):
                     with urlopen(base + path, timeout=3) as response:
                         content = response.read().decode()
                         self.assertIn('frame-ancestors ' + origin + ';', response.headers['Content-Security-Policy'])
                         self.assertNotIn('8791', response.headers['Content-Security-Policy'])
-                        if path == '/folie.html':
-                            # Folie still uses the older editor's SVG handoff receiver.
-                            self.assertLess(content.index('/project-import-config.js'), content.index('/project-import.js'))
-                        elif path == '/laser.html':
-                            # The new laser editor opens editable .laser.json projects
-                            # through its own adapter, without the legacy SVG receiver.
-                            self.assertNotIn('/project-import-config.js', content)
-                            self.assertNotIn('/project-import.js', content)
-                            editor = content.index('/laservaerksted/laser-editor.js')
-                            for dependency in ('paper-core.min.js', 'opentype.min.js', 'usb-save.js'):
-                                self.assertLess(content.index('/laservaerksted/' + dependency), editor)
-                        else:
+                        if path == '/project-import-config.js':
                             self.assertIn(json.dumps([origin]), content)
                 teacher_base = f'http://127.0.0.1:{teacher.server_port}'
                 with urlopen(teacher_base + '/', timeout=3) as response:
