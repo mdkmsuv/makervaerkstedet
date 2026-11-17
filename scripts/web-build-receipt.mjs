@@ -18,6 +18,9 @@ export async function writeWebReceipt(root, target, metas, outputDir, outputName
     'scripts/repository-layout.mjs', 'scripts/web-build-receipt.mjs', ...builders]);
   for (const meta of metas) {
     for (const name of Object.keys(meta.inputs)) {
+      // esbuild records browser:false imports as virtual empty modules.
+      // Their names are not paths (and may contain a colon on Windows).
+      if (name.startsWith('(disabled):')) continue;
       const relative = path.relative(root, path.resolve(root,name));
       if (!path.isAbsolute(relative) && relative !== '..' && !relative.startsWith(`..${path.sep}`)
           && !relative.split(path.sep).includes('node_modules')) inputs.add(relative.split(path.sep).join('/'));
