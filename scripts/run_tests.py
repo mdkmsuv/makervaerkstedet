@@ -97,7 +97,12 @@ def _wsl_root() -> str | None:
 
 
 def _command(suite_path: str, pattern: str, *, wsl: bool, timeout: float = 900) -> list[str]:
-    args = ["-B", "-m", "unittest", "discover", "-s", suite_path, "-p", pattern, "-q"]
+    args = ["-B", "-m", "unittest", "discover", "-s", suite_path, "-p", pattern]
+    if suite_path == "tests":
+        # Load tests/__init__.py before each isolated file, just like the
+        # repository's package discovery; it adds system/ for product imports.
+        args.extend(["-t", "."])
+    args.append("-q")
     if wsl:
         return ["wsl.exe", "--cd", _wsl_root() or ".", "--", "python3", "-B",
                 "scripts/test_wsl_supervisor.py", str(timeout), "python3", *args]

@@ -92,6 +92,7 @@ class TestRunnerProcessTests(unittest.TestCase):
     def test_one_failed_file_does_not_hide_later_test_file(self):
         suite = self.root / 'tests'
         suite.mkdir()
+        (suite / '__init__.py').write_text('', encoding='utf-8')
         (suite / 'test_a_fail.py').write_text(
             'import unittest\nclass Case(unittest.TestCase):\n'
             ' def test_failure(self): self.fail("synthetic failure")\n', encoding='utf-8')
@@ -110,6 +111,46 @@ class TestRunnerProcessTests(unittest.TestCase):
         self.assertIn('[PASSED ] windows-shared:test_b_pass.py', text)
         self.assertIn('Ran 1 test', text)
         self.assertIn('Checks: 2; failed/timeouts: 1', text)
+
+    def test_shared_discovery_loads_package_before_product_imports(self):
+        suite = self.root / 'tests'
+        suite.mkdir()
+        product = self.root / 'system' / 'app'
+        product.mkdir(parents=True)
+        (product / '__init__.py').write_text('value = 42\n', encoding='utf-8')
+        (suite / '__init__.py').write_text(
+            'from pathlib import Path\nimport sys\n'
+            'sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "system"))\n',
+            encoding='utf-8')
+        (suite / 'support.py').write_text('expected = 42\n', encoding='utf-8')
+        (suite / 'test_import.py').write_text(
+            'import unittest\nfrom app import value\nfrom tests.support import expected\n'
+            'class Case(unittest.TestCase):\n'
+            ' def test_product_import(self): self.assertEqual(value, expected)\n', encoding='utf-8')
+        with mock.patch.object(run_tests, 'ROOT', self.root):
+            result = run_tests._run('shared-import', 'tests', 'test_import.py', timeout=10, wsl=False)
+        self.assertEqual(result['status'], 'passed', result['stderr'])
+        self.assertIn('Ran 1 test', result['stderr'])
+
+    def test_other_discovery_preserves_standalone_sibling_imports(self):
+        suite = self.root / 'standalone'
+        suite.mkdir()
+        (suite / 'support.py').write_text('value = 42\n', encoding='utf-8')
+        (suite / 'test_import.py').write_text(
+            'import unittest\nfrom support import value\n'
+            'class Case(unittest.TestCase):\n'
+            ' def test_sibling_import(self): self.assertEqual(value, 42)\n', encoding='utf-8')
+        with mock.patch.object(run_tests, 'ROOT', self.root):
+            result = run_tests._run('standalone-import', 'standalone', 'test_import.py', timeout=10, wsl=False)
+        self.assertEqual(result['status'], 'passed', result['stderr'])
+        self.assertIn('Ran 1 test', result['stderr'])
+
+    def test_wsl_shared_discovery_retains_supervisor_and_package_context(self):
+        command = run_tests._command('tests', 'test_import.py', wsl=True, timeout=17)
+        self.assertEqual(command[:3], ['wsl.exe', '--cd', run_tests._wsl_root() or '.'])
+        self.assertEqual(command[3:9], ['--', 'python3', '-B',
+                                      'scripts/test_wsl_supervisor.py', '17', 'python3'])
+        self.assertEqual(command[-3:], ['-t', '.', '-q'])
 
     def test_public_suites_exclude_retired_camera_service(self):
         self.assertNotIn('platecam', {name for name, _, _ in run_tests.SUITES})
