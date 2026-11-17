@@ -44,7 +44,7 @@ Kør fra produktroden:
 ```powershell
 python -B sdk/check_app.py --app laser
 python -B sdk/preview.py --app laser
-python -B -m unittest tests.test_laser_e2 tests.test_laser_submission_limits -q
+python -B -m unittest tests.test_installed_editor_pages tests.test_laser_e2 tests.test_laser_submission_limits -q
 ```
 
 Forhåndsvisningen bruger den rigtige lokale gateway uden skoleforbindelse.
@@ -54,13 +54,18 @@ ikke er forbindelse.
 
 De renderede prøver mod den installerede appkørsel er
 `tests/test_installed_apps_browser.cjs` (sæt `MKV_INSTALLED_APP_FILTER=laser`)
-og `tests/test_laser_website_library.cjs`. De kræver Playwright og kører
-fixturen i WSL på Windows. Ingen af dem starter en fysisk laser.
+og `tests/test_laser_website_library.cjs`. De kræver Playwright. På Windows
+kører fixturen i WSL; har pc'en ingen WSL-distribution, så sæt
+`MKV_QA_PYTHON` til en Python 3.13 eller nyere, og fixturen kører direkte i
+Windows. Dér springes to Linux-kontroller over (linksikker mappegennemgang
+og root-ejerskab), og rapporten siger det. Ingen af prøverne starter en
+fysisk laser.
 
+Editoren serveres kun af den installerede appkørsel. Skoleserveren og de
+gamle videresendelsestjenester i `system/app/` svarer 404 på `/laser.html`.
 De ældre forløb `tests/test_laser_e2_browser.cjs` og
-`tests/test_laser_submission_browser.cjs` bygger på de tidligere lokale
-servere, som ikke længere finder editorsiderne i kilden efter appopdelingen.
-Regn ikke med dem, før de er flyttet til den installerede appkørsel.
+`tests/test_laser_submission_browser.cjs` henter stadig editoren derfra og
+kan ikke køre, før de er flyttet til den installerede appkørsel.
 
 [Opdatér, byg og udgiv appen](../../docs/NY-APP-GUIDE.md) ·
 [Kø, udbakke og ansvar](../../docs/APP-PLATFORM.md)

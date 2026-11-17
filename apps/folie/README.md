@@ -52,18 +52,23 @@ assetfil skal tilføjes dér; JavaScript-modulerne bundles og skal ikke.
 npm run build:laser
 python -B sdk/check_app.py --app folie
 python -B sdk/preview.py --app folie
-python -B -m unittest tests.test_web_build_receipt tests.test_folie_library_gateway -q
+python -B -m unittest tests.test_web_build_receipt tests.test_installed_editor_pages tests.test_folie_library_gateway -q
 ```
 
 Forhåndsvisningen kører uden skoleforbindelse, så biblioteket svarer, at der
 ikke er forbindelse. Den renderede prøve mod den installerede appkørsel er
 `tests/test_installed_apps_browser.cjs` (sæt `MKV_INSTALLED_APP_FILTER=folie`).
-Den kræver Playwright og kører fixturen i WSL på Windows.
+Den kræver Playwright. På Windows kører fixturen i WSL; har pc'en ingen
+WSL-distribution, så sæt `MKV_QA_PYTHON` til en Python 3.13 eller nyere, og
+fixturen kører direkte i Windows. Dér springes to Linux-kontroller over
+(linksikker mappegennemgang og root-ejerskab), og rapporten siger det.
 
+Editoren serveres kun af den installerede appkørsel. Skoleserveren og de
+gamle videresendelsestjenester i `system/app/` svarer 404 på `/folie.html`.
 De ældre kontroller `scripts/verify_folie_library.mjs`,
 `scripts/verify_brother_workshop.mjs` og
-`tests/test_folie_project_import_browser.cjs` læser editoren fra stier og
-servere fra før appopdelingen. Regn ikke med dem, før de er flyttet.
+`tests/test_folie_project_import_browser.cjs` henter stadig editoren derfra
+og kan ikke køre, før de er flyttet til den installerede appkørsel.
 
 [Opdatér, byg og udgiv appen](../../docs/NY-APP-GUIDE.md) ·
 [SVG-bibliotek og ansvar](../../docs/APP-PLATFORM.md)

@@ -16,7 +16,7 @@ bruges til at geninstallere eller erstatte en eksisterende skolekø.
 
 | Sted | Ansvar | Adresse efter installation |
 |---|---|---|
-| VM LOKAL_IP | Elevside, afleveringer, filer, lærerlogin og status | Elev: http://LOKAL_IP:8766/ |
+| VM LOKAL_IP | Afleveringer fra elevcomputerne, filer, lærerlogin og status | Aflevering: http://LOKAL_IP:8766/ |
 | VM LOKAL_IP | Lærer-API, tilgængeligt fra hovedcomputerens IP | http://LOKAL_IP:8767/ |
 | Makerspace-hovedcomputer | Laserstation, placering, materialer, FLUX og Beam Studio | http://127.0.0.1:8790/ |
 
@@ -134,11 +134,11 @@ Automatisk kamerahentning og samling af HEXA-kameraets delbilleder er endnu
 ikke implementeret. Brug ikke et enkelt råt kamerabillede som foto af hele
 pladen. Godkendelser og den aktive fotoscene gemmes ikke over genstart.
 
-Hvis den eksisterende makerspace-klient viser designeditoren lokalt via
-`app.laser_local`, skal dens afleveringsadresse sættes til
-`http://LOKAL_IP:8766`. Stationens læreradresse er port **8767**.
-Ret kun laserværkstedets indstilling, ikke klientens globale Elevhub-adresse.
-Alternativt åbner elevens lasergenvej serverens `/laser.html` direkte.
+Eleverne tegner i Laser-appen på elevcomputeren. Den lokale gateway
+`app.laser_local` sender afleveringen til `http://LOKAL_IP:8766`; stationens
+læreradresse er port **8767**. Ret kun laserværkstedets indstilling, ikke
+klientens globale Elevhub-adresse. Køserveren har ingen editor: `/laser.html`
+og `/folie.html` findes ikke på port 8766.
 
 ## Lokal test uden VM eller skoleforbindelse
 
