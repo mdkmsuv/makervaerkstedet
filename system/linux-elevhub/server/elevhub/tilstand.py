@@ -182,10 +182,10 @@ class Tilstand:
             ready[app['id']] = app['ready']
         allowed = {a['id'] for a in self.apps
                    if (a.get('type') == 'lokal' and a.get('lokal_service') is True)
-                   # A web workshop can have a local companion (micro:bit's
-                   # project page). Health is observation, never permission
-                   # to open the workshop or widen its network policy.
-                   or a.get('type') in ('native', 'web')}
+                   # Web and legacy workshop entries can have installed local
+                   # companions. Health is observation, never permission to
+                   # open a workshop or widen its network policy.
+                   or a.get('type') in ('native', 'web', 'vaerksted')}
         if set(ready) - allowed:
             raise ValueError('Ukendt lokal app i status.')
         return ready

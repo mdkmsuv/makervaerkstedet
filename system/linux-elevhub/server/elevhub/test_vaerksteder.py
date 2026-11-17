@@ -137,6 +137,25 @@ class KonfigurationTest(unittest.TestCase):
                                           local_apps=[{'id': 'scratch', 'ready': True}])
             self.assertTrue(ready['apps'][0]['klar'])
 
+    def test_native_health_accepts_known_legacy_workshops_without_opening_them(self):
+        configured = [{'id': name, 'navn': name, 'type': 'vaerksted'}
+                      for name in ('3dprint', 'laser', 'folie')]
+        configured += [_web_app(id='microbit'), _local_app(lokal_service=True)]
+        health = [{'id': app['id'], 'ready': True} for app in configured]
+        with tempfile.TemporaryDirectory() as directory:
+            state = Tilstand(directory, configured, ur=lambda: 1000.0)
+            state.saet({'laser': False, 'scratch': False})
+            reply = state.status_fra_elev('elev-01', '127.0.0.1', 'bjaelke',
+                                         local_apps=health)
+            cards = {app['id']: app for app in reply['apps']}
+            self.assertTrue(cards['scratch']['klar'])
+            self.assertFalse(cards['scratch']['aaben'])
+            self.assertFalse(cards['laser']['aaben'])
+            self.assertEqual(cards['laser']['lukket_indtil'], 8200.0)
+            with self.assertRaisesRegex(ValueError, 'Ukendt lokal app'):
+                state.status_fra_elev('elev-01', '127.0.0.1', 'bjaelke',
+                                     local_apps=health + [{'id': 'unknown', 'ready': True}])
+
 
 class LokalFilTest(unittest.TestCase):
     def setUp(self):
