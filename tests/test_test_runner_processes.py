@@ -125,10 +125,41 @@ class TestRunnerProcessTests(unittest.TestCase):
         (suite / 'support.py').write_text('expected = 42\n', encoding='utf-8')
         (suite / 'test_import.py').write_text(
             'import unittest\nfrom app import value\nfrom tests.support import expected\n'
+            'from support import expected as sibling_expected\n'
             'class Case(unittest.TestCase):\n'
-            ' def test_product_import(self): self.assertEqual(value, expected)\n', encoding='utf-8')
+            ' def test_product_import(self): self.assertEqual((value,expected,sibling_expected),(42,42,42))\n', encoding='utf-8')
         with mock.patch.object(run_tests, 'ROOT', self.root):
             result = run_tests._run('shared-import', 'tests', 'test_import.py', timeout=10, wsl=False)
+        self.assertEqual(result['status'], 'passed', result['stderr'])
+        self.assertIn('Ran 1 test', result['stderr'])
+
+    def test_shared_child_inherits_product_sibling_and_existing_search_paths(self):
+        suite = self.root / 'tests'
+        suite.mkdir()
+        (suite / '__init__.py').write_text('', encoding='utf-8')
+        (suite / 'sibling.py').write_text('value = 17\n', encoding='utf-8')
+        product = self.root / 'system' / 'app'
+        product.mkdir(parents=True)
+        (product / '__init__.py').write_text('value = 42\n', encoding='utf-8')
+        extra = self.root / 'external'
+        extra.mkdir()
+        (extra / 'inherited.py').write_text('value = 7\n', encoding='utf-8')
+        outside = self.root / 'outside'
+        outside.mkdir()
+        (suite / 'test_child.py').write_text(
+            'import subprocess,sys,unittest\nfrom pathlib import Path\n'
+            'class Case(unittest.TestCase):\n'
+            ' def test_child(self):\n'
+            '  code="import app,sibling,inherited;print(app.value+sibling.value+inherited.value)"\n'
+            '  result=subprocess.run([sys.executable,"-B","-c",code],\n'
+            '   cwd=Path(__file__).resolve().parents[1]/"outside",\n'
+            '   capture_output=True,text=True,timeout=5)\n'
+            '  self.assertEqual(result.returncode,0,result.stderr)\n'
+            '  self.assertEqual(result.stdout.strip(),"66")\n', encoding='utf-8')
+        environment = {**os.environ, 'PYTHONPATH': str(extra)}
+        with mock.patch.object(run_tests, 'ROOT', self.root):
+            result = run_tests._run('shared-child', 'tests', 'test_child.py', timeout=10,
+                                    wsl=False, env=environment)
         self.assertEqual(result['status'], 'passed', result['stderr'])
         self.assertIn('Ran 1 test', result['stderr'])
 
@@ -148,9 +179,41 @@ class TestRunnerProcessTests(unittest.TestCase):
     def test_wsl_shared_discovery_retains_supervisor_and_package_context(self):
         command = run_tests._command('tests', 'test_import.py', wsl=True, timeout=17)
         self.assertEqual(command[:3], ['wsl.exe', '--cd', run_tests._wsl_root() or '.'])
-        self.assertEqual(command[3:9], ['--', 'python3', '-B',
-                                      'scripts/test_wsl_supervisor.py', '17', 'python3'])
+        linux_root = run_tests._wsl_root() or '.'
+        self.assertEqual(command[3:11], ['--', 'env',
+            'PYTHONPATH=' + ':'.join(linux_root + suffix for suffix in ('/system', '/tests', '')),
+            'python3', '-B', 'scripts/test_wsl_supervisor.py', '17', 'python3'])
         self.assertEqual(command[-3:], ['-t', '.', '-q'])
+
+    @unittest.skipUnless(os.name == 'nt' and shutil.which('wsl.exe'), 'requires WSL on Windows')
+    def test_wsl_child_uses_linux_paths_instead_of_inherited_windows_pythonpath(self):
+        with tempfile.TemporaryDirectory(prefix='runner-wsl-import-', dir=run_tests.ROOT) as folder:
+            project = Path(folder)
+            (project / 'tests').mkdir()
+            (project / 'tests/__init__.py').write_text('', encoding='utf-8')
+            (project / 'tests/sibling.py').write_text('value=17\n', encoding='utf-8')
+            (project / 'system/app').mkdir(parents=True)
+            (project / 'system/app/__init__.py').write_text('value=42\n', encoding='utf-8')
+            (project / 'outside').mkdir()
+            (project / 'scripts').mkdir()
+            shutil.copyfile(Path(run_tests.__file__).with_name('test_wsl_supervisor.py'),
+                            project / 'scripts/test_wsl_supervisor.py')
+            (project / 'tests/test_child.py').write_text(
+                'import subprocess,sys,unittest\nfrom pathlib import Path\n'
+                'class Case(unittest.TestCase):\n'
+                ' def test_child(self):\n'
+                '  result=subprocess.run([sys.executable,"-B","-c",\n'
+                '   "import app,sibling;print(app.value+sibling.value)"],\n'
+                '   cwd=Path(__file__).resolve().parents[1]/"outside",\n'
+                '   capture_output=True,text=True,timeout=5)\n'
+                '  self.assertEqual(result.returncode,0,result.stderr)\n'
+                '  self.assertEqual(result.stdout.strip(),"59")\n', encoding='utf-8')
+            environment = {**os.environ, 'PYTHONPATH': r'Z:\windows-only\python'}
+            with mock.patch.object(run_tests, 'ROOT', project):
+                result = run_tests._run('wsl-child-import', 'tests', 'test_child.py',
+                                        timeout=10, wsl=True, env=environment)
+            self.assertEqual(result['status'], 'passed', result['stderr'])
+            self.assertIn('Ran 1 test', result['stderr'])
 
     def test_public_suites_exclude_retired_camera_service(self):
         self.assertNotIn('platecam', {name for name, _, _ in run_tests.SUITES})

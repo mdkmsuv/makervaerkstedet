@@ -104,7 +104,11 @@ def _command(suite_path: str, pattern: str, *, wsl: bool, timeout: float = 900) 
         args.extend(["-t", "."])
     args.append("-q")
     if wsl:
-        return ["wsl.exe", "--cd", _wsl_root() or ".", "--", "python3", "-B",
+        linux_root = _wsl_root() or "."
+        # Override any Windows PYTHONPATH forwarded by WSLENV. Children of the
+        # Linux supervisor must inherit Linux paths, including sibling fixtures.
+        search = ":".join(linux_root + suffix for suffix in ("/system", "/tests", ""))
+        return ["wsl.exe", "--cd", linux_root, "--", "env", "PYTHONPATH=" + search, "python3", "-B",
                 "scripts/test_wsl_supervisor.py", str(timeout), "python3", *args]
     return [_local_python(), *args]
 
@@ -250,6 +254,14 @@ def _capture(command: list[str], *, cwd: Path | None, timeout: float,
 def _run(name: str, path: str, pattern: str, *, timeout: float, wsl: bool,
          workdir: Path | None = None, env: dict[str, str] | None = None) -> dict[str, object]:
     command = _command(path, pattern, wsl=wsl, timeout=timeout)
+    if path == "tests" and not wsl:
+        # sys.path changes in tests/__init__.py do not reach spawned Python
+        # interpreters. Export the same source roots for their entire lifetime.
+        env = dict(os.environ if env is None else env)
+        search = [str(ROOT / "system"), str(ROOT / "tests"), str(ROOT)]
+        if env.get("PYTHONPATH"):
+            search.append(env["PYTHONPATH"])
+        env["PYTHONPATH"] = os.pathsep.join(search)
     started = time.monotonic()
     try:
         code, expired, stdout_bytes, stderr_bytes = _capture(
