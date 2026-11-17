@@ -55,7 +55,38 @@ function Resolve-TaskPrincipalSid([string]$Identity) {
   return ([Security.Principal.NTAccount]::new($Identity)).Translate([Security.Principal.SecurityIdentifier]).Value
  } catch { throw 'Task identity could not be resolved to a Windows SID' }
 }
-$owner=Get-Content -LiteralPath (Join-Path $env:ProgramData 'ElevhubServer\installation-owner.json') -Raw -Encoding UTF8|ConvertFrom-Json
+# Windows omits Settings/Enabled from the exported XML while a task is enabled
+# and writes <Enabled>false</Enabled> once it is disabled. Compare the task
+# definition without that one element, and without insignificant whitespace,
+# so that our own Disable does not look like a foreign change.
+function Get-TaskConfiguration([string]$Xml){
+ $document=[xml]$Xml
+ foreach($node in @($document.SelectNodes("/*[local-name()='Task']/*[local-name()='Settings']/*[local-name()='Enabled']"))){[void]$node.ParentNode.RemoveChild($node)}
+ return $document.OuterXml
+}
+
+function Assert-InstallationOwnerProtected([string]$Path){
+ $cursor=[IO.Path]::GetFullPath($Path)
+ while($cursor){
+  if((Test-Path -LiteralPath $cursor) -and ((Get-Item -LiteralPath $cursor -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)){throw 'Linked installation owner path refused'}
+  $parent=Split-Path $cursor -Parent;if($parent -eq $cursor){break};$cursor=$parent
+ }
+ $acl=Get-Acl -LiteralPath $Path
+ $trusted=@('S-1-5-18','S-1-5-32-544','S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464')
+ if($acl.GetOwner([Security.Principal.SecurityIdentifier]).Value -notin $trusted){throw 'Untrusted installation owner file owner'}
+ $write=[Security.AccessControl.FileSystemRights]'Write,Delete,ChangePermissions,TakeOwnership,DeleteSubdirectoriesAndFiles'
+ foreach($ace in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])){
+  if($ace.AccessControlType -eq 'Allow' -and -not ($ace.PropagationFlags -band [Security.AccessControl.PropagationFlags]::InheritOnly) -and ($ace.FileSystemRights -band $write) -and $ace.IdentityReference.Value -notin $trusted){throw 'Installation owner metadata is writable by an untrusted principal'}
+ }
+}
+function Get-TaskDefinitionSha256([string]$Xml){
+ $algorithm=[Security.Cryptography.SHA256]::Create()
+ try{return [BitConverter]::ToString($algorithm.ComputeHash([Text.Encoding]::UTF8.GetBytes((Get-TaskConfiguration $Xml)))).Replace('-','').ToLowerInvariant()}finally{$algorithm.Dispose()}
+}
+
+$ownerPath=Join-Path $env:ProgramData 'ElevhubServer\installation-owner.json'
+Assert-InstallationOwnerProtected $ownerPath
+$owner=Get-Content -LiteralPath $ownerPath -Raw -Encoding UTF8|ConvertFrom-Json
 $config=Get-Content -LiteralPath (Join-Path $env:ProgramData 'ElevhubServer\konfiguration.json') -Raw -Encoding UTF8|ConvertFrom-Json
 $task=Get-ScheduledTask -TaskName 'ElevhubServer' -TaskPath '\'
 if(@($task.Actions).Count -ne 1 -or [IO.Path]::GetFullPath([string]$task.Actions[0].Execute) -ine (Join-Path $expected 'runtime\python.exe')){throw 'Server task does not own expected interpreter; generation/custom layout requires explicit migration'}
@@ -81,6 +112,31 @@ if($owner.adoptedPrinterLights){
     [IO.Path]::GetFullPath($lights.Actions[0].WorkingDirectory) -ine $expected -or $lights.Actions[0].Arguments -cne $argsLights){throw 'Owned printer light task changed'}
  $owned+=,$lights
 }
+
+# Adoption is explicit protected operator intent, never discovery by task name.
+if($owner.PSObject.Properties.Name -ccontains 'adoptedAuxiliaryTasks'){
+ $bindings=$owner.adoptedAuxiliaryTasks
+ if($bindings -isnot [System.Array] -or $bindings.Count -gt 2){throw 'Invalid auxiliary task adoption list'}
+ $roles=@{'ElevhubServer-PublicPrintHttp'='public-print-http';'ElevhubServer-TeacherPrintHttps'='teacher-print-https'}
+ $seen=[Collections.Generic.HashSet[string]]::new([StringComparer]::Ordinal)
+ $auxiliary=@()
+ foreach($binding in $bindings){
+  if($binding -isnot [pscustomobject] -or ((@($binding.PSObject.Properties.Name|Sort-Object) -join ',') -cne 'definition_sha256,task_name') -or
+     $binding.task_name -isnot [string] -or $binding.task_name -cnotin @('ElevhubServer-PublicPrintHttp','ElevhubServer-TeacherPrintHttps') -or
+     $binding.definition_sha256 -isnot [string] -or $binding.definition_sha256 -cnotmatch '^[a-f0-9]{64}$' -or -not $seen.Add($binding.task_name)){throw 'Invalid auxiliary task adoption entry'}
+  $item=Get-ScheduledTask -TaskName $binding.task_name -TaskPath '\' -ErrorAction Stop
+  if($null -eq $item -or @($item).Count -ne 1 -or $item.TaskName -cne $binding.task_name -or @($item.Actions).Count -ne 1){throw 'Adopted auxiliary task is missing or ambiguous'}
+  $cwd=Join-Path (Join-Path $env:ProgramData 'ElevhubServer') $roles[$binding.task_name]
+  if([string]$item.Actions[0].Execute -ine (Join-Path $expected 'runtime\python.exe') -or
+     [string]$item.Actions[0].WorkingDirectory -ine $cwd -or
+     (Resolve-TaskPrincipalSid $item.Principal.UserId) -notin @('S-1-5-19','S-1-5-18')){throw 'Adopted auxiliary task action, role directory or principal changed'}
+  $xml=Export-ScheduledTask -TaskName $binding.task_name -TaskPath '\'
+  if((Get-TaskDefinitionSha256 $xml) -cne $binding.definition_sha256){throw 'Adopted auxiliary task definition changed'}
+  $auxiliary+=,$item
+ }
+ $owned+=@($auxiliary)
+}
+
 if($Action -eq 'PreflightUpdate'){
  $resumeHint='Kør skoleopsætningen igen med Setup-School.ps1 -Resume og de samme skolevalg, før du opdaterer.'
  $schoolPath=Join-Path $env:ProgramData 'ElevhubServer\school.json'
@@ -187,15 +243,6 @@ if($Action -eq 'PreflightUpdate'){
  exit 0
 }
 if($Action -eq 'Hold'){foreach($item in $owned){Disable-ScheduledTask -TaskName $item.TaskName -TaskPath '\'|Out-Null;Stop-ScheduledTask -TaskName $item.TaskName -TaskPath '\'};exit 0}
-# Windows omits Settings/Enabled from the exported XML while a task is enabled
-# and writes <Enabled>false</Enabled> once it is disabled. Compare the task
-# definition without that one element, and without insignificant whitespace,
-# so that our own Disable does not look like a foreign change.
-function Get-TaskConfiguration([string]$Xml){
- $document=[xml]$Xml
- foreach($node in @($document.SelectNodes("/*[local-name()='Task']/*[local-name()='Settings']/*[local-name()='Enabled']"))){[void]$node.ParentNode.RemoveChild($node)}
- return $document.OuterXml
-}
 $rows=@(foreach($item in $owned){
  $xml=Export-ScheduledTask -TaskName $item.TaskName -TaskPath '\'
  @{name=$item.TaskName;xml=$xml;configuration=(Get-TaskConfiguration $xml);enabled=[bool]$item.Settings.Enabled;running=($item.State -eq 'Running')}

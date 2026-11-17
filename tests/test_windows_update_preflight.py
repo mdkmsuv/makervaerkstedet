@@ -71,6 +71,7 @@ function Stop-ScheduledTask {throw 'SIDE_EFFECT_STOP'}
 function Start-ScheduledTask {throw 'SIDE_EFFECT_START'}
 function Stop-Process {throw 'SIDE_EFFECT_KILL'}
 function Set-Content {throw 'SIDE_EFFECT_WRITE'}
+function Get-Acl {param($LiteralPath);$acl=[Security.AccessControl.FileSecurity]::new();$acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;LS)');return $acl}
 & $Source -Action PreflightUpdate -Journal (Join-Path $data 'installer-updates\synthetic-journal')
 ''', encoding='utf-8-sig')
 

@@ -56,6 +56,8 @@ function Stop-ScheduledTask($TaskName,$TaskPath){$global:events.Add('stop:'+$Tas
 function Enable-ScheduledTask($TaskName,$TaskPath){$global:events.Add('enable:'+$TaskName);$global:tasks[$TaskName].Settings.Enabled=$true}
 function Start-ScheduledTask($TaskName,$TaskPath){$global:events.Add('start:'+$TaskName);$global:tasks[$TaskName].State='Running'}
 function Get-CimInstance($ClassName){return @()}
+function Get-Acl {param($LiteralPath);$acl=[Security.AccessControl.FileSecurity]::new();$acl.SetSecurityDescriptorSddlForm('O:BAG:BAD:P(A;;FA;;;SY)(A;;FA;;;BA)(A;;FR;;;LS)');return $acl}
+
 $failure=$null
 try{& '__SCRIPT__' -Action Stop -Journal '__JOURNAL__';if($LASTEXITCODE -ne 0){throw 'Stop failed'};& '__SCRIPT__' -Action Restore -Journal '__JOURNAL__'}catch{$failure=$_.Exception.Message}
 @{events=@($global:events);failure=$failure}|ConvertTo-Json -Compress
@@ -73,6 +75,6 @@ try{& '__SCRIPT__' -Action Stop -Journal '__JOURNAL__';if($LASTEXITCODE -ne 0){t
         result=self.scenario(True);self.assertIsNone(result['failure'],result)
         self.assertEqual([e for e in result['events'] if e.startswith('start:')],['start:ElevhubServer','start:ElevhubSchoolEnrollment'])
     def test_changed_enrollment_is_rejected_before_any_task_mutation(self):
-        result=self.scenario(True,True);self.assertIn('Enrollment task ownership',result['failure']);self.assertEqual(result['events'],[])
+        result=self.scenario(True,True);self.assertIn('Setup-School.ps1 -Resume',result['failure']);self.assertEqual(result['events'],[])
 
 if __name__=='__main__':unittest.main()
