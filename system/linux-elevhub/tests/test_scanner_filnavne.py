@@ -5,7 +5,8 @@ import sys
 import tempfile
 import unittest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'projekter'))
+sys.path[:0] = [str(Path(__file__).resolve().parents[2]),
+                str(Path(__file__).resolve().parents[1] / 'projekter')]
 from projektarkiv import Projektarkiv  # noqa: E402
 from scanner import Scanner, laesbar  # noqa: E402
 

@@ -6,7 +6,8 @@ from types import SimpleNamespace
 import unittest
 import uuid
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'projekter'))
+sys.path[:0] = [str(Path(__file__).resolve().parents[2]),
+                str(Path(__file__).resolve().parents[1] / 'projekter')]
 from filtyper import association, project_kind
 from project_open import DEFAULT_WORKSHOPS, plan
 from projektarkiv import Projektarkiv

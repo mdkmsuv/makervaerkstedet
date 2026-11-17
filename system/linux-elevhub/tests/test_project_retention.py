@@ -11,7 +11,8 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'projekter'))
+sys.path[:0] = [str(Path(__file__).resolve().parents[2]),
+                str(Path(__file__).resolve().parents[1] / 'projekter')]
 from projektarkiv import Projektarkiv, RETENTION_SECONDS  # noqa: E402
 from scanner import Scanner  # noqa: E402
 

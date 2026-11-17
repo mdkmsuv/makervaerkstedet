@@ -12,7 +12,8 @@ import test_apt_client as legacy
 M=legacy.M
 
 LEGACY='2.0.0~20261114.2'
-MODULAR='2.1.0~20261114.1'
+# The live app descriptors below require at least this modular core.
+MODULAR='2.1.0~20261116.1'
 BRIDGE='1.1.0~20261114.1'
 FOUR={'laser','folie','3dprint','microbit'}
 

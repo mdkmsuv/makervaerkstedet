@@ -18,7 +18,8 @@ from test_simple_updates import Fixture
 from tests.test_app_catalog import envelope
 
 BASE='2.0.0~20261114.2'
-CORE='2.1.0~20261114.1'
+# The live app descriptors below require at least this modular core.
+CORE='2.1.0~20261116.1'
 BRIDGE='1.1.0~20261114.1'
 BUILTINS={'laser','folie','3dprint','microbit','scratch'}
 PRESERVED=sorted(BUILTINS-{'scratch'})

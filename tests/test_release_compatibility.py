@@ -54,8 +54,9 @@ class ReleaseCompatibilityTests(unittest.TestCase):
 
     def _source_cohort(self):
         program = self.root / 'source-cohort'
-        for source in (source_path('app', ROOT)).rglob('*.py'):
-            target = program / source.relative_to(ROOT)
+        app_source = source_path('app', ROOT)
+        for source in app_source.rglob('*.py'):
+            target = program / 'app' / source.relative_to(app_source)
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(source, target)
         hub_source = source_path('linux-elevhub/server/elevhub', ROOT)
