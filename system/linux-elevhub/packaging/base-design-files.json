@@ -26,8 +26,6 @@
   "app/simple_release.py",
   "app/svg_library.py",
   "app/svg_library_service.py",
-  "web/workshop.html",
-  "web/workshop.css",
   "web/project-import.js",
   "web/school-theme.css",
   "web/school-theme.js",

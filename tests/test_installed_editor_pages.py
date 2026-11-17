@@ -130,6 +130,35 @@ class InstalledEditorPageTests(unittest.TestCase):
             # Startup readiness does not depend on the school profile.
             self.assertEqual(self.request(server, '/api/runtime/health')[0], 200)
 
+    def test_invalid_profile_document_explains_recovery_without_serving_the_app(self):
+        write_manifest(self.school, css=b'/* synthetic school theme */')
+        (self.school / 'local-appearance/files/teacher.css').write_bytes(b'changed')
+        for server, page in ((self.laser, '/laser.html'), (self.folie, '/folie.html'),
+                             (self.model, '/model3d.html')):
+            for path in ('/', page + '?elevhub_project=synthetic'):
+                with self.subTest(app=server.descriptor['id'], path=path):
+                    status, body, headers = self.request(server, path)
+                    self.assertEqual(status, 503)
+                    self.assertIn('text/html', headers['Content-Type'])
+                    html = body.decode('utf-8')
+                    self.assertIn('<html lang="da">', html)
+                    self.assertIn('<title>Værkstedet kan ikke åbnes</title>', html)
+                    self.assertIn('<h1>Værkstedet kan ikke åbnes</h1>', html)
+                    self.assertIn('Få hjælp af din lærer.', html)
+                    self.assertIn('Prøv igen', html)
+                    self.assertIn(f'href="http://127.0.0.1:{PROJECTS_PORT}/_elevhub/projekter/home"', html)
+                    self.assertIn('Til værkstederne', html)
+                    self.assertNotIn('<script', html)
+                    self.assertNotIn('<link', html)
+                    self.assertNotIn('ElevhubProjectAdapter', html)
+            for path in ('/school-theme.css', '/school-appearance/logo',
+                         '/api/school-appearance', '/favicon.svg'):
+                with self.subTest(app=server.descriptor['id'], asset=path):
+                    status, body, headers = self.request(server, path)
+                    self.assertEqual(status, 503)
+                    self.assertIn('application/json', headers['Content-Type'])
+                    self.assertEqual(json.loads(body)['error'], 'Den lokale skoleprofil kunne ikke valideres.')
+
 
 if __name__ == '__main__':
     unittest.main()

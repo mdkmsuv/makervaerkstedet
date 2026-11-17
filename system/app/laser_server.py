@@ -589,8 +589,9 @@ class Handler(BaseHTTPRequestHandler):
         # on the pupil computer by the installed-app gateway
         # (laser_local.create_installed_servers). This server has no editor
         # pages: /laser.html, /folie.html and /laservaerksted/ are 404 here.
-        route = {'/': '/laser-teacher.html' if teacher_surface else '/workshop.html'}.get(route,route)
-        surface_files = {'/laser-teacher.html','/laser-teacher.js','/laser-teacher.css'} if teacher_surface else {'/workshop.html','/workshop.css','/project-import.js'}
+        if teacher_surface and route == '/':
+            route = '/laser-teacher.html'
+        surface_files = {'/laser-teacher.html','/laser-teacher.js','/laser-teacher.css'} if teacher_surface else {'/project-import.js'}
         allowed = route in surface_files | {'/laser.css','/laser-workshop.css','/vinyl-workshop.css','/desktop-studio.css','/school-theme.css','/school-theme.js','/favicon.svg','/assets/workshop-laser-v1.webp','/assets/workshop-vinyl-v1.webp','/assets/workshop-3d-bauhaus-v1.png','/assets/metrophobic-latin.ttf','/assets/klostermarksskolen-logo.png','/assets/Metrophobic-OFL.txt','/assets/Paper-MIT.txt','/assets/OpenType-MIT.txt','/assets/ImageTracer-UNLICENSE.txt','/assets/Clipper-LICENSE.txt'}
         file = ROOT / 'web' / route.lstrip('/')
         if not allowed or not file.is_file():

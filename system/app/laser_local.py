@@ -38,6 +38,31 @@ FORWARD_TIMEOUT = 10  # skal blive under laser.js' egen timeout på 15 s
 JOB_ID = re.compile(r'[a-f0-9]{32}')
 
 
+def school_profile_error_page(projects_port):
+    """A usable document even when every school-profile asset is unavailable."""
+    home = f'http://127.0.0.1:{int(projects_port)}/_elevhub/projekter/home'
+    return '''<!doctype html>
+<html lang="da"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Værkstedet kan ikke åbnes</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f5f7f6;color:#202923;
+font:1.125rem/1.6 system-ui,sans-serif}main{max-width:42rem;margin:10vh auto;
+padding:clamp(1.25rem,5vw,3rem)}h1{font-size:clamp(1.75rem,5vw,2.5rem);line-height:1.2}
+nav{display:flex;flex-wrap:wrap;gap:1rem;margin-top:2rem}
+a{display:inline-flex;align-items:center;justify-content:center;min-height:48px;
+padding:.65rem 1rem;border:2px solid #23533b;border-radius:.5rem;color:#173c2a;
+font-weight:650;text-decoration:underline;text-underline-offset:.2em}
+a:first-child{background:#23533b;color:#fff}a:hover{border-color:#102b1d;background:#e2eae5}
+a:first-child:hover{background:#173c2a}a:focus-visible{outline:3px solid #101b15;outline-offset:4px}
+</style></head><body><main>
+<h1>Værkstedet kan ikke åbnes</h1>
+<p>Computerens skoleopsætning skal rettes. Få hjælp af din lærer.</p>
+<p>Når opsætningen er rettet, kan du prøve at åbne værkstedet igen.</p>
+<nav aria-label="Kom videre"><a href="">Prøv igen</a><a href="''' + home + '''">Til værkstederne</a></nav>
+</main></body></html>'''
+
+
 def student_identity(service):
     import importlib.util
     import os
@@ -662,6 +687,11 @@ def create_installed_servers(apps,laser,printing,*,runtime=None,projects_port=87
                 # validation is never silently replaced by the default look.
                 appearance=school_appearance(self.server.data_root)
                 if appearance is None and school_appearance_manifest_present(self.server.data_root):
+                    document = (path == '/' or path.endswith('.html') or
+                                (self.headers.get('Sec-Fetch-Dest') == 'document' and not Path(path).suffix))
+                    if document:
+                        return self.reply(503, school_profile_error_page(self.server.projects_port),
+                                          'text/html; charset=utf-8')
                     return self.reply(503,{'error':'Den lokale skoleprofil kunne ikke valideres.'})
                 overlay=school_appearance_asset(self.server.data_root,path)
                 if overlay is not None:return self.reply(200,*overlay)
