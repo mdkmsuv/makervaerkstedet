@@ -1,8 +1,13 @@
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
+
+REPOSITORY_ROOT = next(parent for parent in Path(__file__).resolve().parents
+                       if (parent / 'REPOSITORY-LAYOUT.json').is_file())
+sys.path[:0] = [str(REPOSITORY_ROOT), str(REPOSITORY_ROOT / 'system')]
 
 ROOT = Path(__file__).parents[1]
 spec = importlib.util.spec_from_file_location('bootstrap', ROOT / 'bootstrap.py')
