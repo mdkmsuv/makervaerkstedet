@@ -9,6 +9,15 @@ const root = path.resolve(__dirname, '..');
 const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const report = {startedAt: new Date().toISOString(), scope: process.env.MKV_INSTALLED_APP_FILTER || 'all-five-installed-apps', flows: [], projectFlows: [], failures: [], errors: [], missing: [], console: [], responses: [], appearance: []};
 let child, browser, urls, stderr = '';
+// The fixture runs as on the pupil computer: natively on Linux, in WSL on
+// Windows. A Windows PC without a WSL distribution sets MKV_QA_PYTHON to run
+// it natively; the fixture then replaces two Linux-only checks and says so.
+const nativePython = process.platform === 'win32' ? process.env.MKV_QA_PYTHON : 'python3';
+function python(args, stdio) {
+  if (nativePython) return spawn(nativePython, args, {cwd: root, stdio, windowsHide: true});
+  const filter = process.env.MKV_INSTALLED_APP_FILTER ? ['MKV_INSTALLED_APP_FILTER=' + process.env.MKV_INSTALLED_APP_FILTER] : [];
+  return spawn('wsl.exe', ['-u', 'root', '--cd', root, '--', 'env', ...filter, 'python3', ...args], {stdio, windowsHide: true});
+}
 
 async function namedStart(page, title) {
   await page.locator('#project-classroom').fill('QA-6');
@@ -159,7 +168,8 @@ async function launcherAndShelf() {
 
 async function main() {
   if (process.env.MKV_BROWSER_REPORT) fs.mkdirSync(process.env.MKV_BROWSER_REPORT, {recursive: true});
-  child = process.platform === 'win32' ? spawn('wsl.exe', ['-u', 'root', '--cd', root, '--', 'env', ...(process.env.MKV_INSTALLED_APP_FILTER ? ['MKV_INSTALLED_APP_FILTER='+process.env.MKV_INSTALLED_APP_FILTER] : []), 'python3', '-B', 'tests/fixtures/installed_app_server.py'], {stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true}) : spawn('python3', ['-B', 'tests/fixtures/installed_app_server.py'], {cwd: root, stdio: ['ignore', 'pipe', 'pipe']});
+  child = python(['-B', 'tests/fixtures/installed_app_server.py'], ['ignore', 'pipe', 'pipe']);
+  report.fixture = process.platform !== 'win32' ? 'linux' : nativePython ? 'windows-native (link-safe manifest walk and root-ownership check replaced)' : 'wsl';
   child.stderr.on('data', data => stderr += data);
   urls = await new Promise((resolve, reject) => {
     let buffer = ''; const timer = setTimeout(() => reject(Error('Installed fixture startup timeout: ' + stderr)), 240000);
@@ -218,7 +228,7 @@ async function main() {
     const file = await page.request.get(urls.scratch + '_elevhub/projekter/api/file?id=' + meta.id);
     const bytes = await file.body(); assert.equal(bytes.subarray(0, 2).toString(), 'PK');
     // Python stdlib verifies ZIP contents; no new browser/test dependencies.
-    const zip = process.platform === 'win32' ? spawn('wsl.exe', ['-u','root','--','python3','-c','import io,json,sys,zipfile; z=zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read())); p=json.loads(z.read("project.json")); assert any(t["name"]=="Installeret kat" for t in p["targets"]); assert any(n.endswith(".svg") for n in z.namelist()); assert any(n.endswith(".wav") for n in z.namelist())'], {stdio:['pipe','ignore','pipe'],windowsHide:true}) : spawn('python3',['-c','import io,json,sys,zipfile; z=zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read())); p=json.loads(z.read("project.json")); assert any(t["name"]=="Installeret kat" for t in p["targets"]); assert any(n.endswith(".svg") for n in z.namelist()); assert any(n.endswith(".wav") for n in z.namelist())'],{stdio:['pipe','ignore','pipe']});
+    const zip = python(['-c', 'import io,json,sys,zipfile; z=zipfile.ZipFile(io.BytesIO(sys.stdin.buffer.read())); p=json.loads(z.read("project.json")); assert any(t["name"]=="Installeret kat" for t in p["targets"]); assert any(n.endswith(".svg") for n in z.namelist()); assert any(n.endswith(".wav") for n in z.namelist())'], ['pipe', 'ignore', 'pipe']);
     let zipError='';zip.stderr.on('data', d=>zipError+=d); const checked=new Promise(resolve=>zip.once('exit', resolve)); zip.stdin.end(bytes); assert.equal(await checked,0,zipError);
     await page.goto(urls.scratch + '?elevhub_project=' + meta.id);
     await page.waitForFunction(() => window.ElevhubProjectAdapter?.signature().includes('Installeret kat'));

@@ -24,6 +24,7 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(ROOT), str(source_path('linux-elevhub/projekter', ROOT))]
+import app_host
 from app_host import SHARED, discover_apps, uses_gateway
 from projektarkiv import Projektarkiv
 from lokal import make_server, Handler
@@ -36,7 +37,33 @@ def interrupted(*_):
 
 
 signal.signal(signal.SIGTERM, interrupted)
-signal.signal(signal.SIGHUP, interrupted)
+if hasattr(signal, 'SIGHUP'):  # absent on Windows
+    signal.signal(signal.SIGHUP, interrupted)
+
+NATIVE_WINDOWS = not hasattr(os, 'O_DIRECTORY')
+if NATIVE_WINDOWS:
+    # Windows development PC without WSL. Two pupil-computer checks have no
+    # Windows equivalent and are replaced here: the link-safe directory walk
+    # (no directory descriptors) and root ownership of the start page inputs
+    # (no POSIX owner or mode). Manifest validation, app discovery, the start
+    # page template, the shelf and the gateway are the real code. Both checks
+    # are covered on Linux in system/linux-elevhub/tests (test_app_manifests,
+    # test_template_activation).
+    import app_manifests
+
+    def _plain_manifests(root, *, on_error=None):
+        result = []
+        for folder in sorted(Path(root).iterdir()):
+            file = folder / 'app.json'
+            if folder.is_dir() and file.is_file():
+                raw = file.read_bytes()
+                if len(raw) > app_manifests.MAX_SIZE:
+                    raise ValueError('manifest_too_large')
+                value = json.loads(raw.decode('utf-8'), object_pairs_hook=app_manifests._unique_pairs)
+                result.append(app_manifests.validate_manifest(value, folder.name))
+        return result
+
+    app_host.load_manifests = _plain_manifests
 
 
 class NoSchool:
@@ -148,7 +175,10 @@ def stage_profile(stage):
 
 def stage_home(stage, apps, config):
     sys.path.insert(0, str(source_path('linux-elevhub/administration', ROOT)))
+    import template_activation
     from template_activation import context
+    if NATIVE_WINDOWS:
+        template_activation.protected = lambda path, **_: template_activation.plain(path)
     from jinja2 import Environment, StrictUndefined
     installed = stage / 'usr/share/makervaerkstedet'
     installed.mkdir(parents=True)

@@ -9,8 +9,11 @@ const {chromium} = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 let child, browser, urls, stderr = '';
 const exported = page => page.evaluate(async () => JSON.parse(await (await window.ElevhubProjectAdapter.export()).text()));
 async function main() {
-  const args = process.platform === 'win32' ? ['-u','root','--cd',root,'--','env','MKV_INSTALLED_APP_FILTER=laser','MKV_LIBRARY_TEST_CASES=1','python3','-B','tests/fixtures/installed_app_server.py'] : ['-B','tests/fixtures/installed_app_server.py'];
-  child = spawn(process.platform === 'win32' ? 'wsl.exe' : 'python3', args, {cwd:root,env:{...process.env,MKV_INSTALLED_APP_FILTER:'laser',MKV_LIBRARY_TEST_CASES:'1'},stdio:['ignore','pipe','pipe'],windowsHide:true});
+  // WSL on Windows, or natively with MKV_QA_PYTHON when the PC has no WSL
+  // distribution (see test_installed_apps_browser.cjs and the fixture).
+  const native = process.platform === 'win32' ? process.env.MKV_QA_PYTHON : 'python3';
+  const args = native ? ['-B','tests/fixtures/installed_app_server.py'] : ['-u','root','--cd',root,'--','env','MKV_INSTALLED_APP_FILTER=laser','MKV_LIBRARY_TEST_CASES=1','python3','-B','tests/fixtures/installed_app_server.py'];
+  child = spawn(native || 'wsl.exe', args, {cwd:root,env:{...process.env,MKV_INSTALLED_APP_FILTER:'laser',MKV_LIBRARY_TEST_CASES:'1'},stdio:['ignore','pipe','pipe'],windowsHide:true});
   child.stderr.on('data', data => stderr += data);
   urls = await new Promise((resolve,reject) => {
     let buffer = ''; const timer = setTimeout(() => reject(Error('Fixture timeout: '+stderr)),60000);
@@ -90,4 +93,7 @@ async function main() {
   assert.deepEqual(outside,[]);assert.deepEqual(errors,[]);
   console.log('PASS installed Laser website catalogue 0→1, transformed and axis-aligned paths, undo/redo, mixed project save/reset/reopen; no external requests');
 }
-main().catch(e=>{console.error(e.stack);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();if(urls?.cleanup)await fetch(urls.cleanup,{method:'POST'}).catch(()=>{});if(child&&child.exitCode===null)child.kill();});
+main().catch(e=>{console.error(e.stack);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();if(urls?.cleanup)await fetch(urls.cleanup,{method:'POST'}).catch(()=>{});
+  // Let the fixture stop itself so it removes its temporary folder.
+  if(child&&child.exitCode===null){const exited=new Promise(resolve=>child.once('exit',resolve));const timer=setTimeout(()=>child.kill(),15000);await exited;clearTimeout(timer);}
+});
