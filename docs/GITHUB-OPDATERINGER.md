@@ -78,10 +78,37 @@ for gamle elevprojekter; det er ikke den modulære migration og må ikke
 køres igen for at opdele apps. Se [backup](MAKERSPACE-BACKUP.md) og
 [skoletilpasning](SKOLETILPASNING.md).
 
-## Windows og historisk ZIP-protokol
+## Hovedserveren opdateres fra lærerens panel
 
-Windows-server og laserstation bruger deres dokumenterede rolle-EXE
-og installations-/opdateringsadaptere. Følg
+Fra serverversion `2.1.0-20261117.4` vælges **Teknik → Hovedserver → Søg
+efter serveropdatering**. Panelet viser installeret og tilgængelig version.
+Vælg **Opdatér hovedserveren**, og bekræft. Serveren henter selv den signerede
+Windows-installationsfil fra projektets faste GitHub-release og kontrollerer
+signatur, rolle, version og indhold før installation. Du behøver ikke gemme
+eller åbne EXE-filen selv. En ældre installation skal først opdateres med en
+rolle-EXE, der indeholder denne funktion.
+
+Serverprogrammet stopper kortvarigt under opdateringen. Windows genstartes
+ikke. Log ind igen, når panelet beder om det; opdateringen fortsætter imens.
+Panelet melder først succes, når den valgte version, installerens kvittering,
+bevaret opsætning og serverens svar er kontrolleret. Køerne forbliver på pause,
+indtil læreren har kontrolleret maskinerne og genoptager dem.
+
+Ved et uafklaret afbrudt forløb undersøger **Afklar opdateringen** det
+allerede bestilte resultat. Den starter ikke installationen igen. Kontakt IT,
+hvis resultatet fortsat er uafklaret. Kun den bekræftede opdaterings egen
+downloadfil fjernes automatisk; backup og kvitteringer bevares.
+
+Den særskilte Windows-opgave `Makervaerkstedet-ServerUpdate` kører kun efter
+en bestilling. Serverens almindelige proces beholder sine begrænsede
+rettigheder. Browseren kan vælge en verificeret udgivelse, men kan ikke sende
+filstier, downloadadresser eller systemkommandoer til opdatereren.
+
+## Windows-laserstation og historisk ZIP-protokol
+
+Den særskilte Windows-laserstation bruger sin dokumenterede rolle-EXE
+og installations-/opdateringsadapter. Manuel serverinstallation og
+opdatering med rolle-EXE er også fortsat mulig. Følg
 [EXE/ISO-guiden](INSTALLATION-FRA-EXE-OG-ISO.md) og leverancens præcise
 README. En Linux-appordre er ikke en Windows-serveropdatering.
 

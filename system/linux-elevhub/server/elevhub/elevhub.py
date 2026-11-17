@@ -61,6 +61,7 @@ from simple_updates import SimpleUpdates, handle as simple_updates_request
 from app_admin_http import handle as app_admin_request, APP_LIMIT, PROFILE_LIMIT
 from simple_update_import import UpdateImporter
 from server_restart import status as server_restart_status, request as server_restart_request
+from server_update import handle as server_update_request
 
 MAPPE = Path(__file__).resolve().parent
 WEB = MAPPE / 'web'
@@ -86,6 +87,7 @@ LAERER_FILER = {'/': 'kontrolpanel.html', '/kontrolpanel': 'kontrolpanel.html', 
                 '/makerspace.css': 'makerspace.css',
                 '/laerer.css': 'laerer.css', '/laerer.js': 'laerer.js',
                 '/update-admin.js': 'update-admin.js',
+                '/server-update.js': 'server-update.js',
                 '/app-admin.js': 'app-admin.js', '/app-admin.css': 'app-admin.css',
                 '/school-profile.js': 'school-profile.js',
                 '/assets/Manrope.ttf': 'assets/Manrope.ttf',
@@ -776,6 +778,8 @@ class Laerer(Grund):
             return
         if sti == '/api/health':
             return self.svar(200, {'ok': True, **self.server.runtime_health})
+        if server_update_request(self, sti):
+            return
         local = _local_appearance(self.server.tilstand.mappe)
         if local and sti in local.get('_static', {}):
             path, content = local['_static'][sti]
@@ -873,6 +877,8 @@ class Laerer(Grund):
             if app_admin_request(self, sti, laengde):
                 return
             d = self.laes_json(laengde)
+            if server_update_request(self, sti, d):
+                return
             if simple_updates_request(self, sti, d, laengde):
                 return
             if release_feed_request(self, sti, d):

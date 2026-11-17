@@ -92,6 +92,18 @@ fil, afslutningssiden peger på, og hold hver skoles forbindelsesfiler adskilt.
 EXE-forløbet her, når leverancen indeholder EXE'en; guiderne har forskellige
 sider og forskelligt tidspunkt for Windows-godkendelsen.
 
+## Opdatér en eksisterende hovedserver
+
+Når serveren har version `2.1.0-20261117.4` eller nyere, kan læreren vælge
+**Teknik → Hovedserver** i adminpanelet og søge efter en ny version.
+Panelet henter, kontrollerer og starter installationsfilen efter bekræftelse;
+EXE'en skal ikke gemmes manuelt. Se [opdateringsforløbet](GITHUB-OPDATERINGER.md#hovedserveren-opdateres-fra-lærerens-panel).
+
+En ældre server får funktionen ved én almindelig opdatering med den nye
+server-EXE. Installeren genkender den eksisterende opsætning og bevarer skolens
+data, nøgler og tilmeldinger. Serverprogrammet genstarter under opdateringen;
+Windows genstartes ikke. Køerne efterlades på pause til lærerens kontrol.
+
 ## Separat laserstation på Windows
 
 Dette afsnit gælder, når laserstationen og hovedsystemet er på hver sin

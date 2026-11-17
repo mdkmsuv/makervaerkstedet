@@ -717,3 +717,9 @@ try {
 } catch {
     Write-Warning ('Serveren er installeret, men genstartsvalget kunne ikke aktiveres. Vælg skoleadministrationens menu 13 for at prøve igen. ' + $_.Exception.Message)
 }
+try {
+    . (Join-Path $InstallRoot 'server\server-update-lifecycle.ps1')
+    $null=Invoke-ServerUpdateBridgeCommand (Join-Path $InstallRoot 'server\server-update.ps1') 'Install'
+} catch {
+    Write-Warning ('Serveren er installeret, men opdatering fra adminpanelet kunne ikke aktiveres. ' + $_.Exception.Message)
+}

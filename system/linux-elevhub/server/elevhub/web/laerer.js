@@ -32,6 +32,7 @@ function vis(id) {
   for (const v of VIS) $(v).hidden = v !== id;
   $('log-ud').hidden = id !== 'panel';
 }
+window.ServerUpdate?.onAuthFailure(()=>{vis('login');$('login-fejl').textContent='Log ind igen for at se serveropdateringens resultat.';$('login-kode').focus();});
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, t => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'}[t])); }
 function siden(s) {
   if (s === null || s === undefined) return 'aldrig set';

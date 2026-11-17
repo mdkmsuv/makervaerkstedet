@@ -493,7 +493,7 @@ class NativeWindows:
     def stop_owned(self,journal):self.command(self.payload/'task_control.ps1','-Action','Stop','-Journal',journal)
     def restore_owned(self,journal):self.command(self.payload/'task_control.ps1','-Action','Restore','-Journal',journal)
     def configure_simple(self,package,journal):self.command(self.payload/'task_control.ps1','-Action','ConfigureSimple','-Journal',journal,'-PackageRoot',package)
-    def restore_simple(self,journal):self.command(self.payload/'task_control.ps1','-Action','RestoreSimple','-Journal',journal)
+    def restore_simple(self,journal):self.command(self.payload/'task_control.ps1','-Action','RestoreSimple','-Journal',journal,'-PackageRoot',self.payload/'package')
     def backup_databases(self,journal):
         owner=read(self.state/'installation-owner.json')
         return manual_database_backup(self.state,journal/'databases-manual',external_components=external_database_components(owner))
@@ -587,9 +587,25 @@ def installation_lock_name(role,program):
     return 'Global\\Makervaerkstedet.Install.'+role+'.'+key
 
 
-def run(payload,expected,action,profile=None,*,apply=False):
+def validate_operation_id(value):
+    require(isinstance(value,str),'invalid_operation_id')
+    try:parsed=uuid.UUID(value)
+    except (ValueError,AttributeError):raise LifecycleError('invalid_operation_id') from None
+    require(parsed.int!=0 and str(parsed)==value,'invalid_operation_id')
+    return value
+
+
+def server_update_version_key(value):
+    match=re.fullmatch(r'(\d+)\.(\d+)\.(\d+)-(\d{8})\.(\d+)',value) if isinstance(value,str) else None
+    require(match is not None,'unsupported_server_update_version')
+    return tuple(map(int,match.groups()))
+
+
+def run(payload,expected,action,profile=None,*,apply=False,operation_id=None):
+    if operation_id is not None:validate_operation_id(operation_id)
     value=verify_payload(payload,expected);role=value['role'];package=Path(payload)/'package'
     require(action in ('auto','install','update','resume'),'unsupported_action')
+    require(operation_id is None or (role=='server' and action in ('auto','update')),'operation_id_requires_server_update')
     if not apply:return {'status':'validated_only','role':role,'action':action,'version':value['version']}
     require(value['test_artifact'] is False,'test_artifact_installation_forbidden')
     sys.path.insert(0,str(package));sys.path.insert(0,str(package/'hub'))
@@ -598,18 +614,25 @@ def run(payload,expected,action,profile=None,*,apply=False):
         detected=detect_action(role,native.program,native.state)
         require(action=='auto' or action==detected,'Handlingen passer ikke til den kendte installation. Ingen program- eller datafiler er ændret.')
         action=detected
+        require(operation_id is None or action=='update','operation_id_requires_server_update')
         if role=='laser_station':return native.laser(package,action,profile)
         if action=='install':return native.install_server(package,profile)
         require(not profile,'update_preserves_existing_configuration')
-        journal=native.state/'installer-updates'/str(uuid.uuid4())
+        if operation_id is not None:
+            target_version=server_update_version_key(value['version'])
+            try:installed_version=server_update_version_key(runtime_identity(native.program,'server'))
+            except (ValueError,OSError):raise LifecycleError('installed_server_version_unknown') from None
+            require(target_version>installed_version,'server_update_version_not_newer')
+        journal=plain(native.state/'installer-updates'/(operation_id if operation_id is not None else str(uuid.uuid4())))
+        require(not journal.exists(),'operation_journal_exists')
         expected_files={name[len('package/'):]:want for name,want in value['files'].items() if name.startswith('package/')}
         return update_server(package,native.program,journal,native,expected_files=expected_files)
 
 if __name__=='__main__':
     sys.stdout.reconfigure(encoding='utf-8');sys.stderr.reconfigure(encoding='utf-8')
     parser=argparse.ArgumentParser(description=__doc__);parser.add_argument('--payload',required=True,type=Path);parser.add_argument('--payload-sha256',required=True)
-    parser.add_argument('--action',choices=('auto','install','update','resume'),default='auto');parser.add_argument('--profile',type=Path);parser.add_argument('--apply',action='store_true');args=parser.parse_args()
-    try:print(json.dumps(run(args.payload,args.payload_sha256,args.action,read(args.profile) if args.profile else None,apply=args.apply)))
+    parser.add_argument('--action',choices=('auto','install','update','resume'),default='auto');parser.add_argument('--profile',type=Path);parser.add_argument('--apply',action='store_true');parser.add_argument('--operation-id');args=parser.parse_args()
+    try:print(json.dumps(run(args.payload,args.payload_sha256,args.action,read(args.profile) if args.profile else None,apply=args.apply,operation_id=args.operation_id)))
     except (ValueError,OSError,sqlite3.Error,subprocess.CalledProcessError) as error:
         if not isinstance(error,subprocess.CalledProcessError):
             print('MKV_INSTALL_ERROR='+str(error).replace('\r',' ').replace('\n',' '),file=sys.stderr)

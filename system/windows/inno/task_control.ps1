@@ -38,6 +38,12 @@ if($Action -in @('ConfigureSimple','RestoreSimple')){
  Set-Acl -LiteralPath $temporary -AclObject $acl
  Move-Item -LiteralPath $temporary -Destination $configPath -Force
  Set-Acl -LiteralPath $configPath -AclObject $acl
+ . (Join-Path $PackageRoot 'server\server-update-lifecycle.ps1')
+ if($Action -eq 'ConfigureSimple'){
+  Enable-ServerUpdateBridge -Journal $Journal
+ }else{
+  Restore-ServerUpdateBridge -Journal $Journal -FallbackHelper (Join-Path $PackageRoot 'server\server-update.ps1')
+ }
  exit 0
 }
 

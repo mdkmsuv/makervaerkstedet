@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/system-overview.css">
   <script src="/system-overview.js" defer></script>
   <script src="/update-admin.js" defer></script>
+  <script src="/server-update.js" defer></script>
   <script src="/laerer.js" defer></script>
 </head>
 <body>
@@ -101,6 +102,17 @@
             <div id="system-computere"></div>
           </section>
         </div>
+      </section>
+      <section id="server-update-card" class="panel system-overblik" aria-labelledby="server-update-title">
+        <h2 id="server-update-title">Hovedserver</h2><p class="spaced">Opdaterer kun serverprogrammet. Elevcomputere og deres apps bestilles særskilt nedenfor.</p>
+        <p class="spaced">Installeret version: <strong id="server-update-installed">Ukendt</strong></p><p id="server-update-candidate" class="spaced" hidden></p>
+        <p id="server-update-status" class="spaced" role="status" aria-live="polite" aria-atomic="true">Log ind for at se serverens opdateringsstatus.</p>
+        <p id="server-update-error" class="error fejl" role="alert" tabindex="-1" hidden></p>
+        <div id="server-update-download" class="spaced" hidden><label id="server-update-progress-label" for="server-update-progress">Henter opdateringen</label> <progress id="server-update-progress"></progress><p id="server-update-bytes"></p></div>
+        <p id="server-update-queues" class="spaced">Køstatus er ikke oplyst.</p><p id="server-update-resume" hidden><a href="/makerspace">Kontrollér maskiner og køer i maskinadministrationen</a></p>
+        <div class="actions"><button id="server-update-check" class="btn sekundaer" type="button" disabled>Søg efter serveropdatering</button><button id="server-update-install" class="btn primary primaer" type="button" hidden disabled>Opdatér hovedserveren</button><button id="server-update-refresh" class="btn sekundaer" type="button" disabled>Hent serverstatus</button><button id="server-update-retry" class="btn sekundaer" type="button" hidden>Afklar samme anmodning</button></div>
+        <details class="spaced"><summary>Tekniske oplysninger</summary><p id="server-update-detail"></p></details>
+        <dialog id="server-update-confirm" aria-labelledby="server-update-confirm-title" aria-describedby="server-update-confirm-detail"><h2 id="server-update-confirm-title">Opdatér hovedserveren?</h2><p id="server-update-confirm-version"></p><p id="server-update-confirm-detail">Kontrolpanelet mister midlertidigt forbindelsen, mens serverprogrammet opdateres. Køerne sættes på pause. Igangværende fysisk print og laserskæring stoppes ikke. Kontrollér maskiner og køer bagefter. Computeren skal ikke genstartes.</p><form id="server-update-confirm-form"><button id="server-update-confirm-cancel" class="btn sekundaer" type="button">Annullér</button><button id="server-update-confirm-submit" class="btn primary primaer" type="submit">Start serveropdatering</button></form></dialog>
       </section>
       <section id="update-admin" class="system-overblik" aria-labelledby="updates-title">
         <div class="system-overblik-top"><div><p class="eyebrow">VEDLIGEHOLDELSE</p><h2 id="updates-title">Opdatér computere</h2></div>

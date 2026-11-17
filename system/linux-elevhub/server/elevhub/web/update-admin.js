@@ -33,7 +33,7 @@
     const selection=$('updates-content').querySelector('[name=release]')?.value;
     const checked=new Set([...$('updates-content').querySelectorAll('[name=device]:checked')].map(x=>x.value));
     const releases=state.catalog.filter(x=>x.orderable===true&&!x.rollback_required);
-    const windows=state.catalog.filter(x=>x.orderable===false&&x.platform==='windows-amd64');
+    const windows=state.catalog.filter(x=>x.orderable===false&&x.platform==='windows-amd64'&&x.role!=='server');
     const cards=state.devices.map(d=>{
       const installed=d.installed.map(i=>`${escape(names[i.component]||i.component)}: ${escape(i.version)}`).join(' · ')||'Ikke rapporteret';
       const desired=d.desired.map(x=>{
@@ -47,7 +47,7 @@
     }).join('');
     const unbound=state.unbound_devices.map(d=>`<form data-bind="${escape(d)}"><label>${escape(d)} <select name="role" aria-label="Rolle for ${escape(d)}"><option value="student">Elevcomputer · Debian</option><option value="server">Hovedserver · Windows</option><option value="laser_station">Laserstation · Windows</option></select></label> <button class="sekundaer" type="submit">Tilknyt computer</button></form>`).join('');
     const options=releases.map(r=>`<option value="${escape(r.manifest_sha256)}">${escape(names[r.component]||r.component)} · ${escape(r.version)} · ${escape(roles[r.role]||r.role)} (${escape(r.platform)})</option>`).join('');
-    const windowsText=windows.length ? `<p>Windows-opdateringer installeres med den signerede rolle-EXE: ${windows.map(r=>escape((roles[r.role]||r.role)+' '+r.version)).join(' · ')}.</p>` : '';
+    const windowsText=windows.length ? `<p>Separate Windows-laserstationer opdateres med deres signerede rolle-EXE: ${windows.map(r=>escape((roles[r.role]||r.role)+' '+r.version)).join(' · ')}.</p>` : '';
     const checks=state.devices.map(d=>`<label><input type="checkbox" name="device" value="${escape(d.device)}"> ${escape(d.device)} (${escape(roles[d.role]||d.role)})</label>`).join(' ');
     const errors=state.catalog_errors.map(e=>`${escape(e.component||'Udgivelse')}: ${escape(e.code||'ukendt fejl')}`).join('<br>');
     $('updates-content').innerHTML=`${errors?`<p class="fejl">Udgivelser kunne ikke godkendes:<br>${errors}</p>`:''}<section class="system-liste"><h3>Tilknyt registrerede computere</h3>${unbound||'<p>Ingen computere afventer tilknytning.</p>'}</section><section class="system-liste"><h3>Bestil opdatering</h3>${windowsText}${releases.length&&state.devices.length?`<form id="simple-order"><label>Kontrolleret udgivelse <select name="release" required><option value="">Vælg udgivelse</option>${options}</select></label><fieldset><legend>Computere</legend>${checks}</fieldset><button type="submit">Opdatér valgte computere</button></form>`:'<p>Der skal være en kontrolleret udgivelse og en tilknyttet computer.</p>'}</section><section><h3>Computernes status</h3>${cards||'<p>Ingen computere er tilknyttet endnu.</p>'}</section>`;
@@ -117,5 +117,5 @@
   $('source-refresh').addEventListener('click',()=>{if(!busy&&!pending&&source?.enabled)void send({path:'/api/admin/updates/refresh',body:{command_id:crypto.randomUUID()}});});
   $('updates-retry-request').addEventListener('click',()=>{if(pending)void send(pending);});
   async function poll(epoch){await Promise.all([refresh(),refreshSource()]);if(active&&epoch===generation)timer=setTimeout(()=>void poll(epoch),15000);}
-  window.UpdateAdmin={start(){if(active)return;active=true;generation++;void poll(generation);sync();},stop(){active=false;generation++;clearTimeout(timer);sync();}};
+  window.UpdateAdmin={start(){window.ServerUpdate?.start();if(active)return;active=true;generation++;void poll(generation);sync();},stop(){window.ServerUpdate?.stop();active=false;generation++;clearTimeout(timer);sync();}};
 })();

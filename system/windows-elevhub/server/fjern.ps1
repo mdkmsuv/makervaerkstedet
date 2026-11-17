@@ -249,6 +249,11 @@ if (-not $PSCmdlet.ShouldProcess('ElevhubServer-programmer, opgave, firewallregl
 # its own validator holds the same maintenance locks and refuses foreign state.
 $restartSetup=Join-Path $InstallRoot 'server\configure-restart.ps1'
 if(Test-Path -LiteralPath $restartSetup -PathType Leaf){& $restartSetup -Mode Remove}
+$updateSetup=Join-Path $InstallRoot 'server\server-update.ps1'
+if(Test-Path -LiteralPath $updateSetup -PathType Leaf){
+ . (Join-Path $InstallRoot 'server\server-update-lifecycle.ps1')
+ $null=Invoke-ServerUpdateBridgeCommand $updateSetup 'Remove'
+}
 if ($school -and $school.role -eq 'makerspace') {
     $stationConfig=Join-Path $DataRoot 'laserstation\laser-installation.json'
     $stationPython=Join-Path $InstallRoot 'runtime\python.exe'

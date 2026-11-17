@@ -3104,6 +3104,12 @@
         "lineSha256": "e84f0ef8565800182bac6d703229687f862bcc7b79e44d0ca2f63a4e19b2fcb3",
         "category": "network.private-ip",
         "reason": "Generic example of the subnet format in the installer wizard label; no installed value."
+      },
+      {
+        "path": "tests/test_server_update_browser.cjs",
+        "lineSha256": "8de3882f46b91d3bf1fda3f78ece6178d3bc6ba3ace2830c3a4597e94d35a746",
+        "category": "credential.literal",
+        "reason": "The strings password and login-kode are public DOM field IDs used to check focus after login expiry; no password value or school credential is present."
       }
     ],
     "forbiddenIdentifierSha256": [],

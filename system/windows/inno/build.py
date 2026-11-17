@@ -75,6 +75,7 @@ def validate(value,*,test_artifact=False):
     required |= station_required - {'runtime-release.json'}
     if value['role']=='server':required|={'server/install.ps1','server/public-apt-cache-acl.ps1','server/verify.py','deployment/school-setup/Setup-School.ps1','deployment/school-setup/enrollment.py','hub/konfiguration.windows.json','hub/simple_updates.py','app/simple_release.py'}
     else:required|={'app/laser_station_install.py','deployment/school-setup/Setup-LaserStation.ps1'}
+    if value['role']=='server':required|={'server/server-update.ps1','server/server_update_worker.py','server/server-update-lifecycle.ps1','hub/server_update.py','hub/web/server-update.js'}
     if not required<=set(value['files']):raise ValueError('complete_role_runtime_required')
     if value['role']=='server':
         marker=json.loads((package/'elevhub-package.json').read_text(encoding='utf-8'))

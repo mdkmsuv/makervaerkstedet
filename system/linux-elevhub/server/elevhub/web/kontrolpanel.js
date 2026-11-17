@@ -25,6 +25,7 @@
     $('app-shell').classList.toggle('signed-in',on); $('status').textContent = on ? '' : 'Log ind for at administrere værkstedet.';
     if (on) { view(); window.UpdateAdmin.start(); window.AppAdmin.start(); window.SchoolProfile.start(); void poll(generation); }
   }
+  window.ServerUpdate?.onAuthFailure(()=>{signedIn(false);$('status').textContent='Log ind igen for at se serveropdateringens resultat.';$('password').focus();});
   function render(d) {
     if (!Array.isArray(d.computere)) throw Error('Ugyldigt svar fra serveren.');
     const appList=$('apps-list'); appList.replaceChildren();

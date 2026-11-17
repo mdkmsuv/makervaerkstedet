@@ -14,6 +14,8 @@ import tempfile
 import unittest
 import uuid
 from unittest.mock import patch
+from unittest.mock import Mock
+from contextlib import contextmanager, nullcontext
 ROOT=Path(__file__).resolve().parents[1]
 spec=importlib.util.spec_from_file_location('inno_lifecycle',source_path('windows/inno/lifecycle.py', ROOT))
 life=importlib.util.module_from_spec(spec);spec.loader.exec_module(life)
@@ -55,6 +57,12 @@ class LifecycleTests(unittest.TestCase):
         (self.package/'main.py').write_bytes(b'new program')
         self.data=self.root/'projects.sqlite3';self.data.write_bytes(b'original project and queue bytes')
         self.journal=self.root/'journals'/str(uuid.uuid4())
+    def test_restore_simple_uses_installer_payload_for_updater_hook(self):
+        native=life.NativeWindows.__new__(life.NativeWindows)
+        native.payload=self.root/'payload';native.command=Mock()
+        native.restore_simple(self.journal)
+        native.command.assert_called_once_with(native.payload/'task_control.ps1',
+            '-Action','RestoreSimple','-Journal',self.journal,'-PackageRoot',native.payload/'package')
     def test_active_and_full_queues_do_not_block_update_and_pause_precedes_owned_stop(self):
         native=FakeOS(self.data);result=life.update_server(self.package,self.program,self.journal,native)
         self.assertEqual(result['status'],'complete_paused');self.assertTrue(native.paused)
@@ -150,12 +158,109 @@ class LifecycleTests(unittest.TestCase):
         self.assertNotIn('assert_idle(',source)
         # The hold is lifted in exactly one place, never the queue's pause flag.
         self.assertEqual(source.count('.release('),1);self.assertIn("self.barrier.release('server')",source)
+class OperationIdTests(unittest.TestCase):
+    def setUp(self):
+        temporary=tempfile.TemporaryDirectory();self.addCleanup(temporary.cleanup)
+        self.root=Path(temporary.name);self.payload=self.root/'payload'
+        self.native=Mock(program=self.root/'program',state=self.root/'state')
+        self.native.program.mkdir()
+        self.marker=self.native.program/'runtime-release.json'
+        self.marker.write_text(json.dumps({'schema':1,'role':'server','release_id':'2.1.0-20261117.3'}))
+        self.value={'role':'server','version':'2.1.0-20261117.4','test_artifact':False,'files':{}}
+        self.verify=self.enterContext(patch.object(life,'verify_payload',return_value=self.value))
+        self.constructor=self.enterContext(patch.object(life,'NativeWindows',return_value=self.native))
+        self.enterContext(patch.object(life,'WindowsInstallLock',return_value=nullcontext()))
+        self.detect=self.enterContext(patch.object(life,'detect_action',return_value='update'))
+        def update(package,program,journal,native,**kwargs):
+            journal.mkdir(parents=True)
+            return {'status':'complete_paused','operation_id':journal.name}
+        self.update=self.enterContext(patch.object(life,'update_server',side_effect=update))
+        self.identifier='11111111-2222-3333-4444-555555555555'
+
+    def test_explicit_operation_binds_journal_and_refuses_reuse(self):
+        with patch.object(life.uuid,'uuid4') as random_id:
+            result=life.run(self.payload,'a'*64,'auto',apply=True,operation_id=self.identifier)
+            self.assertEqual(result['operation_id'],self.identifier)
+            self.assertEqual(self.update.call_args.args[2],self.native.state/'installer-updates'/self.identifier)
+            with self.assertRaisesRegex(life.LifecycleError,'operation_journal_exists'):
+                life.run(self.payload,'a'*64,'auto',apply=True,operation_id=self.identifier)
+            random_id.assert_not_called()
+        self.assertEqual(self.update.call_count,1)
+
+    def test_invalid_operation_id_is_rejected_before_payload_or_native_actions(self):
+        for identifier in ('', '00000000-0000-0000-0000-000000000000',
+                           'AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE',
+                           '{'+self.identifier+'}',self.identifier.replace('-',''),self.identifier+';whoami'):
+            with self.subTest(identifier=identifier),self.assertRaisesRegex(life.LifecycleError,'invalid_operation_id'):
+                life.run(self.payload,'a'*64,'auto',apply=True,operation_id=identifier)
+        self.verify.assert_not_called();self.constructor.assert_not_called();self.update.assert_not_called()
+
+    def test_operation_id_is_only_for_server_update(self):
+        for action in ('install','resume'):
+            with self.subTest(action=action),self.assertRaisesRegex(life.LifecycleError,'operation_id_requires_server_update'):
+                life.run(self.payload,'a'*64,action,apply=True,operation_id=self.identifier)
+        self.value['role']='laser_station'
+        with self.assertRaisesRegex(life.LifecycleError,'operation_id_requires_server_update'):
+            life.run(self.payload,'a'*64,'auto',apply=True,operation_id=self.identifier)
+        self.constructor.assert_not_called();self.update.assert_not_called()
+
+    def test_auto_install_does_not_use_operation_id(self):
+        self.detect.return_value='install'
+        with self.assertRaisesRegex(life.LifecycleError,'operation_id_requires_server_update'):
+            life.run(self.payload,'a'*64,'auto',apply=True,operation_id=self.identifier)
+        self.native.install_server.assert_not_called();self.update.assert_not_called()
+
+    def test_manual_update_keeps_random_operation_id(self):
+        self.marker.unlink()  # The manual installer's prior contract is unchanged.
+        identifier=uuid.UUID('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
+        with patch.object(life.uuid,'uuid4',return_value=identifier) as random_id:
+            result=life.run(self.payload,'a'*64,'auto',apply=True)
+        random_id.assert_called_once_with()
+        self.assertEqual(result['operation_id'],str(identifier))
+
+    def test_admin_update_rechecks_newer_version_under_installation_lock(self):
+        for installed in ('2.1.0-20261117.4','2.1.0-20261117.5','2.1.1-20261101.1'):
+            self.marker.write_text(json.dumps({'schema':1,'role':'server','release_id':installed}))
+            with self.subTest(installed=installed),self.assertRaisesRegex(life.LifecycleError,'server_update_version_not_newer'):
+                life.run(self.payload,'a'*64,'auto',apply=True,operation_id=self.identifier)
+        self.update.assert_not_called()
+        self.assertFalse((self.native.state/'installer-updates').exists())
+
+    def test_unknown_installed_version_refuses_before_journal_or_pause(self):
+        for marker in (None,{}, {'schema':1,'role':'server','release_id':'unknown'}):
+            if marker is None:self.marker.unlink(missing_ok=True)
+            else:self.marker.write_text(json.dumps(marker))
+            with self.subTest(marker=marker),self.assertRaisesRegex(life.LifecycleError,'installed_server_version_unknown'):
+                life.run(self.payload,'a'*64,'auto',apply=True,operation_id=self.identifier)
+        self.update.assert_not_called()
+        self.assertFalse((self.native.state/'installer-updates').exists())
+
+    def test_numeric_version_check_runs_while_installer_lock_is_held(self):
+        self.value['version']='2.1.0-20261117.10'
+        self.marker.write_text(json.dumps({'schema':1,'role':'server','release_id':'2.1.0-20261117.9'}))
+        held=[]
+        @contextmanager
+        def lock(name):
+            held.append(name)
+            try:yield
+            finally:held.pop()
+        original=life.runtime_identity
+        def identity(program,role):
+            self.assertTrue(held)
+            return original(program,role)
+        with patch.object(life,'WindowsInstallLock',side_effect=lock),patch.object(life,'runtime_identity',side_effect=identity) as checked:
+            self.assertEqual(life.run(self.payload,'a'*64,'auto',apply=True,operation_id=self.identifier)['operation_id'],self.identifier)
+        checked.assert_called_once_with(self.native.program,'server')
+        self.assertEqual(held,[])
+
+
 class BuilderInputTests(unittest.TestCase):
     def setUp(self):
         self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup);self.root=Path(self.temp.name)
         compiler=self.root/'compiler';compiler.mkdir();(compiler/'ISCC.exe').write_bytes(b'synthetic compiler; never executed')
         package=self.root/'package';package.mkdir();self.package=package
         required={'runtime/python.exe','runtime/python314.dll','runtime/python314.zip','runtime/python314._pth','elevhub-package.json','school-package.json','makerspace-release.json','integrity.json','CREDITS.md','server/install.ps1','server/public-apt-cache-acl.ps1','server/verify.py','deployment/school-setup/Setup-School.ps1','deployment/school-setup/enrollment.py','hub/konfiguration.windows.json','hub/simple_updates.py','app/simple_release.py'}
+        required |= {'server/server-update.ps1','server/server_update_worker.py','server/server-update-lifecycle.ps1','hub/server_update.py','hub/web/server-update.js'}
         from app.laser_station_install import REQUIRED as station_required
         required |= station_required | {'deployment/school-setup/Setup-LaserStation.ps1'}
         for name in required:

@@ -44,6 +44,7 @@ var ExistingInstallation, ResumingInstallation: Boolean;
 var InfoPage: TOutputMsgWizardPage;
 var NativeAttempted, NativeSucceeded: Boolean;
 var FailureReason, NativeError, ConnectionExportPath, CaFingerprint: String;
+var UpdateOperationId: String;
 var OpenButton, LaserButton, ConnectionButton, LogButton: TNewButton;
 var LogPathEdit, CaFingerprintEdit: TNewEdit;
 #if AppRole == "server"
@@ -149,10 +150,28 @@ begin
   Result.Width := ScaleX(220); Result.Height := ScaleY(28);
   Result.OnClick := Click; Result.Visible := False;
 end;
+function ValidUpdateOperationId(Value: String): Boolean;
+var I: Integer;
+begin
+  Result := False;
+  if (Length(Value) <> 36) or (Value = '00000000-0000-0000-0000-000000000000') then Exit;
+  for I := 1 to 36 do begin
+    if (I = 9) or (I = 14) or (I = 19) or (I = 24) then begin
+      if Copy(Value, I, 1) <> '-' then Exit;
+    end else if Pos(Copy(Value, I, 1), '0123456789abcdef') = 0 then Exit;
+  end;
+  Result := True;
+end;
 function InitializeSetup: Boolean;
 var ProgramRoot, DataRoot, Marker: String; HasProgram, HasData: Boolean;
 begin
   ResumingInstallation := False;
+  UpdateOperationId := ExpandConstant('{param:UPDATEID|}');
+  if (UpdateOperationId <> '') and not ValidUpdateOperationId(UpdateOperationId) then begin
+    Result := False;
+    SuppressibleMsgBox('Opdateringens ID er ugyldigt. Ingen filer er ændret.', mbError, MB_OK, IDOK);
+    Exit;
+  end;
 #if AppRole == "server"
   ProgramRoot := ExpandConstant('{commonpf}\ElevhubServer');
   DataRoot := ExpandConstant('{commonappdata}\ElevhubServer');
@@ -166,6 +185,15 @@ begin
   HasProgram := DirExists(ProgramRoot) or FileExists(ProgramRoot);
   HasData := DirExists(DataRoot) or FileExists(DataRoot);
   ExistingInstallation := HasProgram and HasData and FileExists(Marker);
+#if AppRole == "server"
+  if (UpdateOperationId <> '') and not ExistingInstallation then begin
+#else
+  if UpdateOperationId <> '' then begin
+#endif
+    Result := False;
+    SuppressibleMsgBox('Et opdaterings-ID kræver en eksisterende serverinstallation. Ingen filer er ændret.', mbError, MB_OK, IDOK);
+    Exit;
+  end;
   Result := ((not HasProgram) and (not HasData)) or ExistingInstallation or ResumingInstallation;
   if not Result then MsgBox('Der findes en ufuldstændig eller ukendt installation. Dine filer er bevaret. Få den IT-ansvarlige til at kontrollere installationen, før du fortsætter.', mbError, MB_OK);
 end;
@@ -349,6 +377,7 @@ begin
   if not SaveStringsToUTF8FileWithoutBOM(ExpandConstant('{tmp}\mkv-profile.json'), ProfileLines, False) then RaiseException('Kunne ikke skrive den lokale installationsprofil.');
   Tool := ExpandConstant('{tmp}\mkv-payload\package\runtime\python.exe');
   Arguments := '-B "' + ExpandConstant('{tmp}\mkv-payload\lifecycle.py') + '" --payload "' + ExpandConstant('{tmp}\mkv-payload') + '" --payload-sha256 {#PayloadSha256} --action ' + 'auto' + ' --profile "' + ExpandConstant('{tmp}\mkv-profile.json') + '" --apply';
+  if UpdateOperationId <> '' then Arguments := Arguments + ' --operation-id ' + UpdateOperationId;
   if not ExecAndLogOutput(Tool, Arguments, '', SW_SHOWNORMAL, ewWaitUntilTerminated, ExitCode, @NativeOutput) then
     RaiseException('Klargøringen kunne ikke startes. ' + SysErrorMessage(ExitCode));
   if ExitCode <> 0 then begin
