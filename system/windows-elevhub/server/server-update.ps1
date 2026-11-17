@@ -155,7 +155,35 @@ function Assert-UpdateCode($Paths) {
     foreach($path in @((Split-Path $Paths.Root -Parent),$Paths.Root,(Split-Path $Paths.Python -Parent),$Paths.Python,(Split-Path $Paths.Worker -Parent),$Paths.Worker)){Assert-UpdateProtected $path}
 }
 
-function New-UpdateMutex {return [Threading.Mutex]::new($false,'Global\Makervaerkstedet-ServerUpdateBridge')}
+function Get-UpdateMutexName {return 'Global\Makervaerkstedet-ServerUpdateBridge'}
+
+function Get-UpdateMutexRights {return [Security.AccessControl.MutexRights]'Modify,Synchronize'}
+
+function Get-UpdateMutexSecurity {
+    $security=[Security.AccessControl.MutexSecurity]::new()
+    $security.SetAccessRuleProtection($true,$false)
+    foreach($sid in @('S-1-5-18','S-1-5-32-544')){
+        $security.AddAccessRule([Security.AccessControl.MutexAccessRule]::new([Security.Principal.SecurityIdentifier]::new($sid),[Security.AccessControl.MutexRights]::FullControl,'Allow'))
+    }
+    $security.AddAccessRule([Security.AccessControl.MutexAccessRule]::new([Security.Principal.SecurityIdentifier]::new('S-1-5-19'),(Get-UpdateMutexRights),'Allow'))
+    return $security
+}
+
+function New-UpdateMutex {
+    $name=Get-UpdateMutexName
+    # Do not use the creation constructor to open an existing object.
+    # LocalService only needs WaitOne/ReleaseMutex, even with a SYSTEM handle.
+    try {return [Threading.Mutex]::OpenExisting($name,(Get-UpdateMutexRights))}
+    catch [Threading.WaitHandleCannotBeOpenedException] {
+        $created=$false
+        try {return [Threading.Mutex]::new($false,$name,[ref]$created,(Get-UpdateMutexSecurity))}
+        catch [UnauthorizedAccessException] {
+            # Another identity may create the object between open and create.
+            # Reopen with minimal rights; never repair an existing object's ACL.
+            return [Threading.Mutex]::OpenExisting($name,(Get-UpdateMutexRights))
+        }
+    }
+}
 
 function Set-UpdateDirectoryAcl([string]$Path,[switch]$Inbox) {
     $acl=[Security.AccessControl.DirectorySecurity]::new()
@@ -281,10 +309,13 @@ function Invoke-ServerUpdate {
     $paths=Get-UpdatePaths
     if($Mode -in @('Install','Remove')){Assert-UpdateAdministrator}
     if($Mode -eq 'Execute'){Assert-UpdateSystem}
-    $lease=New-UpdateMutex;$leased=$false
+    $lease=$null;$leased=$false
     try {
-        try {$leased=$lease.WaitOne(0)}catch [Threading.AbandonedMutexException]{$leased=$true}
-        if(-not $leased){throw 'En anden serveropdateringshandling er i gang.'}
+        if($Mode -ne 'Status'){
+            $lease=New-UpdateMutex
+            try {$leased=$lease.WaitOne(0)}catch [Threading.AbandonedMutexException]{$leased=$true}
+            if(-not $leased){throw 'En anden serveropdateringshandling er i gang.'}
+        }
         if($Mode -eq 'Remove' -and -not (Test-Path -LiteralPath $paths.Store)){
             Assert-UpdatePlain $paths.Store
             $absentFolder=Connect-UpdateScheduler
@@ -333,6 +364,7 @@ function Invoke-ServerUpdate {
             # The installer may refresh this same owner's demand-only task.
             # Do not hold the enqueue lease across that independent process.
             $lease.ReleaseMutex();$leased=$false
+            $lease.Dispose();$lease=$null
             $priorLocation=Get-Location
             try {
                 Set-Location -LiteralPath $paths.Store
@@ -353,7 +385,7 @@ function Invoke-ServerUpdate {
             }
         }
         throw 'Ukendt opdateringshandling.'
-    }finally{if($leased){$lease.ReleaseMutex()};$lease.Dispose()}
+    }finally{if($lease){if($leased){$lease.ReleaseMutex()};$lease.Dispose()}}
 }
 
 try {Invoke-ServerUpdate -Mode $Mode -CommandId $CommandId -ManifestSha256 $ManifestSha256|ConvertTo-Json -Depth 12 -Compress}

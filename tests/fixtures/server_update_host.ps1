@@ -6,6 +6,65 @@ $tokens=$null;$errors=$null
 $ast=[Management.Automation.Language.Parser]::ParseInput([IO.File]::ReadAllText($Source),[ref]$tokens,[ref]$errors)
 if($errors.Count){throw ($errors|Out-String)}
 foreach($function in @($ast.EndBlock.Statements|Where-Object {$_ -is [Management.Automation.Language.FunctionDefinitionAst]})){Invoke-Expression $function.Extent.Text}
+if($Scenario -eq 'kernel-mutex'){
+    $failure=$null;$result=$null;$creator=$null;$foreign=$null;$opened=$null;$held=$false
+    try {
+        if(-not (Get-Command Get-UpdateMutexName -ErrorAction SilentlyContinue)){throw 'Explicit cross-identity mutex contract missing'}
+        $global:fixtureMutexName='Local\MKV-UpdateMutex-'+[Guid]::NewGuid().ToString('N')
+        function Get-UpdateMutexName {return $global:fixtureMutexName}
+        function Probe-MutexChild {
+            $code=@'
+$m=[Threading.Mutex]::OpenExisting('__NAME__',[Security.AccessControl.MutexRights]'Modify,Synchronize')
+try{$acquired=$m.WaitOne(0);if($acquired){$m.ReleaseMutex()};@{acquired=$acquired}|ConvertTo-Json -Compress}finally{$m.Dispose()}
+'@
+            $code=$code.Replace('__NAME__',$global:fixtureMutexName)
+            $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($code))
+            $raw=& (Join-Path $PSHOME 'powershell.exe') -NoProfile -NonInteractive -EncodedCommand $encoded
+            if($LASTEXITCODE -ne 0){throw 'Synthetic child mutex probe failed'}
+            return ($raw -join "`n")|ConvertFrom-Json
+        }
+        $creator=New-UpdateMutex
+        $security=$creator.GetAccessControl()
+        $rules=@($security.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier]))
+        $ls=@($rules|Where-Object {$_.IdentityReference.Value -ceq 'S-1-5-19'})
+        # The host test runs as an ordinary developer, not LocalService. Give
+        # that synthetic actor precisely LS's minimum rights on this unique
+        # test object; inspect the unchanged production DACL separately above.
+        $current=[Security.Principal.WindowsIdentity]::GetCurrent().User
+        $probeSecurity=$creator.GetAccessControl()
+        $probeSecurity.AddAccessRule([Security.AccessControl.MutexAccessRule]::new($current,(Get-UpdateMutexRights),'Allow'))
+        $creator.SetAccessControl($probeSecurity)
+        $held=$creator.WaitOne(0)
+        if(-not $held){throw 'Synthetic creator could not acquire mutex'}
+        $busy=Probe-MutexChild
+        $creator.ReleaseMutex();$held=$false
+        # Keep the creator HANDLE alive: ReleaseMutex alone does not destroy it.
+        $released=Probe-MutexChild
+        $alive=-not $creator.SafeWaitHandle.IsClosed
+        $creator.Dispose();$creator=$null
+
+        # A default/full-control open must fail, but the production minimum
+        # must open without modifying the existing object's descriptor.
+        $global:fixtureMutexName='Local\MKV-UpdateMutex-'+[Guid]::NewGuid().ToString('N')
+        $restricted=Get-UpdateMutexSecurity
+        $restricted.AddAccessRule([Security.AccessControl.MutexAccessRule]::new($current,(Get-UpdateMutexRights),'Allow'))
+        $restricted.AddAccessRule([Security.AccessControl.MutexAccessRule]::new($current,[Security.AccessControl.MutexRights]::Delete,'Deny'))
+        $made=$false;$foreign=[Threading.Mutex]::new($false,$global:fixtureMutexName,[ref]$made,$restricted)
+        $before=$foreign.GetAccessControl().GetSecurityDescriptorSddlForm('Access')
+        $fullDenied=$false
+        try {$extra=[Threading.Mutex]::OpenExisting($global:fixtureMutexName,[Security.AccessControl.MutexRights]::FullControl);$extra.Dispose()}catch [UnauthorizedAccessException]{$fullDenied=$true}
+        $opened=New-UpdateMutex
+        $minimumWorks=$opened.WaitOne(0)
+        if($minimumWorks){$opened.ReleaseMutex()}
+        $after=$foreign.GetAccessControl().GetSecurityDescriptorSddlForm('Access')
+        $result=@{rule_count=$rules.Count;localservice_rule_count=$ls.Count;localservice_rights=[int]$ls[0].MutexRights;
+            protected=$security.AreAccessRulesProtected;busy_while_owned=(-not $busy.acquired);opens_after_release=$released.acquired;
+            creator_handle_still_alive=$alive;default_full_open_denied=$fullDenied;minimal_open_works=$minimumWorks;existing_acl_unchanged=($before -ceq $after)}
+    }catch{$failure=$_.Exception.Message}
+    finally{if($creator){if($held){$creator.ReleaseMutex()};$creator.Dispose()};if($opened){$opened.Dispose()};if($foreign){$foreign.Dispose()}}
+    @{result=$result;error=$failure;events=@()}|ConvertTo-Json -Depth 6 -Compress
+    exit 0
+}
 if($Scenario -eq 'replace-request'){
     $path=Join-Path $FixtureRoot 'request.json'
     Write-UpdateJsonAtomic $path @{value=1}
@@ -89,6 +148,7 @@ $global:updateExe=Join-Path $updatePaths.Downloads 'fixture.exe'
 [IO.File]::WriteAllText($updateExe,'fixture-not-executable')
 $global:updateHash=(Get-FileHash -LiteralPath $updateExe -Algorithm SHA256).Hash.ToLowerInvariant()
 $global:updateInstallerFlags=@();$global:updateWaitHidden=$false;$global:updateCwd=$false;$global:updateFinishExit=$null;$global:updateTaskArgsNull=$false
+$global:updateMutexDisposed=$false;$global:updateDisposedAtWorker=$false
 function Get-UpdatePaths {return $global:updatePaths}
 function Assert-UpdateProtected([string]$Path) {Assert-UpdatePlain $Path;if(-not (Test-Path -LiteralPath $Path)){throw 'Fixture protected path missing'}}
 function Assert-UpdateInbox($Paths) {Assert-UpdatePlain $Paths.Inbox}
@@ -96,10 +156,11 @@ function Assert-UpdateAdministrator {}
 function Assert-UpdateSystem {}
 function Initialize-UpdateStore($Paths,[string]$OwnerId) {if((Get-UpdateAnchor $Paths) -cne $OwnerId){throw 'Fixture owner mismatch'};$global:updateEvents.Add('initialize')}
 function New-UpdateMutex {
+    if($Scenario -eq 'denied-mutex'){throw 'Synthetic SYSTEM mutex access denied'}
     $m=[pscustomobject]@{}
     $m|Add-Member ScriptMethod WaitOne {param($timeout);return $true}
     $m|Add-Member ScriptMethod ReleaseMutex {}
-    $m|Add-Member ScriptMethod Dispose {}
+    $m|Add-Member ScriptMethod Dispose {$global:updateMutexDisposed=$true}
     return $m
 }
 # The real Python/EXE executables are never run. Production request, plan,
@@ -107,6 +168,10 @@ function New-UpdateMutex {
 function Invoke-UpdatePython($Paths,[string]$Action,[int]$ExitCode=0) {
     $global:updateEvents.Add('python-'+$Action)
     $global:updateCwd=((Get-Location).Path -ceq $Paths.Store)
+    if($Action -in @('prepare','check')){
+        $global:updateDisposedAtWorker=$global:updateMutexDisposed
+        if($Scenario -eq 'mutex-lifetime' -and -not $global:updateDisposedAtWorker){throw 'Creator handle still alive'}
+    }
     if($Action -eq 'prepare'){
         if($Scenario -eq 'prepare-failed'){throw 'sensitive stderr fixture must stay private'}
         $plan=[pscustomobject]@{exe=$global:updateExe;sha256=$global:updateHash;command_id=$global:updateCommand;version='2.1.0-20261117.2'}
@@ -162,4 +227,4 @@ function Connect-UpdateScheduler {return $global:updateFolder}
 $result=$null;$failure=$null
 try {$result=Invoke-ServerUpdate -Mode $Mode -CommandId $CommandId -ManifestSha256 $ManifestSha256}catch{$failure=$_.Exception.Message}
 $afterRequest=if(Test-Path -LiteralPath $updatePaths.Request){Read-UpdateJson $updatePaths.Request}else{$null}
-@{result=$result;error=$failure;events=@($updateEvents);request=$afterRequest;task_arguments_null=$updateTaskArgsNull;installer_flags=$updateInstallerFlags;installer_wait_hidden=$updateWaitHidden;cwd_is_store=$updateCwd;finish_exit_code=$updateFinishExit}|ConvertTo-Json -Depth 12 -Compress
+@{result=$result;error=$failure;events=@($updateEvents);request=$afterRequest;task_arguments_null=$updateTaskArgsNull;installer_flags=$updateInstallerFlags;installer_wait_hidden=$updateWaitHidden;cwd_is_store=$updateCwd;finish_exit_code=$updateFinishExit;mutex_disposed_before_worker=$updateDisposedAtWorker}|ConvertTo-Json -Depth 12 -Compress

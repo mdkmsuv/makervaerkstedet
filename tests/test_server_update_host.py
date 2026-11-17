@@ -15,6 +15,30 @@ COMMAND = '11111111-2222-3333-4444-555555555555'
 
 @unittest.skipUnless(os.name == 'nt' and PS.is_file(), 'Windows PowerShell required')
 class ServerUpdateHostTests(unittest.TestCase):
+    def test_status_does_not_require_the_enqueue_mutex(self):
+        value = self.invoke('Status', 'denied-mutex')
+        self.assertIsNone(value['error'])
+        self.assertTrue(value['result']['available'])
+        self.assertEqual(value['events'], [])
+
+    def test_execute_disposes_creator_handle_before_worker_or_installer(self):
+        value = self.invoke('Execute', 'mutex-lifetime')
+        self.assertIsNone(value['error'])
+        self.assertTrue(value['mutex_disposed_before_worker'])
+        self.assertEqual(value['events'], ['python-prepare', 'installer', 'python-finish'])
+
+    def test_real_kernel_mutex_uses_minimal_rights_with_live_creator_handle(self):
+        value = self.invoke(scenario='kernel-mutex')
+        self.assertIsNone(value['error'])
+        result = value['result']
+        self.assertEqual(result['rule_count'], 3)
+        self.assertEqual(result['localservice_rule_count'], 1)
+        self.assertEqual(result['localservice_rights'], 0x100001)  # Synchronize | Modify
+        for name in ('protected', 'busy_while_owned', 'opens_after_release',
+                     'creator_handle_still_alive', 'default_full_open_denied',
+                     'minimal_open_works', 'existing_acl_unchanged'):
+            self.assertTrue(result[name], name)
+
     def invoke(self, mode='Status', scenario='healthy', command=COMMAND, manifest='a' * 64):
         self.assertTrue(HELPER.is_file())
         with tempfile.TemporaryDirectory(prefix='server-update-host-') as folder:
