@@ -283,8 +283,11 @@ def activate(root=Path("/")):
     if values['kiosk_modular_apps']:
         new_startup=json_bytes({'urls':values['kiosk_startup_urls']})
         old_urls=['http://127.0.0.1:8791/_elevhub/health']+['http://127.0.0.1:'+str(p)+'/api/runtime/health' for p in (8795,8796,8798)]
+        # The earlier Ansible role generated a separate three-URL policy.
+        # Preserve unknown operator policies, but migrate both known producers.
+        ansible_urls=['http://127.0.0.1:8791/_elevhub/health']+['http://127.0.0.1:'+str(p)+'/api/laser/health' for p in (8795,8796)]
         existing=protected(startup).read_bytes() if startup.exists() else None
-        if existing is None or previous_files.get('etc/elevhub/startup.json')==hashlib.sha256(existing).hexdigest() or json.loads(existing)=={'urls':old_urls}:
+        if existing is None or previous_files.get('etc/elevhub/startup.json')==hashlib.sha256(existing).hexdigest() or json.loads(existing) in ({'urls':old_urls},{'urls':ansible_urls}):
             prepared.append((startup,new_startup,0o644))
     elif startup.exists():
         protected(startup)

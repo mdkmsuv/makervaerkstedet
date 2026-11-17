@@ -126,6 +126,25 @@ class TemplateActivation(unittest.TestCase):
         M.activate(self.root)
         self.assertEqual(startup.read_bytes(), custom)
 
+    def test_modular_activation_migrates_exact_ansible_startup_policy_only(self):
+        runtime=self.root/'usr/share/makervaerkstedet/runtime-release.json'
+        runtime.write_text(json.dumps({'schema':1,'release_id':'2.1.0~20261117.1','role':'student'}))
+        startup=self.root/'etc/elevhub/startup.json';startup.parent.mkdir(parents=True)
+        legacy={'urls':['http://127.0.0.1:8791/_elevhub/health',
+                        'http://127.0.0.1:8795/api/laser/health',
+                        'http://127.0.0.1:8796/api/laser/health']}
+        startup.write_text(json.dumps(legacy))
+        M.activate(self.root)
+        expected={'urls':['http://127.0.0.1:8791/_elevhub/health']}
+        self.assertEqual(json.loads(startup.read_text()),expected)
+        M.activate(self.root)
+        self.assertEqual(json.loads(startup.read_text()),expected)
+        custom=(json.dumps({**legacy,'operator_policy':True})+'\n').encode()
+        startup.write_bytes(custom)
+        M.activate(self.root)
+        self.assertEqual(startup.read_bytes(),custom)
+        self.assertEqual(self.project.read_bytes(),b'synthetic legacy data')
+
     def test_generated_workshop_readiness_succeeds_without_school_server(self):
         from app.laser_local import create_local_servers, create_print_server
 
