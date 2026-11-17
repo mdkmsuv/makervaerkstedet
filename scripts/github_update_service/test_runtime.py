@@ -4,6 +4,7 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import re
 import subprocess
 import shutil
 import tarfile
@@ -15,6 +16,7 @@ import uuid
 import zipfile
 
 from scripts.github_update_service import common, linux, runtime, server
+from repository import source_path
 
 SOURCE = Path(__file__).resolve().parents[2]
 VERSION = "2026.10.20"
@@ -25,6 +27,14 @@ class RuntimeTests(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
         self.root = Path(self.temporary.name)
+        # The controller consumes an installed flat tree, not repository paths.
+        code_root = self.root / 'code'
+        installation = (SOURCE / 'scripts/github_update_service/Install-Controller.ps1').read_text(encoding='utf-8')
+        file_list = re.search(r'\$files=@\((.*?)\n\)', installation, re.S).group(1)
+        for relative in re.findall(r"'([^']+)'", file_list):
+            destination = code_root / relative
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source_path(relative, SOURCE), destination)
         self.key = self.root / "key"; self.key.write_text("private fixture")
         self.known = self.root / "known"; self.known.write_text("laser ssh-ed25519 " + "A" * 68)
         self.identity = self.root / "identities.json"
@@ -42,7 +52,7 @@ class RuntimeTests(unittest.TestCase):
              "ssh_key": str(self.key), "known_hosts": str(self.known), "host_key_alias": "laser",
              "user": "teacher", "hosts": ["laser.example.test"], "install_path_policy": "user_default"},
         ]
-        config = {"schema": 1, "repository": "example/project", "code_root": str(SOURCE),
+        config = {"schema": 1, "repository": "example/project", "code_root": str(code_root),
                   **{key: str(self.root / key) for key in ("data_root", "work_root", "store_root", "staging_root")},
                   "profiles": self.profiles}
         self.config = self.root / "config.json"; common.write(self.config, config)

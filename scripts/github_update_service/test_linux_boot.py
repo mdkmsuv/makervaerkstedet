@@ -14,7 +14,7 @@ def load_installer():
     exec(compile(source,'<public-linux-installer>','exec'),module.__dict__); return module
 installer=load_installer()
 BOUND_SOURCE=bind_installer(TEMPLATE.read_text(encoding='utf-8'),VERSION,OPERATION,[TARGET],PACKAGE_SHA)
-ADMIN_HELPER_PATH=HERE.parents[1]/'linux-elevhub/ansible/roles/adminkonto/files/elevhub-local-update.py'
+ADMIN_HELPER_PATH=HERE.parents[1]/'system/linux-elevhub/ansible/roles/adminkonto/files/elevhub-local-update.py'
 admin_spec=importlib.util.spec_from_file_location('local_admin_update_crosscomponent',ADMIN_HELPER_PATH)
 admin_helper=importlib.util.module_from_spec(admin_spec); admin_spec.loader.exec_module(admin_helper)
 
