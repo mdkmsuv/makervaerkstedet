@@ -310,7 +310,9 @@ function renderProperties(){
   $('duplicate').disabled=$('delete').disabled=!objects.length;
   for(const id of ['unite','subtract','intersect','exclude'])$(id).disabled=objects.length<2;
   for(const id of ['flip-x','flip-y','rotate-exact','bring-front','send-back','copy-objects'])$(id).disabled=!objects.length;
-  $('group-objects').disabled=objects.length<2;$('ungroup-objects').disabled=!objects.some(o=>o.groupId);$('paste-objects').disabled=!clipboard.length;
+  $('group-objects').disabled=objects.length<2;
+  $('ungroup-objects').hidden=$('ungroup-objects').disabled=!objects.some(o=>o.groupId);
+  $('paste-objects').disabled=!clipboard.length;
   document.querySelectorAll('[data-align]').forEach(b=>b.disabled=!objects.length);
   document.querySelectorAll('[data-distribute]').forEach(b=>b.disabled=selectedUnits().length<3);
   $('operation-help').textContent=o?o.name:objects.length?`${objects.length} dele er valgt`:'Vælg en figur på tegningen.';
@@ -336,17 +338,19 @@ function renderProperties(){
     if(o.gear){$('gear-teeth').value=o.gear.teeth;$('gear-hole').value=o.gear.hole;}
   }
   $('selection-status').textContent=objects.length?`${objects.length===1?o.name:objects.length+' dele'} · ${b.width.toFixed(1)} × ${b.height.toFixed(1)} mm`:'Vælg en figur for at begynde';
-  $('object-count').textContent=state.items.length;
+  const units=objectUnits(state.items);
+  $('object-count').textContent=units.length;
   $('layer-summary').replaceChildren();
   for(const [name,ops,color] of [['Skæring',['cut'],COLORS.cut],['Gravering',['engrave-line','engrave-fill'],COLORS['engrave-line']],['Mangler valg',['undecided'],COLORS.undecided]]){
     const count=state.items.filter(item=>ops.includes(item.op)).length;
     if(!count)continue;const tag=document.createElement('span');tag.textContent=`${name} · ${count}`;tag.style.borderColor=color;$('layer-summary').append(tag);
   }
   $('object-list').replaceChildren();
-  for(const item of state.items){
-    const button=document.createElement('button');button.className='object-row'+(selected.has(item.id)?' active':'');button.dataset.id=item.id;button.setAttribute('aria-pressed',selected.has(item.id));
+  for(const unit of units){
+    const item=unit[0], active=unit.every(part=>selected.has(part.id));
+    const button=document.createElement('button');button.className='object-row'+(active?' active':'');button.dataset.id=item.id;button.setAttribute('aria-pressed',active);
     const dot=document.createElement('i');dot.style.color=COLORS[item.op];if(item.op==='engrave-fill')dot.style.background=COLORS[item.op];
-    const name=document.createElement('span');name.textContent=item.name+(item.groupId?' · gruppe':'');
+    const name=document.createElement('span');name.textContent=item.name+(unit.length>1?` · ${unit.length} dele`:'');
     const operation=document.createElement('small');operation.textContent=LABELS[item.op];
     button.append(dot,name,operation);button.addEventListener('click',e=>select(item.id,e.shiftKey));$('object-list').append(button);
   }
@@ -373,13 +377,14 @@ function render(){
 }
 function select(id,multiple=false){
   if(tool==='polyline')setTool('select');
-  const o=objectById(id),ids=tool!=='nodes'&&o?.groupId?state.items.filter(p=>p.groupId===o.groupId).map(p=>p.id):[id];
+  const o=objectById(id),ids=o?.groupId?state.items.filter(p=>p.groupId===o.groupId).map(p=>p.id):[id];
   if(!multiple)selected=new Set(ids);else{const remove=ids.every(i=>selected.has(i));ids.forEach(i=>remove?selected.delete(i):selected.add(i));}
   activeNode=null;activeCurve=null;renderProperties();renderSelection();renderNodeTools();
 }
-function selectedUnits(){
-  const map=new Map();for(const o of chosen()){const key=o.groupId||o.id;if(!map.has(key))map.set(key,[]);map.get(key).push(o);}return [...map.values()];
+function objectUnits(objects){
+  const map=new Map();for(const o of objects){const key=o.groupId||o.id;if(!map.has(key))map.set(key,[]);map.get(key).push(o);}return [...map.values()];
 }
+function selectedUnits(){return objectUnits(chosen());}
 function renderNodeTools(){
   $('node-toolbar').hidden=tool!=='nodes';$('workspace').classList.toggle('add-node-mode',tool==='nodes'&&addingNode);
   if(tool!=='nodes')return;
@@ -428,8 +433,16 @@ function distributeSelection(axis){
   edit(()=>moves.forEach(u=>u.objects.forEach(o=>o.d=move(o.d,axis==='x'?u.delta:0,axis==='y'?u.delta:0))));
 }
 function groupObjects(ungroup=false){
-  if(level<1||selected.size<(ungroup?1:2))return;
-  const groupId=uid();edit(()=>chosen().forEach(o=>{if(ungroup)delete o.groupId;else o.groupId=groupId;}));
+  const objects=chosen();
+  if(ungroup){
+    if(!objects.some(o=>o.groupId))return;
+    edit(()=>{for(const o of objects)delete o.groupId;selected.clear();});
+    $('workspace').focus({preventScroll:true});
+    toast('Vælg den del, du vil ændre eller slette.');
+    return;
+  }
+  if(level<1||objects.length<2)return;
+  const groupId=uid();edit(()=>objects.forEach(o=>{o.groupId=groupId;}));
 }
 function arrangeObjects(front){if(!selected.size)return;edit(()=>{const moving=chosen(),others=state.items.filter(o=>!selected.has(o.id));state.items=front?[...others,...moving]:[...moving,...others];});}
 function transformSelection(kind,value){
@@ -899,7 +912,7 @@ function bind(){
     }
     if(mod&&e.key.toLowerCase()==='z'){e.preventDefault();history(!e.shiftKey);return;}
     if(mod&&e.key.toLowerCase()==='y'){e.preventDefault();history(false);return;}
-    if(level>=1&&mod&&e.key.toLowerCase()==='g'){e.preventDefault();groupObjects(e.shiftKey);return;}
+    if((level>=1||e.shiftKey)&&mod&&e.key.toLowerCase()==='g'){e.preventDefault();groupObjects(e.shiftKey);return;}
     if(mod&&['c','v','x'].includes(e.key.toLowerCase())){
       e.preventDefault();if(e.key.toLowerCase()==='v')attempt(pasteObjects);else{copyObjects();if(e.key.toLowerCase()==='x')removeSelected();}return;
     }

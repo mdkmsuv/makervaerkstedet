@@ -1,8 +1,19 @@
 // This panel displays data, never the remote page or its scripts/links.
+import {path} from './laser-geometry.js';
+
 export function appendLibraryItems(state, result, uid, closed, {vinyl=false}={}) {
-  if (!result.items.length || state.items.length + result.items.length > 500) throw Error('Tegningen har for mange figurer.');
-  const group = uid();
-  const items = result.items.map(item => ({...item, id:uid(), group,
+  // Vinyl cuts each contour, including the inner contours of a compound path.
+  const parts = vinyl ? result.items.flatMap(item => {
+    if (item.image) return [item];
+    const compound = path(item.d);
+    const contours = compound.children.map(contour => ({...item, d:contour.pathData}));
+    compound.remove();
+    return contours;
+  }) : result.items;
+  if (!parts.length || state.items.length + parts.length > 500) throw Error('Tegningen har for mange figurer.');
+  const groupId = parts.length > 1 ? uid() : undefined;
+  const items = parts.map((item, index) => ({...item, id:uid(), groupId,
+    name: index ? `Del ${index + 1} · ${item.name.slice(0, 49)}` : item.name,
     op:vinyl?'cut':closed(item.d)?'engrave-fill':'engrave-line'}));
   state.items.push(...items);
   return items.map(item=>item.id);
@@ -15,7 +26,7 @@ export function installLaserLibrary({insert,notify,vinyl=false}) {
   const capabilities=window.ElevhubApp?.capabilities;
   const direct=Boolean(capabilities&&[...capabilities.required,...capabilities.optional].includes('svg-library-v1'));
   const operation=vinyl?'skærelinjer':'gravering';
-  if(vinyl)$('library-intro').textContent='Vælg et motiv fra Skoleværkstedet. Det tilføjes som skærelinjer på måtten. Din tegning bliver bevaret.';
+  if(vinyl)$('library-intro').textContent='Motivet sættes ind som én figur. Brug Skil ad, hvis du vil ændre eller slette en del.';
   const dialog=$('library-dialog'), grid=$('library-grid'), message=$('library-status');
   const retry=document.createElement('button');retry.type='button';retry.className='secondary';retry.textContent='Prøv biblioteket igen';retry.hidden=true;message.after(retry);
   const source=document.createElement('p');source.id='library-source-status';source.setAttribute('role','status');source.setAttribute('aria-live','polite');source.hidden=!direct;message.before(source);

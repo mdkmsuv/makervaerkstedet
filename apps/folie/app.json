@@ -5,7 +5,7 @@
   "description": "Tegn motiver til folieskæring.",
   "category": "byg",
   "icon": null,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "package": "makervaerkstedet-app-folie",
   "architecture": "all",
   "sdk": 1,
