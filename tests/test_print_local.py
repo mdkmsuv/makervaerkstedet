@@ -29,9 +29,10 @@ class LocalPrintTests(unittest.TestCase):
         self.addCleanup(self.server.server_close)
         self.addCleanup(self.server.shutdown)
 
-    def request(self, path='/api/jobs', body=None, headers=None):
-        connection = http.client.HTTPConnection('127.0.0.1', self.server.port, timeout=5)
-        defaults = {'Origin': f'http://127.0.0.1:{self.server.port}',
+    def request(self, path='/api/jobs', body=None, headers=None, *, server=None):
+        port = (server or self.server).port
+        connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+        defaults = {'Origin': f'http://127.0.0.1:{port}',
                     'X-Filename': 'figur.stl', 'X-Colour': 'any',
                     'X-Quality': 'standard', 'X-Request-ID': 'local-print-request-0001',
                     'Content-Type': 'application/octet-stream'}
@@ -88,11 +89,78 @@ class LocalPrintTests(unittest.TestCase):
 
     def test_wrong_origin_unknown_route_and_invalid_options_are_rejected(self):
         for headers in ({'Origin': 'https://unrelated.invalid'}, {'X-Quality': 'fast'},
-                        {'X-Colour': '#123456'}, {'X-Request-ID': 'bad'}):
+                        {'X-Colour': '#abcdef'}, {'X-Request-ID': 'bad'}):
             with self.subTest(headers=headers):
                 self.assertIn(self.request(body=cube(), headers=headers)[0], (400, 403))
         self.assertEqual(self.request('/api/laser/submit', b'{}')[0], 404)
         self.assertEqual(self.server.inbox.outbox.waiting(), [])
+
+    def test_print_colour_catalogue_contains_only_current_pupil_choices(self):
+        self.assertEqual(self.request('/api/print/colours')[0], 503)
+        queue = self.central()
+        snapshot = {
+            'printers': [
+                {'id': 'idle', 'name': 'Private printer label', 'status': 'ready', 'enabled': True, 'colours': ['#E84142']},
+                {'id': 'busy', 'status': 'printing', 'enabled': True, 'colours': ['#E84142', '#3678DC']},
+                {'id': 'offline', 'status': 'offline', 'enabled': True, 'colours': ['#F4F4F4']},
+                {'id': 'disabled', 'status': 'disabled', 'enabled': False, 'colours': ['#20242A']},
+            ],
+            'colours': [
+                {'hex': '#E84142', 'name': 'Rød', 'printers': ['idle', 'busy'], 'ready': 1},
+                {'hex': '#3678DC', 'name': 'Blå', 'printers': ['busy'], 'ready': 0},
+                {'hex': '#F4F4F4', 'name': 'Hvid', 'printers': ['offline'], 'ready': 0},
+                {'hex': '#20242A', 'name': 'Sort', 'printers': ['disabled'], 'ready': 0},
+            ],
+            'jobs': [{'filename': 'Private pupil filename.stl'}],
+        }
+        with patch.object(queue, 'snapshot', return_value=snapshot):
+            status, body, headers = self.request('/api/print/colours')
+            self.assertEqual(status, 200)
+            self.assertEqual(headers['Cache-Control'], 'no-store')
+            self.assertEqual(json.loads(body), {'colours': [
+                {'hex': '#E84142', 'name': 'Rød', 'ready': 1},
+                {'hex': '#3678DC', 'name': 'Blå', 'ready': 0},
+            ]})
+            self.assertEqual(self.request('/api/print/colours?extra=1')[0], 404)
+
+    def test_only_installed_print_capability_exposes_filament_choices(self):
+        apps = []
+        root = Path(__file__).resolve().parents[1]
+        for app_id in ('3dprint', 'laser'):
+            descriptor = json.loads((root / 'apps' / app_id / 'app.json').read_text(encoding='utf-8'))
+            apps.append({**descriptor, 'port': 0})
+        printer, laser = local.create_installed_servers(apps, self.server.inbox, self.server.inbox,
+                                                        runtime={}, data_root=self.root, library_client=object())
+        for server in (printer, laser):
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            self.addCleanup(server.server_close)
+            self.addCleanup(server.shutdown)
+        self.assertEqual(self.request('/api/print/colours', server=printer)[0], 503)
+        self.assertEqual(self.request('/api/print/colours', server=laser)[0], 404)
+
+    def test_offline_chosen_colour_survives_missing_spool_and_retries(self):
+        body = cube()
+        choice = {'X-Colour': '#E84142'}
+        self.assertEqual(self.request(body=body, headers=choice)[0], 202)
+        waiting, = self.server.inbox.outbox.waiting()
+        original = waiting.read_bytes()
+        self.assertEqual(json.loads(original)['colour'], choice['X-Colour'])
+        self.assertEqual(self.request(body=body)[0], 400, 'same request must not change the colour')
+        restarted = local.Outbox(self.root / 'outbox', validator=local.validate_print_submission)
+        queue = self.central()
+        with patch.object(queue, 'available_trays', return_value=[]):
+            status, payload, _ = self.request(body=body, headers={**choice, 'X-Request-ID': 'other-print-request-0001'})
+            self.assertEqual(status, 409)
+            self.assertEqual(json.loads(payload)['code'], 'colour_unavailable')
+            self.assertEqual(restarted.flush(self.server.inbox.send), 0)
+            status, payload, _ = self.request(body=body, headers=choice)
+            self.assertEqual(status, 202, 'a repeat must not pretend the queued model was refused')
+            self.assertEqual(json.loads(payload)['code'], 'colour_unavailable')
+            self.assertEqual(waiting.read_bytes(), original)
+        self.assertEqual(restarted.flush(self.server.inbox.send), 1)
+        self.assertEqual(self.request(body=body, headers=choice)[0], 201)
+        jobs = queue.db.execute('SELECT colour FROM jobs').fetchall()
+        self.assertEqual([job['colour'] for job in jobs], [choice['X-Colour']])
 
     def test_reconnection_cannot_replace_a_pending_request_with_another_model(self):
         self.assertEqual(self.request(body=cube())[0], 202)

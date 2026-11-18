@@ -176,6 +176,66 @@ test('a saved game piece from the original STL generator splits in place and reo
   } finally { await page.close(); }
 });
 
+test('print colour uses the available filament and survives a lost reply', async () => {
+  const {page} = await open();
+  try {
+    const submissions = [];
+    let colours = [{hex: '#E84142', name: 'Rød', ready: 0}, {hex: '#3678DC', name: 'Blå', ready: 1}];
+    await page.route('**/api/print/colours', route => route.fulfill({json: {colours}}));
+    await page.route('**/api/jobs', async route => {
+      const headers = route.request().headers();
+      submissions.push({colour: headers['x-colour'], id: headers['x-request-id']});
+      if (submissions.length === 1) return route.abort('failed');
+      if (submissions.length === 3) {
+        colours = colours.filter(colour => colour.name !== 'Rød');
+        return route.fulfill({status: 409, json: {code: 'colour_unavailable', error: 'Farven er ikke længere tilgængelig.'}});
+      }
+      if (submissions.length >= 4) return route.fulfill({status: 202, json: {queued: true, code: 'colour_unavailable'}});
+      return route.fulfill({status: 201, json: {id: 'afe01234567890123456789012345678', status: 'queued'}});
+    });
+    await page.locator('[data-add=box]:not([data-mode])').click();
+    await ready(page);
+    const openPrint = page.locator('#send-print');
+    await openPrint.click();
+    await page.locator('#model-name').fill('Min røde figur');
+    await page.getByRole('button', {name: 'Videre', exact: true}).click();
+    const dialog = page.locator('#print-dialog');
+    const choose = name => dialog.getByRole('radio', {name, exact: true});
+    const confirm = dialog.getByRole('button', {name: 'Ja, send til print', exact: true});
+    await choose('Rød').waitFor({timeout: 2500});
+    assert.equal(await choose('Vælg for mig').isChecked(), true);
+    assert.deepEqual(submissions, []);
+    await choose('Rød').check();
+    await confirm.click();
+    await dialog.getByRole('button', {name: 'Prøv igen', exact: true}).click();
+    await dialog.getByText(/Farve: Rød/).waitFor();
+    assert.deepEqual(submissions[0], submissions[1]);
+    assert.equal(submissions[1].colour, '#E84142');
+
+    await dialog.getByRole('button', {name: 'Tilbage til tegningen'}).click();
+    await openPrint.click();
+    await choose('Rød').waitFor();
+    assert.equal(await choose('Rød').isChecked(), true);
+    await confirm.click();
+    await dialog.getByRole('alert').getByText('Farven er ikke længere tilgængelig.').waitFor();
+    await choose('Blå').waitFor();
+    assert.equal(submissions.length, 3);
+    await choose('Blå').check();
+    await confirm.click();
+    await dialog.getByText(/Farve: Blå/).waitFor();
+    assert.equal(submissions[3].colour, '#3678DC');
+    assert.notEqual(submissions[3].id, submissions[2].id);
+    await dialog.getByRole('button', {name: 'Tilbage til tegningen'}).click();
+    await openPrint.click();
+    assert.equal(await dialog.locator('#print-colours').isHidden(), true);
+    await dialog.getByRole('button', {name: 'Tjek igen', exact: true}).click({timeout: 2500});
+    await dialog.getByText(/Farve: Blå/).waitFor();
+    assert.deepEqual(submissions[4], submissions[3]);
+  } finally {
+    await page.close();
+  }
+});
+
 async function typeMeasure(page, letter, value) {
   await page.locator('.measure', {hasText: new RegExp(`^${letter}`)}).first().click();
   await page.locator('.measure-input').fill(String(value)); await page.keyboard.press('Enter'); await ready(page);

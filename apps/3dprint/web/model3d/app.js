@@ -691,67 +691,155 @@ if (view) {
     const next = afterCheck; anyway.onclick = () => { $('print-check').close(); next(); }; back.onclick = () => $('print-check').close(); actions.append(anyway, back);
     $('print-check').showModal(); back.focus();
   }
-  // Send til print: the same request id is reused while the model is unchanged, so
-  // pressing again after a lost answer never prints the model twice.
-  let printRequest = {signature: '', id: '', receipt: ''}, printing = false;
+  let printModel, printRequest, colourLoader, printing = false;
+  const printDialog = $('print-dialog'), colourField = $('print-colours');
+  const selectedColour = () => colourField.querySelector('input:checked');
   const newRequestId = () => crypto.randomUUID ? crypto.randomUUID() : Array.from(crypto.getRandomValues(new Uint8Array(20)), v => v.toString(16).padStart(2, '0')).join('');
   function modelSignature(buffer, name) {
     let hash = 0x811c9dc5; const bytes = new Uint8Array(buffer);
     for (let i = 0; i < bytes.length; i++) { hash ^= bytes[i]; hash = Math.imul(hash, 0x01000193); }
     return `${name}|${bytes.length}|${(hash >>> 0).toString(16)}`;
   }
-  function printView({title, message, details = '', error = '', yes = '', no = 'Tilbage til tegningen', busy = false}) {
+  function printView({title, message, details = '', error = '', yes = '', no = 'Tilbage til tegningen', busy = false, chooseColour = false}) {
     $('print-title').textContent = title; $('print-message').textContent = message;
     $('print-details').textContent = details; $('print-details').hidden = !details;
     $('print-error').textContent = error; $('print-error').hidden = !error;
+    colourField.hidden = !chooseColour;
     $('print-yes').textContent = yes; $('print-yes').hidden = !yes; $('print-yes').disabled = busy;
     $('print-no').textContent = no; $('print-no').disabled = busy;
   }
+  function syncPrintButton() {
+    $('print-yes').disabled = printing || (!colourField.hidden && !selectedColour());
+  }
+  function renderPrintColours(colours, selected) {
+    const options = [{hex: 'any', name: 'Vælg for mig'}, ...colours];
+    $('print-colour-options').replaceChildren(...options.map(({hex, name}) => {
+      const label = document.createElement('label'), input = document.createElement('input');
+      input.type = 'radio'; input.name = 'print-colour'; input.value = hex;
+      input.dataset.name = name; input.checked = hex === selected;
+      label.append(input);
+      if (hex !== 'any') {
+        const swatch = document.createElement('span'); swatch.className = 'print-filament-swatch';
+        swatch.style.backgroundColor = hex; swatch.setAttribute('aria-hidden', 'true'); label.append(swatch);
+      }
+      label.append(name);
+      return label;
+    }));
+    syncPrintButton();
+  }
+  async function loadPrintColours(preferred) {
+    colourLoader?.abort();
+    const controller = new AbortController(); colourLoader = controller;
+    const hint = $('print-colour-status');
+    renderPrintColours([], preferred);
+    hint.textContent = 'Henter farver fra skolens printere …';
+    try {
+      const response = await fetch('/api/print/colours', {cache: 'no-store', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(6000)])});
+      if (!response.ok) throw Error();
+      const {colours} = await response.json();
+      if (!Array.isArray(colours)) throw Error();
+      if (controller !== colourLoader || !printDialog.open) return;
+      const available = colours.filter(colour => typeof colour?.hex === 'string' && /^#[0-9A-F]{6}$/.test(colour.hex) && typeof colour.name === 'string' && colour.name.trim());
+      const focused = colourField.contains(document.activeElement);
+      renderPrintColours(available, selectedColour()?.value ?? preferred);
+      if (focused) (selectedColour() || colourField.querySelector('input')).focus();
+      hint.textContent = available.length ? 'Farven gælder hele modellen.' : 'Printerne melder ingen farver lige nu. Du kan vælge Vælg for mig.';
+    } catch {
+      if (controller === colourLoader && printDialog.open) hint.textContent = 'Farverne kunne ikke hentes. Du kan vælge Vælg for mig.';
+    }
+  }
+  function showPrintConfirmation(preferred, error = '') {
+    printView({title: 'Send til print', message: `Er din model "${printModel.name.replace(/\.stl$/, '')}" færdig?`,
+      details: 'Alle synlige, solide figurer sendes samlet. Printet venter i kø, hvis en passende printer er optaget.',
+      yes: 'Ja, send til print', no: 'Nej, tegn videre', chooseColour: true, error});
+    void loadPrintColours(preferred);
+  }
+  function showUnconfirmedPrint() {
+    printView({title: 'Printet blev ikke bekræftet', message: 'Der kom ikke svar fra printværkstedet.',
+      error: 'Prøv igen med samme farve. 3D-værkstedet genbruger afleveringen, så der kun bestilles ét print.', yes: 'Prøv igen'});
+  }
+  const printColourNote = request => request.colour === 'any' ? 'Farven vælges i printkøen.' : `Farve: ${request.colourName}.`;
+  function showQueuedPrint(request, recheck = false) {
+    const waitsForColour = request.waitingFor === 'colour';
+    const when = waitsForColour ? 'den valgte farve er tilgængelig igen' :
+      request.colour === 'any' ? 'forbindelsen er tilbage' : 'forbindelsen er tilbage, og farven er tilgængelig';
+    printView({title: waitsForColour ? 'Printet venter på farven' : 'Printet venter på forbindelse',
+      message: `Modellen er gemt på computeren og sendes, når ${when}.`,
+      details: printColourNote(request), yes: recheck ? 'Tjek igen' : ''});
+  }
   const printStatus = {preparing: 'Din model klargøres til print.', dispatching: 'Din model klargøres til print.', starting: 'Din model klargøres til print.', printing: 'Din model bliver printet.', done: 'Dit print er færdigt.'};
   function confirmPrint() {
-    printView({title: 'Send til print', message: `Er din model "${fileName().replace(/\.stl$/, '')}" færdig? Den bliver sendt til skolens 3D-printere.`,
-      details: 'Standardkvalitet · Lige meget med farven. Alle synlige, solide figurer sendes samlet. Er der ikke en ledig printer, kommer printet i kø.',
-      yes: 'Ja, send til print', no: 'Nej, tegn videre'});
-    $('print-dialog').showModal(); $('print-no').focus();
+    try {
+      const buffer = exportBinaryStl(result), name = fileName();
+      validateSTL(buffer); printModel = {buffer, name, signature: modelSignature(buffer, name)};
+    } catch (error) {
+      printView({title: 'Modellen kunne ikke sendes', message: 'Modellen kunne ikke gøres klar til print.', error: error.message});
+      printDialog.showModal(); $('print-no').focus(); return;
+    }
+    const previous = printRequest?.signature === printModel.signature ? printRequest : null;
+    printDialog.showModal();
+    if (previous?.uncertain) showUnconfirmedPrint();
+    else if (previous?.waitingFor) showQueuedPrint(previous, true);
+    else showPrintConfirmation(previous?.colour ?? 'any');
+    $('print-title').focus();
   }
   async function sendToPrint() {
-    if (printing) return; printing = true;
-    printView({title: 'Sender din model', message: 'Modellen klargøres og sendes til printværkstedet …', no: 'Vent …', busy: true}); $('print-title').focus();
-    let buffer, name;
-    try { buffer = exportBinaryStl(result); validateSTL(buffer); name = fileName(); }
-    catch (error) {
-      printing = false; printView({title: 'Modellen kunne ikke sendes', message: 'Modellen kunne ikke gøres klar til print.', error: error.message, no: 'Tilbage til tegningen'});
-      requestAnimationFrame(() => $('print-no').focus()); return;
+    if (printing || !printModel) return;
+    const {buffer, name, signature} = printModel;
+    const choice = selectedColour();
+    if (!colourField.hidden) {
+      if (!choice) return;
+      if (printRequest?.signature !== signature || printRequest.colour !== choice.value) {
+        printRequest = {signature, colour: choice.value, colourName: choice.dataset.name, id: newRequestId(), receipt: ''};
+      }
     }
+    const request = printRequest;
+    if (request?.signature !== signature) return;
+    colourLoader?.abort(); colourLoader = null;
+    printing = request.uncertain = true;
+    printView({title: 'Sender din model', message: 'Modellen klargøres og sendes til printværkstedet …', no: 'Vent …', busy: true}); $('print-title').focus();
     const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 60000);
     try {
-      const signature = modelSignature(buffer, name);
-      if (signature !== printRequest.signature) printRequest = {signature, id: newRequestId(), receipt: ''};
       const response = await fetch('/api/jobs', {method: 'POST', body: buffer, cache: 'no-store', signal: controller.signal, headers: {'Content-Type': 'application/octet-stream', Accept: 'application/json',
-        'X-Filename': encodeURIComponent(name), 'X-Colour': 'any', 'X-Quality': 'standard', 'X-Request-ID': printRequest.id}});
+        'X-Filename': encodeURIComponent(name), 'X-Colour': request.colour, 'X-Quality': 'standard', 'X-Request-ID': request.id}});
       let data = null; try { data = await response.json(); } catch {}
       if (response.status === 202 && data?.queued) {
-        printView({title: 'Printet venter på forbindelse', message: 'Der er ikke forbindelse til skolens printværksted lige nu. Modellen er gemt på computeren og bliver sendt af sig selv, når forbindelsen er tilbage.', details: 'Du kan tegne videre.'});
+        request.uncertain = false;
+        request.waitingFor = data.code === 'colour_unavailable' ? 'colour' : 'connection';
+        showQueuedPrint(request);
       } else if (response.ok && typeof data?.id === 'string') {
-        const receipt = data.id.slice(0, 8).toUpperCase(), again = printRequest.receipt === receipt; printRequest.receipt = receipt;
-        if (again) printView({title: 'Modellen er allerede sendt', message: 'Der er ikke sendt en ekstra kopi.', details: `Afleveringsnummer: ${receipt}. Du kan tegne videre.`});
+        const receipt = data.id.slice(0, 8).toUpperCase(), again = request.receipt === receipt;
+        request.receipt = receipt; request.uncertain = false; request.waitingFor = null;
+        const details = `${printColourNote(request)} Afleveringsnummer: ${receipt}. Sig nummeret til læreren, hvis I skal finde printet.`;
+        if (again) printView({title: 'Modellen er allerede sendt', message: 'Der er ikke sendt en ekstra kopi.', details});
         else printView({title: 'Din model er modtaget', message: printStatus[data.status] || (['failed', 'attention', 'cancelled', 'recovering'].includes(data.status) ? 'Indsendelsen er modtaget, men printet kræver eftersyn. Bed en voksen kontrollere printkøen.' : 'Din model er sat i kø. Den klargøres automatisk, når en passende printer er ledig.'),
-          details: `Afleveringsnummer: ${receipt}. Sig nummeret til læreren, hvis I skal finde printet. Du kan tegne videre.`});
+          details});
         status(`Sendt til print: ${name}. Afleveringsnummer ${receipt}.`);
+      } else if (response.status === 409 && data?.code === 'colour_unavailable') {
+        request.uncertain = false; request.waitingFor = null;
+        showPrintConfirmation(null, data.error || 'Farven er ikke længere tilgængelig. Vælg en anden farve.');
+      } else if (response.status >= 500 || response.ok) {
+        showUnconfirmedPrint();
       } else {
+        request.uncertain = false;
         const message = typeof data?.error === 'string' && data.error ? data.error : 'Printværkstedet afviste modellen.';
         printView({title: 'Printet blev ikke sendt', message: 'Modellen er ikke sendt til print.', error: message, yes: 'Prøv igen'});
       }
-    } catch (error) {
-      printView({title: 'Printet blev ikke bekræftet', message: 'Der kom ikke svar fra printværkstedet.', error: 'Prøv igen. Samme model bliver kun printet én gang.', yes: 'Prøv igen'});
+    } catch {
+      showUnconfirmedPrint();
     } finally {
-      clearTimeout(timer); printing = false; $('print-no').disabled = false; $('print-yes').disabled = false;
-      requestAnimationFrame(() => (!$('print-yes').hidden ? $('print-yes') : $('print-no')).focus());
+      clearTimeout(timer); printing = false; $('print-no').disabled = false; syncPrintButton();
+      requestAnimationFrame(() => (!colourField.hidden ? $('print-title') : !$('print-yes').hidden ? $('print-yes') : $('print-no')).focus());
     }
   }
+  colourField.addEventListener('change', syncPrintButton);
   $('print-yes').onclick = () => sendToPrint();
-  $('print-no').onclick = () => { if (!printing) $('print-dialog').close(); };
-  $('print-dialog').addEventListener('cancel', event => { if (printing) event.preventDefault(); });
+  $('print-no').onclick = () => { if (!printing) printDialog.close(); };
+  printDialog.addEventListener('cancel', event => { if (printing) event.preventDefault(); });
+  printDialog.addEventListener('close', () => {
+    if (printDialog.open) return;
+    colourLoader?.abort(); colourLoader = null; printModel = null;
+  });
   // Idékort: a small step panel points at the button to use next. It never builds anything by itself.
   let guide = null, guideStep = 0;
   function guideContext() {
@@ -857,7 +945,7 @@ if (view) {
       worker.postMessage({type:'reset'});
       Object.assign(model, new SceneModel(), {data:scene});
       assets.clear(); for (const [id, asset] of nextAssets) assets.set(id, asset); sentAssets.clear();
-      modelName = String(name).slice(0, 100); printRequest = {signature:'', id:'', receipt:''};
+      modelName = String(name).slice(0, 100); printRequest = null;
       guide = pendingGuide = null; showGuide(); lastColor = null; stickyError = notice = lastWarning = '';
       frameFirst = Boolean(scene.roots.length); focusText = false; panelFor = null;
       for (const modal of document.querySelectorAll('dialog[open]')) if (modal.id !== 'elevhub-project-dialog') modal.close();

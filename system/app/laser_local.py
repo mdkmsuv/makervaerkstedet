@@ -36,6 +36,9 @@ OUTBOX_KEEP_REJECTED = 200
 REQUEST_ID = re.compile(r'[a-zA-Z0-9-]{16,80}')
 FORWARD_TIMEOUT = 10  # skal blive under laser.js' egen timeout på 15 s
 JOB_ID = re.compile(r'[a-f0-9]{32}')
+FILAMENT_COLOUR = re.compile(r'#[0-9A-F]{6}')
+PRINT_COLOURS_PATH = '/api/print/colours'
+PRINT_COLOURS_OFFLINE = 'Forbindelsen til skolens printere mangler. Prøv igen senere.'
 
 
 def school_profile_error_page(projects_port):
@@ -86,6 +89,10 @@ class Unexpected(Offline):
 
 class Closed(ValueError):
     """The teacher has closed the workshop (423). Worth retrying later."""
+
+
+class ColourUnavailable(InboxBusy):
+    """A saved print needs the same filament when it becomes available again."""
 
 
 def validate_submission(data):
@@ -148,7 +155,7 @@ class Outbox:
 
     def check_pending(self, data):
         with self.lock:
-            self._check_pending(data)
+            return self._check_pending(data)
 
     def _sync_directory(self):
         try:
@@ -273,11 +280,17 @@ class ForwardingInbox:
         # Serialize submissions so two requests cannot race between the pending
         # identity check, forwarding and saving a newly offline submission.
         with self.lock:
+            pending = False
             if self.outbox is not None:
                 data = self.validate(data)
-                self.outbox.check_pending(data)
+                pending = self.outbox.check_pending(data)
             try:
                 return self.send(data)
+            except ColourUnavailable:
+                if not pending:
+                    raise
+                # The saved model remains queued under the original request ID.
+                return {'queued': True, 'requestId': data['requestId'], 'code': 'colour_unavailable'}
             except Offline:
                 if self.outbox is None:
                     raise
@@ -514,19 +527,25 @@ def create_local_servers(server_url, ca_file=None, host='127.0.0.1', laser_port=
     return servers[0], servers[1]
 
 
-def print_submission(body, filename, request_id):
+def print_submission(body, filename, request_id, colour='any'):
     if not isinstance(request_id, str) or not REQUEST_ID.fullmatch(request_id):
         raise ValueError('Prøv at sende modellen igen.')
     if (not isinstance(filename, str) or not filename.lower().endswith('.stl')
             or len(filename) > 500 or any(ord(c) < 32 for c in filename)):
         raise ValueError('Vælg en fil, der slutter med .stl.')
+    if colour != 'any' and (not isinstance(colour, str) or not FILAMENT_COLOUR.fullmatch(colour)):
+        raise ValueError('Vælg en farve fra listen.')
     inspect_stl(body)
-    return {'type': 'print-job', 'requestId': request_id, 'filename': filename,
-            'stl': base64.b64encode(body).decode('ascii')}
+    result = {'type': 'print-job', 'requestId': request_id, 'filename': filename,
+              'stl': base64.b64encode(body).decode('ascii')}
+    # Keep the legacy representation for jobs whose colour is unrestricted.
+    if colour != 'any':
+        result['colour'] = colour
+    return result
 
 
 def validate_print_submission(data):
-    if (not isinstance(data, dict) or set(data) != {'type', 'requestId', 'filename', 'stl'}
+    if (not isinstance(data, dict) or set(data) - {'colour'} != {'type', 'requestId', 'filename', 'stl'}
             or data['type'] != 'print-job' or not isinstance(data['stl'], str)
             or len(data['stl']) > 4 * ((MAX_BYTES + 2) // 3)):
         raise ValueError('Ugyldig 3D-aflevering.')
@@ -534,18 +553,63 @@ def validate_print_submission(data):
         body = base64.b64decode(data['stl'], validate=True)
     except (ValueError, UnicodeError):
         raise ValueError('Ugyldig 3D-aflevering.') from None
-    return print_submission(body, data['filename'], data['requestId'])
+    return print_submission(body, data['filename'], data['requestId'], data.get('colour', 'any'))
 
 
 class PrintForwardingInbox(ForwardingInbox):
     validate = staticmethod(validate_print_submission)
 
+    def colours(self):
+        """Project the existing student queue state down to filament choices."""
+        limit = 256 * 1024
+        try:
+            with self.opener.open(Request(self.server_url + '/api/state', method='GET'),
+                                  timeout=min(self.timeout, 4)) as response:
+                raw = response.read(limit + 1)
+                if response.status != 200 or len(raw) > limit:
+                    raise ValueError('central print state')
+                state = json.loads(raw)
+            if not isinstance(state, dict) or not all(isinstance(state.get(key), list) for key in ('printers', 'colours')):
+                raise ValueError('central print state')
+        except HTTPError as error:
+            error.close()
+            return 503, {'error': PRINT_COLOURS_OFFLINE}
+        except (OSError, ValueError, http.client.HTTPException):
+            return 503, {'error': PRINT_COLOURS_OFFLINE}
+
+        online = [printer for printer in state['printers'] if isinstance(printer, dict)
+                  and printer.get('enabled') is True
+                  and printer.get('status') in ('ready', 'printing', 'preparing', 'bed', 'attention')
+                  and isinstance(printer.get('colours'), list)]
+        colours = []
+        for colour in state['colours']:
+            if not isinstance(colour, dict):
+                continue
+            hex_value, name, printer_ids = colour.get('hex'), colour.get('name'), colour.get('printers')
+            if (not isinstance(hex_value, str) or not FILAMENT_COLOUR.fullmatch(hex_value)
+                    or not isinstance(name, str) or not 0 < len(name.strip()) <= 40
+                    or not isinstance(printer_ids, list)):
+                continue
+            matching = [printer for printer in online if printer.get('id') in printer_ids and hex_value in printer['colours']]
+            if matching:
+                colours.append({'hex': hex_value, 'name': name.strip(),
+                                'ready': sum(printer['status'] == 'ready' for printer in matching)})
+        return 200, {'colours': colours}
+
     def _submit(self, data):
-        payload = self._forward('/api/jobs', base64.b64decode(data['stl']), {
-            'Content-Type': 'application/octet-stream',
-            'X-Filename': quote(data['filename'], safe=''), 'X-Colour': 'any',
-            'X-Quality': 'standard', 'X-Request-ID': data['requestId'],
-        }, accepted=(201,))
+        colour = data.get('colour', 'any')
+        try:
+            payload = self._forward('/api/jobs', base64.b64decode(data['stl']), {
+                'Content-Type': 'application/octet-stream',
+                'X-Filename': quote(data['filename'], safe=''), 'X-Colour': colour,
+                'X-Quality': 'standard', 'X-Request-ID': data['requestId'],
+            }, accepted=(201,))
+        except ValueError as error:
+            # Existing school servers describe this legacy 400 with a fixed
+            # message. For an outbox job, a different spool is temporary.
+            if colour != 'any' and type(error) is ValueError and str(error).startswith('Farven er ikke længere tilgængelig.'):
+                raise ColourUnavailable(str(error)) from None
+            raise
         if (not isinstance(payload.get('id'), str) or not JOB_ID.fullmatch(payload['id'])
                 or not isinstance(payload.get('status'), str)):
             raise Unexpected('Printkøen svarede ikke som forventet.')
@@ -553,7 +617,7 @@ class PrintForwardingInbox(ForwardingInbox):
 
 
 class LocalPrintHandler(LocalDesignHandler):
-    """Only the project gateway and the fixed print submission route."""
+    """Only the project gateway and the fixed print routes."""
 
     def send_header(self, keyword, value):
         if keyword.lower() == 'content-security-policy':
@@ -570,6 +634,8 @@ class LocalPrintHandler(LocalDesignHandler):
             return self.reply(200, {'local': True, 'surface': 'student', **self.server.runtime_health})
         if route == '/api/school-appearance':
             return Handler.do_GET(self)
+        if self.path == PRINT_COLOURS_PATH:
+            return self.reply(*getattr(self.server, 'print_inbox', self.server.inbox).colours())
         # The 3D editor ships in its app package; InstalledHandler serves it.
         return self.reply(404, {'error': 'Siden findes ikke.'})
 
@@ -590,7 +656,7 @@ class LocalPrintHandler(LocalDesignHandler):
             size = int(sizes[0])
             if not 0 < size <= MAX_BYTES:
                 return self.reply(413, {'error': 'Vælg en STL-fil på højst 25 MB.'})
-            if self.headers.get('X-Colour', 'any') != 'any' or self.headers.get('X-Quality', 'standard') != 'standard':
+            if self.headers.get('X-Quality', 'standard') != 'standard':
                 raise ValueError('Send modellen fra 3D-værkstedet.')
             deadline = time.monotonic() + 30
             chunks, received = [], 0
@@ -605,11 +671,13 @@ class LocalPrintHandler(LocalDesignHandler):
                 chunks.append(part)
                 received += len(part)
             data = print_submission(b''.join(chunks), unquote(self.headers.get('X-Filename', '')),
-                                    self.headers.get('X-Request-ID', ''))
+                                    self.headers.get('X-Request-ID', ''), self.headers.get('X-Colour', 'any'))
             payload = getattr(self.server,'print_inbox',self.server.inbox).submit(data)
             return self.reply(202 if payload.get('queued') else 201, payload)
         except Closed as error:
             return self.reply(423, {'error': str(error)})
+        except ColourUnavailable as error:
+            return self.reply(409, {'error': str(error), 'code': 'colour_unavailable'})
         except InboxBusy as error:
             return self.reply(429, {'error': str(error)})
         except Offline:
@@ -669,6 +737,10 @@ def create_installed_servers(apps,laser,printing,*,runtime=None,projects_port=87
                 if path=='/api/runtime/health':
                     return self.reply(200,{'local':True,'app':self.server.descriptor['id'],
                         'app_version':self.server.descriptor['version'],**self.server.runtime_health})
+                if path == PRINT_COLOURS_PATH:
+                    if self.path != path or 'print-job-v1' not in self.capabilities():
+                        return self.reply(404, {'error': 'Funktionen findes ikke.'})
+                    return LocalPrintHandler.do_GET(self)
                 library=re.fullmatch(r'/api/(laser|folie)/library(?:/status|/file/[a-f0-9]{64})?',path)
                 if library:
                     if 'svg-library-v1' not in self.capabilities() or self.path!=path:
