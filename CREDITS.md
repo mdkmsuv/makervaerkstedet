@@ -36,6 +36,13 @@ har SHA-256 `58172e0c0fac2cda8a37b348164bb55e44b0e69051e557e92b1d3f6910141f7b`.
 
 ## 3D-værkstedets lokale biblioteker
 
+Spillebrikkernes 28 meshdele og spillepladegeneratorens geometri er fra
+Mathias Kusk Damgaards Brætspilsfabrik på
+[Skoleværkstedet](https://xn--skolevrkstedet-5ib.dk/), tilpasset til lokal brug
+i 3D-værkstedet og Laserværkstedet. Kilde og udgaver er beskrevet i
+[3D-værkstedets appbeskrivelse](apps/3dprint/README.md) og
+[Laserværkstedets appbeskrivelse](apps/laser/README.md).
+
 Manifold3.5.4 af Emmett Lalish og bidragydere bruges som lokal geometrikerne (Apache-2.0). Three.js0.183.2 bruges til visning (MIT). Originale licenstekster følger i web/assets/licenses/model3d/. Ingen biblioteker hentes fra CDN under brug.
 
 Tekstfigurer bruger opentype.js 2.0.0 (MIT) og Metrophobic Regular af The Metrophobic Project Authors (SIL Open Font License 1.1). Den originale font er uændret; lokal licens og kildehenvisning følger i web/assets/model3d/ og web/assets/licenses/model3d/.

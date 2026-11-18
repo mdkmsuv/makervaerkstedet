@@ -8,12 +8,20 @@ loopback-port 8795, projektformat `.laser.json`.
 `npm run build:laser` hører til [Folie](../folie/README.md). Laser ligger
 udelukkende i `web/laservaerksted/`.
 
+Med **Lav en spilleplade** kan eleven vælge bane, felter og pynt og indsætte
+en plade på 20, 30 eller 37 cm som én gruppe. Gruppen bevarer pladens mål
+og de tre handlinger Skær, Gravér streger og Gravér flader. Tegnefladen
+udvides efter behov og gemmes i projektet. Lærerens laserstation afgør,
+hvor pladen kan placeres på det valgte materiale.
+Eleven kan vælge at fjerne det urørte nøgleringseksempel ved indsættelsen.
+
 ## Kilde
 
 | Fil | Ansvar |
 |---|---|
 | `web/laservaerksted/index.html` | Markup og stilark i én fil |
 | `web/laservaerksted/laser-editor.js` | Editor, projektadapter, bibliotek og aflevering |
+| `web/laservaerksted/board-generator.js` | Offline generator fra Skoleværkstedet, Mathias Kusk Damgaard. Kildehash er angivet i filen. |
 | `web/laservaerksted/usb-save.js` | Gem til USB; kun aktiv, når kioskens USB-bro findes |
 | `paper-core.min.js`, `opentype.min.js` | Tredjepart med licensfilerne ved siden af |
 | `icons/` | Ikoner med eget `manifest.json` |
@@ -53,8 +61,9 @@ Ctrl+C; intet sendes til en kø eller en laser. Biblioteket svarer, at der
 ikke er forbindelse.
 
 De renderede prøver mod den installerede appkørsel er
-`tests/test_installed_apps_browser.cjs` (sæt `MKV_INSTALLED_APP_FILTER=laser`)
-og `tests/test_laser_website_library.cjs`. De kræver Playwright. På Windows
+`tests/test_installed_apps_browser.cjs` (sæt `MKV_INSTALLED_APP_FILTER=laser`),
+`tests/test_laser_website_library.cjs` og `tests/test_laser_board_generator.cjs`.
+De kræver Playwright. På Windows
 kører fixturen i WSL; har pc'en ingen WSL-distribution, så sæt
 `MKV_QA_PYTHON` til en Python 3.13 eller nyere, og fixturen kører direkte i
 Windows. Dér springes to Linux-kontroller over (linksikker mappegennemgang

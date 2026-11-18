@@ -278,6 +278,15 @@ svg.i.turn{transform:rotate(-90deg)}
 .toolbar .download-stl+.primary{margin-left:6px}
 .print-error{color:#8c1d24;background:#fbeaec;border:1px solid #d5a6aa;border-radius:4px;padding:10px 12px}
 #print-dialog .micro{font-size:14px;color:#4f6370}
+
+.game-piece-open{min-height:44px}
+#game-piece-dialog{width:min(590px,calc(100vw - 28px));max-height:calc(100dvh - 28px);overflow:auto}
+.game-piece-layout{display:grid;grid-template-columns:minmax(130px,1fr) minmax(130px,1fr);gap:16px;align-items:center}
+.game-piece-layout canvas{display:block;width:100%;height:auto;background:#eef3f5;border:1px solid #d0dde3;border-radius:6px}
+.game-piece-options{display:grid;gap:8px}
+.game-piece-options label{display:grid;gap:2px;font-weight:600}
+.game-piece-options select{width:100%;min-height:44px;padding:4px 8px;font:inherit}
+@media(max-width:400px){.game-piece-layout{grid-template-columns:1fr}.game-piece-layout canvas{max-height:180px;object-fit:contain}}
 .name-label{display:block;font-size:14px;margin:0 0 6px}
 .toolbar #send-print{min-height:44px}
 

@@ -2,8 +2,9 @@
   "use strict";
 
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const PAPER_WIDTH = 250;
-  const PAPER_HEIGHT = 167;
+  const DEFAULT_WORKSPACE = { widthMm: 250, heightMm: 167 };
+  const BOARD_MARGIN = 10;
+  const MAX_WORKSPACE_SIZE = 390;
   const FILE_FORMAT = "laservaerkstedet";
   const ACCEPTED_FILE_FORMATS = new Set([FILE_FORMAT, "laservaerkstedet-test"]);
   const FONT_URL = "/assets/metrophobic-latin.ttf";
@@ -138,6 +139,8 @@
   function createKeyringProject() {
     return {
       name: "Min nøglering",
+      workspace: { ...DEFAULT_WORKSPACE },
+      isStarterExample: true,
       nextId: 4,
       selectedId: "part-1",
       selectedIds: ["part-1"],
@@ -150,7 +153,7 @@
   }
 
   function createEmptyProject() {
-    return { name: "Ny tegning", nextId: 1, selectedId: null, selectedIds: [], objects: [] };
+    return { name: "Ny tegning", workspace: { ...DEFAULT_WORKSPACE }, nextId: 1, selectedId: null, selectedIds: [], objects: [] };
   }
 
   let state = createKeyringProject();
@@ -489,7 +492,8 @@
       });
       shape.textContent = object.text || "TEKST";
     }
-    shape.setAttribute("class", `geometry-node process-${object.process}${object.closed === false ? " line-geometry" : ""}`);
+    const line = object.closed === false || (object.process === "engrave" && object.engraveMode === "line");
+    shape.setAttribute("class", `geometry-node process-${object.process}${line ? " line-geometry" : ""}`);
     return shape;
   }
 
@@ -628,7 +632,7 @@
       const screen = new DOMPoint(point.x, point.y).matrixTransform(matrix);
       return screen.x - 17 >= viewport.left && screen.x + 17 <= viewport.right && screen.y - 17 >= viewport.top && screen.y + 17 <= viewport.bottom;
     };
-    const onPaper = (point) => point.x >= 17 * unit && point.x <= PAPER_WIDTH - 17 * unit && point.y >= 17 * unit && point.y <= PAPER_HEIGHT - 17 * unit;
+    const onPaper = (point) => point.x >= 17 * unit && point.x <= state.workspace.widthMm - 17 * unit && point.y >= 17 * unit && point.y <= state.workspace.heightMm - 17 * unit;
     const placement = candidates.find(({ point }) => onPaper(point) && visibleHandle(point)) || candidates.find(({ point }) => visibleHandle(point)) || candidates[0];
     const stemStart = placement.stem;
     const handle = placement.point;
@@ -642,7 +646,7 @@
     rotationHandle.append(svgElement("path", { d: "M20 5v6h-6 M19 11a7 7 0 1 0-1 7", transform: `translate(${-8 * unit} ${-8 * unit}) scale(${16 * unit / 24})`, class: "rotation-handle-arrow" }));
     elements.selectionOverlay.append(rotationHandle);
     if (interactionState?.type === "rotate") {
-      const angleText = svgElement("text", { x: handle.x > PAPER_WIDTH / 2 ? handle.x - 21 * unit : handle.x + 21 * unit, y: handle.y + 4 * unit, "text-anchor": handle.x > PAPER_WIDTH / 2 ? "end" : "start", class: "rotation-angle-label", "font-size": 13 * unit });
+      const angleText = svgElement("text", { x: handle.x > state.workspace.widthMm / 2 ? handle.x - 21 * unit : handle.x + 21 * unit, y: handle.y + 4 * unit, "text-anchor": handle.x > state.workspace.widthMm / 2 ? "end" : "start", class: "rotation-angle-label", "font-size": 13 * unit });
       angleText.textContent = `${formatNumber(objects.length === 1 ? objects[0].rotation : interactionState.rotationDelta)}°`;
       elements.selectionOverlay.append(angleText);
     }
@@ -653,9 +657,9 @@
     const labelHeight = canvasUnitsForPixels(24);
     const labelText = `Bredde ${formatNumber(frame.width)} mm · Højde ${formatNumber(frame.height)} mm`;
     const labelWidth = Math.max(canvasUnitsForPixels(116), labelText.length * fontSize * 0.52 + paddingX * 2);
-    const labelX = Math.min(PAPER_WIDTH - labelWidth / 2 - canvasUnitsForPixels(3), Math.max(labelWidth / 2 + canvasUnitsForPixels(3), worldBounds.centerX));
+    const labelX = Math.min(state.workspace.widthMm - labelWidth / 2 - canvasUnitsForPixels(3), Math.max(labelWidth / 2 + canvasUnitsForPixels(3), worldBounds.centerX));
     const belowY = worldBounds.bottom + canvasUnitsForPixels(15) + labelHeight / 2;
-    let labelY = belowY + labelHeight / 2 < PAPER_HEIGHT ? belowY : Math.max(labelHeight / 2 + canvasUnitsForPixels(3), worldBounds.top - canvasUnitsForPixels(15) - labelHeight / 2);
+    let labelY = belowY + labelHeight / 2 < state.workspace.heightMm ? belowY : Math.max(labelHeight / 2 + canvasUnitsForPixels(3), worldBounds.top - canvasUnitsForPixels(15) - labelHeight / 2);
     if (Math.abs(labelX - handle.x) < labelWidth / 2 + 18 * unit && Math.abs(labelY - handle.y) < labelHeight / 2 + 18 * unit) {
       const belowControls = Math.max(worldBounds.bottom + 15 * unit, handle.y + 26 * unit) + labelHeight / 2;
       const aboveControls = Math.min(worldBounds.top - 15 * unit, handle.y - 26 * unit) - labelHeight / 2;
@@ -837,6 +841,7 @@
   }
 
   function renderAll() {
+    renderWorkspace();
     renderCanvas();
     renderInspector();
     renderPartList(elements.desktopPartsList, elements.desktopPartsEmpty);
@@ -881,8 +886,8 @@
         ? { id: allocateId(), type, name, text: "NY TEKST", width: 54, height: 14, process: "engrave", lockRatio: false }
         : { id: allocateId(), type, name, width: shape.width, height: shape.height, process: "cut", lockRatio: ["circle", "star", "heart", "pentagon", "hexagon"].includes(type) };
       const offset = (state.nextId % 6) * 3;
-      object.x = (PAPER_WIDTH - object.width) / 2 + offset;
-      object.y = (PAPER_HEIGHT - object.height) / 2 + offset;
+      object.x = (state.workspace.widthMm - object.width) / 2 + offset;
+      object.y = (state.workspace.heightMm - object.height) / 2 + offset;
       object.rotation = 0;
       if (type === "rounded") {
         object.type = "rect";
@@ -1022,17 +1027,23 @@
 
   // Build geometry ourselves. No imported SVG node, style, link or script is
   // inserted into the document or handed to Paper's general SVG importer.
-  function websiteSvgParts(text) {
+  const BOARD_LAYERS = new Map([["graver", "engrave-fill"], ["streg", "engrave-line"], ["skaer", "cut"]]);
+
+  function decodeSvgParts(text, boardSize = 0) {
     if (typeof text !== "string" || new TextEncoder().encode(text).length > MAX_PROJECT_BYTES || /<!|<\?/.test(text)) throw new Error("Motivet kan ikke læses som en sikker vektorfigur.");
     const doc = new DOMParser().parseFromString(text, "image/svg+xml");
     const root = doc.documentElement;
     if (root.localName !== "svg" || root.namespaceURI !== SVG_NS || doc.querySelector("parsererror")) throw new Error("Motivet indeholder en ugyldig SVG.");
     const viewBox = svgNumbers(root.getAttribute("viewBox") || "");
     if (viewBox.length !== 4 || viewBox[2] <= 0 || viewBox[3] <= 0) throw new Error("Motivet mangler et gyldigt tegneområde.");
+    if (boardSize && (viewBox.join(" ") !== `0 0 ${boardSize} ${boardSize}` ||
+        ["width", "height"].some(axis => root.getAttribute(axis) !== `${boardSize}mm`))) {
+      throw new Error("Spillepladens mål kunne ikke læses.");
+    }
     const parts = [];
     let visited = 0;
     const allowed = new Set(["svg","g","path","rect","circle","ellipse","line","polyline","polygon","title","desc","defs"]);
-    function visit(node, parentMatrix, inheritedRule, depth) {
+    function visit(node, parentMatrix, inheritedRule, depth, operation) {
       if (++visited > 3000 || depth > 64 || node.namespaceURI !== SVG_NS || !allowed.has(node.localName) || (node.localName === "svg" && node !== root)) throw new Error("Motivet bruger en vektortype, som ikke understøttes.");
       for (const attribute of node.attributes) if (/^on|href$/i.test(attribute.name) || /url\s*\(|javascript:|@|[\\<>]/i.test(attribute.value)) throw new Error("Motivet indeholder henvisninger, som ikke understøttes.");
       const style = {};
@@ -1045,9 +1056,10 @@
       }
       const rule = style["fill-rule"] || node.getAttribute("fill-rule") || inheritedRule;
       if (!["evenodd","nonzero"].includes(rule)) throw new Error("Motivets udfyldning kan ikke læses.");
+      if (boardSize && node.hasAttribute("data-layer")) operation = BOARD_LAYERS.get(node.getAttribute("data-layer"));
       const matrix = parentMatrix.clone().append(svgTransform(node.getAttribute("transform")));
       if (["title","desc","defs"].includes(node.localName)) { if (node.children.length) throw new Error("Motivet indeholder skjulte figurer, som ikke understøttes."); return; }
-      if (["svg","g"].includes(node.localName)) { for (const child of node.children) visit(child,matrix,rule,depth+1); return; }
+      if (["svg","g"].includes(node.localName)) { for (const child of node.children) visit(child,matrix,rule,depth+1,operation); return; }
       const number = (name, fallback = 0) => { const n = svgNumbers(node.getAttribute(name) ?? String(fallback)); if (n.length !== 1) throw new Error("Motivet indeholder ugyldige mål."); return n[0]; };
       let item;
       try {
@@ -1071,8 +1083,9 @@
         item.transform(matrix);
         const path = item.pathData;
         if (!validPathData(path) || !item.length || (item.bounds.width < .001 && item.bounds.height < .001)) throw new Error("Motivet indeholder tom eller for detaljeret geometri.");
-        parts.push({name:`del ${parts.length+1}`,path,fillRule:rule});
-        if (parts.length > 100) throw new Error("Motivet har for mange dele til én gruppe. Vælg et enklere motiv.");
+        if (boardSize && !operation) throw new Error("En del af spillepladen mangler skæring eller gravering.");
+        parts.push({name:`del ${parts.length+1}`,path,fillRule:rule, ...(operation ? { operation } : {})});
+        if (!boardSize && parts.length > MAX_ROOT_OBJECTS) throw new Error("Motivet har for mange dele til én gruppe. Vælg et enklere motiv.");
       } finally { item?.remove(); }
       if (node.children.length) throw new Error("Motivet indeholder en figur, som ikke understøttes.");
     }
@@ -1084,7 +1097,7 @@
   async function websiteParts(item, preview = false) {
     if (websiteGeometry.has(item.id)) return websiteGeometry.get(item.id);
     const data = await libraryRequest(`/file/${item.id}`,preview);
-    const parts = websiteSvgParts(data.svg);
+    const parts = decodeSvgParts(data.svg);
     if (websiteGeometry.size >= 36) websiteGeometry.delete(websiteGeometry.keys().next().value);
     websiteGeometry.set(item.id,parts);
     return parts;
@@ -1217,8 +1230,8 @@
       name: makeUniqueName(item.title),
       motifId: item.id,
       libraryGroup: true,
-      x: round((PAPER_WIDTH - width) / 2),
-      y: round((PAPER_HEIGHT - height) / 2),
+      x: round((state.workspace.widthMm - width) / 2),
+      y: round((state.workspace.heightMm - height) / 2),
       width,
       height,
       rotation: 0,
@@ -1244,6 +1257,134 @@
     }, document.querySelector("#libraryStatus"))) return;
     document.querySelector("#libraryStatus").textContent = `${item.title} er tilføjet som gruppe. Vælg flere, eller tryk Tegn videre.`;
   }
+
+  const boardDialog = document.querySelector("#boardDialog");
+  const boardButton = document.querySelector("#boardButton");
+  const boardPreview = document.querySelector("#boardPreview");
+  const boardOptions = [...document.querySelectorAll("#boardOptions select")];
+  const boardError = document.querySelector("#boardError");
+  const boardInsert = document.querySelector("#insertBoardButton");
+  const removeBoardExample = document.querySelector("#removeBoardExample");
+  const boardGenerator = window.LaserBoardGenerator;
+  const boardSettings = { ...boardGenerator.defaults };
+  const boardPartNames = { cut: "Pladens kant", "engrave-line": "Graverede streger", "engrave-fill": "Graverede flader" };
+  let boardDraft = null;
+
+  function canRemoveBoardExample() {
+    return state.isStarterExample && JSON.stringify(state.objects) === starterSignature &&
+      !window.ElevhubProjectSession?.saveState?.().stored;
+  }
+
+  function renderBoardExampleChoice(reset = false) {
+    const available = canRemoveBoardExample();
+    document.querySelector("#boardExampleChoice").hidden = !available;
+    if (reset) removeBoardExample.checked = available;
+    document.querySelector("#boardOverlapNote").hidden = !state.objects.length || (available && removeBoardExample.checked);
+  }
+
+  function makeBoardLayers(board) {
+    const parts = decodeSvgParts(board.svg, board.size);
+    return Object.entries(boardPartNames).flatMap(([operation, name]) => {
+      const paths = parts.filter(part => part.operation === operation);
+      if (!paths.length) return [];
+      // One compound path per operation, with the same physical frame for all layers.
+      const geometry = paperPath(paths.map(part => part.path).join(" "));
+      try {
+        const size = board.size;
+        geometry.scale(100 / size, 100 / size, new paperScope.Point(0, 0));
+        const pathData = geometry.getPathData(null, 5);
+        if (!validPathData(pathData)) throw new Error("Spillepladen er for detaljeret. Vælg en kortere bane.");
+        return [{
+          type: "path", name, x: 0, y: 0, width: size, height: size, rotation: 0, lockRatio: true,
+          process: operation === "cut" ? "cut" : "engrave",
+          ...(operation === "engrave-line" ? { engraveMode: "line" } : {}),
+          pathData, fillRule: "nonzero", closed: geometry.children.every(path => path.closed)
+        }];
+      } finally { geometry.remove(); }
+    });
+  }
+
+  function renderBoard() {
+    boardOptions.forEach(field => { field.value = boardSettings[field.name]; });
+    boardError.hidden = true;
+    boardDraft = null;
+    try {
+      const board = boardGenerator.build(boardSettings, false);
+      const layers = makeBoardLayers(board);
+      boardPreview.setAttribute("viewBox", `0 0 ${board.size} ${board.size}`);
+      boardPreview.replaceChildren(...layers.map(createBaseGraphic));
+      document.querySelector("#boardSummary").textContent = `${board.size / 10} × ${board.size / 10} cm · ${board.n} felter · Variant ${boardSettings.seed}`;
+      boardDraft = { size: board.size, layers };
+    } catch (error) {
+      boardPreview.replaceChildren();
+      document.querySelector("#boardSummary").textContent = "";
+      boardError.textContent = error.message || "Spillepladen kunne ikke dannes. Prøv en anden bane.";
+      boardError.hidden = false;
+    }
+    boardInsert.disabled = !boardDraft;
+  }
+
+  function insertBoard() {
+    if (!boardDraft) return;
+    const { size, layers } = boardDraft;
+    const removeExample = removeBoardExample.checked && canRemoveBoardExample();
+    const objects = removeExample ? [] : state.objects;
+    boardError.hidden = true;
+    if (!allowObjectChange({ roots: objects.length + 1, total: countObjectTree(objects) + 1 + layers.length }, boardError)) {
+      boardError.hidden = false;
+      return;
+    }
+    const minimum = size + BOARD_MARGIN * 2;
+    const message = removeExample ? "Spillepladen har erstattet nøgleringseksemplet." : "Spillepladen er sat ind som én gruppe.";
+    if (!commit(message, () => {
+      const widthMm = Math.max(state.workspace.widthMm, minimum);
+      const heightMm = Math.max(state.workspace.heightMm, minimum);
+      state.workspace = { widthMm, heightMm };
+      const object = {
+        id: allocateId(), type: "group", name: makeUniqueName("Spilleplade"),
+        x: (widthMm - size) / 2, y: (heightMm - size) / 2, width: size, height: size,
+        rotation: 0, process: "cut", lockRatio: true, libraryGroup: false,
+        children: layers.map(layer => ({ ...layer, id: allocateId() }))
+      };
+      state.objects = [...objects, object];
+      setSelectedIds([object.id]);
+    }, boardError)) {
+      boardError.hidden = false;
+      return;
+    }
+    dialogReturnFocus = elements.objectLayer.querySelector(`[data-object-id="${state.selectedId}"]`);
+    closeDialog(boardDialog);
+    fitDrawing(false);
+  }
+
+  boardOptions.forEach(field => {
+    field.replaceChildren(...boardGenerator.options[field.name].map(([value, label]) => new Option(label, value)));
+    field.addEventListener("change", () => {
+      boardSettings[field.name] = field.value;
+      renderBoard();
+    });
+  });
+  boardButton.addEventListener("click", () => {
+    renderBoardExampleChoice(true);
+    renderBoard();
+    openDialog(boardDialog, boardOptions[0]);
+  });
+  removeBoardExample.addEventListener("change", () => renderBoardExampleChoice());
+  document.querySelector("#newBoardVariantButton").addEventListener("click", () => {
+    boardSettings.seed = boardSettings.seed % 999 + 1;
+    renderBoard();
+  });
+  document.querySelector("#randomBoardButton").addEventListener("click", () => {
+    for (const [key, options] of Object.entries(boardGenerator.options)) {
+      if (key !== "stoerrelse") boardSettings[key] = options[Math.floor(Math.random() * options.length)][0];
+    }
+    boardSettings.seed = 1 + Math.floor(Math.random() * 999);
+    renderBoard();
+  });
+  document.querySelector("#cancelBoardButton").addEventListener("click", () => closeDialog(boardDialog));
+  document.querySelector("#closeBoardButton").addEventListener("click", () => closeDialog(boardDialog));
+  boardDialog.addEventListener("close", handleDialogClose);
+  boardInsert.addEventListener("click", insertBoard);
 
   function deleteSelected() {
     const objects = selectedObjects();
@@ -1349,7 +1490,7 @@
       const point = rotatePoint(objectCenter(object), { x: 0, y: 0 }, step.angle);
       return { x: round(point.x + step.dx - object.width / 2), y: round(point.y + step.dy - object.height / 2), rotation: normalizeAngle((object.rotation || 0) + step.angle) };
     });
-    if (positions.some((point) => point.x < -PAPER_WIDTH * 2 || point.x > PAPER_WIDTH * 3 || point.y < -PAPER_HEIGHT * 2 || point.y > PAPER_HEIGHT * 3)) {
+    if (positions.some((point) => point.x < -state.workspace.widthMm * 2 || point.x > state.workspace.widthMm * 3 || point.y < -state.workspace.heightMm * 2 || point.y > state.workspace.heightMm * 3)) {
       announce("Kopien kommer for langt uden for tegnefladen. Flyt delene tættere på, og prøv igen.");
       return;
     }
@@ -1445,7 +1586,7 @@
     }
     const validated = validateProjectFile({
       format: FILE_FORMAT, version: FILE_VERSION,
-      workspace: { widthMm: PAPER_WIDTH, heightMm: PAPER_HEIGHT },
+      workspace: { widthMm: state.workspace.widthMm, heightMm: state.workspace.heightMm },
       project: { name: "Udklip", nextId: 1, objects: payload.objects }
     });
     return { text, objects: validated.objects, cut: payload.cut === true, pasteCount: 0 };
@@ -1460,7 +1601,7 @@
     if (!allowObjectChange({ roots: state.objects.length + objects.length,
       total: countObjectTree(state.objects) + countObjectTree(objects) })) return;
     const offset = 5 * (pasteCount + (cut ? 0 : 1));
-    if (objects.some((object) => object.x + offset > PAPER_WIDTH * 3 || object.y + offset > PAPER_HEIGHT * 3)) {
+    if (objects.some((object) => object.x + offset > state.workspace.widthMm * 3 || object.y + offset > state.workspace.heightMm * 3)) {
       announce("Kopierne kommer for langt uden for tegnefladen. Kopiér igen fra en placering tættere på.");
       return;
     }
@@ -1539,12 +1680,12 @@
     const widthDriven = Math.abs(nextWidth / ratio - nextHeight) <= Math.abs(nextHeight * ratio - nextWidth);
     if (widthDriven) nextHeight = nextWidth / ratio;
     else nextWidth = nextHeight * ratio;
-    if (nextWidth > PAPER_WIDTH) {
-      nextWidth = PAPER_WIDTH;
+    if (nextWidth > state.workspace.widthMm) {
+      nextWidth = state.workspace.widthMm;
       nextHeight = nextWidth / ratio;
     }
-    if (nextHeight > PAPER_HEIGHT) {
-      nextHeight = PAPER_HEIGHT;
+    if (nextHeight > state.workspace.heightMm) {
+      nextHeight = state.workspace.heightMm;
       nextWidth = nextHeight * ratio;
     }
     return { width: Math.max(1, nextWidth), height: Math.max(1, nextHeight) };
@@ -1609,7 +1750,7 @@
     const frame = selectionFrame(objects);
     if (!frame) return;
     if (property === "width" || property === "height") {
-      const maximum = property === "width" ? PAPER_WIDTH : PAPER_HEIGHT;
+      const maximum = property === "width" ? state.workspace.widthMm : state.workspace.heightMm;
       const nextValue = Math.min(maximum, Math.max(1, value));
       if (round(nextValue) === round(frame[property])) return;
       commit(`${objects.length === 1 ? primary.name : `${objects.length} dele`}: størrelsen er ændret.`, () => {
@@ -1638,8 +1779,8 @@
     }
 
     if (property === "x" || property === "y") {
-      const minimum = property === "x" ? -PAPER_WIDTH : -PAPER_HEIGHT;
-      const maximum = property === "x" ? PAPER_WIDTH * 2 : PAPER_HEIGHT * 2;
+      const minimum = property === "x" ? -state.workspace.widthMm : -state.workspace.heightMm;
+      const maximum = property === "x" ? state.workspace.widthMm * 2 : state.workspace.heightMm * 2;
       const nextValue = Math.min(maximum, Math.max(minimum, value));
       const delta = nextValue - frame[property];
       if (!delta) return;
@@ -1696,8 +1837,8 @@
   function updateMarquee(event, point) {
     const interaction = interactionState;
     interaction.currentPoint = {
-      x: Math.max(0, Math.min(PAPER_WIDTH, point.x)),
-      y: Math.max(0, Math.min(PAPER_HEIGHT, point.y))
+      x: Math.max(0, Math.min(state.workspace.widthMm, point.x)),
+      y: Math.max(0, Math.min(state.workspace.heightMm, point.y))
     };
     if (!interaction.changed && Math.hypot(event.clientX - interaction.startClient.x, event.clientY - interaction.startClient.y) < 4) return;
     interaction.changed = true;
@@ -1796,12 +1937,12 @@
     if (forceRatio) {
       const scaleX = width / original.width;
       const scaleY = height / original.height;
-      const scale = Math.max(1 / Math.max(original.width, original.height), Math.min(Math.max(scaleX, scaleY), PAPER_WIDTH / original.width, PAPER_HEIGHT / original.height));
+      const scale = Math.max(1 / Math.max(original.width, original.height), Math.min(Math.max(scaleX, scaleY), state.workspace.widthMm / original.width, state.workspace.heightMm / original.height));
       width = original.width * scale;
       height = original.height * scale;
     } else {
-      width = Math.min(PAPER_WIDTH, width);
-      height = Math.min(PAPER_HEIGHT, height);
+      width = Math.min(state.workspace.widthMm, width);
+      height = Math.min(state.workspace.heightMm, height);
     }
     const dragged = { x: anchor.x + signX * width, y: anchor.y + signY * height };
     const centerAligned = { x: (anchor.x + dragged.x) / 2, y: (anchor.y + dragged.y) / 2 };
@@ -2016,7 +2157,7 @@
       return;
     }
     const reference = mode === "page"
-      ? { left: 0, top: 0, right: PAPER_WIDTH, bottom: PAPER_HEIGHT, centerX: PAPER_WIDTH / 2, centerY: PAPER_HEIGHT / 2 }
+      ? { left: 0, top: 0, right: state.workspace.widthMm, bottom: state.workspace.heightMm, centerX: state.workspace.widthMm / 2, centerY: state.workspace.heightMm / 2 }
       : unionBounds(objects);
     const labels = { left: "venstre", hcenter: "vandret midt", right: "højre", top: "top", vcenter: "lodret midt", bottom: "bund" };
     commit(`${objects.length === 1 ? objects[0].name : `${objects.length} dele`} er justeret ${labels[direction]}.`, () => {
@@ -2125,10 +2266,33 @@
     }
   }
 
+  function sizeCanvas() {
+    elements.designCanvas.style.width = `${720 * zoom / 100}px`;
+    elements.designCanvas.style.height = `${720 * state.workspace.heightMm / state.workspace.widthMm * zoom / 100}px`;
+  }
+
+  function renderWorkspace() {
+    const { widthMm, heightMm } = state.workspace;
+    const viewBox = `0 0 ${widthMm} ${heightMm}`;
+    if (elements.designCanvas.getAttribute("viewBox") === viewBox) return;
+    elements.designCanvas.setAttribute("viewBox", viewBox);
+    document.querySelector("#reviewCanvas").setAttribute("viewBox", viewBox);
+    elements.designCanvas.setAttribute("aria-label", `Tegneflade på ${widthMm} gange ${heightMm} millimeter`);
+    document.querySelector("#workspaceSize").textContent = `${widthMm} × ${heightMm} mm`;
+    document.querySelector("#objectWidth").max = widthMm;
+    document.querySelector("#objectHeight").max = heightMm;
+    const x = document.querySelector("#objectX");
+    x.min = -widthMm;
+    x.max = widthMm * 2;
+    const y = document.querySelector("#objectY");
+    y.min = -heightMm;
+    y.max = heightMm * 2;
+    sizeCanvas();
+  }
+
   function setZoom(nextZoom) {
     zoom = Math.min(200, Math.max(25, Math.round(nextZoom)));
-    elements.designCanvas.style.width = `${720 * zoom / 100}px`;
-    elements.designCanvas.style.height = `${720 * PAPER_HEIGHT / PAPER_WIDTH * zoom / 100}px`;
+    sizeCanvas();
     elements.zoomOutput.value = `${zoom} %`;
     elements.zoomOutput.textContent = `${zoom} %`;
     renderSelectionOverlay();
@@ -2139,12 +2303,12 @@
     setZoom(zoomSteps[Math.min(zoomSteps.length - 1, Math.max(0, currentIndex + direction))]);
   }
 
-  function fitDrawing() {
+  function fitDrawing(announceFit = true) {
     const widthScale = (elements.canvasScroll.clientWidth - 48) / 720;
-    const heightScale = (elements.canvasScroll.clientHeight - 48) / (720 * PAPER_HEIGHT / PAPER_WIDTH);
+    const heightScale = (elements.canvasScroll.clientHeight - 48) / (720 * state.workspace.heightMm / state.workspace.widthMm);
     setZoom(Math.max(25, Math.floor(Math.min(widthScale, heightScale, 1.25) * 100 / 5) * 5));
     elements.canvasScroll.scrollTo({ top: 0, left: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
-    announce("Hele tegningen vises.");
+    if (announceFit) announce("Hele tegningen vises.");
   }
 
   function openDialog(dialog, focusTarget, returnTarget = document.activeElement) {
@@ -2250,7 +2414,7 @@
     state.objects.forEach((root) => {
       exportItemsInParent(root, font).forEach(({ item, object }) => {
         const bounds = item.bounds;
-        if (bounds.left < -0.5 || bounds.top < -0.5 || bounds.right > PAPER_WIDTH + 0.5 || bounds.bottom > PAPER_HEIGHT + 0.5) {
+        if (bounds.left < -0.5 || bounds.top < -0.5 || bounds.right > state.workspace.widthMm + 0.5 || bounds.bottom > state.workspace.heightMm + 0.5) {
           if (!outside.includes(root.name)) outside.push(root.name);
         }
         const closed = [];
@@ -2271,6 +2435,8 @@
         if (object.process === "cut") {
           add("cut", closed.join(" "));
           add("cut", open.join(" "));
+        } else if (object.engraveMode === "line") {
+          add("engrave-line", [...closed, ...open].join(" "));
         } else {
           add("engrave-fill", closed.join(" "));
           add("engrave-line", open.join(" "));
@@ -2287,8 +2453,8 @@
       .filter(([, paths]) => paths.length)
       .map(([operation, paths]) => `<g data-operation="${operation}">${paths.join("")}</g>`)
       .join("");
-    const width = svgNumber(PAPER_WIDTH);
-    const height = svgNumber(PAPER_HEIGHT);
+    const width = svgNumber(state.workspace.widthMm);
+    const height = svgNumber(state.workspace.heightMm);
     return `<svg xmlns="${SVG_NS}" version="1.1" width="${width}mm" height="${height}mm" viewBox="0 0 ${width} ${height}" data-laservaerksted="1">`
       + `<title>${escapeXml(state.name.slice(0, 60))}</title>${body}</svg>`;
   }
@@ -2461,7 +2627,7 @@
     return {
       format: FILE_FORMAT,
       version: FILE_VERSION,
-      workspace: { widthMm: PAPER_WIDTH, heightMm: PAPER_HEIGHT },
+      workspace: projectState.workspace,
       project: {
         name: projectState.name,
         nextId: projectState.nextId,
@@ -2504,7 +2670,12 @@
 
   function validateProjectFile(data) {
     if (!data || !ACCEPTED_FILE_FORMATS.has(data.format) || !SUPPORTED_FILE_VERSIONS.has(Number(data.version))) throw new Error("Vælg en projektfil, der er gemt fra Laserværkstedet (.laser.json).");
-    if (!data.workspace || Number(data.workspace.widthMm) !== PAPER_WIDTH || Number(data.workspace.heightMm) !== PAPER_HEIGHT) throw new Error("Projektfilen skal bruge den faste tegneflade på 250 × 167 mm.");
+    const widthMm = Number(data.workspace?.widthMm);
+    const heightMm = Number(data.workspace?.heightMm);
+    if (!Number.isInteger(widthMm) || widthMm < DEFAULT_WORKSPACE.widthMm || widthMm > MAX_WORKSPACE_SIZE ||
+        !Number.isInteger(heightMm) || heightMm < DEFAULT_WORKSPACE.heightMm || heightMm > MAX_WORKSPACE_SIZE) {
+      throw new Error("Projektfilen har ugyldige mål for tegnefladen.");
+    }
     if (!data.project || typeof data.project !== "object") throw new Error("Projektoplysningerne mangler i filen.");
     const name = typeof data.project.name === "string" ? data.project.name.trim() : "";
     if (!name || name.length > 80) throw new Error("Projektnavnet mangler eller er for langt.");
@@ -2529,10 +2700,10 @@
         id,
         type: source.type,
         name: objectName,
-        x: finiteNumber(Number(source.x), `${objectName}: X`, -PAPER_WIDTH * 2, PAPER_WIDTH * 3),
-        y: finiteNumber(Number(source.y), `${objectName}: Y`, -PAPER_HEIGHT * 2, PAPER_HEIGHT * 3),
-        width: finiteNumber(Number(source.width), `${objectName}: bredde`, 0.1, PAPER_WIDTH * 2),
-        height: finiteNumber(Number(source.height), `${objectName}: højde`, 0.1, PAPER_HEIGHT * 2),
+        x: finiteNumber(Number(source.x), `${objectName}: X`, -widthMm * 2, widthMm * 3),
+        y: finiteNumber(Number(source.y), `${objectName}: Y`, -heightMm * 2, heightMm * 3),
+        width: finiteNumber(Number(source.width), `${objectName}: bredde`, 0.1, widthMm * 2),
+        height: finiteNumber(Number(source.height), `${objectName}: højde`, 0.1, heightMm * 2),
         rotation: finiteNumber(Number(source.rotation || 0), `${objectName}: rotation`, -3600, 3600),
         process: source.process,
         lockRatio: Boolean(source.lockRatio)
@@ -2555,6 +2726,7 @@
         if (source.geometryKind && !object.closed) throw new Error(`${objectName} skal være en lukket resultatform.`);
         if (source.geometryKind) object.geometryKind = source.geometryKind;
         if (typeof source.sourceMotifId === "string") object.sourceMotifId = source.sourceMotifId;
+        if (source.engraveMode === "line") object.engraveMode = "line";
       }
       if (source.type === "group") {
         if (!Array.isArray(source.children) || !source.children.length || source.children.length > MAX_ROOT_OBJECTS) throw new Error(`${objectName} har en ugyldig gruppeliste.`);
@@ -2578,6 +2750,7 @@
     const selectedIds = requestedSelection.length ? [...new Set(requestedSelection)] : objects[0] ? [objects[0].id] : [];
     const validated = {
       name,
+      workspace: { widthMm, heightMm },
       objects,
       selectedIds,
       selectedId: selectedIds.at(-1) || null,
@@ -2773,8 +2946,8 @@
     const objects = selectedObjects();
     const bounds = unionBounds(objects);
     if (!bounds) return;
-    const deltaX = PAPER_WIDTH / 2 - bounds.centerX;
-    const deltaY = PAPER_HEIGHT / 2 - bounds.centerY;
+    const deltaX = state.workspace.widthMm / 2 - bounds.centerX;
+    const deltaY = state.workspace.heightMm / 2 - bounds.centerY;
     moveSelected(deltaX, deltaY, objects.length === 1 ? `${objects[0].name} er centreret.` : `${objects.length} dele er centreret.`);
   });
   elements.alignReference.addEventListener("change", () => {
@@ -2861,7 +3034,7 @@
       actions: document.querySelector(".header-actions")
     },
     name: () => state.name,
-    signature: () => JSON.stringify({ name: state.name, objects: state.objects }),
+    signature: () => JSON.stringify({ name: state.name, workspace: state.workspace, objects: state.objects }),
     hasContent: () => state.objects.length > 0 && JSON.stringify(state.objects) !== starterSignature,
     setName: (value) => {
       const name = String(value || "").trim().slice(0, 80);

@@ -33,7 +33,7 @@ test.before(async () => {
     const file = path.resolve(web, '.' + decodeURIComponent(route));
     if (!file.startsWith(web + path.sep)) { response.writeHead(403).end(); return; }
     try {
-      const body = await readFile(sourcePath('web/' + path.relative(web, file).split(path.sep).join('/'), root));
+      const body = await readFile(route === '/autosave.js' ? file : sourcePath('web/' + path.relative(web, file).split(path.sep).join('/'), root));
       response.writeHead(200, {'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Content-Security-Policy': csp, 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store'}).end(body);
     } catch { response.writeHead(404).end(); }
   });
@@ -46,7 +46,7 @@ test.after(async () => { await browser?.close(); if (server) await new Promise(r
 async function open() {
   const page = await browser.newPage({viewport: {width: 1440, height: 900}, acceptDownloads: true, reducedMotion: 'reduce'}), problems = [];
   page.on('pageerror', error => problems.push(error.message));
-  page.on('console', message => { if (['error', 'warning'].includes(message.type())) problems.push(message.text()); });
+  page.on('console', message => { if (['error', 'warning'].includes(message.type())) problems.push(`${message.text()} (${message.location().url})`); });
   page.on('request', request => { if (!request.url().startsWith(base.slice(0, base.lastIndexOf('/')))) problems.push('external request ' + request.url()); });
   await page.goto(base); await ready(page);
   return {page, problems};
@@ -55,6 +55,38 @@ const ready = page => page.waitForFunction(() => !document.querySelector('[data-
 // A model without text asks for a name the first time it is downloaded.
 async function nameIfAsked(page, name = 'testmodel') { await page.waitForTimeout(50); if (await page.locator('#name-dialog').isVisible()) { await page.locator('#model-name').fill(name); await page.locator('#name-form button[type=submit]').click(); } }
 const field = (page, selector) => page.locator(selector).inputValue().then(Number);
+
+test('a Skoleværkstedet game piece is built locally and added as one undoable model', async () => {
+  const {page, problems} = await open();
+  try {
+    const opener = page.getByRole('button', {name: 'Lav en spillebrik'});
+    await opener.click({timeout: 2500});
+    const dialog = page.getByRole('dialog', {name: 'Lav en spillebrik'});
+    const body = dialog.getByLabel('Krop');
+    await body.selectOption({label: 'Robot'});
+    await page.keyboard.press('Escape');
+    await dialog.waitFor({state: 'hidden'});
+    assert.equal(await opener.evaluate(el => el === document.activeElement), true);
+    assert.equal(await page.locator('#undo').isDisabled(), true);
+
+    await opener.click();
+    await body.selectOption({label: 'Robot'});
+    assert.match(await dialog.getByRole('status').textContent(), /Robo-Sol/);
+    assert.equal(await dialog.locator('canvas').isVisible(), true);
+    await dialog.getByRole('button', {name: 'Sæt på pladen'}).click();
+    await dialog.waitFor({state: 'hidden'});
+    await ready(page);
+    assert.match(await page.locator('#selection-label').textContent(), /Spillebrik Robo-Sol/);
+    assert.equal(await page.locator('#download').isEnabled(), true);
+    await page.locator('#undo').click();
+    await ready(page);
+    assert.equal(await page.locator('#empty').isVisible(), true);
+    assert.deepEqual(problems, []);
+  } finally {
+    await page.close();
+  }
+});
+
 async function typeMeasure(page, letter, value) {
   await page.locator('.measure', {hasText: new RegExp(`^${letter}`)}).first().click();
   await page.locator('.measure-input').fill(String(value)); await page.keyboard.press('Enter'); await ready(page);

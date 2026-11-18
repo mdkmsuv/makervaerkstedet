@@ -6,6 +6,7 @@ import {exportBinaryStl} from './geometry.js';
 import {GUIDES} from './guides.js';
 import {readStl} from './stl-import.js';
 import {readSvg} from './svg-import.js';
+import {setupGamePiece} from './game-piece.js';
 import {encodeProject, decodeProject} from './project.js';
 const $ = id => document.getElementById(id), model = new SceneModel();
 const managed = Boolean(window.ElevhubApp || document.getElementById('elevhub'));
@@ -110,7 +111,7 @@ if (view) {
   function renderUI() {
     const selected = model.selectedObjects(), box = view.bounds(model.selected), single = selected.length === 1, state = single ? view.localState(selected[0].id) : null;
     const historyReady = rendered === sequence && !contextLost, ready = historyReady && !failed;
-    view.enabled = ready; document.querySelectorAll('[data-add], #solid, #hole').forEach(element => { element.disabled = contextLost || failed; });
+    view.enabled = ready; document.querySelectorAll('[data-add], #solid, #hole, #game-piece-open').forEach(element => { element.disabled = contextLost || failed; });
     // Fields stay open while the model is calculated: what the pupil types meanwhile waits in the queue, so fast typing with Tab is kept.
     const editable = !contextLost && !failed;
     document.querySelectorAll('[data-size], [data-rotation]').forEach(element => { element.readOnly = !editable || !single || !state; });
@@ -408,11 +409,12 @@ if (view) {
     notice = axis ? 'Figuren er spejlvendt forfra og bagud.' : 'Figuren er spejlvendt fra venstre til højre.'; mutate(() => model.mirror(axis, box.getCenter(new THREE.Vector3()).toArray()));
   };
   // Hent en STL-fil ind som en fast figur. A model larger than the plate is shrunk to fit, keeping its shape.
-  async function importStl(file, fromShelf = false) {
+  async function importStl(file, fromShelf = false, isCurrent = () => true) {
     const fail = message => { if (fromShelf) throw Error(message); status(message); };
     if (!file) return; if (!/\.stl$/i.test(file.name)) return fail('Vælg en STL-fil.');
     if (file.size > 25 * 1024 * 1024) return fail('Filen er for stor. Vælg en STL-fil på højst 25 MB.');
     let info; try { info = readStl(await file.arrayBuffer()); } catch (error) { return fail(`Filen kunne ikke læses: ${error.message}`); }
+    if (!isCurrent()) return;
     const biggest = Math.max(...info.size), fit = biggest > 170 ? 170 / biggest : 1, size = info.size.map(value => Math.max(.1, Math.round(value * fit * 100) / 100));
     assets.set(info.id, info.positions);
     const options = {...placement('mesh'), size, asset: info.id, name: file.name.replace(/\.stl$/i, '')};
@@ -457,6 +459,14 @@ if (view) {
   $('svg-file').onchange = () => { importSvg($('svg-file').files[0]); $('svg-file').value = ''; };
   $('import-stl').onclick = () => $('stl-file').click();
   $('stl-file').onchange = () => { importStl($('stl-file').files[0]); $('stl-file').value = ''; };
+  setupGamePiece({
+    opener: $('game-piece-open'),
+    dialog: $('game-piece-dialog'),
+    importStl: async (file, isCurrent) => {
+      if (busy() || failed || contextLost || (managed && !projectReady)) throw Error('Vent til 3D-værkstedet er klar, og prøv igen.');
+      await importStl(file, true, isCurrent);
+    }
+  });
   $('lock').onclick = () => { const lock = !model.selectedObjects().every(node => node.locked); notice = lock ? 'Figuren er låst. Den kan ikke flyttes eller ændres.' : 'Figuren er låst op.'; mutate(() => model.flag('locked', lock)); };
   $('show-hidden').onclick = () => {
     const hidden = model.data.roots.filter(id => model.object(id)?.hidden); if (!hidden.length) return;

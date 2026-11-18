@@ -669,7 +669,33 @@
     .dialog-close { flex: none; }
     .review-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(220px, .75fr); gap: 20px; }
     .preview-panel { padding: 12px; background: var(--workspace); border: 1px solid var(--line); border-radius: 6px; }
-    #reviewCanvas { display: block; width: 100%; height: auto; aspect-ratio: 250 / 167; background: #fff; border: 1px solid var(--line-strong); }
+    #reviewCanvas { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--line-strong); }
+    #boardDialog { width: min(850px, calc(100vw - 24px)); }
+    .board-dialog-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
+    .board-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .board-options label { display: block; margin-bottom: 5px; font-size: 14px; font-weight: 700; }
+    .board-options select { width: 100%; min-height: 42px; padding: 6px; }
+    .board-variants, .board-legend { display: flex; flex-wrap: wrap; gap: 8px 12px; }
+    .board-variants { margin-top: 14px; }
+    .board-preview { margin: 0; }
+    #boardPreview { display: block; width: 100%; max-height: 380px; background: var(--workspace); border: 1px solid var(--line); border-radius: 6px; padding: 10px; }
+    #boardPreview .process-cut { fill: #fff; stroke: var(--cut); stroke-width: .9px; }
+    #boardPreview .process-engrave { fill: var(--engrave); stroke: none; }
+    #boardPreview .line-geometry { fill: none; stroke: var(--engrave); stroke-width: .8px; }
+    #boardPreview path { vector-effect: non-scaling-stroke; }
+    .board-legend { margin: 8px 0 0; padding: 0; list-style: none; font-size: 13px; }
+    .board-legend li { display: flex; gap: 5px; align-items: center; }
+    .board-legend li::before { content: ""; width: 14px; border-bottom: 2px solid var(--engrave); }
+    .board-legend .board-cut::before { border-color: var(--cut); }
+    .board-legend .board-fill::before { width: 7px; height: 7px; border: 0; background: var(--engrave); }
+    #boardSummary { margin: 8px 0 0; font-weight: 700; }
+    .board-example-choice { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 8px; }
+    .board-example-choice input { width: 20px; height: 20px; accent-color: var(--brand); }
+    #boardOverlapNote { margin: 0 0 12px; }
+    @media (max-width: 620px) {
+      .board-dialog-layout { grid-template-columns: 1fr; }
+      #boardPreview { max-height: 260px; }
+    }
     #reviewCanvas .process-cut { fill: transparent; stroke: var(--cut); stroke-width: 3px; }
     #reviewCanvas .process-engrave { fill: url(#reviewEngraveFill); stroke: var(--engrave); stroke-width: .65; stroke-dasharray: 2 1.4; }
     #reviewCanvas text.process-cut { fill: transparent; stroke: var(--cut); stroke-width: .5; }
@@ -806,6 +832,7 @@
             <button class="button tool-button" id="selectToolButton" type="button" aria-pressed="true"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 3 12 9-6 1.5L9 20z"/></svg><span>Vælg / flyt</span></button>
             <button class="button tool-button" type="button" data-add-type="text"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5h14M12 5v14M8 19h8"/></svg><span>Tilføj tekst</span></button>
             <button class="button tool-button library-button" id="libraryButton" type="button" aria-haspopup="dialog"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 4h5v16H3z M10 4h5v16h-5z M17 5l3-1 3 15-3 1z"/></svg><span>SVG-bibliotek</span></button>
+            <button class="button tool-button" id="boardButton" type="button" aria-haspopup="dialog"><svg class="od-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 17h10v-5H7V7h10"/></svg><span>Lav en spilleplade</span></button>
           </div>
           <h2 class="shape-heading">Former <span>12</span></h2>
           <div class="shape-grid" aria-label="Tilføj en form">
@@ -859,7 +886,7 @@
 
       <section class="workspace" aria-label="Tegneområde">
         <div class="workspace-topbar">
-          <div class="paper-label">Tegneflade <span>250 × 167 mm</span></div>
+          <div class="paper-label">Tegneflade <span id="workspaceSize">250 × 167 mm</span></div>
           <div class="zoom-controls" aria-label="Zoom">
             <button class="button small fit-button" id="fitButton" type="button">Vis hele tegningen</button>
             <button class="button icon-only small" id="zoomOutButton" type="button" aria-label="Zoom ud">−</button>
@@ -952,8 +979,8 @@
                       <line x1="0" y1="0" x2="0" y2="3" stroke="#17669a" stroke-width="0.35" opacity=".55"></line>
                     </pattern>
                   </defs>
-                  <rect width="250" height="167" fill="#fff"></rect>
-                  <rect width="250" height="167" fill="url(#majorGrid)"></rect>
+                  <rect width="100%" height="100%" fill="#fff"></rect>
+                  <rect width="100%" height="100%" fill="url(#majorGrid)"></rect>
                   <g id="objectLayer"></g>
                   <g id="selectionOverlay" aria-hidden="true"></g>
                 </svg>
@@ -1079,6 +1106,52 @@
   </div>
 
 
+  <dialog id="boardDialog" aria-labelledby="boardTitle">
+    <div class="dialog-shell">
+      <header class="dialog-header">
+        <div><h2 id="boardTitle">Lav en spilleplade</h2><p>Skift bane og felter, og se, hvordan pladen ændrer sig.</p></div>
+        <button class="button icon-only" id="closeBoardButton" type="button" aria-label="Luk spillepladen">×</button>
+      </header>
+      <div class="dialog-body">
+        <div class="board-dialog-layout">
+          <div>
+            <label class="board-example-choice" id="boardExampleChoice" hidden><input id="removeBoardExample" type="checkbox"> Fjern nøgleringseksemplet</label>
+            <p class="muted" id="boardOverlapNote" hidden>De dele, der er på tegningen, bliver liggende og kan overlappe spillepladen. Vælg Ny tegning først, hvis du kun vil have spillepladen.</p>
+            <div class="board-options" id="boardOptions">
+              <div><label for="boardSize">Størrelse</label><select id="boardSize" name="stoerrelse"></select></div>
+              <div><label for="boardTrack">Bane</label><select id="boardTrack" name="bane"></select></div>
+              <div><label for="boardShape">Felternes form</label><select id="boardShape" name="felt"></select></div>
+              <div><label for="boardLength">Banens længde</label><select id="boardLength" name="laengde"></select></div>
+              <div><label for="boardSpecial">Specialfelter</label><select id="boardSpecial" name="special"></select></div>
+              <div><label for="boardTheme">Tema</label><select id="boardTheme" name="tema"></select></div>
+              <div><label for="boardNumbers">Tal på felterne</label><select id="boardNumbers" name="tal"></select></div>
+            </div>
+            <div class="board-variants">
+              <button class="button" id="newBoardVariantButton" type="button">Ny variant</button>
+              <button class="button" id="randomBoardButton" type="button">Overrask mig</button>
+            </div>
+          </div>
+          <figure class="board-preview">
+            <svg id="boardPreview" role="img" aria-label="Forhåndsvisning af spillepladen" viewBox="0 0 300 300"></svg>
+            <figcaption>
+              <p id="boardSummary" role="status"></p>
+              <ul class="board-legend" aria-label="Spillepladens lag">
+                <li class="board-cut">Skær kanten</li>
+                <li>Gravér streger</li>
+                <li class="board-fill">Gravér flader</li>
+              </ul>
+            </figcaption>
+          </figure>
+        </div>
+        <p id="boardError" role="alert" class="file-error" hidden></p>
+      </div>
+      <footer class="dialog-footer">
+        <button class="button" id="cancelBoardButton" type="button">Annuller</button>
+        <button class="button primary" id="insertBoardButton" type="button">Sæt ind i tegningen</button>
+      </footer>
+    </div>
+  </dialog>
+
   <dialog id="libraryDialog" aria-labelledby="libraryTitle">
     <div class="dialog-shell">
       <header class="dialog-header">
@@ -1122,7 +1195,7 @@
                       <line x1="0" y1="0" x2="0" y2="3" stroke="#17669a" stroke-width="0.35" opacity=".55"></line>
                     </pattern>
                   </defs>
-                  <rect width="250" height="167" fill="#fff"></rect>
+                  <rect width="100%" height="100%" fill="#fff"></rect>
                   <g id="reviewObjectLayer"></g>
                 </svg>
                 <div class="legend" aria-label="Forklaring">
@@ -1223,6 +1296,7 @@
   <script src="/laservaerksted/opentype.min.js"></script>
   <script src="/school-theme.js" defer></script>
   <script src="/laservaerksted/usb-save.js"></script>
+  <script src="/laservaerksted/board-generator.js"></script>
   <script src="/laservaerksted/laser-editor.js"></script>
 </body>
 </html>

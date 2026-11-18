@@ -81,7 +81,8 @@ await copyFile(path.join(dependencies, 'opentype.js/LICENSE'), path.join(license
 await copyFile(localPath('web/assets/model3d/Metrophobic-OFL.txt'), path.join(licenses, 'Metrophobic-OFL.txt'));
 const sourceFiles = ['package.json', 'package-lock.json', 'scripts/build_model3d_vendor.mjs',
   relativePath('scripts/build_model3d_vendor.mjs'), 'scripts/repository-layout.mjs', 'REPOSITORY-LAYOUT.json',
-  relativePath('web/model3d.html'), relativePath('web/model3d.css'), ...bundledSources,
+  relativePath('web/model3d.html'), relativePath('web/model3d.css'),
+  relativePath('web/assets/model3d/game-piece-data.json'), ...bundledSources,
   ...Object.keys(textPins).filter(name => !name.startsWith('node_modules/'))];
 const {readdir} = await import('node:fs/promises');
 async function collect(directory) {
