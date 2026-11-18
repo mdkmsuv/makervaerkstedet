@@ -284,8 +284,12 @@ svg.i.turn{transform:rotate(-90deg)}
 .game-piece-layout{display:grid;grid-template-columns:minmax(130px,1fr) minmax(130px,1fr);gap:16px;align-items:center}
 .game-piece-layout canvas{display:block;width:100%;height:auto;background:#eef3f5;border:1px solid #d0dde3;border-radius:6px}
 .game-piece-options{display:grid;gap:8px}
-.game-piece-options label{display:grid;gap:2px;font-weight:600}
-.game-piece-options select{width:100%;min-height:44px;padding:4px 8px;font:inherit}
+.game-piece-options details{padding:0;border:0;font-size:inherit}
+.game-piece-options summary{min-height:44px;padding:8px 10px;border:1px solid var(--line);border-radius:4px;color:inherit;font-weight:600}
+.game-piece-options summary:hover,.game-piece-options details[open]>summary{background:#eef3f5}
+.game-piece-choices{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(110px,100%),1fr));gap:6px;padding:8px 2px 2px}
+.game-piece-choices button{min-height:44px;padding:5px;overflow-wrap:anywhere}
+.game-piece-choices button[aria-pressed=true]{background:#e6eff2;border:2px solid var(--teal);font-weight:600}
 @media(max-width:400px){.game-piece-layout{grid-template-columns:1fr}.game-piece-layout canvas{max-height:180px;object-fit:contain}}
 .name-label{display:block;font-size:14px;margin:0 0 6px}
 .toolbar #send-print{min-height:44px}

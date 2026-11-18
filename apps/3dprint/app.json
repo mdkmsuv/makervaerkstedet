@@ -5,7 +5,7 @@
   "description": "Byg og aflever 3D-modeller.",
   "category": "byg",
   "icon": null,
-  "version": "1.0.3",
+  "version": "1.0.4",
   "package": "makervaerkstedet-app-3dprint",
   "architecture": "all",
   "sdk": 1,

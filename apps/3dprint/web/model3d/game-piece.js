@@ -110,11 +110,15 @@ export function setupGamePiece({opener, dialog, importStl}) {
   const canvas = dialog.querySelector('canvas');
   const insert = dialog.querySelector('[data-piece-insert]');
   const shuffle = dialog.querySelector('[data-piece-shuffle]');
-  let data, inputs, current, opening = 0, inserting = false;
+  const indexes = groupIds.map(() => 0);
+  let data, sections, current, opening = 0, inserting = false;
 
   function update() {
-    const indexes = inputs.map(input => Number(input.value));
     const parts = groupIds.map((group, i) => data.categories[group][indexes[i]]);
+    sections.forEach(({summary, buttons}, i) => {
+      summary.textContent = `${groups[groupIds[i]]} · ${parts[i].label}`;
+      buttons.forEach((button, index) => button.setAttribute('aria-pressed', String(index === indexes[i])));
+    });
     const number = indexes.reduce((total, index, i) => total * data.categories[groupIds[i]].length + index, 0) + 1;
     const title = `${namesA[indexes[1]]}-${namesB[indexes[2]]} ${number}`;
     const skewer = Math.floor(data.spyd.sokkel + parts[1].anchors.top[2] + parts[2].anchors.top[2] + data.spyd.hat - 1);
@@ -127,7 +131,8 @@ export function setupGamePiece({opener, dialog, importStl}) {
     const attempt = ++opening;
     dialog.showModal();
     if (data) {
-      inputs[0].focus();
+      sections.forEach(({details}) => { details.open = false; });
+      sections[0].summary.focus();
       return;
     }
     status.textContent = 'Henter brikkernes dele …';
@@ -136,26 +141,49 @@ export function setupGamePiece({opener, dialog, importStl}) {
       if (!response.ok) throw Error('Dele mangler.');
       const loaded = await response.json();
       if (!dialog.open || attempt !== opening) return;
-      inputs = groupIds.map(group => {
-        const label = document.createElement('label');
-        const select = document.createElement('select');
-        label.append(groups[group], select);
-        for (const [i, part] of loaded.categories[group].entries()) select.add(new Option(part.label, String(i)));
-        select.addEventListener('change', update);
-        selectors.append(label);
-        return select;
+      sections = groupIds.map((group, groupIndex) => {
+        // Keep choices inside Chromium's page in the kiosk session.
+        const details = document.createElement('details');
+        details.name = 'game-piece-part';
+        const summary = document.createElement('summary');
+        const options = document.createElement('div');
+        options.className = 'game-piece-choices';
+        const buttons = loaded.categories[group].map((part, index) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.textContent = part.label;
+          button.addEventListener('click', () => {
+            indexes[groupIndex] = index;
+            update();
+            details.open = false;
+            summary.focus();
+          });
+          return button;
+        });
+        options.append(...buttons);
+        details.append(summary, options);
+        return {details, summary, buttons};
       });
+      selectors.replaceChildren(...sections.map(({details}) => details));
       data = loaded;
       update();
       shuffle.disabled = insert.disabled = false;
-      if (dialog.contains(document.activeElement)) inputs[0].focus();
+      if (dialog.contains(document.activeElement)) sections[0].summary.focus();
     } catch {
       if (dialog.open && attempt === opening) status.textContent = 'Delene kunne ikke hentes. Luk vinduet, og prøv igen.';
     }
   });
 
+  dialog.addEventListener('cancel', event => {
+    const section = sections?.find(({details}) => details.open);
+    if (!section) return;
+    event.preventDefault();
+    section.details.open = false;
+    section.summary.focus();
+  });
+
   shuffle.addEventListener('click', () => {
-    for (const input of inputs) input.selectedIndex = Math.floor(Math.random() * input.options.length);
+    groupIds.forEach((group, i) => { indexes[i] = Math.floor(Math.random() * data.categories[group].length); });
     update();
   });
 
