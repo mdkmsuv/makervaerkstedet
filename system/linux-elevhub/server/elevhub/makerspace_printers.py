@@ -50,12 +50,19 @@ class PrinterAdministration:
         return hmac.new(self._key().encode(), json.dumps(envelope, sort_keys=True,
             ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode(), hashlib.sha256).hexdigest()
 
-    def _request(self, body=None):
+    def plates(self, body=None):
+        return self._request(body, plates=True)
+
+    def _request(self, body=None, *, plates=False):
         key = self._key()
         connection = http.client.HTTPConnection(*self.backend, timeout=_TIMEOUT)
         deadline, watchdog = time.monotonic() + _TIMEOUT, None
         try:
-            path = '/api/makerspace/printers' + ('/commands' if body is not None else '')
+            path = '/api/makerspace/printers'
+            if plates:
+                path += '/plates'
+            elif body is not None:
+                path += '/commands'
             headers = {'Authorization': 'Bearer ' + key, 'Accept': 'application/json'}
             raw = None
             if body is not None:

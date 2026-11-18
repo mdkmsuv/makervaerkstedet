@@ -259,3 +259,9 @@ normal opstart og foretag en afgrænset prøve på én computer før bred udruln
 Hvis en anden installationssti blev valgt, tilføjes samme `-InstallPath`
 til genoptagelse eller færdiggørelse. Gendannelse fra backup er fortsat en
 særskilt handling; se [backupvejledningen](MAKERSPACE-BACKUP.md).
+
+## Meld en 3D-printplade ryddet fra IoT-nettet
+
+Åbn `/ryd-plade` på kontrolpanelets HTTPS-adresse, eller vælg **Ryd printplade** på lasercomputerens forside. Fjern printet og alle rester. Tryk derefter på **Jeg har ryddet pladen** ved det rigtige printernavn. Det frigiver pladen til printkøen.
+
+En administrator aktiverer siden ved at gemme `pladenet.json` i serverens hub-datamappe med feltet `cidr` sat til værkstedets faktiske IoT-subnet, eksempelvis `{"cidr":"192.0.2.0/24"}`. Serveren læser filen ved hvert besøg og kontrollerer klientens netadresse. Alle enheder på det valgte net kan kvittere uden login. Ved manglende eller ugyldig opsætning er adgangen lukket.

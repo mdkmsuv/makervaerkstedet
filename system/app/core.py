@@ -38,6 +38,7 @@ CLEANUP_RETRY_BATCH = 16
 UPLOAD_INVENTORY_LIMIT = 10000
 TRANSFER_ATTEMPT_LIMIT = 3
 TERMINAL = frozenset(("done", "failed", "cancelled"))
+PLATE_STATION = 'station:plate'
 
 
 class SubmissionBlocked(ValueError):
@@ -424,6 +425,9 @@ class Queue:
         """
         if not isinstance(actor, str) or not re.fullmatch(r'teacher:[a-f0-9]{32}', actor):
             raise PermissionError('Ugyldig aktør.')
+        return self._advance_workflow(actor, envelope)
+
+    def _advance_workflow(self, actor, envelope):
         if not isinstance(envelope, dict) or set(envelope) != {'action', 'params', 'expected_version', 'request_id'}:
             raise ValueError('Ugyldig workflowkommando.')
         if envelope['action'] != 'printer.job.advance':
@@ -455,8 +459,8 @@ class Queue:
             step = steps[index]
             if step['id'] != params['step_id']:
                 raise ConfigConflict('Det valgte trin er ikke længere aktuelt.')
-            if step['role'] == 'teacher' and not actor.startswith('teacher:'):
-                raise PermissionError('Dette trin kræver lærerens egen bekræftelse.')
+            if actor == PLATE_STATION and step['action'] != 'clear':
+                raise PermissionError('Pladestationen kan kun kvittere en ryddet plade.')
             production_index = next(i for i, value in enumerate(steps) if value['action'] == 'produce')
             if index <= production_index and job['status'] != 'workflow_wait':
                 raise ValueError('Printet kan ikke godkendes i sin aktuelle tilstand.')
@@ -464,6 +468,8 @@ class Queue:
                 raise ValueError('Afvent printets afslutning, før næste trin bekræftes.')
             printer = self.printers.get(job['printer_id'])
             if step['action'] == 'clear' and (printer is None or not self.can_release(printer, workflow_job=job['id'])):
+                if actor == PLATE_STATION:
+                    raise ConfigConflict('Pladens status er ændret. Kontrollér printeren igen.')
                 raise ValueError('Kontrollér, at printeren er online og stoppet uden fejl eller uafklarede print.')
             values = {'workflow_step': index + 1, 'workflow_version': expected + 1,
                       'workflow_complete': int(index + 1 == len(steps)), 'updated': self.clock()}
@@ -487,9 +493,7 @@ class Queue:
             if step['action'] == 'clear':
                 # Durable confirmation first. A crash here leaves the bed blocked
                 # at restart until a new physical clearance, never auto-cleared.
-                if printer['state'] == 'FAILED':
-                    printer['acknowledged_stop_task'] = printer['task']
-                printer.update(bed_clear=True, bed_source='teacher')
+                self._mark_bed_clear(printer, PLATE_STATION if actor == PLATE_STATION else 'teacher')
             return response
 
     def control_queue(self, actor, envelope):
@@ -584,11 +588,13 @@ class Queue:
         if self.sample_pending(printer) or self.workflow_blocks_bed(printer['id']):
             return False
         # Legacy camera clearance is never accepted after an update.
-        return printer['bed_clear'] and printer.get('bed_source') == 'teacher'
+        return printer['bed_clear'] and printer.get('bed_source') in ('teacher', PLATE_STATION)
 
     def teacher_cleared(self, printer):
-        return (printer.get('bed_source') == 'teacher' and self.bed_is_clear(printer)
-                and self.online(printer) and self.stopped(printer) and not printer['error'])
+        return printer.get('bed_source') == 'teacher' and self._physically_cleared(printer)
+
+    def _physically_cleared(self, printer):
+        return self.bed_is_clear(printer) and self.online(printer) and self.stopped(printer) and not printer['error']
 
     def fits(self, meta, printer_id):
         size = MODELS[self.configs[printer_id].get("model", "P1S")]["size"]
@@ -773,22 +779,22 @@ class Queue:
             now = self.clock()
             previous_state = p['state']
             previous_task = p['task']
-            previous_teacher_clear = self.teacher_cleared(p)
+            previous_physical_clear = self._physically_cleared(p)
             previous_acknowledged_stop = self.acknowledged_stop(p)
             # A gap in telemetry invalidates an earlier physical bed confirmation.
             if p["state_seen"] and now - p["state_seen"] >= FRESH_SECONDS:
-                p["bed_clear"] = False
+                self.invalidate_bed(p)
                 p.pop('acknowledged_stop_task', None)
-                p['bed_invalidated'] = now
                 p['status_confirmed'] = False
             if state is not None and task is not None and error is not None:
                 if not p.get('status_confirmed'):
-                    p['bed_clear'] = False
-                    p['bed_invalidated'] = now
+                    self.invalidate_bed(p)
                 p['status_confirmed'] = True
             p["seen"] = now
             if state is not None:
                 p.update(state=str(state).upper(), state_seen=now, message="")
+                if p['state'] != previous_state:
+                    p.pop('plate_request', None)
                 if p['state'] != 'FAILED':
                     p.pop('acknowledged_stop_task', None)
             if trays is not None:
@@ -804,7 +810,7 @@ class Queue:
             if task is not None:
                 new_task = str(task)
                 task_cleared_after_stop = (
-                    previous_teacher_clear and previous_task and not new_task
+                    previous_physical_clear and previous_task and not new_task
                     and previous_state in IDLE | {'FAILED'}
                     and p['state'] in IDLE | {'FAILED'}
                     and not p['error']
@@ -812,8 +818,7 @@ class Queue:
                 )
                 if new_task != previous_task and not task_cleared_after_stop:
                     p.pop('acknowledged_stop_task', None)
-                    p["bed_clear"] = False
-                    p['bed_invalidated'] = now
+                    self.invalidate_bed(p)
                 elif task_cleared_after_stop and previous_state == p['state'] == 'FAILED' and previous_acknowledged_stop:
                     # Clearing the old stopped task identity is not new
                     # machine activity. Keep the deliberate FAILED
@@ -824,8 +829,7 @@ class Queue:
             job = self.active(printer_id)
             failed = p['state'] == 'FAILED' and not self.acknowledged_stop(p)
             if p["state"] in BUSY or p['state'] == 'OFFLINE' or p["error"] or (failed and previous_state != 'FAILED'):
-                p["bed_clear"] = False
-                p['bed_invalidated'] = now
+                self.invalidate_bed(p)
             elif failed:
                 # The bed stays blocked until a teacher clears the stopped job.
                 p['bed_clear'] = False
@@ -885,31 +889,103 @@ class Queue:
 
     def offline(self, printer_id, message="Forbindelsen er afbrudt"):
         with self.lock:
+            self.invalidate_bed(self.printers[printer_id])
             self.printers[printer_id].pop('acknowledged_stop_task', None)
-            self.printers[printer_id].update(state="OFFLINE", bed_clear=False, message=message)
+            self.printers[printer_id].update(state="OFFLINE", message=message)
             self.printers[printer_id].update(task='', task_seen=0, state_seen=0, tray_seen=0, status_confirmed=False)
             job = self.active(printer_id)
             if job:
                 self.recovery_seen.pop(job['id'], None)
                 if job['status'] in ('dispatching', 'starting', 'printing'):
                     self._change(job['id'], status='recovering', message='Venter på printerens aktuelle job efter afbrudt forbindelse.')
-            self.printers[printer_id]['bed_invalidated'] = self.clock()
 
-    def release_bed(self, printer_id):
+    def invalidate_bed(self, printer):
+        printer.update(bed_clear=False, bed_invalidated=self.clock())
+        printer.pop('plate_request', None)
+
+    @staticmethod
+    def _mark_bed_clear(printer, source):
+        if printer['state'] == 'FAILED':
+            printer['acknowledged_stop_task'] = printer['task']
+        printer.update(bed_clear=True, bed_source=source)
+        printer.pop('plate_request', None)
+
+    def _plate_status(self, printer):
+        if not printer['enabled']:
+            return 'blocked', None
+        if not self.online(printer):
+            return 'offline', None
+        if printer['error'] or self.sample_pending(printer):
+            return 'blocked', None
+        if printer['state'] in BUSY:
+            return 'printing', None
+        active = self.active(printer['id'])
+        if active and active['status'] != 'workflow_wait':
+            return 'blocked', None
+        workflow = self.db.execute("""SELECT * FROM jobs WHERE printer_id=? AND workflow IS NOT NULL
+            AND workflow_complete=0 AND status IN ('done','failed','cancelled') LIMIT 1""",
+            (printer['id'],)).fetchone()
+        if workflow:
+            workflow = self._workflow_public(workflow)
+            if not workflow['step'] or workflow['step']['action'] != 'clear':
+                return 'blocked', None
+        if not self.can_release(printer, workflow_job=workflow['id'] if workflow else None):
+            return 'blocked', None
+        if self.bed_is_clear(printer):
+            return 'clear', None
+        return 'waiting', workflow
+
+    def _plate(self, printer):
+        status, workflow = self._plate_status(printer)
+        token = ''
+        if status == 'waiting':
+            # In-memory tokens expire both on physical invalidation and on service restart.
+            step = (workflow['id'], workflow['version']) if workflow else None
+            request = printer.get('plate_request')
+            if request is None or request[0] != step:
+                request = printer['plate_request'] = (step, uuid.uuid4().hex)
+            token = request[1]
+        else:
+            printer.pop('plate_request', None)
+        return {'id': printer['id'], 'name': printer['name'], 'status': status, 'token': token}, workflow
+
+    def plates(self):
+        with self.lock:
+            return {'plates': [self._plate(p)[0] for p in self.printers.values()]}
+
+    def confirm_plate(self, printer_id, token):
+        with self.lock:
+            printer = self.printers.get(printer_id)
+            if printer is None:
+                raise ConfigConflict('Printeren findes ikke længere. Hent pladerne igen.')
+            plate, workflow = self._plate(printer)
+            if plate['status'] != 'waiting' or token != plate['token']:
+                raise ConfigConflict('Pladens status er ændret. Kontrollér printeren igen.')
+            if workflow:
+                self._advance_workflow(PLATE_STATION, {
+                    'action': 'printer.job.advance', 'request_id': token, 'expected_version': workflow['version'],
+                    'params': {'id': workflow['id'], 'step_id': workflow['step']['id'], 'confirmed': True}})
+            else:
+                self.release_bed(printer_id, plate_request=token)
+            return {'ok': True}
+
+    def release_bed(self, printer_id, *, plate_request=None):
         with self.lock:
             p = self.printers[printer_id]
             if not self.can_release(p):
+                if plate_request is not None:
+                    raise ConfigConflict('Pladens status er ændret. Kontrollér printeren igen.')
                 raise ValueError("Printeren skal være online og stoppet uden fejl eller uafklarede print.")
             # Preserve the historical isolation flag for safe retries while
-            # recording the teacher's later physical clearance durably.
+            # recording the later physical clearance durably.
             with self.db:
                 self.db.execute("UPDATE jobs SET physical_resolved=1 WHERE printer_id=? "
                                 "AND isolated=1 AND status IN ('done','failed','cancelled') "
                                 "AND (workflow IS NULL OR workflow_complete=1)", (printer_id,))
-            if p['state'] == 'FAILED':
-                p['acknowledged_stop_task'] = p['task']
-            p["bed_clear"] = True
-            p['bed_source'] = 'teacher'
+                if plate_request is not None:
+                    self.db.execute('INSERT INTO workflow_audit(at,actor,request_id,job_id,step_id) VALUES(?,?,?,?,?)',
+                                    (self.clock(), PLATE_STATION, plate_request, 'printer:' + printer_id, 'clear'))
+            self._mark_bed_clear(p, PLATE_STATION if plate_request is not None else 'teacher')
 
     def pause(self, paused):
         with self.lock:
@@ -953,7 +1029,7 @@ class Queue:
                 p = self.printers[job['printer_id']]
                 self._change(job_id, status='cancelled', isolated=1, remaining=0,
                              message='Uafklaret job er isoleret af læreren. Printeren kan stadig køre. Kontrollér den fysisk; pladen er ikke frigivet.')
-                p.update(bed_clear=False, bed_invalidated=self.clock())
+                self.invalidate_bed(p)
                 p.pop('acknowledged_stop_task', None)
                 return
             if job["status"] in ("queued", "workflow_wait") and result == "cancelled":
@@ -965,7 +1041,7 @@ class Queue:
                 raise ValueError("Kontrollér først, at printeren er forbundet og melder, at printet er stoppet.")
             p = self.printers[job['printer_id']]
             # Acknowledging a stopped job is not a claim that its plate is empty.
-            p.update(bed_clear=False, bed_invalidated=self.clock())
+            self.invalidate_bed(p)
             p.pop('acknowledged_stop_task', None)
             self._change(job_id, status=result, remaining=0,
                          message='Afbrydelsen er bekræftet af en lærer. Venter på en ryddet plade.'
@@ -1039,8 +1115,7 @@ class Queue:
                     self._change(job_id, status="queued", printer_id=None, slot=None, extruder=None, actual_colour=None, profile=None, message="Venter på en ledig printer med den valgte farve.")
                 return False
             # Commit uncertainty BEFORE making a physical start request.
-            p["bed_clear"] = False
-            p['bed_invalidated'] = self.clock()
+            self.invalidate_bed(p)
             self._change(job_id, status="dispatching", message="Sender til printeren")
             return True
 

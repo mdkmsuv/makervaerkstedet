@@ -215,8 +215,7 @@ class PrinterBridge:
         with self.app.queue.lock:
             printer = self.app.queue.printers.get(config['id'])
             if printer is not None:
-                printer['bed_clear'] = False
-                printer['bed_invalidated'] = self.app.queue.clock()
+                self.app.queue.invalidate_bed(printer)
                 printer.pop('acknowledged_stop_task', None)
 
     def _confirm_certificate(self, config, channel, fingerprint, expected, *, repair=False, resuming=False):

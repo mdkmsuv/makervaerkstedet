@@ -33,6 +33,7 @@
       } catch { /* kortet viser, at adressen mangler */ }
     }
     link('admin', admin, 'Adressen til administrationen er ikke sat op på denne computer.');
+    link('plates', admin ? new URL('/ryd-plade', admin).href : '', 'Adressen til pladesiden mangler.');
   }
 
   function show() {

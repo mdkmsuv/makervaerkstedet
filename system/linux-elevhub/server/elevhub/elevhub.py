@@ -53,6 +53,7 @@ from makerspace_printers import PrinterAdministration
 from makerspace_laser import LaserSnapshots
 from makerspace_laser_admin import LaserAdministration
 from laser_station_gateway import handle as laser_station_request
+from print_plates import handle as print_plates_request
 from data_lock import InstanceLock
 from update_admin import UpdateAdministration, handle as updates_request
 from release_feed import ReleaseFeed, ReleaseFeedRunner, handle as release_feed_request
@@ -85,6 +86,7 @@ LAERER_FILER = {'/': 'kontrolpanel.html', '/kontrolpanel': 'kontrolpanel.html', 
                 '/makerspace-print-workflows.js': 'makerspace-print-workflows.js',
                 '/makerspace-lasers.js': 'makerspace-lasers.js',
                 '/makerspace.css': 'makerspace.css',
+                '/print-plates.js': 'print-plates.js', '/print-plates.css': 'print-plates.css',
                 '/laerer.css': 'laerer.css', '/laerer.js': 'laerer.js',
                 '/update-admin.js': 'update-admin.js',
                 '/server-update.js': 'server-update.js',
@@ -788,6 +790,8 @@ class Laerer(Grund):
             if local is None and _appearance_manifest_present(self.server.tilstand.mappe):
                 return self.svar(503, {'error': 'Den lokale skoleprofil kunne ikke valideres.'})
             return self.appearance_asset(sti.rsplit('/', 1)[-1])
+        if print_plates_request(self, sti):
+            return
         if sti in LAERER_FILER:
             return self.fil(LAERER_FILER[sti])
         if sti == '/api/school-appearance':
@@ -877,6 +881,8 @@ class Laerer(Grund):
             if app_admin_request(self, sti, laengde):
                 return
             d = self.laes_json(laengde)
+            if print_plates_request(self, sti, d):
+                return
             if server_update_request(self, sti, d):
                 return
             if simple_updates_request(self, sti, d, laengde):

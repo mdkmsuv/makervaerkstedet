@@ -423,6 +423,9 @@ class Handler(BaseHTTPRequestHandler):
             if path == '/api/makerspace/printers':
                 self.require_bridge()
                 self.send(200, self.app.printer_bridge.snapshot())
+            elif path == '/api/makerspace/printers/plates':
+                self.require_bridge()
+                self.send(200, self.app.queue.plates())
             elif path == '/api/auth/status':
                 self.send(200, {'teacher': self.app.auth.session(self.headers.get('Cookie'))})
             elif path == '/api/state':
@@ -567,7 +570,8 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < length <= limit:
                 self.send(413, {'error': 'Filen eller forespørgslen er for stor.'})
                 return
-            if path in ('/api/makerspace/printers/commands', '/api/makerspace/printers/maintenance'):
+            if path in ('/api/makerspace/printers/commands', '/api/makerspace/printers/maintenance',
+                        '/api/makerspace/printers/plates'):
                 self.require_bridge()
             elif path not in ('/api/jobs', '/api/auth/login', '/api/auth/logout'):
                 self.require_admin()
@@ -584,6 +588,10 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(body)
             if not isinstance(data, dict):
                 raise ValueError('Ugyldig forespørgsel.')
+            if path == '/api/makerspace/printers/plates':
+                if set(data) != {'id', 'token'} or not all(isinstance(value, str) for value in data.values()):
+                    raise ValueError('Vælg en printer, og bekræft den aktuelle plade.')
+                return self.send(200, self.app.queue.confirm_plate(data['id'], data['token']))
             if path == '/api/makerspace/printers/maintenance':
                 if set(data) != {'action', 'holder_id'}:
                     raise ValueError('Ugyldig vedligeholdelseskommando.')
