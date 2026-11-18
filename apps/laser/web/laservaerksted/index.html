@@ -92,6 +92,22 @@
 
     button, input, textarea, select { font: inherit; }
     button, input, textarea, select, summary { border-radius: var(--radius); }
+    /* Keep Chromium's option picker inside the page in the pupil kiosk. */
+    @supports (appearance: base-select) {
+      select, select::picker(select) { appearance: base-select; }
+      select { min-inline-size: 0; }
+      select::picker(select) {
+        max-block-size: min(50dvh, 320px);
+        border: 1px solid var(--line-strong);
+        border-radius: var(--radius);
+        background: var(--surface);
+        color: var(--text-strong);
+        box-shadow: var(--shadow);
+      }
+      select option { min-block-size: var(--control); padding: 6px 10px; }
+      select option:checked { font-weight: 700; }
+      select option:focus-visible { outline-offset: -3px; }
+    }
     button { cursor: pointer; }
     button:disabled { cursor: not-allowed; }
     a { color: var(--brand); }

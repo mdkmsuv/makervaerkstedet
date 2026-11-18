@@ -2784,6 +2784,7 @@
   function handleGlobalKeydown(event) {
     // The kiosk uses Alt+Left to return; browser navigation must not move a selected part.
     if (event.altKey && ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(event.key)) return;
+    if (event.key === "Escape" && CSS.supports("selector(select:open)") && document.querySelector("select:open")) return;
     if (event.key === "Escape" && !elements.alignPanel.hidden) {
       event.preventDefault();
       closeAlignment();
