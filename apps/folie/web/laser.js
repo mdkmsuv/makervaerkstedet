@@ -311,7 +311,7 @@ function renderProperties(){
   for(const id of ['unite','subtract','intersect','exclude'])$(id).disabled=objects.length<2;
   for(const id of ['flip-x','flip-y','rotate-exact','bring-front','send-back','copy-objects'])$(id).disabled=!objects.length;
   $('group-objects').disabled=objects.length<2;
-  $('ungroup-objects').hidden=$('ungroup-objects').disabled=!objects.some(o=>o.groupId);
+  $('ungroup-objects').disabled=!objects.some(o=>o.groupId);
   $('paste-objects').disabled=!clipboard.length;
   document.querySelectorAll('[data-align]').forEach(b=>b.disabled=!objects.length);
   document.querySelectorAll('[data-distribute]').forEach(b=>b.disabled=selectedUnits().length<3);

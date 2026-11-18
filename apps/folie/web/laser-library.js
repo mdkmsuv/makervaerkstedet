@@ -26,7 +26,7 @@ export function installLaserLibrary({insert,notify,vinyl=false}) {
   const capabilities=window.ElevhubApp?.capabilities;
   const direct=Boolean(capabilities&&[...capabilities.required,...capabilities.optional].includes('svg-library-v1'));
   const operation=vinyl?'skærelinjer':'gravering';
-  if(vinyl)$('library-intro').textContent='Motivet sættes ind som én figur. Brug Skil ad, hvis du vil ændre eller slette en del.';
+  if(vinyl)$('library-intro').textContent='Motivet sættes ind som én figur. Åbn Saml i venstre side, og vælg Skil ad for at ændre eller slette en del.';
   const dialog=$('library-dialog'), grid=$('library-grid'), message=$('library-status');
   const retry=document.createElement('button');retry.type='button';retry.className='secondary';retry.textContent='Prøv biblioteket igen';retry.hidden=true;message.after(retry);
   const source=document.createElement('p');source.id='library-source-status';source.setAttribute('role','status');source.setAttribute('aria-live','polite');source.hidden=!direct;message.before(source);
