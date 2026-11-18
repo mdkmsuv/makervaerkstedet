@@ -6,7 +6,7 @@ import {exportBinaryStl} from './geometry.js';
 import {GUIDES} from './guides.js';
 import {readStl} from './stl-import.js';
 import {readSvg} from './svg-import.js';
-import {setupGamePiece} from './game-piece.js';
+import {findLegacyGamePieces, gamePieceChildren, setupGamePiece} from './game-piece.js';
 import {encodeProject, decodeProject} from './project.js';
 const $ = id => document.getElementById(id), model = new SceneModel();
 const managed = Boolean(window.ElevhubApp || document.getElementById('elevhub'));
@@ -83,6 +83,7 @@ if (view) {
   // so it is worked out against the new model instead of being lost.
   let queued = [], panelFor = null, textPause = 0, lastColor = null, notice = '', seen = {visible: true, top: 0}, frameFirst = false, focusText = false, lastWarning = '', modelName = '';
   const assets = new Map(), sentAssets = new Set();
+  const legacyPieces = new WeakMap();
   const busy = () => !contextLost && !failed && rendered !== sequence;
   function later(request) { if (queued.length < 10) queued.push(request); }
   function drain() { while (queued.length && !busy()) queued.shift()(); }
@@ -107,7 +108,7 @@ if (view) {
     if (loose.length > 1) return apart ? `${loose.length} figurer står hver for sig. De bliver printet som løse stykker.` : `${loose.length} figurer rører ikke de andre. De har en orange ramme og bliver printet som løse stykker.`;
     return model.data.roots.some(id => model.object(id)?.kind === 'text') ? 'Bogstaverne hænger ikke sammen. Læg teksten på en plade.' : 'Nogle dele hænger ikke sammen.';
   }
-  function name(node) { return (node.kind === 'text' ? node.params.text : node.kind === 'mesh' ? node.name : labels[node.kind] || 'Figur') + (node.mode === 'hole' ? ' · hul' : ''); }
+  function name(node) { return (node.kind === 'text' ? node.params.text : node.name || labels[node.kind] || 'Figur') + (node.mode === 'hole' ? ' · hul' : ''); }
   function renderUI() {
     const selected = model.selectedObjects(), box = view.bounds(model.selected), single = selected.length === 1, state = single ? view.localState(selected[0].id) : null;
     const historyReady = rendered === sequence && !contextLost, ready = historyReady && !failed;
@@ -124,7 +125,9 @@ if (view) {
     $('solid').setAttribute('aria-pressed', String(selected.length > 0 && selected.every(node => node.mode === 'solid')));
     $('hole').setAttribute('aria-pressed', String(selected.length > 0 && selected.every(node => node.mode === 'hole')));
     $('group').disabled = !ready || selected.length < 2 || !selected.some(node => node.mode !== 'hole'); $('center').disabled = !ready || selected.length < 2;
-    $('ungroup').disabled = !ready || !single || selected[0]?.kind !== 'group' || selected[0]?.mode === 'hole';
+    const canSplit = single && (selected[0].kind === 'group' || legacyPieces.has(assets.get(selected[0].asset)));
+    $('ungroup').disabled = !ready || !canSplit || selected[0].mode === 'hole' || selected[0].locked || selected[0].hidden;
+    $('ungroup').dataset.tipOff = canSplit && selected[0].locked ? 'Lås figuren op først' : 'Vælg en synlig, samlet figur først';
     $('drop').disabled = !ready || !box; $('drop').hidden = !box || Math.abs(box.min.z) < .05; $('undo').disabled = !historyReady || !model.undoStack.length; $('redo').disabled = !historyReady || !model.redoStack.length;
     $('rotate-mode').disabled = !ready || !selected.length;
     // Turning ends when nothing is chosen any more, so the arcs are not waiting on the next part the pupil picks.
@@ -409,12 +412,11 @@ if (view) {
     notice = axis ? 'Figuren er spejlvendt forfra og bagud.' : 'Figuren er spejlvendt fra venstre til højre.'; mutate(() => model.mirror(axis, box.getCenter(new THREE.Vector3()).toArray()));
   };
   // Hent en STL-fil ind som en fast figur. A model larger than the plate is shrunk to fit, keeping its shape.
-  async function importStl(file, fromShelf = false, isCurrent = () => true) {
+  async function importStl(file, fromShelf = false) {
     const fail = message => { if (fromShelf) throw Error(message); status(message); };
     if (!file) return; if (!/\.stl$/i.test(file.name)) return fail('Vælg en STL-fil.');
     if (file.size > 25 * 1024 * 1024) return fail('Filen er for stor. Vælg en STL-fil på højst 25 MB.');
     let info; try { info = readStl(await file.arrayBuffer()); } catch (error) { return fail(`Filen kunne ikke læses: ${error.message}`); }
-    if (!isCurrent()) return;
     const biggest = Math.max(...info.size), fit = biggest > 170 ? 170 / biggest : 1, size = info.size.map(value => Math.max(.1, Math.round(value * fit * 100) / 100));
     assets.set(info.id, info.positions);
     const options = {...placement('mesh'), size, asset: info.id, name: file.name.replace(/\.stl$/i, '')};
@@ -462,9 +464,14 @@ if (view) {
   setupGamePiece({
     opener: $('game-piece-open'),
     dialog: $('game-piece-dialog'),
-    importStl: async (file, isCurrent) => {
+    insertGroup: (name, layout) => {
       if (busy() || failed || contextLost || (managed && !projectReady)) throw Error('Vent til 3D-værkstedet er klar, og prøv igen.');
-      await importStl(file, true, isCurrent);
+      const occupied = model.data.roots.map(id => view.bounds([id])).filter(Boolean);
+      const [x, y] = findFreeSpot(layout.size, occupied.map(box => ({min: box.min.toArray(), max: box.max.toArray()})));
+      const children = gamePieceChildren(layout, assets, layout.size, lastColor);
+      notice = 'Spillebrikken er valgt. Vælg Mere og derefter Del op for at flytte delene hver for sig.';
+      if (!model.data.roots.length) frameFirst = true;
+      mutate(() => model.addMeshGroup(name, children, [x, y, layout.size[2] / 2]));
     }
   });
   $('lock').onclick = () => { const lock = !model.selectedObjects().every(node => node.locked); notice = lock ? 'Figuren er låst. Den kan ikke flyttes eller ændres.' : 'Figuren er låst op.'; mutate(() => model.flag('locked', lock)); };
@@ -519,7 +526,15 @@ if (view) {
     const shifts = textShifts(mode); if (shifts.length) notice = mode === 'hole' ? 'Teksten er sænket 1 mm ned i figuren. Skær hullet ud, så bliver bogstaverne fordybet.' : 'Teksten står på figuren igen.';
     mutate(() => { const mark = model.undoStack.length; model.mode(mode); if (shifts.length) model.moveEach(shifts); model.undoStack.splice(mark + 1); });
   }
-  $('solid').onclick = () => setMode('solid'); $('hole').onclick = () => setMode('hole'); $('group').onclick = () => { notice = 'Figurerne er smeltet sammen.'; mutate(() => model.group()); }; $('ungroup').onclick = () => mutate(() => model.ungroup());
+  $('solid').onclick = () => setMode('solid'); $('hole').onclick = () => setMode('hole'); $('group').onclick = () => { notice = 'Figurerne er smeltet sammen.'; mutate(() => model.group()); };
+  $('ungroup').onclick = () => {
+    const node = model.selectedObjects()[0], layout = legacyPieces.get(assets.get(node.asset));
+    const restored = layout ? gamePieceChildren(layout, assets, node.size, node.color) : null;
+    const count = (restored || node.children).length;
+    notice = `Figuren er delt i ${count} dele. Vælg en del for at ændre den.`;
+    mutate(() => model.ungroup(restored));
+    $('more-menu').querySelector('summary').focus();
+  };
   $('drop').onclick = () => { const box = view.bounds(); if (box) move(0, 0, -box.min.z); };
   document.querySelectorAll('[data-position], [data-size], [data-rotation]').forEach(input => input.addEventListener('change', function changed() {
     if (busy()) { const value = input.value; later(() => { input.value = value; changed(); }); return; }
@@ -832,7 +847,10 @@ if (view) {
     };
     const readProject = async blob => {
       if (!blob || blob.size > 50 * 1024 * 1024) throw Error('Vælg et 3D-projekt på højst 50 MB.');
-      return pendingImports.get(blob) || decodeProject(await blob.text());
+      if (pendingImports.has(blob)) return pendingImports.get(blob);
+      const project = decodeProject(await blob.text());
+      await findLegacyGamePieces(project, legacyPieces);
+      return project;
     };
     const replaceScene = (scene, nextAssets, name = '') => {
       clearTimeout(textPause); queued = []; view.cancelDrag(true);

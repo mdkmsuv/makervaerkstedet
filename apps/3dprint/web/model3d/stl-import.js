@@ -2,7 +2,7 @@ import {validateSTL} from '../../../../sdk/web/stl-validation.mjs';
 /* Reads an STL file into a plain triangle list in millimetres. The geometry worker later joins it into a solid. */
 
 // A short content fingerprint, so the same file imported twice shares one stored copy.
-function fingerprint(bytes) {
+export function stlAssetId(bytes) {
   // Every byte counts, so a file changed in one place gets its own id and is not mixed up with the old one.
   let hash = 2166136261, mix = 7; for (let i = 0; i < bytes.length; i++) { hash = Math.imul(hash ^ bytes[i], 16777619) >>> 0; mix = (mix * 31 + bytes[i]) % 1000000007; }
   return `stl-${bytes.length.toString(36)}-${hash.toString(36)}-${mix.toString(36)}`;
@@ -25,5 +25,5 @@ export function readStl(buffer) {
   }
   const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
   for (let i = 0; i < positions.length; i++) { const axis = i % 3; min[axis] = Math.min(min[axis], positions[i]); max[axis] = Math.max(max[axis], positions[i]); }
-  return {id: fingerprint(bytes), positions, triangles: info.triangles, size: max.map((value, i) => value - min[i])};
+  return {id: stlAssetId(bytes), positions, triangles: info.triangles, size: max.map((value, i) => value - min[i])};
 }

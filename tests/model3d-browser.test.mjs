@@ -9,6 +9,7 @@ import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {createRequire} from 'node:module';
+import {createHash} from 'node:crypto';
 import {sourcePath} from '../scripts/repository-layout.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url)), web = path.join(root, 'apps/3dprint/web');
@@ -56,7 +57,7 @@ const ready = page => page.waitForFunction(() => !document.querySelector('[data-
 async function nameIfAsked(page, name = 'testmodel') { await page.waitForTimeout(50); if (await page.locator('#name-dialog').isVisible()) { await page.locator('#model-name').fill(name); await page.locator('#name-form button[type=submit]').click(); } }
 const field = (page, selector) => page.locator(selector).inputValue().then(Number);
 
-test('a Skoleværkstedet game piece is built locally and added as one undoable model', async () => {
+test('a Skoleværkstedet game piece can be inserted, split and edited one part at a time', async () => {
   const {page, problems} = await open();
   try {
     const opener = page.getByRole('button', {name: 'Lav en spillebrik'});
@@ -90,6 +91,37 @@ test('a Skoleværkstedet game piece is built locally and added as one undoable m
     await ready(page);
     assert.match(await page.locator('#selection-label').textContent(), /Spillebrik Robo-Sol/);
     assert.equal(await page.locator('#download').isEnabled(), true);
+    const more = page.locator('#more-menu summary');
+    await more.press('Enter');
+    assert.equal(await page.getByRole('button', {name: 'Del op', exact: true}).isEnabled(), true);
+    await page.getByRole('button', {name: 'Del op', exact: true}).press('Enter');
+    await ready(page);
+    const parts = page.locator('#object-list button');
+    assert.deepEqual(await parts.allTextContents(), ['Sokkel · Rund', 'Krop · Robot', 'Hoved · Smiley', 'Hat · Krone']);
+    assert.equal(await page.locator('#selection-label').textContent(), '4 figurer valgt');
+    assert.equal(await more.evaluate(el => el === document.activeElement), true);
+    await page.locator('[data-camera=top]').click();
+    await parts.first().press('Enter');
+    const knobs = page.locator('.handle.corner .knob');
+    await knobs.first().waitFor({state: 'visible'});
+    const basePoint = await knobs.evaluateAll(elements => {
+      const boxes = elements.map(el => el.getBoundingClientRect());
+      const xs = boxes.map(r => r.left + r.width / 2), ys = boxes.map(r => r.top + r.height / 2);
+      // Halfway from the rim to the centre, clear of the skewer hole.
+      return [Math.min(...xs) * .75 + Math.max(...xs) * .25, (Math.min(...ys) + Math.max(...ys)) / 2];
+    });
+    await page.locator('#workspace').press('Escape');
+    await page.mouse.click(...basePoint);
+    assert.equal(await page.locator('#selection-label').textContent(), 'Sokkel · Rund');
+    await page.locator('#delete').click();
+    await ready(page);
+    assert.equal(await parts.count(), 3);
+    await page.locator('#undo').click();
+    await ready(page);
+    assert.equal(await parts.count(), 4);
+    await page.locator('#undo').click();
+    await ready(page);
+    assert.match(await page.locator('#selection-label').textContent(), /Spillebrik Robo-Sol/);
     await page.locator('#undo').click();
     await ready(page);
     assert.equal(await page.locator('#empty').isVisible(), true);
@@ -97,6 +129,51 @@ test('a Skoleværkstedet game piece is built locally and added as one undoable m
   } finally {
     await page.close();
   }
+});
+
+test('a saved game piece from the original STL generator splits in place and reopens editable', async () => {
+  // Recreate the four triangle sequences from the first released generator.
+  // Pin them to the actual flattened STL so the fixture cannot drift with the new code.
+  const catalog = JSON.parse(await readFile(path.join(web, 'assets/model3d/game-piece-data.json')));
+  let x = 0;
+  const triangles = [];
+  for (const category of ['base', 'body', 'head', 'hat']) {
+    const {mesh} = catalog.categories[category][0];
+    const vertices = new Float32Array(Uint8Array.from(Buffer.from(mesh.p, 'base64')).buffer);
+    const indices = new Uint16Array(Uint8Array.from(Buffer.from(mesh.i, 'base64')).buffer);
+    const coords = [0, 1, 2].map(axis => vertices.filter((_, i) => i % 3 === axis));
+    const min = coords.map(values => Math.min(...values));
+    const offset = [x - min[0], -min[1], -min[2]];
+    for (const i of indices) offset.forEach((n, axis) => triangles.push(Math.fround(vertices[i * 3 + axis] + n)));
+    x += Math.max(...coords[0]) - min[0] + 6;
+  }
+  assert.equal(createHash('sha256').update(Buffer.from(Float32Array.from(triangles).buffer)).digest('hex'),
+    '85cb833afc6ac741e536c299fa015f3982d00bd09f1a4c9f2a11b1b3bb5b13c9');
+  const mesh = {id:'old', kind:'mesh', mode:'solid', asset:'stl-5sxs-y5wkse-escdxa', name:'Spillebrik Kegle-Sol 1',
+    size:[55.4,13,11], color:'#2f6fb5', matrix:[0,1,0,0,-1,0,0,0,0,0,1,0,10,5,5.5,1]};
+  const project = {format:'makervaerkstedet-3d-project', version:1, assets:[[mesh.asset,triangles]],
+    scene:{format:'makervaerkstedet-3d',version:2,units:'mm',plate:{w:180,d:180},objects:[mesh],roots:[mesh.id]}};
+  const page = await browser.newPage();
+  try {
+    await page.addInitScript(() => { window.ElevhubApp = {}; });
+    await page.goto(base);
+    await page.waitForFunction(() => Boolean(window.ElevhubProjectAdapter));
+    await page.evaluate(doc => window.ElevhubProjectAdapter.import(new Blob([JSON.stringify(doc)]), 'Test'), project);
+    const list = page.locator('#object-list button');
+    await list.first().press('Enter');
+    await page.locator('#more-menu summary').press('Enter');
+    await page.locator('#ungroup').press('Enter');
+    await ready(page);
+    assert.equal(await list.count(), 4);
+    const saved = await page.evaluate(async () => JSON.parse(await (await window.ElevhubProjectAdapter.export()).text()));
+    assert(saved.scene.objects.every(node => node.color === mesh.color));
+    await page.evaluate(doc => window.ElevhubProjectAdapter.import(new Blob([JSON.stringify(doc)]), 'Test'), saved);
+    await list.first().press('Enter');
+    assert.match(await list.first().textContent(), /Sokkel/);
+    const [px, py, bottom] = await place(page);
+    assert(Math.abs(px - 10) < .01 && Math.abs(py + 16.2) < .01 && bottom === 0, 'rotated base stays in place');
+    assert.equal(await page.locator('#download').isEnabled(), true);
+  } finally { await page.close(); }
 });
 
 async function typeMeasure(page, letter, value) {

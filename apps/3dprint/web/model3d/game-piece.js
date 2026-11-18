@@ -1,7 +1,7 @@
 // Meshes, assembly dimensions and print layout adapted from Skoleværkstedet's
 // Brætspilsfabrik by Mathias Kusk Damgaard. See the app README for the source.
 import {Color, Vector3} from 'three';
-import {exportBinaryStl} from './geometry.js';
+import {stlAssetId} from './stl-import.js';
 
 const groups = {base: 'Sokkel', body: 'Krop', head: 'Hoved', hat: 'Hat'};
 const groupIds = Object.keys(groups);
@@ -29,28 +29,84 @@ function meshOf(part) {
   return meshCache.get(part);
 }
 
-function printFile(parts, title) {
-  const meshes = parts.map(meshOf);
-  const positions = new Float32Array(meshes.reduce((length, mesh) => length + mesh.positions.length, 0));
-  const indices = new Uint32Array(meshes.reduce((length, mesh) => length + mesh.indices.length, 0));
-  let x = 0, y = 0, rowHeight = 0, vertexOffset = 0, indexOffset = 0;
-  for (const mesh of meshes) {
-    const width = mesh.max[0] - mesh.min[0], height = mesh.max[1] - mesh.min[1];
-    if (x && x + width > 170) {
+let catalog;
+function loadCatalog() {
+  if (!catalog) catalog = fetch('/assets/model3d/game-piece-data.json').then(response => {
+    if (!response.ok) throw Error('Dele mangler.');
+    return response.json();
+  }).catch(error => { catalog = null; throw error; });
+  return catalog;
+}
+
+// Bed coordinates match the print layout used by the original generator.
+function printLayout(parts) {
+  let x = 0, y = 0, rowHeight = 0;
+  const size = [0, 0, 0];
+  const items = parts.map((part, i) => {
+    const mesh = meshOf(part);
+    const extent = mesh.max.map((n, axis) => n - mesh.min[axis]);
+    if (x && x + extent[0] > 170) {
       x = 0;
       y += rowHeight + 6;
       rowHeight = 0;
     }
-    const offset = [x - mesh.min[0], y - mesh.min[1], -mesh.min[2]];
-    mesh.positions.forEach((value, i) => { positions[vertexOffset * 3 + i] = value + offset[i % 3]; });
-    mesh.indices.forEach((index, i) => { indices[indexOffset + i] = vertexOffset + index; });
-    vertexOffset += mesh.positions.length / 3;
-    indexOffset += mesh.indices.length;
-    x += width + 6;
-    rowHeight = Math.max(rowHeight, height);
+    const origin = [x, y, 0];
+    extent.forEach((n, axis) => { size[axis] = Math.max(size[axis], origin[axis] + n); });
+    x += extent[0] + 6;
+    rowHeight = Math.max(rowHeight, extent[1]);
+    return {mesh, extent, origin, name: `${groups[groupIds[i]]} · ${part.label}`};
+  });
+  return {items, size};
+}
+
+export function gamePieceChildren(layout, assets, size = layout.size, color) {
+  const scale = size.map((n, axis) => n / layout.size[axis]);
+  return layout.items.map(({mesh, extent, origin, name}) => {
+    // Repeated choices share the same editable project asset.
+    if (!mesh.asset) {
+      const positions = new Float32Array(mesh.indices.length * 3);
+      mesh.indices.forEach((vertex, i) => {
+        positions.set(mesh.positions.subarray(vertex * 3, vertex * 3 + 3), i * 3);
+      });
+      mesh.asset = {id: stlAssetId(new Uint8Array(positions.buffer)), positions};
+    }
+    assets.set(mesh.asset.id, mesh.asset.positions);
+    return {id: crypto.randomUUID(), kind: 'mesh', mode: 'solid', name, asset: mesh.asset.id,
+      size: extent.map((n, axis) => n * scale[axis]),
+      position: extent.map((n, axis) => (origin[axis] + n / 2) * scale[axis] - size[axis] / 2),
+      ...(color ? {color} : {})};
+  });
+}
+
+// Old .mkv3d projects stored one flattened STL. Recognise its exact triangles
+// before offering to split it. Looking at a project never changes its contents.
+export async function findLegacyGamePieces({scene, assets}, recognised) {
+  const candidates = scene.objects.filter(node => node.kind === 'mesh' && /^Spillebrik .+ [1-9]\d{0,3}$/.test(node.name));
+  if (!candidates.length) return;
+  let data;
+  try { data = await loadCatalog(); } catch { return; }
+  for (const node of candidates) {
+    const triangles = assets.get(node.asset);
+    if (recognised.has(triangles)) continue;
+    const number = Number(node.name.split(' ').at(-1));
+    let value = number - 1;
+    const indexes = groupIds.map(() => 0);
+    for (let i = indexes.length - 1; i >= 0; i--) {
+      const count = data.categories[groupIds[i]].length;
+      indexes[i] = value % count;
+      value = Math.floor(value / count);
+    }
+    if (value || node.name !== `Spillebrik ${namesA[indexes[1]]}-${namesB[indexes[2]]} ${number}`) continue;
+    const layout = printLayout(groupIds.map((id, i) => data.categories[id][indexes[i]]));
+    if (triangles.length !== layout.items.reduce((n, {mesh}) => n + mesh.indices.length * 3, 0)) continue;
+    let at = 0;
+    const matches = layout.items.every(({mesh, origin}) => {
+      const offset = origin.map((n, axis) => n - mesh.min[axis]);
+      return mesh.indices.every(index => offset.every((shift, axis) =>
+        triangles[at++] === Math.fround(mesh.positions[index * 3 + axis] + shift)));
+    });
+    if (matches) recognised.set(triangles, layout);
   }
-  const stl = exportBinaryStl({merged: {positions, indices}, exportBlocked: false});
-  return new File([stl], `Spillebrik ${title}.stl`, {type: 'model/stl'});
 }
 
 // Orthographic preview of the actual meshes assembled at their connector points.
@@ -104,14 +160,14 @@ function drawPreview(canvas, parts) {
   }
 }
 
-export function setupGamePiece({opener, dialog, importStl}) {
+export function setupGamePiece({opener, dialog, insertGroup}) {
   const selectors = dialog.querySelector('[data-piece-options]');
   const status = dialog.querySelector('[role="status"]');
   const canvas = dialog.querySelector('canvas');
   const insert = dialog.querySelector('[data-piece-insert]');
   const shuffle = dialog.querySelector('[data-piece-shuffle]');
   const indexes = groupIds.map(() => 0);
-  let data, sections, current, opening = 0, inserting = false;
+  let data, sections, current, opening = 0;
 
   function update() {
     const parts = groupIds.map((group, i) => data.categories[group][indexes[i]]);
@@ -137,9 +193,7 @@ export function setupGamePiece({opener, dialog, importStl}) {
     }
     status.textContent = 'Henter brikkernes dele …';
     try {
-      const response = await fetch('/assets/model3d/game-piece-data.json');
-      if (!response.ok) throw Error('Dele mangler.');
-      const loaded = await response.json();
+      const loaded = await loadCatalog();
       if (!dialog.open || attempt !== opening) return;
       sections = groupIds.map((group, groupIndex) => {
         // Keep choices inside Chromium's page in the kiosk session.
@@ -187,19 +241,13 @@ export function setupGamePiece({opener, dialog, importStl}) {
     update();
   });
 
-  insert.addEventListener('click', async () => {
-    if (inserting || !current) return;
-    inserting = true;
-    insert.disabled = true;
-    const fromOpening = opening;
+  insert.addEventListener('click', () => {
+    if (!current || !dialog.open) return;
     try {
-      await importStl(printFile(current.parts, current.title), () => dialog.open && opening === fromOpening);
-      if (dialog.open && opening === fromOpening) dialog.close();
+      insertGroup(`Spillebrik ${current.title}`, printLayout(current.parts));
+      dialog.close();
     } catch (error) {
-      if (dialog.open && opening === fromOpening) status.textContent = error.message || 'Brikken kunne ikke sættes på pladen.';
-    } finally {
-      inserting = false;
-      insert.disabled = false;
+      status.textContent = error.message || 'Brikken kunne ikke sættes på pladen.';
     }
   });
 }

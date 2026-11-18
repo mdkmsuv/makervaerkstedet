@@ -175,12 +175,24 @@ export class SceneModel {
       // Without a colour of its own, the combined part shows each part's colour; choosing a colour paints it all.
       this.data.objects.push({id, kind: 'group', op: 'difference', children, mode: 'solid', matrix: identity().toArray(), ...(locked ? {locked} : {})}); }); this.selected = [id];
   }
-  ungroup() {
-    if (this.selected.length !== 1) return; const group = this.object(this.selected[0]); if (group?.kind !== 'group' || group.mode === 'hole' || group.locked) return;
+  addMeshGroup(name, children, position) {
+    const id = crypto.randomUUID();
     this.change(() => {
-      const parent = objectMatrix(group); for (const id of group.children) { const child = this.object(id); child.matrix = parent.clone().multiply(objectMatrix(child)).toArray(); }
-      this.data.roots = this.data.roots.flatMap(id => id === group.id ? group.children : [id]); this.data.objects = this.data.objects.filter(node => node.id !== group.id);
-    }); this.selected = [...group.children];
+      this.data.objects.push(...children, {id, kind: 'group', op: 'union', mode: 'solid', name, position, children: children.map(node => node.id)});
+      this.data.roots.push(id);
+    });
+    this.selected = [id];
+  }
+  ungroup(restoredParts = null) {
+    if (this.selected.length !== 1) return;
+    const group = this.object(this.selected[0]);
+    if (!group || group.mode === 'hole' || group.locked || !(group.kind === 'group' || (group.kind === 'mesh' && restoredParts))) return;
+    const children = restoredParts ? restoredParts.map(node => node.id) : group.children;
+    this.change(() => {
+      if (restoredParts) this.data.objects.push(...restoredParts);
+      const parent = objectMatrix(group); for (const id of children) { const child = this.object(id); child.matrix = parent.clone().multiply(objectMatrix(child)).toArray(); }
+      this.data.roots = this.data.roots.flatMap(id => id === group.id ? children : [id]); this.data.objects = this.data.objects.filter(node => node.id !== group.id);
+    }); this.selected = [...children];
   }
   // Lock or hide the selection (value true/false). Hidden parts are not drawn and do not go into the file.
   flag(name, value) { if (!['locked', 'hidden'].includes(name)) return false; return this.change(() => this.selectedObjects().forEach(node => { if (value) node[name] = true; else delete node[name]; })); }

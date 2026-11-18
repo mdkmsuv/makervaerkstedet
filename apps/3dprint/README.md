@@ -5,8 +5,9 @@ internet; aflevering til skolens printsystem er en særskilt handling.
 
 **Lav en spillebrik** åbner Skoleværkstedets Brætspilsfabrik i editoren.
 Vælg sokkel, krop, hoved og hat, og se den samlede brik. **Sæt på pladen**
-indsætter de fire printdele samlet som én model, med de oprindelige mål.
-Delene står hver for sig til print og samles bagefter med et grillspyd.
+indsætter de fire printdele som en valgt gruppe med de oprindelige mål.
+Vælg **Mere → Del op** for at flytte eller ændre sokkel, krop, hoved og hat
+hver for sig. Delene står klar til print og samles bagefter med et grillspyd.
 
 De 28 dele kommer fra Mathias Kusk Damgaards
 [Skoleværkstedet](https://xn--skolevrkstedet-5ib.dk/). De er pakket lokalt som
