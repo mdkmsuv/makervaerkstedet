@@ -3,6 +3,7 @@ import tempfile
 import threading
 import unittest
 from types import SimpleNamespace
+from uuid import uuid4
 
 from app.core import FRESH_SECONDS, Queue
 from app.printer_config import ConfigConflict
@@ -88,7 +89,8 @@ class PrintPlateTests(unittest.TestCase):
     def test_bridge_requires_service_auth_and_rejects_extra_commands_and_replays(self):
         self.report()
         server = Server(('127.0.0.1', 0), Handler)
-        server.app = SimpleNamespace(queue=self.queue, printer_bridge=SimpleNamespace(token='test-service'))
+        token = uuid4().hex
+        server.app = SimpleNamespace(queue=self.queue, printer_bridge=SimpleNamespace(token=token))
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         self.addCleanup(thread.join)
@@ -97,16 +99,16 @@ class PrintPlateTests(unittest.TestCase):
         http = _HTTP(server)
         path = '/api/makerspace/printers/plates'
         self.assertEqual(http.json('GET', path)[0], 401)
-        self.assertEqual(http.json('GET', path, cookie='test=1', authorization='test-service')[0], 401)
-        status, _, result = http.json('GET', path, authorization='test-service')
+        self.assertEqual(http.json('GET', path, cookie='test=1', authorization=token)[0], 401)
+        status, _, result = http.json('GET', path, authorization=token)
         self.assertEqual(status, 200)
         plate, = result['plates']
         confirm = {'id': plate['id'], 'token': plate['token']}
         self.assertEqual(http.json('POST', path, confirm)[0], 401)
-        self.assertEqual(http.json('POST', path, dict(confirm, action='start'), authorization='test-service')[0], 400)
-        status, _, result = http.json('POST', path, confirm, authorization='test-service')
+        self.assertEqual(http.json('POST', path, dict(confirm, action='start'), authorization=token)[0], 400)
+        status, _, result = http.json('POST', path, confirm, authorization=token)
         self.assertEqual((status, result), (200, {'ok': True}))
-        self.assertEqual(http.json('POST', path, confirm, authorization='test-service')[0], 409)
+        self.assertEqual(http.json('POST', path, confirm, authorization=token)[0], 409)
 
 
 class PrintPlateWorkflowTests(unittest.TestCase):
