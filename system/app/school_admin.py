@@ -22,22 +22,6 @@ def _port(value):
     return value
 
 
-def codes(data):
-    result = []
-    for folder, label in (('printvaerksted', 'Printværksted'), ('designvaerksted', 'Laserværksted')):
-        path = data / folder / 'laererkode.txt'
-        try:
-            path.lstat()
-        except FileNotFoundError:
-            code = None
-        else:
-            code = _read(_plain(path, False)).decode('utf-8-sig').strip()
-            if not code or any(not char.isprintable() for char in code):
-                raise ValueError('Lærerkoden har et ugyldigt format.')
-        result.append({'label': label, 'code': code})
-    return result
-
-
 def urls(data):
     config = _json(data / 'konfiguration.json')
     teacher = ipaddress.IPv4Address(config['laerer_adresse'])
@@ -91,7 +75,7 @@ def main():
         if args.action == 'lease':
             value['selection_sha256'] = active_selection_sha256()
     elif args.action == 'codes':
-        value = codes(data)
+        value = {'configured': (data / 'hub' / 'laerer.json').is_file()}
     elif args.action == 'laser-url':
         value = {'laser': laser_url(data)}
     else:

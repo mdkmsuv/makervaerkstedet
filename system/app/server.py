@@ -339,6 +339,10 @@ class Handler(BaseHTTPRequestHandler):
         if self.app.auth.session(self.headers.get('Cookie')):
             return True
         authorization = self.headers.get('Authorization', '')
+        if authorization and self.app.auth.shared_file is not None:
+            if (not ipaddress.ip_address(self.client_address[0]).is_loopback or self.headers.get('Origin')
+                    or self.headers.get('Cookie') or self.headers.get('X-Print-Source')):
+                return False
         return (authorization.startswith('Bearer ') and
                 self.app.auth.verify(authorization[7:], self.submission_source()))
 
@@ -802,7 +806,10 @@ def main():
         server.app = app
         print(f"Printværksted: http://localhost:{args.port}")
         print(f"Lærerside: http://localhost:{args.port}/laerer")
-        print(f"Lærerkoden ligger i: {folder / 'laererkode.txt'}")
+        if app.auth.shared_file is None:
+            print(f"Lærerkoden ligger i: {folder / 'laererkode.txt'}")
+        else:
+            print('Brug skolens lærerkode fra kontrolpanelet.')
         print('DEMOVERSION - ingen fysiske printere' if app.demo else 'Skolens printere - tilføj dem på lærersiden')
         server.serve_forever()
     except KeyboardInterrupt:

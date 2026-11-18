@@ -137,7 +137,7 @@ class QueueClient:
             raise QueueUnavailable('Køserveren sendte et ugyldigt svar.') from None
 
     def login(self, code):
-        if not isinstance(code, str) or not 1 <= len(code) <= 200:
+        if not isinstance(code, str) or not code:
             raise ValueError('Skriv lærerkoden.')
         _, headers, _ = self._request('/api/laser/login', {'code': code})
         cookie = SimpleCookie(headers.get('Set-Cookie', ''))

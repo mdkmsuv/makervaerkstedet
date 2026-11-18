@@ -84,7 +84,7 @@ Brug `Manage-School.cmd` til:
 2. SSH til en registreret computer;
 3. opsætningskontrol;
 4. kopi af offentlig `school-connection*.json` til en valgt USB-mappe;
-5. visning af lokale lærer-/printkoder;
+5. status for skolens fælles lærerkode;
 6. åbning af lokale lærerpaneler;
 7. afmelding af en elevcomputer før geninstallation;
 8. åbning af serverens kontrolpanel;

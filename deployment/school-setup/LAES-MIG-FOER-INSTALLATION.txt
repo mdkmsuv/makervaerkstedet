@@ -117,7 +117,7 @@ samme panel. Log ind med Elevhub-lærerkoden. Ældre elevinstallationer, der
 endnu ikke melder en softwareversion, vises med ukendt versionsstatus.
 
 `Manage-School.cmd` kan oprette koder, åbne SSH til tilmeldte elevcomputere,
-kontrollere opsætning, vise lokale lærer-/printkoder og åbne paneler. Privat
+kontrollere opsætning, vise om skolens lærerkode er valgt og åbne paneler. Privat
 SSH-nøgle og serverdata ligger i den beskyttede ProgramData-mappe.
 Sikkerhedskopiér serverdata og elevprojekter efter skolens egen praksis.
 

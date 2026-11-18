@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import secrets
 import socket
 import subprocess
 import tempfile
@@ -105,9 +106,10 @@ def run(package: Path, scratch_parent: Path) -> dict:
     scratch_parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="windows-qa-", dir=scratch_parent) as temporary:
         root = Path(temporary)
-        print_data, laser_data, plates = root / "print", root / "laser", root / "plates"
+        print_data, laser_data, plates = root / "printvaerksted", root / "designvaerksted", root / "plates"
+        hub_data = root / "hub"
         local_appdata, temp_dir, home = root / "localappdata", root / "tmp", root / "home"
-        for path in (print_data, laser_data, plates, local_appdata, temp_dir, home):
+        for path in (print_data, laser_data, hub_data, plates, local_appdata, temp_dir, home):
             path.mkdir(parents=True)
         (print_data / "settings.json").write_text(
             json.dumps({"studio_path": str(root / "missing-studio.exe"), "printers": []}), encoding="utf-8"
@@ -123,6 +125,12 @@ def run(package: Path, scratch_parent: Path) -> dict:
             "USERPROFILE": str(home),
             "HOME": str(home),
         })
+        teacher_code = secrets.token_urlsafe(24)
+        subprocess.run([str(python), "-B", "-c",
+                        "import sys; sys.path.insert(0, sys.argv[1]); from tilstand import Laererkode; "
+                        "Laererkode(sys.argv[2]).vaelg(sys.stdin.read())",
+                        str(package / "hub"), str(hub_data)], input=teacher_code, text=True,
+                       env=env, cwd=root, check=True, timeout=15)
         commands = [
             package_command(package, 'print-server', ["--host", "127.0.0.1", "--port", str(print_port), "--data", str(print_data)]),
             package_command(package, 'design', ["--host", "127.0.0.1", "--port", str(design_port), "--teacher-host", "127.0.0.1", "--teacher-port", str(teacher_port), "--data", str(laser_data)]),
@@ -155,9 +163,6 @@ def run(package: Path, scratch_parent: Path) -> dict:
                 raise QaFailure("Printer settings CSS was not served")
 
             expect_unauthorized(f"http://127.0.0.1:{print_port}/api/settings")
-            teacher_code = (print_data / "laererkode.txt").read_text(encoding="ascii").strip()
-            if len(teacher_code) < 8 or teacher_code in {"kloster9000", "changeme", "password"}:
-                raise QaFailure("Print teacher code was not freshly generated")
             status, response_headers, _ = request_json(
                 f"http://127.0.0.1:{print_port}/api/auth/login", body={"code": teacher_code}
             )
@@ -197,10 +202,9 @@ def run(package: Path, scratch_parent: Path) -> dict:
             state_status, _, state = request_json(f"http://127.0.0.1:{station_port}/api/station/state")
             if state_status != 200 or not isinstance(state, dict):
                 raise QaFailure("Laser station state is unavailable")
-            laser_code = (laser_data / "laererkode.txt").read_text(encoding="ascii").strip()
             status, _, _ = request_json(
                 f"http://127.0.0.1:{station_port}/api/station/login",
-                body={"code": laser_code},
+                body={"code": teacher_code},
                 headers={"Origin": f"http://127.0.0.1:{station_port}"},
                 method="POST",
             )

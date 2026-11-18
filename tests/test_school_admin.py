@@ -84,7 +84,7 @@ class SchoolAdminActiveTests(unittest.TestCase):
         }), encoding='utf-8')
         (self.data / 'school.json').write_text(json.dumps({'role': role}), encoding='utf-8')
 
-    def test_inspect_and_codes_are_selected_and_missing_code_is_null(self):
+    def test_inspect_and_code_status_use_the_selected_central_panel(self):
         self._write_common_config()
         (self.data / 'printvaerksted').mkdir()
         (self.data / 'printvaerksted/laererkode.txt').write_text('print-code\n', encoding='utf-8')
@@ -98,11 +98,10 @@ class SchoolAdminActiveTests(unittest.TestCase):
         self.assertEqual(inspect['revision'], 4)
         codes = self._run('codes')
         self.assertEqual(codes.returncode, 0, codes.stderr)
-        self.assertEqual(json.loads(codes.stdout), [
-            {'label': 'Printværksted', 'code': 'print-code'},
-            {'label': 'Laserværksted', 'code': None},
-        ])
-        self.assertNotIn('PRIVATE KEY', codes.stdout)
+        self.assertEqual(json.loads(codes.stdout), {'configured': False})
+        (self.data / 'hub').mkdir(exist_ok=True)
+        (self.data / 'hub/laerer.json').write_text('{"synthetic":"verifier"}')
+        self.assertEqual(json.loads(self._run('codes').stdout), {'configured': True})
 
     def test_urls_vm_and_makerspace_use_expected_hosts_and_ports(self):
         self._write_common_config(role='vm')

@@ -233,7 +233,7 @@ Write-Host '1. Opret engangskode til en ny elevcomputer'
 Write-Host '2. Åbn SSH til en registreret computer'
 Write-Host '3. Kontrollér opsætning'
 Write-Host '4. Kopiér offentlig skolefil til USB'
-Write-Host '5. Vis lokale lærer-/printkoder'
+Write-Host '5. Se status for skolens lærerkode'
 Write-Host '6. Åbn lokale lærerpaneler'
 Write-Host '7. Afmeld elevcomputer (også defekt eller offline)'
 Write-Host '8. Åbn serverens kontrolpanel (printere, computere og versioner)'
@@ -272,13 +272,12 @@ switch ($choice) {
   }
   '5' {
     if ($startupMode -eq 'generation-v1') {
-      $codes = Invoke-SchoolAdmin 'codes'
-      foreach ($item in @($codes)) { Write-Host (($item.label) + ': ' + ($(if ($null -eq $item.code) { 'koden er endnu ikke oprettet.' } else { $item.code }))) }
+      $configured = (Invoke-SchoolAdmin 'codes').configured
     } else {
-      foreach ($item in @(@{label='Printværksted';path=(Join-Path $DataRoot 'printvaerksted\laererkode.txt')}, @{label='Laserværksted';path=(Join-Path $DataRoot 'designvaerksted\laererkode.txt')})) {
-        if (Test-Path -LiteralPath $item.path -PathType Leaf) { Write-Host ($item.label + ': ' + (Get-Content -LiteralPath $item.path -Raw).Trim()) } else { Write-Host ($item.label + ': koden er endnu ikke oprettet.') }
-      }
+      $configured = Test-Path -LiteralPath (Join-Path $DataRoot 'hub\laerer.json') -PathType Leaf
     }
+    if ($configured) { Write-Host 'Skolens lærerkode er valgt. Brug den til kontrolpanelet, Printværkstedet og laserstationen.' }
+    else { Write-Host 'Åbn kontrolpanelet på serveren med punkt 8, og vælg skolens lærerkode.' }
   }
   '6' {
     if ($startupMode -eq 'generation-v1') {

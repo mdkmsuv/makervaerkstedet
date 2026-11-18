@@ -258,7 +258,7 @@ function setTeacherSession(ready){
 }
 async function login(){
   const button=$('login-form').querySelector('button');button.disabled=true;showError('login-error','');
-  try{await api('/api/auth/login',{code:$('admin-token').value.trim()});sessionChecked=true;setTeacherSession(true)}
+  try{await api('/api/auth/login',{code:$('admin-token').value});sessionChecked=true;setTeacherSession(true)}
   catch(error){setTeacherSession(false);showError('login-error',error.message)}
   finally{$('admin-token').value='';button.disabled=false}
 }

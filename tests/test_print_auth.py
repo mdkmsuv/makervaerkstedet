@@ -62,6 +62,16 @@ class PrintAuthTests(unittest.TestCase):
         self.assertEqual(headers['Retry-After'], '60')
         self.assertEqual(self.request('/api/settings', headers={'Authorization': 'Bearer local-test-code'})[0], 429)
 
+    def test_managed_service_key_is_reserved_for_direct_local_tools(self):
+        with tempfile.TemporaryDirectory() as directory:
+            self.auth.shared_file = Path(directory) / 'laerer.json'
+            key = {'Authorization': 'Bearer local-test-code'}
+            self.assertEqual(self.request('/api/settings', headers=key)[0], 200)
+            for browser in ({'Origin': f'http://127.0.0.1:{self.server.server_port}'},
+                            {'Cookie': 'print_teacher=expired'}, {'X-Print-Source': '127.0.0.1'}):
+                self.assertEqual(self.request('/api/settings', headers=key | browser)[0], 401)
+            self.assertEqual(self.request('/api/auth/login', {'code': 'local-test-code'})[0], 401)
+
     def test_untrusted_host_and_cross_origin_are_rejected(self):
         for route, body in (('/api/auth/login', {'code': 'local-test-code'}), ('/api/settings', None)):
             status, _, _ = self.request(route, body, {'Host': f'evil.invalid:{self.server.server_port}',
@@ -166,25 +176,42 @@ class SharedTeacherCodeTests(unittest.TestCase):
             (self.root / 'broken.json').write_text(broken, encoding='utf-8')
             self.assertFalse(shared_teacher_code_matches(self.root / 'broken.json', self.SHARED))
 
-    def test_print_login_accepts_shared_and_own_code_but_tools_only_the_own(self):
+    def test_print_login_uses_only_current_panel_code_and_tools_keep_their_key(self):
         from app.teacher_auth import shared_teacher_code_file
         auth = TeacherAuth('print-own-code', shared_file=shared_teacher_code_file(self.root / 'printvaerksted'))
         self.assertTrue(auth.session('print_teacher=' + auth.login(self.SHARED, 'source')))
-        self.assertTrue(auth.session('print_teacher=' + auth.login('print-own-code', 'source')))
         self.assertEqual(dict(auth.failures), {})
         with self.assertRaises(PermissionError):
-            auth.login('forkert kode', 'source')
+            auth.login('print-own-code', 'source')
         self.assertEqual(len(auth.failures['source']), 1)
         # Local launch/stop tools keep using the service's own code only.
         self.assertFalse(auth.verify(self.SHARED, 'tool'))
+        self.assertTrue(auth.verify('print-own-code', 'tool'))
         # A newly chosen control panel code applies at once, without a restart.
         self.panel.nulstil()
         with self.assertRaises(PermissionError):
             auth.login(self.SHARED, 'other')
+        with self.assertRaises(PermissionError):
+            auth.login('print-own-code', 'other')
         self.panel.vaelg('Ny fælles kode')
         self.assertTrue(auth.login('Ny fælles kode', 'other'))
+        self.panel.sti.write_text('{}')
+        with self.assertRaises(PermissionError):
+            auth.login('print-own-code', 'other')
 
-    def test_laser_queue_login_accepts_shared_and_own_code_over_http(self):
+    def test_managed_first_start_waits_for_the_panel_and_standalone_uses_its_code(self):
+        from app.teacher_auth import shared_teacher_code_file
+        with tempfile.TemporaryDirectory() as folder:
+            service = Path(folder) / 'printvaerksted'
+            with patch.dict('os.environ', {'ELEVHUB_SCHOOL_MODE': '1'}):
+                auth = TeacherAuth('local-service', shared_file=shared_teacher_code_file(service))
+                with self.assertRaises(PermissionError):
+                    auth.login('local-service', 'teacher')
+            with patch.dict('os.environ', {}, clear=True):
+                auth = TeacherAuth('local-service', shared_file=shared_teacher_code_file(service))
+                self.assertTrue(auth.login('local-service', 'teacher'))
+
+    def test_laser_queue_uses_only_the_current_panel_code_over_http(self):
         from app.laser_server import create_server
         student = create_server(self.root / 'designvaerksted', port=0, code='laser-own-code')
         teacher = create_server(self.root / 'designvaerksted', port=0, inbox=student.inbox, surface='teacher')
@@ -205,11 +232,13 @@ class SharedTeacherCodeTests(unittest.TestCase):
             finally:
                 connection.close()
 
-        for code in (self.SHARED, 'laser-own-code'):
-            status, cookie = login(code)
-            self.assertEqual(status, 200, code)
-            self.assertIn('laser_teacher=', cookie)
+        status, cookie = login(self.SHARED)
+        self.assertEqual(status, 200)
+        self.assertIn('laser_teacher=', cookie)
+        self.assertEqual(login('laser-own-code')[0], 401)
         self.assertEqual(login('forkert kode')[0], 401)
+        self.panel.nulstil()
+        self.assertEqual(login('laser-own-code')[0], 401)
 
 
 if __name__ == '__main__':

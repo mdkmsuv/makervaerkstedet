@@ -98,9 +98,8 @@ Første gang vælger læreren selv en lærerkode på mindst otte tegn i browsere
 ved senere besøg bruges denne kode. Herfra kan læreren se elevcomputere, printere,
 maskiner, køer og versionsstatus. Der må gerne stå nul elevcomputere.
 
-`Manage-School.cmd`, punkt 5, viser de særskilte lærer-/printkoder til
-Printværkstedet og Laserværkstedet. De er ikke det samme som koden til det
-samlede kontrolpanel.
+Brug den samme lærerkode til skolens kontrolpanel, Printværkstedet og
+laserstationen. Punkt 5 i `Manage-School.cmd` viser, om lærerkoden er valgt.
 
 Åbn `Manage-School.cmd` som administrator ved behov. De vigtigste punkter er:
 

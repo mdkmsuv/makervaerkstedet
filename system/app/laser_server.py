@@ -34,7 +34,7 @@ from app.project_origins import DEFAULT_PROJECT_ORIGINS, validate_project_origin
 from app.demo_workshop import demo_component
 from app.laser_images import clean_motif, image_details, prepared_svg
 from app.laser_workflows import LaserWorkflows
-from app.teacher_auth import shared_teacher_code_file, shared_teacher_code_matches
+from app.teacher_auth import shared_teacher_code_file, teacher_login_matches
 from app.printer_config import ConfigConflict
 from app.laser_inbox_lifecycle import (cleanup_terminal_payload, cleanup_terminal_payloads,
                                         delete_expired_history, enable_incremental_autovacuum,
@@ -223,13 +223,12 @@ class Inbox:
             db.execute('CREATE TABLE IF NOT EXISTS image_settings (job_id TEXT PRIMARY KEY, modes TEXT NOT NULL)')
             ensure_payload_column(db)
         code_file = self.folder / 'laererkode.txt'
-        if code is None:
+        self.shared_code_file = shared_teacher_code_file(self.folder)
+        if code is None and self.shared_code_file is None:
             if not code_file.exists():
                 code_file.write_text(secrets.token_hex(5), encoding='ascii')
             code = code_file.read_text(encoding='ascii').strip()
         self.code = code
-        # The teacher code chosen in the control panel also opens the laser queue.
-        self.shared_code_file = shared_teacher_code_file(self.folder)
         self.workflows = LaserWorkflows(self)
         self.workflows.initialize()
         with self.db() as db:
@@ -669,11 +668,9 @@ class Handler(BaseHTTPRequestHandler):
                         return self.reply(429,{'error':'Vent et minut og prøv igen.'})
                     attempts.append(now)
                     self.inbox.attempts[self.client_address[0]] = attempts
-                    code = str(data.get('code',''))
-                    # The attempt limit above also bounds the shared code's slow hash.
-                    if (not hmac.compare_digest(code.encode(),self.inbox.code.encode())
-                            and not shared_teacher_code_matches(self.inbox.shared_code_file, code)):
+                    if not teacher_login_matches(self.inbox.shared_code_file, data.get('code'), self.inbox.code):
                         return self.reply(401,{'error':'Lærerkoden passer ikke.'})
+                    attempts.pop()
                     self.inbox.sessions = {k:v for k,v in self.inbox.sessions.items() if v > now}
                     token = secrets.token_urlsafe(32)
                     self.inbox.sessions[token] = now + 8*3600
@@ -758,7 +755,10 @@ def main(argv=None):
         teacher_started = True
         print(f'Laserværksted: http://{args.host}:{args.port}/',flush=True)
         print(f'Lærerside: http://{args.teacher_host}:{args.teacher_port}/',flush=True)
-        print(f'Lærerkoden ligger i {data / "laererkode.txt"}',flush=True)
+        if server.inbox.shared_code_file is None:
+            print(f'Lærerkoden ligger i {data / "laererkode.txt"}',flush=True)
+        else:
+            print('Log ind med den lærerkode, der er valgt i skolens kontrolpanel.', flush=True)
         server.serve_forever()
     except KeyboardInterrupt:
         pass

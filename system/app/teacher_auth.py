@@ -4,6 +4,7 @@ import hashlib
 import hmac
 from http.cookies import CookieError, SimpleCookie
 import json
+import os
 from pathlib import Path
 import secrets
 import threading
@@ -17,10 +18,14 @@ class LoginLimited(Exception):
 def shared_teacher_code_file(folder):
     """Where the control panel keeps the teacher code on a school server.
 
-    The print and laser services have their data folders beside the control
-    panel's ``hub`` folder. In any other layout the file is simply absent.
+    A freshly started school service can precede the hub's first setup.
+    Standalone installations continue to use their own code.
     """
-    return Path(folder).resolve().parent / 'hub' / 'laerer.json'
+    root = Path(folder).resolve().parent
+    if (os.environ.get('ELEVHUB_SCHOOL_MODE') == '1' or (root / 'school.json').exists()
+            or (root / 'hub').is_dir()):
+        return root / 'hub' / 'laerer.json'
+    return None
 
 
 def shared_teacher_code_matches(path, code):
@@ -28,11 +33,11 @@ def shared_teacher_code_matches(path, code):
 
     One code, chosen once on the server, opens the control panel, the print
     service and the laser queue. Only the control panel's salted hash is read;
-    the code itself is never stored here. Never raises: an absent, unreadable
-    or malformed file means the service's own code is the only one accepted.
+    the code itself is never stored here. An absent, unreadable or malformed
+    school verifier leaves teacher login closed until the panel is ready.
     """
     try:
-        if not isinstance(code, str) or not 8 <= len(code) <= 256:
+        if not isinstance(code, str) or len(code) < 8:
             return False
         path = Path(path)
         if path.is_symlink() or not path.is_file() or path.stat().st_size > 2048:
@@ -50,12 +55,17 @@ def shared_teacher_code_matches(path, code):
         return False
 
 
+def teacher_login_matches(shared_file, code, local_code):
+    if shared_file is not None:
+        return shared_teacher_code_matches(shared_file, code)
+    return isinstance(code, str) and hmac.compare_digest(code.encode('utf-8'), local_code.encode('utf-8'))
+
+
 class TeacherAuth:
     lifetime = 8 * 3600
 
     def __init__(self, code, shared_file=None):
-        self.code = code.encode('utf-8')
-        # The control panel's code file; its code is accepted at login too.
+        self.code = code
         self.shared_file = shared_file
         self.sessions = {}
         self.failures = defaultdict(deque)
@@ -69,11 +79,11 @@ class TeacherAuth:
             if not attempts:
                 del self.failures[source]
 
-    def _verify(self, code, source, now):
+    def _verify(self, code, source, now, shared_file=None):
         self._prune(now)
         if len(self.failures.get(source, ())) >= 10 or sum(map(len, self.failures.values())) >= 1000:
             raise LoginLimited('For mange forsøg. Vent et minut, og prøv igen.')
-        if not isinstance(code, str) or not hmac.compare_digest(code.encode('utf-8'), self.code):
+        if not teacher_login_matches(shared_file, code, self.code):
             self.failures[source].append(now)
             return False
         return True
@@ -87,14 +97,8 @@ class TeacherAuth:
     def login(self, code, source):
         with self.lock:
             now = time.monotonic()
-            if not self._verify(code, source, now):
-                # Only the browser login tries the shared code: the rate limit
-                # above bounds how often its deliberately slow hash is computed.
-                if self.shared_file is None or not shared_teacher_code_matches(self.shared_file, code):
-                    raise PermissionError('Forkert lærerkode.')
-                self.failures[source].pop()
-                if not self.failures[source]:
-                    del self.failures[source]
+            if not self._verify(code, source, now, self.shared_file):
+                raise PermissionError('Forkert lærerkode.')
             if len(self.sessions) >= 1024:
                 del self.sessions[next(iter(self.sessions))]
             token = secrets.token_urlsafe(32)
