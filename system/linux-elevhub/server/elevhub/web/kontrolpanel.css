@@ -129,6 +129,7 @@ details.panel[open] summary{margin-bottom:4px}
 #print-blocks-list{display:grid;gap:8px}
 #print-blocks-list .pr{min-width:0;overflow-wrap:anywhere}
 #print-blocks-list .btn{min-height:44px;align-self:flex-start}
+.printer-review{min-height:44px;align-self:flex-start}
 .attn li:first-child{border-top:0;padding-top:0}
 .attn ul{list-style:none;margin:0;padding:0}
 .attn .what b{display:block}

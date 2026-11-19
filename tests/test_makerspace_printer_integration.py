@@ -164,6 +164,20 @@ class MakerspacePrinterIntegrationTests(unittest.TestCase):
         self.assertFalse(self.app.queue.print_access(sources[1])["allowed"])
         self.assertEqual(self.app.queue.print_guard_settings()["trigger_count"], 2)
 
+    def test_printer_review_url_is_only_shared_with_the_teacher(self):
+        url = "https://print.example.test:8781/laerer"
+        (self.root / "pladenet.json").write_text(json.dumps({"cidr": "192.0.2.0/24", "laererside": url}), encoding="utf-8")
+        handler = Mock(command="GET", connection=object(), client_address=("127.0.0.1", 1234), headers=Message())
+        handler.server.makerspace = self.service
+        handler.server.tilstand.mappe = self.root
+        handler.logget_ind.return_value = False
+        handle(handler, "/api/makerspace/state")
+        self.assertEqual(handler.svar.call_args.args[0], 401)
+        handler.logget_ind.return_value = True
+        handler.token.return_value = "test-teacher"
+        handle(handler, "/api/makerspace/state")
+        self.assertEqual(handler.svar.call_args.args[1]["print_review_url"], url)
+
     def test_published_workflow_runs_through_teacher_steps(self):
         printer_id, workflow_id, printer_version = self.setup_workflow_printer()
         self.ready_printer(printer_id)

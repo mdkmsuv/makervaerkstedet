@@ -74,13 +74,25 @@
     try { await request('/api/laerer/pause',paused?{paused:true,message:$('pause-message').value,expires_in:3600}:{paused:false}); $('error').textContent=''; } catch(e) { $('error').textContent='Skærmpausen kunne ikke ændres: '+e.message; } finally { acting=false; await refresh(); }
   }
   function renderPrinters(data) {
-    const summary=$('printer-summary'); summary.replaceChildren();
+    const summary=$('printer-summary');
+    const focused=summary.querySelector('a:focus')?.href;
+    const restoreFocus=()=>{
+      if (!focused) return;
+      const link=Array.from(summary.querySelectorAll('a')).find(a=>a.href===focused);
+      if (link) {
+        link.focus({preventScroll:true});
+        if (link.getBoundingClientRect().top < document.querySelector('header.top').getBoundingClientRect().bottom) {
+          link.scrollIntoView({block:'center'});
+        }
+      } else $('printer-status-heading').focus();
+    };
+    summary.replaceChildren();
     if (data?.sources?.printers !== 'ok' || !Array.isArray(data.inventory)) {
-      $('printer-count').textContent='Ukendt'; summary.append(el('p','Printerstatus kunne ikke hentes. Åbn maskinadministrationen for at kontrollere forbindelsen.','small muted')); return;
+      $('printer-count').textContent='Ukendt'; summary.append(el('p','Printerstatus kunne ikke hentes. Åbn maskinadministrationen for at kontrollere forbindelsen.','small muted')); restoreFocus(); return;
     }
     const rows=data.inventory.filter(p=>p.adapter==='bambu' || p.kind==='3d_print');
     $('printer-count').textContent=`${rows.length} registreret`;
-    if (!rows.length) { summary.append(el('p','Ingen printere er registreret.','small muted')); return; }
+    if (!rows.length) { summary.append(el('p','Ingen printere er registreret.','small muted')); restoreFocus(); return; }
     const names={ready:'Klar',bed:'Pladen skal kontrolleres',printing:'Printer',preparing:'Klargør',attention:'Kræver kontrol',disabled:'Deaktiveret',offline:'Offline',unknown:'Ukendt'};
     for (const p of rows) {
       const when=typeof p.observed_at==='number' ? p.observed_at*1000 : Date.parse(p.observed_at);
@@ -88,8 +100,19 @@
       const card=el('article','', 'pr'); card.append(el('h3',p.name || 'Printer'));
       card.append(el('p',fresh ? (names[p.status] || 'Ukendt') : 'Status ukendt eller forældet','small muted'));
       card.append(el('p',Number.isFinite(when) ? `Senest observeret: ${new Date(when).toLocaleString('da-DK')}` : 'Intet observationstidspunkt','small muted'));
+      if (fresh && ['attention','bed'].includes(p.status)) {
+        if (data.print_review_url && p.source_id) {
+          const review=el('a','Kontrollér printeren','btn printer-review');
+          review.href=data.print_review_url+'#printer-'+encodeURIComponent(p.source_id);
+          review.setAttribute('aria-label','Kontrollér printeren '+(p.name || p.source_id));
+          card.append(review);
+        } else {
+          card.append(el('p','Åbn printeren i Printværkstedets læreroversigt.','small muted'));
+        }
+      }
       summary.append(card);
     }
+    restoreFocus();
   }
   async function refreshPrinters(g) {
     try { const data=await request('/api/makerspace/state'); if(active && g===generation) renderPrinters(data); }

@@ -15,6 +15,7 @@ from makerspace_laser_admin import LaserAdministration
 from makerspace_laser import LaserSnapshots
 from makerspace_store import ACTIONS, Conflict, MakerspaceStore, fields
 from makerspace_workflows import WorkflowValidationError, templates, validate_definition
+from print_plates import plate_config
 
 SCOPES = ['makerspace:read', 'machines:write', 'workflows:write', 'jobs:write', 'queues:write', 'audit:read']
 CREDIT = 'Kreditering: Klostermarksskolen.'
@@ -168,6 +169,11 @@ def handle(handler, path, body=None):
         if handler.command in ('GET', 'HEAD'):
             if path == '/api/makerspace/state':
                 result = service.snapshot(actor)
+                folder = getattr(getattr(handler.server, 'tilstand', None), 'mappe', None)
+                if folder is not None:
+                    _, review_url = plate_config(folder)
+                    if review_url:
+                        result['print_review_url'] = review_url
             elif path == '/api/makerspace/actions':
                 result = service.actions(actor)
             elif path == '/api/makerspace/audit':

@@ -34,7 +34,18 @@ test('the control panel opens only the requested print access and handles a fail
       if (url.pathname === '/api/laerer/oversigt') return overviewAvailable
         ? send({computere: [{navn: 'Værksted 02', ip: '192.0.2.2'}], apps: []})
         : route.fulfill({status: 503, json: {}});
-      if (url.pathname === '/api/makerspace/state') return send({sources: {printers: 'ok'}, inventory: []});
+      if (url.pathname === '/api/makerspace/state') {
+        const observed_at = Date.now() / 1000;
+        return send({
+          sources: {printers: 'ok'},
+          print_review_url: 'https://print.example.test:8781/laerer',
+          inventory: [
+            {adapter: 'bambu', source_id: 'orange', name: 'Orange printer', status: 'attention', observed_at},
+            {adapter: 'bambu', source_id: 'white', name: 'Hvid printer', status: 'bed', observed_at},
+            {adapter: 'bambu', source_id: 'green', name: 'Grøn printer', status: 'preparing', observed_at}
+          ]
+        });
+      }
       if (url.pathname === endpoint) {
         if (req.method() === 'POST') {
           posts.push(req.postDataJSON());
@@ -52,6 +63,13 @@ test('the control panel opens only the requested print access and handles a fail
     });
 
     await page.goto(base + '/kontrolpanel#printere');
+    const printerStatus = page.locator('#printer-summary');
+    await printerStatus.getByText('Orange printer', {exact: true}).waitFor();
+    assert.equal(await printerStatus.getByRole('link', {name: 'Kontrollér printeren Orange printer'}).getAttribute('href', {timeout: 1500}),
+      'https://print.example.test:8781/laerer#printer-orange');
+    assert.equal(await printerStatus.getByRole('link', {name: 'Kontrollér printeren Hvid printer'}).getAttribute('href'),
+      'https://print.example.test:8781/laerer#printer-white');
+    assert.equal(await printerStatus.getByRole('link', {name: 'Kontrollér printeren Grøn printer'}).count(), 0);
     const section = page.getByRole('region', {name: 'Printblokeringer'});
     const button = section.getByRole('button', {name: 'Ophæv blokering for Værksted 02'});
     await button.waitFor();
