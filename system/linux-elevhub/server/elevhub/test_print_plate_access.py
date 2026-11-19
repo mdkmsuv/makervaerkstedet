@@ -1,9 +1,13 @@
 import ipaddress
+import json
+from pathlib import Path
+import ssl
+import tempfile
 import unittest
 from unittest.mock import Mock
 from uuid import uuid4
 
-from print_plates import allowed_peer, plate_request
+from print_plates import allowed_peer, handle, plate_request
 
 
 class PlateAccessTests(unittest.TestCase):
@@ -29,3 +33,23 @@ class PlateAccessTests(unittest.TestCase):
         printers.plates.assert_called_once_with(request)
         with self.assertRaises(ValueError):
             plate_request(printers, dict(request, action='other'))
+
+    def test_station_get_passes_only_a_safe_teacher_url_from_configuration(self):
+        with tempfile.TemporaryDirectory() as folder:
+            handler = Mock()
+            handler.connection.__class__ = ssl.SSLSocket
+            handler.client_address = ('192.0.2.47', 12345)
+            handler.server.tilstand.mappe = Path(folder)
+            handler.server.makerspace.printers.plates.return_value = {'plates': []}
+            config = Path(folder) / 'pladenet.json'
+            urls = ('https://print.example.test:8781/laerer', 'http://print.example.test/laerer',
+                    'https://name:password@print.example.test/laerer', 'javascript:alert(1)',
+                    'https://print.example.test:99999/laerer', '/laerer')
+            for url in urls:
+                with self.subTest(url=url):
+                    config.write_text(json.dumps({'cidr': str(self.network), 'laererside': url}), encoding='utf-8')
+                    self.assertTrue(handle(handler, '/api/printplader'))
+                    expected = {'plates': []}
+                    if url == urls[0]:
+                        expected['review_url'] = url
+                    handler.svar.assert_called_with(200, expected)

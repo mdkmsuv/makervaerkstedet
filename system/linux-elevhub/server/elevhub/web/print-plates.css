@@ -9,6 +9,7 @@ article p { margin: .15rem 0; }
 button, a { font: inherit; font-weight: 650; }
 button { color: white; background: #225644; padding: .7rem 1.1rem; border: 0; border-radius: .35rem; margin-top: .6rem; cursor: pointer; }
 button:disabled { opacity: .65; }
+.review-link { display: inline-block; padding: .55rem .8rem; margin-top: .6rem; border: 1px solid currentColor; border-radius: .35rem; }
 :focus-visible { outline: 3px solid #1767a2; outline-offset: 3px; }
 #notice:not(:empty), #error:not(:empty) { padding: .7rem 1rem; border-left: .25rem solid #26714d; background: white; }
 #error:not(:empty) { border-color: #9d3d24; }

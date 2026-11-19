@@ -3,19 +3,34 @@ import ipaddress
 import json
 import re
 import ssl
+from urllib.parse import urlsplit
 
 from makerspace_store import Conflict
 
 
-def plate_network(folder):
+def plate_config(folder):
     path = folder / 'pladenet.json'
     try:
         if path.is_symlink() or path.stat().st_size > 256:
-            return None
-        network = ipaddress.ip_network(json.loads(path.read_text(encoding='utf-8-sig'))['cidr'])
+            return None, None
+        config = json.loads(path.read_text(encoding='utf-8-sig'))
+        network = ipaddress.ip_network(config['cidr'])
         if network.prefixlen >= (8 if network.version == 4 else 32):
-            return network
+            return network, teacher_url(config.get('laererside'))
     except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return None, None
+
+
+def teacher_url(value):
+    if not isinstance(value, str) or re.search(r'[\s\\?#]', value):
+        return None
+    try:
+        url = urlsplit(value)
+        if (url.scheme == 'https' and url.hostname and url.path == '/laerer'
+                and url.username is None and url.password is None and url.port != 0):
+            return value
+    except ValueError:
         pass
     return None
 
@@ -40,8 +55,9 @@ def plate_request(printers, body):
 def handle(handler, path, body=None):
     if path not in ('/ryd-plade', '/api/printplader'):
         return False
+    network, review_url = plate_config(handler.server.tilstand.mappe)
     if (not isinstance(handler.connection, ssl.SSLSocket)
-            or not allowed_peer(handler.client_address[0], plate_network(handler.server.tilstand.mappe))):
+            or not allowed_peer(handler.client_address[0], network)):
         message = 'Forbind enheden til værkstedets IoT-netværk for at åbne printpladerne.'
         if path == '/ryd-plade':
             handler.fil('print-plates.html', status=403)
@@ -57,6 +73,8 @@ def handle(handler, path, body=None):
     else:
         try:
             result = plate_request(handler.server.makerspace.printers, body)
+            if body is None and review_url:
+                result['review_url'] = review_url
             handler.svar(200, result)
         except Conflict:
             handler.svar(409, {'error': 'Pladens status er ændret. Kontrollér printeren igen.'})

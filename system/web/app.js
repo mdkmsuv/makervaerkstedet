@@ -1,6 +1,9 @@
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const teacher = location.pathname === '/laerer';
+const reviewPrinter = teacher ? /^#printer-([A-Za-z0-9][A-Za-z0-9_-]{0,79})$/.exec(location.hash)?.[1] : null;
+let reviewFocused = false;
+let teacherPrinterMarkup = '';
 const statusText={workflow_wait:'Afventer lærerens workflow',queued:'I kø',preparing:'Klargør modellen',dispatching:'Sender til printer',starting:'Starter snart',printing:'Printer',recovering:'Kontrollerer printerens job',attention:'Spørg en voksen',done:'Færdig!',failed:'Kunne ikke printes',cancelled:'Afbrudt'};
 const printerText={offline:'Ikke forbundet',disabled:'Uden for børnekøen',ready:'Klar til print',printing:'Printer lige nu',preparing:'Klargør et print',bed:'Venter på ryddet plade',attention:'Skal ses af en voksen'};
 const qualityText={fast:'Hurtig',standard:'Standard',beautiful:'Smuk'};
@@ -95,14 +98,42 @@ function stoppedJobAction(p){
 function isolateJobAction(job){
   return `<div><button class="secondary" data-resolve="${job.id}" data-result="isolated">Isolér uafklaret job</button><p class="small-note">Printeren kan stadig køre. Isolation frigiver ikke pladen. Ret forbindelsen og kontrollér printeren fysisk før næste print.</p></div>`;
 }
-function resolveJob(button){
+async function resolveJob(button){
   if(button.dataset.result==='isolated'&&!confirm('Isolér det uafklarede job i køen? Printeren kan stadig køre. Isolation stopper ikke printeren og frigiver ikke pladen. Kontrollér printeren fysisk, og ret forbindelsen.'))return;
-  adminAction('/api/jobs/resolve',{id:button.dataset.resolve,result:button.dataset.result});
+  const card = button.closest('[data-teacher-printer]');
+  if (await adminAction('/api/jobs/resolve',{id:button.dataset.resolve,result:button.dataset.result}) && card) {
+    const updated = document.getElementById(card.id);
+    const release = updated?.querySelector('[data-release]:enabled');
+    (release || updated?.querySelector('h2'))?.focus();
+  }
 }
+function updateTeacherPrinters(markup) {
+  const root = $('teacher-printers');
+  if (teacherPrinterMarkup !== markup) {
+    const focused = document.activeElement;
+    const card = focused.closest('[data-teacher-printer]');
+    const action = card && ['release', 'resolve', 'camera', 'finish'].find(name => focused.hasAttribute('data-' + name));
+    root.innerHTML = teacherPrinterMarkup = markup;
+    const updated = card && document.getElementById(card.id);
+    if (updated) {
+      const control = action && updated.querySelector(`[data-${action}]:enabled`);
+      (control || updated.querySelector('h2'))?.focus({preventScroll: true});
+    }
+  }
+  if (reviewPrinter && !reviewFocused) {
+    const heading = document.getElementById('printer-' + reviewPrinter)?.querySelector('h2');
+    if (heading) {
+      reviewFocused = true;
+      heading.focus();
+    }
+  }
+}
+
 function renderTeacher(){
-  if(!adminReady)return;
+  if(!adminReady||!state)return;
+  $('teacher-content').hidden=false;
   $('queue-mode').textContent=state.paused?'Køen er sat på pause':'Køen kører';$('pause-queue').textContent=state.paused?'Start køen igen':'Sæt køen på pause';
-  $('teacher-printers').innerHTML=state.printers.length?state.printers.map(p=>`<article class="teacher-printer"><div class="panel-heading"><h2>${esc(p.name)}</h2><span class="muted">${esc(p.model)}</span></div><span class="printer-state ${p.status}">${printerText[p.status]}${p.status==='printing'?` · ${p.progress}%`:''}</span><div class="printer-swatches">${p.colours.map(c=>swatch(c)).join('')||'<span class="small-note">Ingen genkendte PLA-farver</span>'}</div><button class="primary" data-release="${p.id}" ${!p.can_release?'disabled':''}>${p.bed_clear?'Pladen er frigivet':'Pladen er ryddet'}</button>${stoppedJobAction(p)}${state.demo&&p.status==='printing'?`<button class="secondary" data-finish="${p.id}">Afslut demoprint</button>`:''}${!state.demo?`<p class="small-note">${['RUNNING','PREPARE','PAUSE'].includes(p.machine_state)?'Printer nu · '+p.progress+' %':p.machine_state==='OFFLINE'?'Ingen statusforbindelse':'Forbundet · afsluttet eller stoppet'}</p>${p.model==='H2D'?'<p class="small-note">Kamera og lærerprint i Bambu Studio / Handy.</p>':`<button class="secondary" data-camera="${p.id}" aria-label="Vis kamera: ${esc(p.name)}">Vis kamera</button>`}`:''}${p.message?`<p class="small-note">${esc(p.message)}</p>`:''}</article>`).join(''):'<p class="muted">Ingen printere er tilsluttet endnu.</p>';
+  updateTeacherPrinters(state.printers.length?state.printers.map(p=>`<article class="teacher-printer" id="printer-${esc(p.id)}" data-teacher-printer><div class="panel-heading"><h2 tabindex="-1">${esc(p.name)}</h2><span class="muted">${esc(p.model)}</span></div><span class="printer-state ${p.status}">${printerText[p.status]}${p.status==='printing'?` · ${p.progress}%`:''}</span><div class="printer-swatches">${p.colours.map(c=>swatch(c)).join('')||'<span class="small-note">Ingen genkendte PLA-farver</span>'}</div><button class="primary" data-release="${p.id}" ${!p.can_release?'disabled':''}>${p.bed_clear?'Pladen er frigivet':'Pladen er ryddet'}</button>${stoppedJobAction(p)}${state.demo&&p.status==='printing'?`<button class="secondary" data-finish="${p.id}">Afslut demoprint</button>`:''}${!state.demo?`<p class="small-note">${['RUNNING','PREPARE','PAUSE'].includes(p.machine_state)?'Printer nu · '+p.progress+' %':p.machine_state==='OFFLINE'?'Ingen statusforbindelse':'Forbundet · afsluttet eller stoppet'}</p>${p.model==='H2D'?'<p class="small-note">Kamera og lærerprint i Bambu Studio / Handy.</p>':`<button class="secondary" data-camera="${p.id}" aria-label="Vis kamera: ${esc(p.name)}">Vis kamera</button>`}`:''}${p.message?`<p class="small-note">${esc(p.message)}</p>`:''}</article>`).join(''):'<p class="muted">Ingen printere er tilsluttet endnu.</p>');
   const jobs=state.jobs.filter(j=>['attention','recovering','failed'].includes(j.status));
   $('attention-jobs').innerHTML=jobs.length?jobs.map(j=>{const archived=libraryEntries.find(e=>e.jobs?.some(job=>job.id===j.id));return `<div class="attention-row"><div><strong>${esc(j.filename)} · ${esc(statusText[j.status])}</strong><p>${esc(j.message)} ${esc(j.printer_id?printerName(j.printer_id):'')}</p></div><div class="attention-actions">${j.status==='failed'?`<button class="secondary" data-diagnostic="${esc(j.id)}">Se fejl</button>${archived?`<button class="secondary" data-library-reprint="${esc(archived.digest)}" data-library-name="${esc(archived.filename)}" data-library-colour="${esc(archived.colour||'')}" data-library-quality="${esc(archived.quality||'standard')}">Send igen</button>`:''}`:''}${j.status!=='failed'?`<button class="secondary" data-diagnostic="${esc(j.id)}">Se fejl</button>`:''}${j.resolution_options?.includes('isolated')?isolateJobAction(j):''}${j.status==='attention'?`<button class="secondary" data-resolve="${j.id}" data-result="done" ${j.resolution_options?.includes('done')?'':'disabled'}>Printet er færdigt</button><button class="secondary" data-resolve="${j.id}" data-result="cancelled" ${j.resolution_options?.includes('cancelled')?'':'disabled'}>Printet er stoppet</button>`:''}</div></div>`}).join(''):'<p class="muted">Ingen print i fejlkøen.</p>';
   const queued=state.jobs.filter(j=>j.status==='queued').sort((a,b)=>a.created-b.created);
@@ -186,16 +217,20 @@ Indstillinger: ${qualityText[request.quality]||request.quality}, ${optionColour}
 }
 async function downloadLibrary(id,name){try{const response=await fetch(`/api/library/${encodeURIComponent(id)}/download`,{credentials:'same-origin'});if(response.status===401)setTeacherSession(false);const data=await response.blob();if(!response.ok)throw new Error((await data.text())||'Filen kunne ikke hentes.');const url=URL.createObjectURL(data),link=document.createElement('a');link.href=url;link.download=name||'model.stl';document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}catch(error){showError('library-error',error.message)}}
 async function poll(){
-  try{const next=await api('/api/state');const previous=state;state=next;connected=true;$('connection-error').hidden=true;$('demo-banner').hidden=!state.demo;
+  const access = adminReady;
+  try{const next=await api('/api/state');if(access!==adminReady)return;const previous=state;state=next;connected=true;$('connection-error').hidden=true;$('demo-banner').hidden=!state.demo;
     if(JSON.stringify(availableColours(previous))!==JSON.stringify(availableColours()))renderColours();
     renderPrinters();renderQueue();renderSend();renderReceipt();renderTeacher();
-    if(teacher&&!sessionChecked){const session=await api('/api/auth/status');sessionChecked=true;setTeacherSession(session.teacher)}
+    if(teacher&&!sessionChecked){
+      const session=await api('/api/auth/status');
+      if(!sessionChecked){sessionChecked=true;setTeacherSession(session.teacher)}
+    }
     if(teacher&&adminReady)window.refreshMaintenance?.();
     if(teacher&&adminReady)window.refreshFirmware?.();
     if(teacher&&adminReady)window.refreshPrintAccess?.();
     if(teacher&&adminReady)refreshLibrary();
-  }catch(error){connected=false;$('connection-error').hidden=false;renderSend()}
-  setTimeout(poll,2500);
+  }catch(error){if(access===adminReady){connected=false;$('connection-error').hidden=false;renderSend()}}
+  finally{setTimeout(poll,2500)}
 }
 
 async function selectFile(selected, imported=false){
@@ -252,14 +287,20 @@ $('send-button').addEventListener('click',async()=>{
 $('receipt').addEventListener('click',event=>{if(event.target.closest('#new-print'))$('file-input').click()});
 $('print-confirmation-close').addEventListener('click',()=>{$('print-confirmation').close();$('mini-queue-heading').scrollIntoView({behavior:'smooth',block:'nearest'})});
 function setTeacherSession(ready){
-  adminReady=ready;window.teacherSessionReady=ready;$('login-form').hidden=ready;$('teacher-content').hidden=!ready;$('teacher-logout').hidden=!ready;
+  adminReady=ready;window.teacherSessionReady=ready;$('login-form').hidden=ready;$('teacher-content').hidden=!ready||!state;$('teacher-logout').hidden=!ready;
   if(ready){renderTeacher();window.refreshPrintAccess?.(true);window.teacherPrinterSettings?.refresh?.()}
   else{libraryEpoch++;libraryRead++;libraryEntries=[];libraryPageData=null;libraryPage=1;libraryPolicyDirty=false;libraryPolicyRequest=null;libraryDeletes.clear();libraryInflight.clear();libraryRequests.clear();$('library-list').innerHTML='';if($('library-storage'))$('library-storage').textContent='';if($('library-result'))$('library-result').textContent='';if($('library-pending'))$('library-pending').innerHTML='';$('admin-token').value='';window.closeTeacherCamera?.();window.teacherPrinterSettings?.clear?.();document.querySelectorAll('#teacher-content dialog[open]').forEach(dialog=>dialog.close())}
 }
 async function login(){
   const button=$('login-form').querySelector('button');button.disabled=true;showError('login-error','');
-  try{await api('/api/auth/login',{code:$('admin-token').value});sessionChecked=true;setTeacherSession(true)}
-  catch(error){setTeacherSession(false);showError('login-error',error.message)}
+  try{
+    await api('/api/auth/login',{code:$('admin-token').value});
+    sessionChecked=true;
+    try{state=await api('/api/state')}
+    catch{state=null;$('connection-error').hidden=false;}
+    setTeacherSession(true);
+  }
+  catch(error){setTeacherSession(false);showError('login-error',error.message);$('admin-token').focus()}
   finally{$('admin-token').value='';button.disabled=false}
 }
 $('login-form').addEventListener('submit',event=>{event.preventDefault();login()});

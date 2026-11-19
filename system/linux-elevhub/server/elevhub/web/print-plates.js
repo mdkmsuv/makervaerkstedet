@@ -24,7 +24,7 @@ async function request(options) {
   return result;
 }
 
-function render(plates) {
+function render(plates, reviewUrl) {
   const visible = new Set();
   for (const plate of plates) {
     visible.add(plate.id);
@@ -36,18 +36,30 @@ function render(plates) {
       const button = document.createElement('button');
       button.type = 'button';
       button.textContent = 'Jeg har ryddet pladen';
-      card = {article, title, detail, button};
+      const review = document.createElement('a');
+      review.className = 'review-link';
+      review.textContent = 'Kontrollér printeren';
+      card = {article, title, detail, button, review};
       button.addEventListener('click', () => confirmPlate(card.plate));
-      article.append(title, detail, button);
+      article.append(title, detail, button, review);
       byId('plates').append(article);
       cards.set(plate.id, card);
     }
     card.plate = plate;
     card.title.textContent = plate.name;
-    card.detail.textContent = labels[plate.status] || 'Status er ukendt';
+    card.detail.textContent = plate.status === 'blocked' && !reviewUrl
+      ? 'Bed en lærer kontrollere printeren i Printværkstedets læreroversigt.'
+      : labels[plate.status] || 'Status er ukendt';
     card.button.setAttribute('aria-label', 'Jeg har ryddet pladen på ' + plate.name);
     card.button.hidden = plate.status !== 'waiting';
     card.button.disabled = busy;
+    card.review.hidden = plate.status !== 'blocked' || !reviewUrl;
+    if (!card.review.hidden) {
+      card.review.href = reviewUrl + '#printer-' + encodeURIComponent(plate.id);
+      card.review.setAttribute('aria-label', 'Kontrollér printeren ' + plate.name);
+    } else {
+      card.review.removeAttribute('href');
+    }
   }
   for (const [id, card] of cards) {
     if (!visible.has(id)) { card.article.remove(); cards.delete(id); }
@@ -60,9 +72,9 @@ async function refresh() {
   clearTimeout(refreshTimer);
   const current = ++revision;
   try {
-    const {plates} = await request();
+    const {plates, review_url: reviewUrl} = await request();
     if (current !== revision) return;
-    render(plates);
+    render(plates, reviewUrl);
     byId('error').textContent = '';
   } catch (error) {
     if (current !== revision) return;
