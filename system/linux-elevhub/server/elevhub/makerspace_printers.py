@@ -51,16 +51,19 @@ class PrinterAdministration:
             ensure_ascii=False, separators=(',', ':'), allow_nan=False).encode(), hashlib.sha256).hexdigest()
 
     def plates(self, body=None):
-        return self._request(body, plates=True)
+        return self._request(body, resource='plates')
 
-    def _request(self, body=None, *, plates=False):
+    def print_access(self, body=None):
+        return self._request(body, resource='print-access')
+
+    def _request(self, body=None, *, resource=None):
         key = self._key()
         connection = http.client.HTTPConnection(*self.backend, timeout=_TIMEOUT)
         deadline, watchdog = time.monotonic() + _TIMEOUT, None
         try:
             path = '/api/makerspace/printers'
-            if plates:
-                path += '/plates'
+            if resource:
+                path += '/' + resource
             elif body is not None:
                 path += '/commands'
             headers = {'Authorization': 'Bearer ' + key, 'Accept': 'application/json'}

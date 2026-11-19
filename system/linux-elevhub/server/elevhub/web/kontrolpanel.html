@@ -20,7 +20,14 @@
 </div>
 <div class="view" data-view="apps" hidden><div class="view-head"><div><h1>Apps og internet</h1><p class="lead muted">Adgang til elevværkstederne.</p></div></div><section class="panel"><h2>Værksteder og internet</h2><p>Eleverne skal gemme deres arbejde, før et værksted lukkes.</p><div id="apps-list"></div></section><section class="panel"><h2>Skærmpause</h2><p id="pause-state"></p><label for="pause-message">Besked til eleverne</label><input id="pause-message" maxlength="200"><div class="row"><button id="pause-start" class="btn" type="button">Start skærmpause</button><button id="pause-end" class="btn" type="button">Afslut skærmpause</button></div></section></div>
 <div class="view" data-view="computere" hidden><div class="view-head"><div><h1>Computere</h1><p class="lead muted">Kontaktstatus og komponentversioner. Offline er ikke en installationsfejl.</p></div><div class="acts"><a class="btn" href="#teknik">Opdatér computere</a></div></div><div id="computer-list" class="pcs"></div></div>
-<div class="view" data-view="printere" hidden><div class="view-head"><div><h1>3D-printere</h1><p class="lead muted">Aktuelle observationer fra maskinadministrationen.</p></div><div class="acts"><a class="btn primary" href="/makerspace">Maskiner, workflows og opgaver</a></div></div><section class="panel"><div class="panel-head"><h2>Printerstatus</h2><span id="printer-count" class="small muted"></span></div><div id="printer-summary"></div><p class="small muted spaced">Godkendelser, fysisk kontrol og manuel maskinfrigivelse sker fortsat i maskinadministrationen.</p></section></div>
+<div class="view" data-view="printere" hidden><div class="view-head"><div><h1>3D-printere</h1><p class="lead muted">Printerstatus og elevcomputernes adgang til printkøen.</p></div><div class="acts"><a class="btn primary" href="/makerspace">Maskiner, workflows og opgaver</a></div></div>
+<section class="panel" aria-labelledby="print-blocks-heading">
+  <h2 id="print-blocks-heading" tabindex="-1">Printblokeringer</h2>
+  <p id="print-blocks-status" role="status">Henter printblokeringer …</p>
+  <p id="print-blocks-error" class="small" role="alert" hidden></p>
+  <div id="print-blocks-list"></div>
+</section>
+<section class="panel"><div class="panel-head"><h2>Printerstatus</h2><span id="printer-count" class="small muted"></span></div><div id="printer-summary"></div><p class="small muted spaced">Godkendelser, fysisk kontrol og manuel maskinfrigivelse sker fortsat i maskinadministrationen.</p></section></div>
 <div class="view" data-view="katalog" hidden>      <section id="app-catalog" class="system-overblik" aria-labelledby="apps-title">
         <div class="system-overblik-top"><div><p class="eyebrow">TILVALG</p><h2 id="apps-title">Apps på elevcomputerne</h2></div><button id="apps-refresh" class="sekundaer" type="button">Hent appstatus</button></div>
         <p>Vælg apps fra skolens godkendte katalog. Installation og afinstallation styres af elevcomputerens opdateringstjeneste. Gemte projekter bevares ved afinstallation.</p>

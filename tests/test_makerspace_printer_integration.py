@@ -10,14 +10,18 @@ _layout_sys.path[:0] = [str(_LAYOUT_ROOT), str(_LAYOUT_ROOT / 'system')]
 from repository import source_path, repo_root
 
 import json
+from email.message import Message
 from pathlib import Path
 import sys
 import tempfile
 import threading
 import types
 import unittest
+from unittest.mock import Mock
+from urllib.error import HTTPError
+from urllib.request import urlopen
 
-from app.core import Queue
+from app.core import Queue, SubmissionBlocked
 from app.printer_bridge import PrinterBridge
 from app.server import Handler, Server
 from scripts.smoke_slice import cube
@@ -25,7 +29,7 @@ from scripts.smoke_slice import cube
 ELEVHUB = source_path('linux-elevhub/server/elevhub', Path(__file__).parents[1])
 if str(ELEVHUB) not in sys.path:
     sys.path.insert(0, str(ELEVHUB))
-from makerspace_api import MakerspaceService  # noqa: E402
+from makerspace_api import MakerspaceService, handle  # noqa: E402
 from makerspace_printers import PrinterAdministration  # noqa: E402
 from makerspace_store import Conflict  # noqa: E402
 from makerspace_workflows import templates  # noqa: E402
@@ -126,6 +130,39 @@ class MakerspacePrinterIntegrationTests(unittest.TestCase):
     def job_advance(self, actor, job, step_id, expected, request_id):
         return self.command(actor, "printer.job.advance", {
             "id": job["id"], "step_id": step_id, "confirmed": True}, expected, request_id)
+
+    def test_control_panel_unblocks_only_the_selected_computer(self):
+        sources = ("ip:192.0.2.2", "ip:192.0.2.3")
+        self.ready_printer(self.setup_workflow_printer()[0])
+        self.app.queue.set_print_guard(2)
+        for index, source in enumerate(sources):
+            self.app.queue.submit(cube(), "model.stl", "any", f"access-test-{index}-0001", source=source)
+            with self.assertRaises(SubmissionBlocked):
+                self.app.queue.submit(cube(), "model.stl", "any", f"access-test-{index}-0002", source=source)
+        hub_path = "/api/makerspace/print-access"
+        handler = Mock(command="GET", connection=object(), client_address=("127.0.0.1", 1234), headers=Message())
+        handler.server.makerspace = self.service
+        handler.logget_ind.return_value = False
+        handle(handler, hub_path)
+        self.assertEqual(handler.svar.call_args.args[0], 401)
+        handler.logget_ind.return_value = True
+        handler.token.return_value = "test-teacher"
+        handle(handler, hub_path)
+        status, response = handler.svar.call_args.args
+        self.assertEqual(status, 200)
+        with self.assertRaises(HTTPError) as denied:
+            urlopen(f"http://127.0.0.1:{self.http.server_port}/api/makerspace/printers/print-access", timeout=2)
+        denied.exception.close()
+        self.assertEqual(denied.exception.code, 401)
+        first = next(row for row in response["blocked"] if row["computer"] == "192.0.2.2")
+        handler.command = "POST"
+        handle(handler, hub_path, {"id": first["id"], "trigger_count": 99})
+        self.assertEqual(handler.svar.call_args.args[0], 400)
+        handle(handler, hub_path, {"id": first["id"]})
+        self.assertEqual(handler.svar.call_args.args[0], 200)
+        self.assertTrue(self.app.queue.print_access(sources[0])["allowed"])
+        self.assertFalse(self.app.queue.print_access(sources[1])["allowed"])
+        self.assertEqual(self.app.queue.print_guard_settings()["trigger_count"], 2)
 
     def test_published_workflow_runs_through_teacher_steps(self):
         printer_id, workflow_id, printer_version = self.setup_workflow_printer()

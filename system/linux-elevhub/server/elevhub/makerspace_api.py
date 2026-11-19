@@ -151,6 +151,20 @@ def handle(handler, path, body=None):
         if actor is None:
             handler.svar(401, {'error': 'Log ind på kontrolpanelet.'})
             return True
+        if path == '/api/makerspace/print-access':
+            reading = handler.command in ('GET', 'HEAD')
+            service.require(actor, 'makerspace:read' if reading else 'queues:write')
+            if not reading:
+                fields(body, ('id',))
+                if not isinstance(body['id'], str) or not re.fullmatch(r'[a-f0-9]{32}', body['id']):
+                    raise ValueError('Ugyldig blokering.')
+            try:
+                result = service.printers.print_access(None if reading else body)
+            except OSError:
+                handler.svar(503, {'error': 'Printadgangen kunne ikke bekræftes. Hent status igen.'})
+            else:
+                handler.svar(200, result)
+            return True
         if handler.command in ('GET', 'HEAD'):
             if path == '/api/makerspace/state':
                 result = service.snapshot(actor)

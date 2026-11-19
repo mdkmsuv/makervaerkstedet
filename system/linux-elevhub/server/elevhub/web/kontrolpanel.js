@@ -3,6 +3,8 @@
   'use strict';
   const $ = id => document.getElementById(id);
   let active = false, generation = 0, timer, loading = false, acting = false;
+  let accessRevision = 0, opening = false;
+  const printAccessRoute = '/api/makerspace/print-access';
   const el = (tag, text, cls) => { const n = document.createElement(tag); n.textContent = text; if (cls) n.className = cls; return n; };
   async function request(path, body) {
     const c = new AbortController(), timeout = setTimeout(() => c.abort(), 10000);
@@ -21,6 +23,12 @@
   }
   function signedIn(on) {
     active = on; generation++; clearTimeout(timer); if (!on) {window.UpdateAdmin.stop(); window.AppAdmin.stop(); window.SchoolProfile.stop();}
+    if (!on) {
+      accessRevision++; opening=false;
+      $('print-blocks-list').replaceChildren();
+      $('print-blocks-status').textContent='Henter printblokeringer …';
+      printAccessError('');
+    }
     $('panel').hidden = !on; $('login').hidden = on; $('setup').hidden = true; $('logout').hidden = !on; $('refresh').hidden = !on; $('nav').hidden = !on;
     $('app-shell').classList.toggle('signed-in',on); $('status').textContent = on ? '' : 'Log ind for at administrere værkstedet.';
     if (on) { view(); window.UpdateAdmin.start(); window.AppAdmin.start(); window.SchoolProfile.start(); void poll(generation); }
@@ -87,9 +95,85 @@
     try { const data=await request('/api/makerspace/state'); if(active && g===generation) renderPrinters(data); }
     catch { if(active && g===generation) renderPrinters(null); }
   }
+  function printAccessError(message) {
+    const error=$('print-blocks-error');
+    error.textContent=message;
+    error.hidden=!message;
+  }
+  function renderPrintAccess(data, computers, message='') {
+    if (!Array.isArray(data.blocked)) throw Error('Listen kunne ikke læses.');
+    const list=$('print-blocks-list');
+    const focused=list.contains(document.activeElement) && document.activeElement.dataset.block;
+    $('print-blocks-status').textContent=message || (data.blocked.length ? '' : 'Ingen aktive printblokeringer.');
+    const rows=data.blocked.map(block => {
+      const matches=computers.filter(computer=>computer.ip===block.computer);
+      const name=matches.length===1 && matches[0].navn ? matches[0].navn : block.computer;
+      const card=el('article','','pr');
+      const until=new Date(block.blocked_until*1000).toLocaleTimeString('da-DK',{hour:'2-digit',minute:'2-digit'});
+      const open=el('button','Ophæv blokering','btn');
+      open.type='button';
+      open.dataset.block=block.id;
+      open.setAttribute('aria-label','Ophæv blokering for '+name);
+      open.addEventListener('click',()=>void unblockPrintAccess(block, name, computers));
+      card.append(el('h3',name),el('p','Blokeret indtil kl. '+until+(name===block.computer?'':' · '+block.computer),'small muted'),open);
+      return card;
+    });
+    list.replaceChildren(...rows);
+    if (focused) {
+      const next=list.querySelector(`[data-block="${CSS.escape(focused)}"]`);
+      (next || $('print-blocks-heading')).focus({preventScroll:true});
+    }
+  }
+  async function refreshPrintAccess(g, computerList) {
+    if (opening) return;
+    const revision=++accessRevision;
+    try {
+      const [data, computers]=await Promise.all([request(printAccessRoute), computerList]);
+      if (active && g===generation && revision===accessRevision) {
+        renderPrintAccess(data, computers);
+        printAccessError('');
+      }
+    } catch {
+      if (active && g===generation && revision===accessRevision) {
+        $('print-blocks-status').textContent='';
+        $('print-blocks-list').querySelectorAll('button').forEach(button=>button.disabled=true);
+        printAccessError('Printblokeringer kunne ikke hentes. Vælg Hent ny status.');
+      }
+    }
+  }
+  async function unblockPrintAccess(block, name, computers) {
+    if (opening || !active) return;
+    const g=generation;
+    opening=true;
+    accessRevision++;
+    $('print-blocks-status').textContent='Åbner printadgang for '+name+' …';
+    $('print-blocks-list').querySelectorAll('button').forEach(button=>button.disabled=true);
+    printAccessError('');
+    try {
+      const data=await request(printAccessRoute,{id:block.id});
+      if (!active || g!==generation) return;
+      const stillBlocked=data.blocked.some(row=>row.computer===block.computer);
+      const message=stillBlocked
+        ? name+' har en ny printblokering. Kontrollér listen igen.'
+        : 'Printadgangen er åbnet for '+name+'.';
+      renderPrintAccess(data, computers, message);
+      $('print-blocks-heading').focus({preventScroll:true});
+    } catch {
+      if (active && g===generation) {
+        $('print-blocks-status').textContent='';
+        printAccessError('Ophævelsen kunne ikke bekræftes. Vælg Hent ny status, eller prøv igen.');
+        const buttons=$('print-blocks-list').querySelectorAll('button');
+        buttons.forEach(button=>button.disabled=false);
+        Array.from(buttons).find(button=>button.dataset.block===block.id)?.focus({preventScroll:true});
+      }
+    } finally { if (g===generation) opening=false; }
+  }
   async function refresh() {
     if (!active || loading) return; loading=true; const g=generation; $('refresh').disabled=true;
-    try { const [d] = await Promise.all([request('/api/laerer/oversigt'), refreshPrinters(g)]); if(active && g===generation) { render(d); $('status').textContent=''; } }
+    const overview=request('/api/laerer/oversigt');
+    const computerList=overview.then(d=>Array.isArray(d.computere)?d.computere:[],()=>[]);
+    void refreshPrintAccess(g, computerList);
+    try { const [d] = await Promise.all([overview, refreshPrinters(g)]); if(active && g===generation) { render(d); $('status').textContent=''; } }
     catch(e) { if(g===generation) { if(e.status===401) { signedIn(false); $('status').textContent='Log ind igen for at fortsætte.'; } else $('status').textContent='Status kunne ikke hentes. De viste oplysninger kan være forældede.'; } }
     finally { loading=false; $('refresh').disabled=false; }
   }

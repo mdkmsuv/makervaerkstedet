@@ -126,6 +126,9 @@ details.panel[open] summary{margin-bottom:4px}
 .prs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
 .pr{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:14px 16px;display:flex;flex-direction:column;gap:8px}
 .pr h3{font-size:1.15rem}
+#print-blocks-list{display:grid;gap:8px}
+#print-blocks-list .pr{min-width:0;overflow-wrap:anywhere}
+#print-blocks-list .btn{min-height:44px;align-self:flex-start}
 .attn li:first-child{border-top:0;padding-top:0}
 .attn ul{list-style:none;margin:0;padding:0}
 .attn .what b{display:block}

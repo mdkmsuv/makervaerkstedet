@@ -430,6 +430,9 @@ class Handler(BaseHTTPRequestHandler):
             elif path == '/api/makerspace/printers/plates':
                 self.require_bridge()
                 self.send(200, self.app.queue.plates())
+            elif path == '/api/makerspace/printers/print-access':
+                self.require_bridge()
+                self.send(200, {'blocked': self.app.queue.print_access_overview()['blocked']})
             elif path == '/api/auth/status':
                 self.send(200, {'teacher': self.app.auth.session(self.headers.get('Cookie'))})
             elif path == '/api/state':
@@ -575,7 +578,7 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(413, {'error': 'Filen eller forespørgslen er for stor.'})
                 return
             if path in ('/api/makerspace/printers/commands', '/api/makerspace/printers/maintenance',
-                        '/api/makerspace/printers/plates'):
+                        '/api/makerspace/printers/plates', '/api/makerspace/printers/print-access'):
                 self.require_bridge()
             elif path not in ('/api/jobs', '/api/auth/login', '/api/auth/logout'):
                 self.require_admin()
@@ -592,6 +595,11 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(body)
             if not isinstance(data, dict):
                 raise ValueError('Ugyldig forespørgsel.')
+            if path == '/api/makerspace/printers/print-access':
+                if set(data) != {'id'}:
+                    raise ValueError('Vælg en blokering fra listen.')
+                self.app.queue.unblock_print_access(data['id'])
+                return self.send(200, {'blocked': self.app.queue.print_access_overview()['blocked']})
             if path == '/api/makerspace/printers/plates':
                 if set(data) != {'id', 'token'} or not all(isinstance(value, str) for value in data.values()):
                     raise ValueError('Vælg en printer, og bekræft den aktuelle plade.')
