@@ -50,6 +50,37 @@ class AcknowledgedStopTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.q.release_bed('mini')
 
+    def test_matching_clean_machine_report_recovers_a_job_after_a_printer_fault(self):
+        job = self.q.submit(cube(10), 'Test.stl', 'any', 'printer-fault-recovery-1')
+        self.q.release_bed('mini')
+        reserved = self.q.reserve()
+        self.assertTrue(self.q.begin_dispatch(job['id']))
+        self.q.dispatched(job['id'])
+        task = reserved['remote_name']
+        self.q.update_report('mini', state='RUNNING', task=task, error=0, progress=42)
+        self.q.update_report('mini', state='PAUSE', task=task, error=123)
+        self.assertEqual(self.q.get_job(job['id'])['status'], 'attention')
+        self.q.update_report('mini', state='RUNNING', error=0, progress=45)
+        self.q.update_report('mini', state='FINISH', task='another-model.3mf', error=0, progress=100)
+        self.q.update_report('mini', state='FINISH', task=task, error=0, progress=45)
+        self.assertEqual(self.q.get_job(job['id'])['status'], 'attention')
+        self.q.update_report('mini', state='RUNNING', task=task, error=0, progress=50)
+        self.assertEqual(self.q.get_job(job['id'])['status'], 'printing')
+        self.q.update_report('mini', error=123)
+        self.q.update_report('mini', state='FINISH', task=task, error=0, progress=100)
+        self.assertEqual(self.q.get_job(job['id'])['status'], 'done')
+        self.assertFalse(self.q.printers['mini']['bed_clear'])
+
+    def test_unrelated_attention_still_needs_the_teacher(self):
+        job = self.q.submit(cube(10), 'Test.stl', 'any', 'printer-fault-recovery-2')
+        self.q.release_bed('mini')
+        reserved = self.q.reserve()
+        self.assertTrue(self.q.begin_dispatch(job['id']))
+        self.q.fail(job['id'], 'Printstart er uafklaret.', uncertain=True)
+        self.q.update_report('mini', state='FINISH', task=reserved['remote_name'], error=0, progress=100)
+        self.assertEqual(self.q.get_job(job['id'])['status'], 'attention')
+        self.assertFalse(self.q.snapshot()['printers'][0]['can_release'])
+
     def test_ack_is_revoked_by_error_even_if_error_later_clears(self):
         self.q.release_bed('mini')
         self.q.update_report('mini', error=123)

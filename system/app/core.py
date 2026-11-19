@@ -31,6 +31,7 @@ BUSY = {"RUNNING", "PREPARE", "PAUSE"}
 FRESH_SECONDS = 40
 # Bambu Studio's supplied HMS catalog: observe filament extrusion and Continue.
 FILAMENT_CONFIRMATION = 0x07FF8007
+PRINTER_FAULT_MESSAGE = "Printeren melder en fejl. En voksen skal kigge på den."
 DEFAULT_PRINT_TRIGGER = 10
 PRINT_BLOCK_SECONDS = 3600
 CLEANUP_RETRY_SECONDS = 60
@@ -843,6 +844,16 @@ class Queue:
                     self._change(job['id'], status='printing', progress=p['progress'], remaining=p['remaining'], message=message)
                 return
             if job['status'] == 'attention':
+                # Only a printer fault can clear itself, and only on a fresh,
+                # coherent report for this exact job. The bed stays unconfirmed.
+                if (job['message'] == PRINTER_FAULT_MESSAGE and not job['isolated']
+                        and state is not None and task is not None and error == 0 and matches):
+                    if p['state'] in BUSY:
+                        self._change(job['id'], status='printing', progress=p['progress'], remaining=p['remaining'],
+                                     message='Printet er sat på pause' if p['state'] == 'PAUSE' else '')
+                    elif p['state'] == 'FINISH' and progress is not None and p['progress'] == 100:
+                        self._change(job['id'], status='done', progress=100, remaining=0,
+                                     message='Printeren bekræftede, at printet er færdigt.')
                 return
             if job['status'] == 'recovering':
                 if state is not None and p['state'] != 'OFFLINE':
@@ -867,7 +878,7 @@ class Queue:
                                  message='Printet er afbrudt. Venter på en ryddet plade.')
                     return
             if p["error"] or failed:
-                self._change(job["id"], status="attention", message="Printeren melder en fejl. En voksen skal kigge på den.")
+                self._change(job["id"], status="attention", message=PRINTER_FAULT_MESSAGE)
             elif p["state"] in BUSY and job["status"] != "preparing":
                 if matches:
                     self._change(job["id"], status="printing", progress=p["progress"], remaining=p["remaining"], message="Printet er sat på pause" if p["state"] == "PAUSE" else "")
