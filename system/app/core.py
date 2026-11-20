@@ -33,7 +33,7 @@ FRESH_SECONDS = 40
 FILAMENT_CONFIRMATION = 0x07FF8007
 PRINTER_FAULT_MESSAGE = "Printeren melder en fejl. En voksen skal kigge på den."
 DEFAULT_PRINT_TRIGGER = 10
-PRINT_BLOCK_SECONDS = 3600
+PRINT_BLOCK_SECONDS = 15 * 60
 CLEANUP_RETRY_SECONDS = 60
 CLEANUP_RETRY_BATCH = 16
 UPLOAD_INVENTORY_LIMIT = 10000
@@ -140,6 +140,8 @@ class Queue:
             source TEXT PRIMARY KEY, reset_after INTEGER NOT NULL DEFAULT 0,
             blocked_until REAL NOT NULL DEFAULT 0, block_id TEXT,
             blocked_at REAL, trigger_count INTEGER)""")
+        self.db.execute("""UPDATE submission_access SET blocked_until=blocked_at+?
+                           WHERE blocked_until>blocked_at+?""", (PRINT_BLOCK_SECONDS, PRINT_BLOCK_SECONDS))
         row = self.db.execute("SELECT value FROM settings WHERE key='paused'").fetchone()
         self.paused = row is not None and row[0] == 'true'
         version_row = self.db.execute("SELECT value FROM settings WHERE key='queue_control_version'").fetchone()

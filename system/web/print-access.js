@@ -13,7 +13,7 @@
     }
     const focused = document.activeElement?.dataset.unblock;
     const html = data.blocked.length ? data.blocked.map(item =>
-      `<div class="attention-row"><div><strong>Computer ${esc(item.computer)}</strong><p>Blokeret kl. ${time(item.blocked_at)} efter forsøg nr. ${item.trigger_count}. Åbner automatisk kl. ${time(item.blocked_until)}.</p></div><div class="attention-actions"><button class="secondary" data-unblock="${esc(item.id)}" aria-label="Åbn printadgang for computer ${esc(item.computer)}">Åbn adgang nu</button></div></div>`
+      `<div class="attention-row"><div><strong>Computer ${esc(item.computer)}</strong><p>Blokeret kl. ${time(item.blocked_at)} efter forsøg nr. ${item.trigger_count}. Åbner automatisk kl. ${time(item.blocked_until)}.</p></div><div class="attention-actions"><button class="secondary" data-unblock="${esc(item.id)}" aria-label="Åbn adgang nu for computer ${esc(item.computer)}">Åbn adgang nu</button></div></div>`
     ).join('') : '<p class="muted">Ingen computere er blokeret.</p>';
     if ($('print-access-list').innerHTML !== html) {
       $('print-access-list').innerHTML = html;

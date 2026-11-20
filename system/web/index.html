@@ -146,7 +146,7 @@
         <section class="admin-section"><h2>Print i kø</h2><div id="teacher-queue"></div></section>
         <section id="print-access-section" class="admin-section" aria-labelledby="print-access-heading">
           <h2 id="print-access-heading">Midlertidigt blokerede computere</h2>
-          <p class="small-note">Mange indsendelser fra samme computer udløser en blokering af nye print i én time. Du kan åbne adgangen tidligere her. Allerede modtagne print fortsætter, og andre computere kan stadig sende.</p>
+          <p class="small-note">Mange indsendelser fra samme computer udløser en blokering af nye print i 15 minutter. Du kan åbne adgangen tidligere her. Allerede modtagne print fortsætter, og andre computere kan stadig sende.</p>
           <div id="print-access-list"><p class="muted">Henter adgangsstatus…</p></div>
           <p id="print-access-result" class="small-note" role="status"></p>
           <div id="print-access-error" class="notice error" role="alert" hidden></div>
@@ -154,7 +154,7 @@
             <div class="print-guard-fields">
               <label>Blokér ved indsendelse nr. inden for 60 minutter<input id="print-guard-trigger" type="number" min="2" max="100" required></label>
             </div>
-            <p class="small-note">Fx 10: De første 9 print modtages. Forsøg nr. 10 afvises og blokerer computeren i én time. Nye forsøg forlænger ikke blokeringen. Når adgangen åbner igen, starter optællingen forfra. Reglen gælder samlet for print fra hver computer.</p>
+            <p class="small-note">Fx 10: De første 9 print modtages. Forsøg nr. 10 afvises og blokerer computeren i 15 minutter. Nye forsøg forlænger ikke blokeringen. Når adgangen åbner igen, starter optællingen forfra. Reglen gælder samlet for print fra hver computer.</p>
             <button class="primary" type="submit">Gem regel</button>
           </form>
         </section>

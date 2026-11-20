@@ -47,21 +47,34 @@ class PrintAccessTests(unittest.TestCase):
         self.assertEqual(len(list((Path(self.temp.name) / 'uploads').glob('*.stl'))), 9)
         self.assertEqual(self.submit(source='computer-b')['status'], 'queued')
         self.assertEqual(len(self.queue.print_access_overview()['blocked']), 1)
-        self.assertEqual(self.queue.print_access('computer-a')['retry_after'], 3600)
+        self.assertEqual(self.queue.print_access('computer-a')['retry_after'], 900)
 
     def test_retries_and_restart_do_not_extend_block_and_expiry_reopens_automatically(self):
         block = self.block()
         self.restart()
-        self.now += 1000
+        self.now += 300
         with self.assertRaises(SubmissionBlocked) as blocked:
             self.submit()
-        self.assertEqual(blocked.exception.retry_after, 2600)
+        self.assertEqual(blocked.exception.retry_after, 600)
         self.assertEqual(self.queue.print_access_overview()['blocked'][0]['blocked_until'], block['blocked_until'])
-        self.now += 2599
+        self.now += 599
         self.restart()
         self.assertFalse(self.queue.print_access('ip:203.0.113.11')['allowed'])
         self.now += 1
         self.assertEqual(self.queue.print_access_overview()['blocked'], [])
+        self.assertEqual(self.submit()['status'], 'queued')
+
+    def test_upgrade_shortens_hour_block_from_original_start(self):
+        block = self.block()
+        self.queue.db.execute('UPDATE submission_access SET blocked_until=blocked_at+3600')
+        self.queue.db.commit()
+        self.now += 600
+        self.restart()
+        self.assertEqual(self.queue.print_guard_settings()['window_seconds'], 3600)
+        self.assertEqual(self.queue.print_guard_settings()['block_seconds'], 900)
+        self.assertEqual(self.queue.print_access_overview()['blocked'][0]['id'], block['id'])
+        self.assertEqual(self.queue.print_access('ip:203.0.113.11')['retry_after'], 300)
+        self.now += 300
         self.assertEqual(self.submit()['status'], 'queued')
 
     def test_teacher_unlock_resets_count_at_same_timestamp_and_old_id_cannot_unlock_new_block(self):
