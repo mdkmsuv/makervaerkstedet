@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
 import path from 'node:path';
 import test from 'node:test';
 import {fileURLToPath} from 'node:url';
@@ -20,6 +21,7 @@ test('a blocked plate links to the right teacher controls after login', async ()
     let reviewConfigured = true;
     const writes = [];
     const errors = [];
+    const plateToken = randomUUID().replaceAll('-', '');
     page.on('pageerror', error => errors.push(error.message));
 
     await page.route('**/*', async route => {
@@ -49,7 +51,7 @@ test('a blocked plate links to the right teacher controls after login', async ()
       if (url.pathname === '/api/printplader') {
         return send({
           ...(reviewConfigured && {review_url: teacher + '/laerer'}),
-          plates: [{id: 'white', name: 'Hvid printer', status: 'waiting', token: 'a'.repeat(32)},
+          plates: [{id: 'white', name: 'Hvid printer', status: 'waiting', token: plateToken},
             {id: 'orange', name: 'Orange printer', status: 'blocked', token: ''}]
         });
       }
