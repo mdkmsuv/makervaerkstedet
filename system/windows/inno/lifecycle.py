@@ -49,14 +49,14 @@ def record(path,value):
         json.dump(value,stream,indent=2);stream.flush();os.fsync(stream.fileno())
     os.replace(temporary,path)
 
-def directory_entries(folder):
+def read_inventory(operation):
     try:
-        return list(folder.iterdir())
+        return operation()
     except OSError as error:
         if error.errno != errno.EIO and getattr(error, 'winerror', None) not in (1117, 1237):
             raise
         time.sleep(0.25)
-        return list(folder.iterdir())
+        return operation()
 
 
 def files_in_tree(root):
@@ -64,11 +64,15 @@ def files_in_tree(root):
     # must never be used to verify a package or create a rollback backup.
     pending=[plain(root)]
     while pending:
-        for path in directory_entries(pending.pop()):
-            mode=plain(path).stat(follow_symlinks=False).st_mode
-            if stat.S_ISDIR(mode):pending.append(path)
+        folder=pending.pop()
+        for path in read_inventory(lambda: list(folder.iterdir())):
+            info=read_inventory(lambda: path.stat(follow_symlinks=False))
+            tag=getattr(info,'st_reparse_tag',None)
+            require(not stat.S_ISLNK(info.st_mode)
+                    and (tag is None or tag != stat.IO_REPARSE_TAG_MOUNT_POINT),'linked_path_rejected')
+            if stat.S_ISDIR(info.st_mode):pending.append(path)
             else:
-                require(stat.S_ISREG(mode),'unsupported_program_entry')
+                require(stat.S_ISREG(info.st_mode),'unsupported_program_entry')
                 yield path
 
 

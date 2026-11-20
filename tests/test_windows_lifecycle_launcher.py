@@ -11,6 +11,7 @@ import errno
 import hashlib
 import json
 from pathlib import Path
+import stat
 import tempfile
 import unittest
 import uuid
@@ -175,6 +176,37 @@ class LifecycleTests(unittest.TestCase):
             return scandir(path)
 
         with patch.object(os,'scandir',side_effect=scan), self.assertRaises(OSError):
+            life.tree(self.package)
+
+    def test_transient_metadata_read_can_complete_inventory(self):
+        path=self.package/'main.py'
+        expected=life.tree(self.package)
+        original_stat=Path.stat
+        reads=0
+
+        def read_metadata(entry, *, follow_symlinks=True):
+            nonlocal reads
+            if entry==path and not follow_symlinks:
+                reads+=1
+                if reads==1:raise OSError(errno.EIO,'synthetic metadata retry')
+            return original_stat(entry,follow_symlinks=follow_symlinks)
+
+        with patch.object(Path,'stat',read_metadata):
+            self.assertEqual(life.tree(self.package),expected)
+        self.assertEqual(reads,2)
+
+    @unittest.skipUnless(hasattr(stat,'IO_REPARSE_TAG_MOUNT_POINT'),'Windows junction metadata required')
+    def test_inventory_refuses_junction_from_no_follow_metadata(self):
+        directory=self.package/'runtime'
+        directory.mkdir()
+        original_stat=Path.stat
+        junction=Mock(st_mode=stat.S_IFDIR,st_reparse_tag=stat.IO_REPARSE_TAG_MOUNT_POINT)
+
+        def read_metadata(entry, *, follow_symlinks=True):
+            if entry==directory and not follow_symlinks:return junction
+            return original_stat(entry,follow_symlinks=follow_symlinks)
+
+        with patch.object(Path,'stat',read_metadata), self.assertRaisesRegex(life.LifecycleError,'linked_path_rejected'):
             life.tree(self.package)
 
     def test_changed_backup_never_overwrites_program(self):
