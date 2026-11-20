@@ -8,6 +8,7 @@ import argparse
 import base64
 from contextlib import closing
 import ctypes
+import errno
 import hashlib
 import http.client
 import ipaddress
@@ -20,6 +21,7 @@ import shutil
 import socket
 import sqlite3
 import ssl
+import stat
 import subprocess
 import sys
 import time
@@ -47,13 +49,36 @@ def record(path,value):
         json.dump(value,stream,indent=2);stream.flush();os.fsync(stream.fileno())
     os.replace(temporary,path)
 
+def directory_entries(folder):
+    try:
+        return list(folder.iterdir())
+    except OSError as error:
+        if error.errno != errno.EIO and getattr(error, 'winerror', None) not in (1117, 1237):
+            raise
+        time.sleep(0.25)
+        return list(folder.iterdir())
+
+
+def files_in_tree(root):
+    # Path.rglob suppresses filesystem scan errors. A partial inventory
+    # must never be used to verify a package or create a rollback backup.
+    pending=[plain(root)]
+    while pending:
+        for path in directory_entries(pending.pop()):
+            mode=plain(path).stat(follow_symlinks=False).st_mode
+            if stat.S_ISDIR(mode):pending.append(path)
+            else:
+                require(stat.S_ISREG(mode),'unsupported_program_entry')
+                yield path
+
+
 def verify_payload(root, expected):
     root=plain(root);manifest=root/'installer-payload.json'
     require(re.fullmatch('[a-f0-9]{64}',expected or '') is not None and digest(manifest)==expected,'payload_manifest_hash_mismatch')
     value=read(manifest)
     require(set(value)=={'schema','role','version','files','test_artifact'} and value['schema']==1 and value['role'] in ('server','laser_station'),'invalid_payload_manifest')
     require(isinstance(value['files'],dict) and value['files'],'empty_payload')
-    actual={p.relative_to(root).as_posix() for p in root.rglob('*') if p.is_file()}
+    actual={p.relative_to(root).as_posix() for p in files_in_tree(root)}
     require(actual==set(value['files'])|{'installer-payload.json'},'incomplete_payload_inventory')
     for name,expected_hash in value['files'].items():
         relative=PurePosixPath(name)
@@ -63,12 +88,8 @@ def verify_payload(root, expected):
     return value
 
 def tree(root):
-    result={}
-    for path in plain(root).rglob('*'):
-        plain(path)
-        require(path.is_file() or path.is_dir(),'unsupported_program_entry')
-        if path.is_file():result[path.relative_to(root).as_posix()]=digest(path)
-    return result
+    root=plain(root)
+    return {path.relative_to(root).as_posix():digest(path) for path in files_in_tree(root)}
 
 def backup_program(program, backup):
     require(not backup.exists(),'backup_already_exists')

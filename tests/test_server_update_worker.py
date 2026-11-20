@@ -258,6 +258,21 @@ class ServerUpdateWorkerTests(unittest.TestCase):
         self.assertEqual(self.worker.finish(None)['state'],'failed')
         self.assertTrue(Path(plan['exe']).exists())
 
+    def test_released_hold_before_program_swap_allows_a_new_search(self):
+        plan,_=self.prepare()
+        journal=self.data/'installer-updates'/plan['command_id']
+        state=journal/'state.json'
+        self.write(state,{'phase':'pause_held','operation_id':journal.name})
+        self.assertEqual(self.worker.finish(None)['state'],'interrupted')
+        self.write(state,{'phase':'pause_held','operation_id':journal.name,'hold_released':True})
+        self.request('check')
+        result=self.worker.check()
+        self.assertEqual(result['state'],'failed')
+        self.assertEqual(result['code'],'installer_failed')
+        self.assertTrue(Path(plan['exe']).exists())
+        self.request('check')
+        self.assertEqual(self.worker.check()['state'],'available')
+
     def test_pre_operation_id_installer_is_rejected(self):
         self.manifest['version']='2.1.0-20261117.3';self.manifest['artifacts'][0]['version']=self.manifest['version'];self.configure_release()
         self.request('check')

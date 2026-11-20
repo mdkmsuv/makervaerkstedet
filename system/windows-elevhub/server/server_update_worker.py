@@ -261,7 +261,9 @@ class Worker:
             require(journal is None or journal.get('operation_id')==operation['command_id'],'installer_completion_unconfirmed')
             require(self.protected()==operation['protected'],'protected_data_changed')
             if installed==operation['previous_version']:
-                rolled_back=journal and journal.get('phase') in {'program_restored_paused','pause_incomplete_no_stop'} and journal.get('hold_released') is True
+                # A failure during staging retains pause_held. The installer
+                # records hold_released only after restoring the old tasks.
+                rolled_back=journal and journal.get('phase') in {'pause_held','program_restored_paused','pause_incomplete_no_stop'} and journal.get('hold_released') is True
                 # A known terminated EXE that never created a journal failed its
                 # preflight. An unknown interrupted EXE is never inferred safe.
                 stopped_before_start=journal is None and exit_code is not None and exit_code!=0

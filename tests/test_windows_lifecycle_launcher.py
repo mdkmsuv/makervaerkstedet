@@ -7,6 +7,7 @@ import os
 """Program/pause invariants using synthetic files and an explicit fake OS edge."""
 import importlib.util
 import base64
+import errno
 import hashlib
 import json
 from pathlib import Path
@@ -135,6 +136,46 @@ class LifecycleTests(unittest.TestCase):
             life.update_server(self.package,self.program,self.journal,native,expected_files=expected)
         self.assertEqual(native.events,[]);self.assertFalse(self.journal.exists())
         self.assertEqual((self.program/'main.py').read_bytes(),b'old program')
+
+    def test_transient_directory_read_after_copy_does_not_hide_signed_files(self):
+        (self.package/'runtime').mkdir()
+        (self.package/'runtime'/'support.txt').write_text('package file',encoding='ascii')
+        expected=life.tree(self.package)
+        native=FakeOS(self.data)
+        copytree=life.shutil.copytree
+        scandir=os.scandir
+        copied=False
+        interrupted_reads=0
+
+        def copy(source,destination,*args,**kwargs):
+            nonlocal copied
+            result=copytree(source,destination,*args,**kwargs)
+            if source==self.package:copied=True
+            return result
+
+        def scan(path):
+            nonlocal interrupted_reads
+            if copied and Path(path)==self.package/'runtime' and interrupted_reads==0:
+                interrupted_reads+=1
+                raise OSError(errno.EIO,'synthetic storage retry')
+            return scandir(path)
+
+        with patch.object(life.shutil,'copytree',side_effect=copy), patch.object(os,'scandir',side_effect=scan):
+            result=life.update_server(self.package,self.program,self.journal,native,expected_files=expected)
+        self.assertEqual(interrupted_reads,1)
+        self.assertEqual(result['status'],'complete_paused')
+        self.assertEqual((self.program/'runtime'/'support.txt').read_text(encoding='ascii'),'package file')
+
+    def test_persistent_directory_read_error_cannot_form_a_partial_program_inventory(self):
+        (self.package/'runtime').mkdir()
+        scandir=os.scandir
+
+        def scan(path):
+            if Path(path)==self.package/'runtime':raise OSError(errno.EIO,'synthetic storage failure')
+            return scandir(path)
+
+        with patch.object(os,'scandir',side_effect=scan), self.assertRaises(OSError):
+            life.tree(self.package)
 
     def test_changed_backup_never_overwrites_program(self):
         backup=self.root/'backup';expected=life.backup_program(self.program,backup);(backup/'main.py').write_bytes(b'tampered')
