@@ -7,7 +7,6 @@
   const MAX_WORKSPACE_SIZE = 390;
   const FILE_FORMAT = "laservaerkstedet";
   const ACCEPTED_FILE_FORMATS = new Set([FILE_FORMAT, "laservaerkstedet-test"]);
-  const FONT_URL = "/assets/metrophobic-latin.ttf";
   const SUBMIT_URL = "/api/laser/submit";
   const FILE_VERSION = 2;
   const SUPPORTED_FILE_VERSIONS = new Set([1, 2]);
@@ -76,10 +75,18 @@
     geometryDisclosure: document.querySelector("#geometryDisclosure")
   };
 
-  if (!window.paper) {
+  if (!window.paper || !window.WorkshopTextFonts) {
     elements.statusMessage.textContent = "Figurværktøjerne kunne ikke indlæses. Genåbn den kopierede projektmappe.";
     return;
   }
+
+  const fontCatalog = window.WorkshopTextFonts;
+  const textFonts = fontCatalog.createLoader(buffer => window.opentype.parse(buffer));
+  const textFont = document.querySelector("#textFont");
+  const textFontStatus = document.querySelector("#textFontStatus");
+  let pendingFontChange = null;
+  fontCatalog.addOptions(textFont);
+  fontCatalog.registerPreviewFonts();
 
   const paperScope = new window.paper.PaperScope();
   paperScope.setup(document.createElement("canvas"));
@@ -485,7 +492,7 @@
       shape = svgElement("text", {
         x: object.x,
         y: object.y + object.height * 0.74,
-        "font-family": "Metrophobic, Helvetica, Arial, sans-serif",
+        "font-family": fontCatalog.family(object.font) + ", Metrophobic, Helvetica, Arial, sans-serif",
         "font-size": object.height * 0.72,
         textLength: Math.max(1, object.width),
         lengthAdjust: "spacingAndGlyphs"
@@ -753,6 +760,11 @@
     const hasSelection = objects.length > 0;
     elements.noSelectionMessage.hidden = hasSelection;
     elements.selectionPanel.hidden = !hasSelection;
+    if (objects.length !== 1 || primary?.type !== "text" || pendingFontChange?.object !== primary) {
+      pendingFontChange = null;
+      textFont.value = fontCatalog.keyFor(primary?.font);
+      showTextFontStatus("");
+    }
     if (!hasSelection || !frame) return;
 
     const multi = objects.length > 1;
@@ -881,7 +893,7 @@
     if (!allowObjectChange({ roots: state.objects.length + 1, total: countObjectTree(state.objects) + 1 })) return;
     const shape = SHAPES[type];
     const name = makeUniqueName(type === "text" ? "Ny tekst" : shape.label);
-    commit(`${name} er tilføjet.`, () => {
+    const added = commit(`${name} er tilføjet.`, () => {
       const object = type === "text"
         ? { id: allocateId(), type, name, text: "NY TEKST", width: 54, height: 14, process: "engrave", lockRatio: false }
         : { id: allocateId(), type, name, width: shape.width, height: shape.height, process: "cut", lockRatio: ["circle", "star", "heart", "pentagon", "hexagon"].includes(type) };
@@ -896,6 +908,11 @@
       state.objects.push(object);
       setSelectedIds([object.id]);
     });
+    if (added && type === "text") {
+      const input = document.querySelector("#textContent");
+      input.focus();
+      input.select();
+    }
   }
 
   const appCapabilities = window.ElevhubApp?.capabilities;
@@ -1710,6 +1727,40 @@
     });
   }
 
+  function showTextFontStatus(message, error = false) {
+    textFontStatus.textContent = message;
+    textFontStatus.classList.toggle("error", error);
+  }
+
+  async function changeTextFont() {
+    const object = primarySelected();
+    if (selectedObjects().length !== 1 || object?.type !== "text") return;
+    const key = textFont.value;
+    const change = {object};
+    pendingFontChange = change;
+    try {
+      const loading = textFonts.load(key);
+      if (loading) {
+        showTextFontStatus("Indlæser " + fontCatalog.details(key).name + " …");
+        await loading;
+      }
+      if (pendingFontChange !== change) return;
+      if (key !== fontCatalog.defaultKey) fontCatalog.checkGlyphs(textFonts.get(key), object.text, key);
+      pendingFontChange = null;
+      showTextFontStatus("");
+      if (key === fontCatalog.keyFor(object.font)) return;
+      commit("Skrifttypen er ændret.", () => {
+        if (key === fontCatalog.defaultKey) delete object.font;
+        else object.font = key;
+      });
+    } catch (error) {
+      if (pendingFontChange !== change) return;
+      pendingFontChange = null;
+      textFont.value = fontCatalog.keyFor(object.font);
+      showTextFontStatus(error.message, true);
+    }
+  }
+
   function handlePropertyChange(event) {
     const input = event.target.closest("[data-property]");
     const objects = selectedObjects();
@@ -1726,13 +1777,22 @@
 
     if (property === "name" || property === "text") {
       if (objects.length !== 1) return;
-      const value = input.value.trim();
+      const value = property === "text" ? input.value.normalize("NFC").trim() : input.value.trim();
       if (!value) {
         input.value = primary[property] || primary.name;
         announce("Feltet må ikke være tomt.");
         return;
       }
       if (value === primary[property]) return;
+      if (property === "text" && primary.font && textFonts.get(primary.font)) {
+        try {
+          fontCatalog.checkGlyphs(textFonts.get(primary.font), value, primary.font);
+          if (!pendingFontChange) showTextFontStatus("");
+        } catch (error) {
+          showTextFontStatus(error.message, true);
+          return;
+        }
+      }
       commit(property === "name" ? "Delen har fået et nyt navn." : "Teksten er ændret.", () => {
         primary[property] = value;
         if (property === "text" && primary.name.startsWith("Tekst:")) primary.name = `Tekst: ${value}`;
@@ -2329,42 +2389,24 @@
   // ---- Aflevering til læreren -------------------------------------------
   // The drawing is sent as the school's outlined laser SVG dialect (see
   // clean_svg in app/laser_server.py): one <g data-operation> per process and
-  // only <path> children. Text becomes Metrophobic outlines, so the laser
+  // only <path> children. Text becomes outlines in its chosen font, so the laser
   // never depends on fonts. The same requestId is reused while the drawing and
   // the pupil's details are unchanged, so a retry never creates a second job.
 
   // An export problem the pupil can act on; other errors get a general message.
   class ExportProblem extends Error {}
 
-  let laserFontPromise = null;
   let lastSubmission = { signature: "", requestId: "" };
   let submitting = false;
-
-  function loadLaserFont() {
-    if (!laserFontPromise) {
-      laserFontPromise = fetch(FONT_URL, { cache: "force-cache" })
-        .then((response) => {
-          if (!response.ok) throw new Error("font");
-          return response.arrayBuffer();
-        })
-        .then((buffer) => window.opentype.parse(buffer))
-        .catch((error) => {
-          laserFontPromise = null;
-          throw error;
-        });
-    }
-    return laserFontPromise;
-  }
 
   function textPaperItem(object, font) {
     const value = object.text || "TEKST";
     const size = object.height * 0.72;
-    const glyphs = font.getPath(value, 0, object.height * 0.74, size);
-    const pathData = glyphs.toPathData({ decimalPlaces: 4, flipY: false, optimize: false });
+    const pathData = fontCatalog.outline(font, value, 0, object.height * 0.74, size);
     if (!pathData) return null;
     const advance = font.getAdvanceWidth(value, size);
     const item = paperPath(pathData);
-    // Metrophobic's contours return to their start point without a Z command.
+    // Some font contours return to their start point without a Z command.
     // Glyph outlines are always closed shapes, so mark them closed for filling.
     item.children.forEach((contour) => { contour.closed = true; });
     item.fillRule = "nonzero";
@@ -2376,9 +2418,9 @@
   }
 
   // Like paperItemsInParent, but keeps text and remembers each part's process.
-  function exportItemsInParent(object, font) {
+  function exportItemsInParent(object) {
     if (object.type === "group") {
-      const parts = object.children.flatMap((child) => exportItemsInParent(child, font));
+      const parts = object.children.flatMap(exportItemsInParent);
       const pivot = new paperScope.Point(object.width / 2, object.height / 2);
       parts.forEach(({ item }) => {
         if (object.rotation) item.rotate(object.rotation, pivot);
@@ -2387,6 +2429,12 @@
       return parts;
     }
     if (object.type === "text") {
+      const key = fontCatalog.keyFor(object.font);
+      const font = textFonts.get(key);
+      if (key !== fontCatalog.defaultKey) {
+        try { fontCatalog.checkGlyphs(font, object.text || "TEKST", key); }
+        catch (error) { throw new ExportProblem(error.message); }
+      }
       const item = textPaperItem(object, font);
       return item ? [{ item, object }] : [];
     }
@@ -2406,13 +2454,19 @@
   }
 
   async function exportLaserSvg() {
-    const needsFont = JSON.stringify(state.objects).includes('"type":"text"');
-    const font = needsFont ? await loadLaserFont() : null;
+    const keys = new Set();
+    function collectFonts(object) {
+      if (object.type === "text") keys.add(fontCatalog.keyFor(object.font));
+      else if (object.type === "group") object.children.forEach(collectFonts);
+    }
+    state.objects.forEach(collectFonts);
+    try { await Promise.all([...keys].map(key => textFonts.load(key))); }
+    catch (error) { throw new ExportProblem(error.message); }
     const groups = { cut: [], "engrave-fill": [], "engrave-line": [] };
     const outside = [];
     let count = 0;
     state.objects.forEach((root) => {
-      exportItemsInParent(root, font).forEach(({ item, object }) => {
+      exportItemsInParent(root).forEach(({ item, object }) => {
         const bounds = item.bounds;
         if (bounds.left < -0.5 || bounds.top < -0.5 || bounds.right > state.workspace.widthMm + 0.5 || bounds.bottom > state.workspace.heightMm + 0.5) {
           if (!outside.includes(root.name)) outside.push(root.name);
@@ -2712,6 +2766,7 @@
         const text = typeof source.text === "string" ? source.text.trim() : "";
         if (!text || text.length > 80) throw new Error(`${objectName} mangler en gyldig tekst.`);
         object.text = text;
+        if (fontCatalog.keyFor(source.font) !== fontCatalog.defaultKey) object.font = source.font;
       }
       if (source.type === "motif") {
         if (!LIBRARY_ITEMS.some((item) => item.id === source.motifId)) throw new Error(`${objectName} har et ukendt SVG-motiv.`);
@@ -2923,6 +2978,7 @@
   });
 
   document.querySelector("#propertyForm").addEventListener("change", handlePropertyChange);
+  textFont.addEventListener("change", changeTextFont);
   elements.processCut.addEventListener("change", () => elements.processCut.checked && setSelectedProcess("cut"));
   elements.processEngrave.addEventListener("change", () => elements.processEngrave.checked && setSelectedProcess("engrave"));
   elements.projectName.addEventListener("change", () => {
@@ -3076,5 +3132,5 @@
   normalizeSelection();
   renderAll();
   requestAnimationFrame(fitDrawing);
-  if (window.opentype) loadLaserFont().catch(() => {});
+  if (window.opentype) textFonts.load()?.catch(() => {});
 })();

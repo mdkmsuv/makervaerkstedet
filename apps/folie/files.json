@@ -60,6 +60,11 @@
       "source": "apps/folie/web/assets/Clipper-LICENSE.txt",
       "path": "usr/share/makervaerkstedet/apps/folie/www/assets/Clipper-LICENSE.txt",
       "tree": false
+    },
+    {
+      "source": "apps/folie/web/assets/workshop-fonts",
+      "path": "usr/share/makervaerkstedet/apps/folie/www/assets/workshop-fonts",
+      "tree": true
     }
   ]
 }

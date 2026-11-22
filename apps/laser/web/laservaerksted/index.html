@@ -508,6 +508,8 @@
     .field textarea { min-height: 74px; resize: vertical; }
     .field input:hover, .field textarea:hover { border-color: #8b8b8b; }
     .field input:disabled { color: #666; background: #ededed; }
+    #textFontStatus:not(:empty) { margin: 0; }
+    #textFontStatus.error { color: var(--brand); }
     .field-help { display: block; color: var(--muted); font-size: 13px; line-height: 1.4; }
     .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     .input-unit { position: relative; }
@@ -1042,6 +1044,9 @@
               <div class="field" id="textContentField" hidden>
                 <label for="textContent">Tekst</label>
                 <textarea id="textContent" data-property="text" maxlength="80"></textarea>
+                <label for="textFont">Skrifttype</label>
+                <select id="textFont"></select>
+                <p id="textFontStatus" class="field-help" role="status"></p>
               </div>
 
               <fieldset class="property-group">
@@ -1313,6 +1318,7 @@
   <script src="/school-theme.js" defer></script>
   <script src="/laservaerksted/usb-save.js"></script>
   <script src="/laservaerksted/board-generator.js"></script>
+  <script src="/assets/workshop-fonts/text-fonts.js"></script>
   <script src="/laservaerksted/laser-editor.js"></script>
 </body>
 </html>

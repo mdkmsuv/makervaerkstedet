@@ -11,6 +11,9 @@ Laserværkstedet er en anden app i [`apps/laser/`](../laser/README.md).
 Koden skifter til folietilstand, når værten oplyser `ElevhubApp.id` som
 `folie`.
 
+Vælg **Skrifttype** på et tekstobjekt. Alle 12 skrifttyper virker offline,
+og projektfilen gemmer valget. [Skrifttyper og licenser](web/assets/workshop-fonts/README.md).
+
 ## Kilde og byg
 
 | Fil | Ansvar |

@@ -12,6 +12,9 @@ import {cleanLearning} from './laser-geometry.js';
 import {appendLibraryItems,installLaserLibrary} from './laser-library.js';
 
 const $=id=>document.getElementById(id);
+const fontCatalog=window.WorkshopTextFonts;
+const fontPicker=$('text-font');
+let textRevision=0;
 const VINYL=window.ElevhubApp?.id==='folie'||location.pathname==='/folie.html';
 const MANAGED=!!window.ElevhubApp||!!document.getElementById('elevhub');
 const LASER_BED={width:600,height:375};
@@ -306,6 +309,7 @@ function renderSelection(){
   const label=el('text',{class:'selection-label',x:b.cx,y:b.y-3,'text-anchor':'middle','font-size':11/screenScale()},`${round(b.width).toFixed(1)} × ${round(b.height).toFixed(1)} mm`);label.style.fontSize=11/screenScale()+'px';selectionLayer.append(label);
 }
 function renderProperties(){
+  textRevision++;
   const objects=chosen(),o=one(),b=groupBounds();
   $('duplicate').disabled=$('delete').disabled=!objects.length;
   for(const id of ['unite','subtract','intersect','exclude'])$(id).disabled=objects.length<2;
@@ -331,7 +335,12 @@ function renderProperties(){
     $('object-width').disabled=$('object-height').disabled=!!o.gear;
     $('object-x').value=round(b.x).toFixed(1);$('object-y').value=round(b.y).toFixed(1);
     $('text-properties').hidden=!o.text;
-    if(o.text){$('text-value').value=o.text.value;$('text-size').value=o.text.size;}
+    if(o.text){
+      $('text-value').value=o.text.value;
+      $('text-size').value=o.text.size;
+      fontPicker.value=fontCatalog.keyFor(o.text.font);
+      showTextFontStatus('');
+    }
     $('gear-properties').hidden=!o.gear;
     $('image-properties').hidden=!o.image;
     if(o.image){$('image-to-path').disabled=!o.image.trace;$('image-resolution').textContent=`${o.image.width} × ${o.image.height} pixels · ${o.image.trace?'Konturer er klar':'Ingen konturer endnu'}`;}
@@ -587,7 +596,43 @@ function resizeObject(axis){
   let sx=axis==='width'?value/old:1,sy=axis==='height'?value/old:1;if($('lock-ratio').checked||o.text)sx=sy=value/old;
   edit(()=>{o.d=scale(o.d,sx,sy,b.x,b.y);scaledGenerator(o,sx,sy);});
 }
-function updateText(){const o=one();if(!o?.text)return;const value=$('text-value').value.normalize('NFC').trim(),size=num('text-size',2,60),d=changedText(o,value,size);edit(()=>{o.text={...o.text,value,size};o.name=value;o.d=d;});}
+function showTextFontStatus(message,error=false){
+  const status=$('text-font-status');
+  status.textContent=message;
+  status.classList.toggle('error',error);
+}
+function updateText(font){
+  const o=one();
+  if(!o?.text)return;
+  const value=$('text-value').value.normalize('NFC').trim();
+  const size=num('text-size',2,60);
+  const d=changedText(o,value,size,font);
+  edit(()=>{o.text={...o.text,value,size,font};o.name=value;o.d=d;});
+}
+async function changeTextProperties(){
+  const font=fontPicker.value;
+  const revision=++textRevision;
+  try{
+    const loading=loadFont(font);
+    if(loading){
+      showTextFontStatus('Indlæser '+fontCatalog.details(font).name+' …');
+      await loading;
+    }
+    if(revision!==textRevision)return;
+    // A font can finish loading while the pupil is editing a text field.
+    const field=document.activeElement;
+    const keepDraft=loading&&(field.id==='text-value'||field.id==='text-size');
+    const draft=keepDraft?field.value:null;
+    const selection=keepDraft&&field.id==='text-value'?[field.selectionStart,field.selectionEnd,field.selectionDirection]:null;
+    updateText(font);
+    if(keepDraft)field.value=draft;
+    if(selection)field.setSelectionRange(...selection);
+  }catch(error){
+    if(revision!==textRevision)return;
+    fontPicker.value=fontCatalog.keyFor(one()?.text?.font);
+    showTextFontStatus(error.message,true);
+  }
+}
 function updateGear(){const o=one();if(!o?.gear)return;const teeth=Math.round(num('gear-teeth',17,48)),hole=num('gear-hole',0,12),d=gear(teeth,hole),b=bounds(o.d);edit(()=>{o.gear={teeth,hole};o.name=`Tandhjul · ${teeth} tænder`;o.d=center(d,b.cx,b.cy);});}
 async function openImageDialog(bitmap,target=null,name='Billede'){
   setTool('select');imageDraft={...structuredClone(bitmap),name};imageTarget=target;
@@ -861,7 +906,7 @@ function bind(){
   for(const axis of ['width','height'])$('object-'+axis).onchange=()=>attempt(()=>resizeObject(axis));
   for(const axis of ['x','y'])$('object-'+axis).onchange=()=>attempt(()=>{const o=one();if(!o)return;const v=num('object-'+axis,-600,600),b=bounds(o.d);edit(()=>o.d=move(o.d,axis==='x'?v-b.x:0,axis==='y'?v-b.y:0));});
   for(const [id,deg] of [['rotate-left',-15],['rotate-right',15]])$(id).onclick=()=>transformSelection('rotate',deg);
-  for(const id of ['text-value','text-size'])$(id).onchange=()=>attempt(updateText);
+  for(const id of ['text-value','text-size','text-font'])$(id).onchange=changeTextProperties;
   for(const id of ['gear-teeth','gear-hole'])$(id).onchange=()=>attempt(updateGear);
   for(const axis of ['width','height'])$('board-'+axis).onchange=()=>attempt(()=>{const value=num('board-'+axis,30,600);edit(()=>state[axis]=value);});
   for(const kind of ['unite','subtract','intersect','exclude'])$(kind).onclick=()=>attempt(()=>{const objects=chosen(),d=combine(objects,kind);edit(()=>{const id=uid();state.items=state.items.filter(o=>!selected.has(o.id));state.items.push({id,name:({unite:'Samlet figur',subtract:'Figur med hul',intersect:'Overlap',exclude:'Figur uden overlap'})[kind],d,op:VINYL?'cut':objects.every(o=>o.op===objects[0].op)?objects[0].op:'undecided',fillRule:'nonzero'});selected=new Set([id]);activeNode=null;activeCurve=null;});});
@@ -941,6 +986,7 @@ function restore(){
 async function start(){
   try{
     if(VINYL)configureVinylUI();
+    fontCatalog.addOptions(fontPicker);
     await loadFont();
     inspiration=(VINYL?installVinylWorkshop:installLaserWorkshop)(VINYL,{
       startProject:(id,mode)=>attempt(()=>requestStarter(id,mode)),
@@ -958,7 +1004,7 @@ async function start(){
     }
     restoreReceipt();
     try{level=Math.max(0,Math.min(3,Number(localStorage.getItem(STORAGE+'-level'))||0));}catch{}
-    bind();installProjectAdapter();setLevel(level);render();persist();inboxStatus();restorePendingProject();
+    bind();$('add-text').disabled=false;installProjectAdapter();setLevel(level);render();persist();inboxStatus();restorePendingProject();
     installLaserLibrary({notify,vinyl:VINYL,insert:(source,title)=>{
       if(!finishPendingPoints())throw Error('Afslut din punktfigur først.');
       const result=importSVG(source,VINYL?{maxHeight:603,defaultOperation:'cut'}:{}),factor=Math.min(1,state.width*.8/result.width,state.height*.8/result.height);

@@ -356,6 +356,54 @@
     "system/web/assets/workshop-3d-bauhaus-v1.png",
     "system/web/assets/workshop-laser-v1.webp",
     "apps/folie/web/assets/workshop-vinyl-v1.webp",
+    "apps/folie/web/assets/workshop-fonts/ArchivoBlack-Regular-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/ArchivoBlack-Regular.ttf",
+    "apps/folie/web/assets/workshop-fonts/BebasNeue-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/BebasNeue-Regular.ttf",
+    "apps/folie/web/assets/workshop-fonts/Bungee-Regular-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/Bungee-Regular.ttf",
+    "apps/folie/web/assets/workshop-fonts/DMMono-Regular-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/DMMono-Regular.ttf",
+    "apps/folie/web/assets/workshop-fonts/OldStandard-Bold-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/OldStandard-Bold.ttf",
+    "apps/folie/web/assets/workshop-fonts/PatrickHand-Regular-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/PatrickHand-Regular.ttf",
+    "apps/folie/web/assets/workshop-fonts/PermanentMarker-Regular-Apache.txt",
+    "apps/folie/web/assets/workshop-fonts/PermanentMarker-Regular.ttf",
+    "apps/folie/web/assets/workshop-fonts/README.md",
+    "apps/folie/web/assets/workshop-fonts/Rye-Regular-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/Rye-Regular.ttf",
+    "apps/folie/web/assets/workshop-fonts/Sniglet-ExtraBold-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/Sniglet-ExtraBold.ttf",
+    "apps/folie/web/assets/workshop-fonts/StardosStencil-Bold-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/StardosStencil-Bold.ttf",
+    "apps/folie/web/assets/workshop-fonts/text-fonts.js",
+    "apps/folie/web/assets/workshop-fonts/UnifrakturMaguntia-Book-OFL.txt",
+    "apps/folie/web/assets/workshop-fonts/UnifrakturMaguntia-Book.ttf",
+    "apps/laser/web/assets/workshop-fonts/ArchivoBlack-Regular-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/ArchivoBlack-Regular.ttf",
+    "apps/laser/web/assets/workshop-fonts/BebasNeue-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/BebasNeue-Regular.ttf",
+    "apps/laser/web/assets/workshop-fonts/Bungee-Regular-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/Bungee-Regular.ttf",
+    "apps/laser/web/assets/workshop-fonts/DMMono-Regular-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/DMMono-Regular.ttf",
+    "apps/laser/web/assets/workshop-fonts/OldStandard-Bold-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/OldStandard-Bold.ttf",
+    "apps/laser/web/assets/workshop-fonts/PatrickHand-Regular-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/PatrickHand-Regular.ttf",
+    "apps/laser/web/assets/workshop-fonts/PermanentMarker-Regular-Apache.txt",
+    "apps/laser/web/assets/workshop-fonts/PermanentMarker-Regular.ttf",
+    "apps/laser/web/assets/workshop-fonts/README.md",
+    "apps/laser/web/assets/workshop-fonts/Rye-Regular-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/Rye-Regular.ttf",
+    "apps/laser/web/assets/workshop-fonts/Sniglet-ExtraBold-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/Sniglet-ExtraBold.ttf",
+    "apps/laser/web/assets/workshop-fonts/StardosStencil-Bold-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/StardosStencil-Bold.ttf",
+    "apps/laser/web/assets/workshop-fonts/text-fonts.js",
+    "apps/laser/web/assets/workshop-fonts/UnifrakturMaguntia-Book-OFL.txt",
+    "apps/laser/web/assets/workshop-fonts/UnifrakturMaguntia-Book.ttf",
     "system/web/favicon.svg",
     "system/windows-elevhub/artifact-manifest.example.json",
     "system/windows-elevhub/build_packages.py",
@@ -3115,6 +3163,30 @@
     "forbiddenIdentifierSha256": [],
     "publicAttributionEmailSha256": [
       {
+        "sha256": "1ce91f87a65301a854bdd83b56e747d5dd91c970c086b4381fd8e5c62ef1b8f8",
+        "reason": "Reviewed public copyright contact in an original Laser/Folie workshop font license."
+      },
+      {
+        "sha256": "3ee7eaee1a91773c5fa6f89e25e161fa897d606e23c6435c81c6489ecba0f963",
+        "reason": "Reviewed public copyright contact in an original Laser/Folie workshop font license."
+      },
+      {
+        "sha256": "44b0556371d75f622c92b1dc62fc2063db432b7bfd189b7689c1a119c9bc9ce1",
+        "reason": "Reviewed public copyright contact in an original Laser/Folie workshop font license."
+      },
+      {
+        "sha256": "60fe7e576cbdc0e83fed68102f3331b5902a0ec212ee7f374dc469a2de932071",
+        "reason": "Reviewed public copyright contact in an original Laser/Folie workshop font license."
+      },
+      {
+        "sha256": "63b022b054c70e4a14ba88cb059af9845144965af37d8dd2a0c4b33f35ab7b24",
+        "reason": "Reviewed public copyright contact in an original Laser/Folie workshop font license."
+      },
+      {
+        "sha256": "685f3e2e2160ce8ca4c441f171356bb8b67d9c55a1693b8796818afd78dde6e4",
+        "reason": "Reviewed public copyright contact in an original Laser/Folie workshop font license."
+      },
+      {
         "sha256": "0386d0a988a95ad3de74a32872041ab246d4ecad441d961a837ed5af6ab81c79",
         "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
       },
@@ -3273,6 +3345,116 @@
     ]
   },
   "publicFonts": [
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/ArchivoBlack-Regular.ttf",
+      "sha256": "dd9a89a019b4849f66ab75455fe7bdf931311042cbb0f0f97acc061539703180",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/BebasNeue-Regular.ttf",
+      "sha256": "08e4623805102d819f58601e46e345648846075e363b2ceb23313c2d1c83ec73",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/Bungee-Regular.ttf",
+      "sha256": "c4f5361ce120af3e6b9156d0bf379fa19cda2ea0cd18ac01fd99596c6bf66e3f",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/DMMono-Regular.ttf",
+      "sha256": "55b4c98f123daebb3ed27947ba47b2af00554fc6284d639a540bcef5e6258ad2",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/OldStandard-Bold.ttf",
+      "sha256": "7d831e9d799ad23ee98e889381a9db2a283b2dac7f228dd5c06071decb9c54db",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/PatrickHand-Regular.ttf",
+      "sha256": "0f173b3e6cb6d1af25babf7f0057c5ac4ee11f9992b0469bb817e967ef4ad0fc",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/PermanentMarker-Regular.ttf",
+      "sha256": "28f82c8a7943cb8e9d599f8554da1d4fc75dbcf69b9885ad6c0611d20c6946c5",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/Rye-Regular.ttf",
+      "sha256": "b7edee5e615ae1b6b07e9d030c1309152bf3672a0e8a2a46293e273730f5adba",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/Sniglet-ExtraBold.ttf",
+      "sha256": "fb92a118e14b4bde101a0143895f570a54b070a307b359510b7703b5a94bb18c",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/StardosStencil-Bold.ttf",
+      "sha256": "6b15f50b1b358512d922b5f11937af17e90704587e1d7fb009f1715d2d5dfa74",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/folie/web/assets/workshop-fonts/UnifrakturMaguntia-Book.ttf",
+      "sha256": "d64afc0547059dd2e4a78da48bda0aba0a9901be58c7f8c201a8b2b6b4492cc8",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/ArchivoBlack-Regular.ttf",
+      "sha256": "dd9a89a019b4849f66ab75455fe7bdf931311042cbb0f0f97acc061539703180",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/BebasNeue-Regular.ttf",
+      "sha256": "08e4623805102d819f58601e46e345648846075e363b2ceb23313c2d1c83ec73",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/Bungee-Regular.ttf",
+      "sha256": "c4f5361ce120af3e6b9156d0bf379fa19cda2ea0cd18ac01fd99596c6bf66e3f",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/DMMono-Regular.ttf",
+      "sha256": "55b4c98f123daebb3ed27947ba47b2af00554fc6284d639a540bcef5e6258ad2",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/OldStandard-Bold.ttf",
+      "sha256": "7d831e9d799ad23ee98e889381a9db2a283b2dac7f228dd5c06071decb9c54db",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/PatrickHand-Regular.ttf",
+      "sha256": "0f173b3e6cb6d1af25babf7f0057c5ac4ee11f9992b0469bb817e967ef4ad0fc",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/PermanentMarker-Regular.ttf",
+      "sha256": "28f82c8a7943cb8e9d599f8554da1d4fc75dbcf69b9885ad6c0611d20c6946c5",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/Rye-Regular.ttf",
+      "sha256": "b7edee5e615ae1b6b07e9d030c1309152bf3672a0e8a2a46293e273730f5adba",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/Sniglet-ExtraBold.ttf",
+      "sha256": "fb92a118e14b4bde101a0143895f570a54b070a307b359510b7703b5a94bb18c",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/StardosStencil-Bold.ttf",
+      "sha256": "6b15f50b1b358512d922b5f11937af17e90704587e1d7fb009f1715d2d5dfa74",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
+    {
+      "path": "apps/laser/web/assets/workshop-fonts/UnifrakturMaguntia-Book.ttf",
+      "sha256": "d64afc0547059dd2e4a78da48bda0aba0a9901be58c7f8c201a8b2b6b4492cc8",
+      "provenance": "Unmodified Google Fonts file. Upstream source and original license are listed in the adjacent workshop-fonts README."
+    },
     {
       "path": "system/linux-elevhub/projekter/web/metrophobic.ttf",
       "sha256": "545588c2926a7021f750026765e1f6ec99ced69122d98a1284598d4614fd040e",

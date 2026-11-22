@@ -66,3 +66,6 @@ dialog{width:min(600px,calc(100% - 28px));border:1px solid #deded7;border-radius
 
 #save-status{font-size:12px;color:#465941}
 #save-status.error{color:#721c24}
+
+#text-font-status:not(:empty){margin-top:6px;color:var(--muted);font-size:13px}
+#text-font-status.error{color:var(--brand)}

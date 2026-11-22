@@ -20,7 +20,7 @@ export function scaleText(o,sx,sy){
     if(Math.abs(residual-1)>1e-10)transformText(o,residual,0,0,residual);
   }else transformText(o,sx,0,0,sy);
 }
-export function changedText(o,value,size){
+export function changedText(o,value,size,font){
   const b=bounds(o.d),matrix=o.text.matrix||[1,0,0,1];
-  return center(transform(textPath(value,size),[...matrix,0,0]),b.cx,b.cy);
+  return center(transform(textPath(value,size,font),[...matrix,0,0]),b.cx,b.cy);
 }

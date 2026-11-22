@@ -5,7 +5,7 @@
   "description": "Tegn og aflever laserskæring.",
   "category": "byg",
   "icon": null,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "package": "makervaerkstedet-app-laser",
   "architecture": "all",
   "sdk": 1,

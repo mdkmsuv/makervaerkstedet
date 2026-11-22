@@ -35,6 +35,109 @@ async function saved(page, click) {
 async function exported(page) {
   return page.evaluate(async () => await (await window.ElevhubProjectAdapter.export()).text());
 }
+const workshopFonts = ['metrophobic','archivo-black','bebas-neue','bungee','dm-mono','old-standard-tt',
+  'patrick-hand','permanent-marker','rye','sniglet','stardos-stencil','unifrakturmaguntia'];
+
+async function workshopFontPicker(page) {
+  const picker = page.getByRole('combobox', {name:'Skrifttype', exact:true});
+  assert.equal(await picker.count(), 1, 'Text properties include a font picker');
+  assert.deepEqual(await picker.locator('option').evaluateAll(options => options.map(option => option.value)), workshopFonts);
+  return picker;
+}
+
+async function openFontProject(page, content) {
+  await page.evaluate(content => window.ElevhubProjectAdapter.import(new Blob([content])), content);
+}
+
+function svgFontPaths(svg) {
+  assert.doesNotMatch(svg, /<text\b|NaN/);
+  return [...svg.matchAll(/<path\b[^>]*\bd="([^"]+)"/g)].map(match => {
+    assert(match[1].split(/(?=M)/i).every(contour => /z$/i.test(contour.trim())), 'Font outlines are closed');
+    return match[1];
+  });
+}
+
+async function testLaserFonts(page) {
+  await page.locator('[data-add-type="text"]').click();
+  const picker = await workshopFontPicker(page);
+  const input = page.locator('#textContent');
+  assert(await input.evaluate(field => document.activeElement === field), 'Adding text focuses the text field');
+  await input.fill('Skole ÆØÅ æøå 2026');
+  await input.press('Tab');
+  await picker.selectOption('archivo-black');
+  await page.waitForFunction(() => [...document.fonts].some(font =>
+    font.family === 'WorkshopFont-archivo-black' && font.status === 'loaded'));
+  const project = JSON.parse(await exported(page));
+  const source = project.project.objects.find(object => object.type === 'text');
+  assert.equal(source.font, 'archivo-black');
+  await page.locator('#undoButton').click();
+  assert.equal(await picker.inputValue(), 'metrophobic');
+
+  // Test every emitted shape and nested font selection in one isolated submission.
+  const children = workshopFonts.map((key, index) => {
+    const object = {...source, id: 'test-font-' + index, name: key, x: 5, y: 5};
+    if (key === 'metrophobic') delete object.font;
+    else object.font = key;
+    return object;
+  });
+  project.project.objects = [{...source, id:'test-font-group', name:'Skrifttypeprøve', type:'group',
+    x:10, y:10, width:70, height:30, children}];
+  project.project.selectedIds = ['test-font-group'];
+  await openFontProject(page, JSON.stringify(project));
+  const reopened = JSON.parse(await exported(page));
+  assert.deepEqual(reopened.project.objects[0].children.map(object => object.font), children.map(object => object.font));
+
+  let submission;
+  await page.route('**/api/laser/submit', route => {
+    submission = route.request().postDataJSON();
+    return route.fulfill({status:202, json:{queued:true}});
+  });
+  await page.locator('#reviewButton').click();
+  await page.locator('#reviewStudentName').fill('Syntetisk elev');
+  await page.locator('#reviewClass').fill('QA-6');
+  const reply = page.waitForResponse(response => new URL(response.url()).pathname === '/api/laser/submit');
+  await page.locator('#submitTestButton').click();
+  assert.equal((await reply).status(), 202);
+  const paths = svgFontPaths(submission.svg);
+  assert.equal(paths.length, workshopFonts.length);
+  assert.equal(new Set(paths).size, workshopFonts.length);
+}
+
+async function testFolieFonts(page) {
+  await page.locator('#add-text').click();
+  const picker = await workshopFontPicker(page);
+  await page.locator('#workspace').press('Shift+ArrowRight');
+  await page.locator('#workspace').press('Shift+ArrowDown');
+  const input = page.locator('#text-value');
+  await input.fill('ÆØÅ æøå');
+  await input.press('Tab');
+  const paths = new Set();
+  for (const key of workshopFonts) {
+    if (key !== 'metrophobic') {
+      await picker.selectOption(key);
+      await page.waitForFunction(key => document.querySelector('#text-font').value === key &&
+        document.querySelector('#text-font-status').textContent === '', key);
+      assert((await exported(page)).includes('&quot;font&quot;:&quot;' + key + '&quot;'), key + ' is saved');
+    }
+    const saved = page.waitForEvent('download');
+    await page.locator('#export-button').click();
+    const svg = await fs.promises.readFile(await (await saved).path(), 'utf8');
+    const [outline] = svgFontPaths(svg);
+    assert(outline, key + ' exports a contour');
+    paths.add(outline);
+  }
+  assert.equal(paths.size, workshopFonts.length);
+  const project = await exported(page);
+  await openFontProject(page, project);
+  await page.locator('#object-list button').filter({hasText:'ÆØÅ æøå'}).click();
+  assert.equal(await picker.inputValue(), 'unifrakturmaguntia');
+  await input.fill('Folie ÆØÅ');
+  await input.press('Tab');
+  await page.waitForFunction(() => document.querySelector('#object-list').textContent.includes('Folie ÆØÅ'));
+  assert((await exported(page)).includes('&quot;font&quot;:&quot;unifrakturmaguntia&quot;'));
+  await page.locator('#delete').click();
+}
+
 async function newContext() {
   const context = await browser.newContext({viewport: {width: 1440, height: 950}});
   await context.route('**/*', async route => {
@@ -230,9 +333,11 @@ async function main() {
     const reopened = JSON.parse(await exported(page));
     const geometry = object => ({...object, rounded: Boolean(object.rounded)});
     assert.deepEqual(reopened.project.objects.map(geometry), expected.project.objects.map(geometry));
+    await testLaserFonts(page);
   });
   await run('folie', async page => {
     await namedStart(page, 'Installeret folie');
+    await testFolieFonts(page);
     await page.waitForFunction(() => document.documentElement.style.getPropertyValue('--school-brand') === '#157347');
     await page.locator('#library-button').click();
     await page.getByRole('button', {name: 'Tilføj skæremotiv', exact: true}).click();

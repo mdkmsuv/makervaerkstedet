@@ -5,6 +5,11 @@
       "source": "apps/laser/web/laservaerksted",
       "path": "usr/share/makervaerkstedet/apps/laser/www/laservaerksted",
       "tree": true
+    },
+    {
+      "source": "apps/laser/web/assets/workshop-fonts",
+      "path": "usr/share/makervaerkstedet/apps/laser/www/assets/workshop-fonts",
+      "tree": true
     }
   ]
 }

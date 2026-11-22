@@ -10,12 +10,9 @@ export const COLORS = {undecided:'#8a8174',cut:'#c62b2f','engrave-line':'#256b93
 const scope = new paper.PaperScope();
 scope.setup(document.createElement('canvas'));
 scope.settings.insertItems = false;
-let font;
-export async function loadFont() {
-  const response = await fetch('/assets/metrophobic-latin.ttf');
-  if (!response.ok) throw new Error('Skrifttypen kunne ikke indlæses. Prøv at genindlæse siden.');
-  font = parseFont(await response.arrayBuffer());
-}
+const fontCatalog = window.WorkshopTextFonts;
+const fonts = fontCatalog.createLoader(parseFont);
+export const loadFont = fonts.load;
 export const uid = () => {
   if(crypto.randomUUID)return crypto.randomUUID();
   // Local school sites can use HTTP on a LAN, where randomUUID is unavailable.
@@ -73,15 +70,15 @@ export function shape(kind) {
   if(!p)throw new Error('Ukendt figur.');
   const d=p.pathData;p.remove();return d;
 }
-export function textPath(value,size) {
+export function textPath(value,size,key) {
+  const font=fonts.get(key);
   if(!font)throw new Error('Skrifttypen er ved at blive indlæst.');
   value=String(value).normalize('NFC').trim();
   if(!value||value.length>80)throw new Error('Skriv mellem 1 og 80 tegn.');
-  const missing=[...value].filter(c=>!font.hasChar(c));
-  if(missing.length)throw new Error('Skrifttypen har ikke disse tegn: '+[...new Set(missing)].join(' '));
+  fontCatalog.checkGlyphs(font,value,key);
   // Font contours are closed even when the parser emits no explicit Z.
   // Disable its size-dependent SVG optimization to preserve small letter details.
-  const p=path(font.getPath(value,0,0,size).toPathData({decimalPlaces:4,flipY:false,optimize:false}));
+  const p=path(fontCatalog.outline(font,value,0,0,size));
   p.children.forEach(c=>c.closed=true);
   const d=p.pathData;p.remove();return d;
 }
@@ -259,6 +256,7 @@ export function cleanLearning(data){
 function cleanText(data){
   if(!data||typeof data.value!=='string'||data.value.length>80||!Number.isFinite(data.size)||data.size<2||data.size>60)return undefined;
   const text={value:data.value,size:data.size};
+  if(fontCatalog.keyFor(data.font)===data.font)text.font=data.font;
   if(data.matrix!==undefined){
     if(!Array.isArray(data.matrix)||data.matrix.length!==4||!data.matrix.every(n=>Number.isFinite(n)&&Math.abs(n)<=100000))return undefined;
     const [a,b,c,d]=data.matrix;if(Math.abs(a*d-b*c)<1e-12)return undefined;

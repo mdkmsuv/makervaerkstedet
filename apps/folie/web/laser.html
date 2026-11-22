@@ -12,6 +12,7 @@
   <link rel="stylesheet" href="/school-theme.css">
   <link rel="stylesheet" href="/laser-workshop.css">
   <link rel="stylesheet" href="/vinyl-workshop.css">
+  <script src="/assets/workshop-fonts/text-fonts.js" defer></script>
   <script src="/vendor/laser.js" defer></script>
   <script src="/school-theme.js" defer></script>
 </head>
@@ -49,7 +50,7 @@
           <button class="tool" data-tool="line" aria-pressed="false"><svg viewBox="0 0 32 32"><path d="m6 26 20-20"/><circle cx="6" cy="26" r="2"/><circle cx="26" cy="6" r="2"/></svg><span>Streg</span></button>
           <button class="tool" data-tool="polyline" data-min-level="2" aria-pressed="false"><svg viewBox="0 0 32 32"><path d="m5 24 8-16 8 13 6-14"/><circle cx="5" cy="24" r="2"/><circle cx="13" cy="8" r="2"/><circle cx="21" cy="21" r="2"/><circle cx="27" cy="7" r="2"/></svg><span>Punkt til punkt</span></button>
           <button class="tool" id="add-image" data-min-level="2"><svg viewBox="0 0 32 32"><rect x="4" y="5" width="24" height="22" rx="2"/><circle cx="11" cy="12" r="3"/><path d="m5 25 8-8 5 5 5-7 5 10"/></svg><span>Billede / trace</span></button><input id="image-file" type="file" accept="image/png,image/jpeg,image/webp" hidden>
-          <button class="tool" id="add-text"><svg viewBox="0 0 32 32"><path d="M5 9V5h22v4M16 5v22M10 27h12"/></svg><span>Tekst</span></button>
+          <button class="tool" id="add-text" disabled><svg viewBox="0 0 32 32"><path d="M5 9V5h22v4M16 5v22M10 27h12"/></svg><span>Tekst</span></button>
           <button class="tool" id="add-gear"><svg viewBox="0 0 32 32"><path d="m13 3 6 0 1 4 3 2 4-1 3 5-3 3v3l3 3-3 5-4-1-3 2-1 3h-6l-1-3-3-2-4 1-3-5 3-3v-3l-3-3 3-5 4 1 3-2z" transform="translate(0 -2) scale(.95)"/><circle cx="15" cy="14" r="4"/></svg><span>Tandhjul</span></button>
           <button class="tool" data-tool="nodes" data-min-level="2" aria-pressed="false"><svg viewBox="0 0 32 32"><path d="M5 23C9 4 23 28 27 9"/><rect x="2" y="20" width="6" height="6"/><rect x="24" y="6" width="6" height="6"/></svg><span>Punkter / kurver</span></button>
         </div>
@@ -87,7 +88,12 @@
         <section id="object-properties" class="object-properties" hidden>
           <label for="object-name">Figurens navn</label><input id="object-name" maxlength="60">
           <div id="image-properties" hidden><p class="muted">Figurens konturer følger med til læreren.</p><button id="edit-image-trace" class="secondary">Trace / justér billede</button><button id="image-to-path" class="text-button" data-min-level="2">Lav redigerbare vektorstreger</button><p class="muted" data-min-level="3">Ved konvertering bruges kun konturerne. Fortryd gendanner billedet.</p><p id="image-resolution" class="muted"></p></div>
-          <div id="text-properties" hidden><label for="text-value">Din tekst</label><input id="text-value" maxlength="80"><label for="text-size">Bogstavstørrelse (mm)</label><input id="text-size" type="number" min="2" max="60" step="1"></div>
+          <div id="text-properties" hidden>
+            <label for="text-value">Din tekst</label><input id="text-value" maxlength="80">
+            <label for="text-size">Bogstavstørrelse (mm)</label><input id="text-size" type="number" min="2" max="60" step="1">
+            <label for="text-font">Skrifttype</label><select id="text-font"></select>
+            <p id="text-font-status" role="status"></p>
+          </div>
           <div id="gear-properties" hidden><label for="gear-teeth">Antal tænder</label><input id="gear-teeth" type="number" min="17" max="48" step="1" value="20"><label for="gear-hole">Hul i midten (mm)</label><input id="gear-hole" type="number" min="0" max="12" step="0.5" value="4"><p class="muted">Tandhjul fra generatoren har samme tandstørrelse. Ændr antal tænder for at lave et større hjul.</p></div>
           <div class="paired"><label>Bredde <span class="unit-input"><input id="object-width" type="number" min="0.5" max="600" step="0.5"><span>mm</span></span></label><label>Højde <span class="unit-input"><input id="object-height" type="number" min="0.5" max="600" step="0.5"><span>mm</span></span></label></div>
           <label class="check"><input id="lock-ratio" type="checkbox" checked> Behold figurens form</label>

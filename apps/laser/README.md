@@ -15,6 +15,9 @@ udvides efter behov og gemmes i projektet. Lærerens laserstation afgør,
 hvor pladen kan placeres på det valgte materiale.
 Eleven kan vælge at fjerne det urørte nøgleringseksempel ved indsættelsen.
 
+Vælg **Skrifttype** på et tekstobjekt. Alle 12 skrifttyper virker offline,
+og projektfilen gemmer valget. [Skrifttyper og licenser](web/assets/workshop-fonts/README.md).
+
 ## Kilde
 
 | Fil | Ansvar |
