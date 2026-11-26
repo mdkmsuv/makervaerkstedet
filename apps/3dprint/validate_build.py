@@ -1,6 +1,7 @@
 """3D publisher build/source gate; this app owns the compiler receipt contract."""
 import hashlib
 import json
+import re
 from pathlib import Path
 
 def sha(path):
@@ -10,6 +11,59 @@ def text_sha(path):
     return hashlib.sha256(Path(path).read_bytes().replace(b"\r\n",b"\n")).hexdigest()
 
 MODEL3D_OUTPUTS = {"model3d-app.js", "model3d-app.js.LEGAL.txt", "model3d-geometry-worker.js", "model3d-manifold.wasm"}
+MODEL3D_LICENSES = {"manifold-3d-LICENSE.txt", "three-LICENSE.txt", "opentype-LICENSE.txt", "Metrophobic-OFL.txt"}
+FONT_SOURCE = "apps/3dprint/web/assets/model3d/"
+FONT_MODULE = "apps/3dprint/web/model3d/fonts.js"
+
+def validate_model3d_font_assets(web, receipt, *, legacy_licenses=False):
+    """Verify all catalog assets in both source app packages and flat Windows payloads."""
+    font_dir = web / "assets/model3d"
+    license_dir = web / "assets/licenses/model3d"
+    provenance_file = font_dir / "font-provenance.json"
+    provenance = json.loads(provenance_file.read_text(encoding="utf-8")) if provenance_file.is_file() else {}
+    text = receipt.get("text", {})
+    catalog = provenance.get("catalog")
+    modern = "fonts" in text or FONT_MODULE in receipt.get("source_sha256", {}) or catalog is not None
+    if not modern and not legacy_licenses:
+        return
+
+    licenses = receipt.get("license_sha256", {})
+    expected_licenses = MODEL3D_LICENSES.copy()
+    if "apps/3dprint/web/model3d/three-mf.js" in receipt.get("source_sha256", {}):
+        expected_licenses.add("fflate-LICENSE.txt")
+    if modern:
+        runtime = text.get("input_sha256", {})
+        if not catalog or not catalog.get("fonts") or runtime.get(FONT_SOURCE + provenance_file.name) != sha(provenance_file):
+            raise ValueError("model3d_font_receipt_incomplete")
+        standard = {"file": "Metrophobic-Regular.ttf", "sha256": provenance["font_sha256"], "license": "Metrophobic-OFL.txt"}
+        fonts = {"mkv-sans": standard}
+        font_license_pins = {standard["license"]: provenance["license_sha256"]}
+        for entry in catalog["fonts"]:
+            key, license_name = entry["key"], entry["license_file"]
+            filename = entry["source_path"].rsplit("/", 1)[-1]
+            if (key in fonts or not re.fullmatch(r"[A-Za-z0-9-]+\.ttf", filename)
+                    or license_name in font_license_pins or not re.fullmatch(r"[A-Za-z0-9-]+-OFL\.txt", license_name)):
+                raise ValueError("model3d_font_receipt_incomplete")
+            fonts[key] = {"file": filename, "sha256": entry["font_sha256"], "license": license_name}
+            font_license_pins[license_name] = entry["license_sha256"]
+        if text.get("fonts") != fonts:
+            raise ValueError("model3d_font_receipt_incomplete")
+        for record in fonts.values():
+            filename, want = record["file"], record["sha256"]
+            if runtime.get(FONT_SOURCE + filename) != want:
+                raise ValueError("model3d_font_receipt_incomplete")
+            source = font_dir / filename
+            if not source.is_file() or sha(source) != want:
+                raise ValueError("model3d_font_hash_mismatch:" + filename)
+        expected_licenses.update(font_license_pins)
+        if any(licenses.get(name) != want for name, want in font_license_pins.items()):
+            raise ValueError("model3d_license_receipt_required")
+    if set(licenses) != expected_licenses:
+        raise ValueError("model3d_license_receipt_required")
+    for name, want in licenses.items():
+        source = license_dir / name
+        if not source.is_file() or sha(source) != want:
+            raise ValueError("model3d_license_hash_mismatch:" + name)
 
 def validate_model3d_bundle(root, built_from=None):
     """The built 3D editor must be the build of these exact sources.
@@ -41,6 +95,7 @@ def validate_model3d_bundle(root, built_from=None):
                      "apps/3dprint/web/model3d.css"})
     if not local_js <= set(sources):
         raise ValueError("model3d_source_receipt_incomplete")
+    validate_model3d_font_assets(root / "apps/3dprint/web", value)
     runtime_inputs = value.get("text", {}).get("input_sha256", {})
     if "apps/3dprint/web/assets/model3d/Metrophobic-Regular.ttf" not in runtime_inputs:
         raise ValueError("model3d_runtime_input_receipt_incomplete")

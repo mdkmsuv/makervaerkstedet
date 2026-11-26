@@ -47,6 +47,10 @@ bad(d=>{const groups=d.scene.objects.filter(n=>n.kind==='group');groups[0].child
 bad(d=>d.assets=[]);bad(d=>d.assets.push(d.assets[0]));
 bad(d=>d.assets[0][1]=[0,0,0]);bad(d=>d.assets[1][1]=[3,0,0]);
 bad(d=>d.scene.objects.find(n=>n.kind==='text').params.text='x'.repeat(41));
+bad(d=>d.scene.objects.find(n=>n.kind==='text').params.font='../external.ttf');
+const alternate=structuredClone(model.data);
+alternate.objects.find(n=>n.id===text).params.font='bungee';
+assert.deepEqual(decodeProject(encodeProject(alternate,assets)).scene,alternate,'a saved text keeps the chosen font');
 const invalid=structuredClone(model.data);invalid.objects[0].position[0]=Infinity;
 assert.throws(()=>encodeProject(invalid,assets),Error);
 const sparse=structuredClone(model.data);sparse.objects[0].position=new Array(3);

@@ -160,94 +160,163 @@ function drawPreview(canvas, parts) {
   }
 }
 
-export function setupGamePiece({opener, dialog, insertGroup}) {
-  const selectors = dialog.querySelector('[data-piece-options]');
-  const status = dialog.querySelector('[role="status"]');
-  const canvas = dialog.querySelector('canvas');
-  const insert = dialog.querySelector('[data-piece-insert]');
-  const shuffle = dialog.querySelector('[data-piece-shuffle]');
-  const indexes = groupIds.map(() => 0);
-  let data, sections, current, opening = 0;
+function describePiece(data, indexes) {
+  const parts = groupIds.map((group, i) => data.categories[group][indexes[i]]);
+  if (parts.some(part => !part)) return null;
+  const number = indexes.reduce((total, index, i) => total * data.categories[groupIds[i]].length + index, 0) + 1;
+  const title = `${namesA[indexes[1]]}-${namesB[indexes[2]]} ${number}`;
+  const skewer = Math.floor(data.spyd.sokkel + parts[1].anchors.top[2] + parts[2].anchors.top[2] + data.spyd.hat - 1);
+  return {title, skewer, parts};
+}
 
-  function update() {
-    const parts = groupIds.map((group, i) => data.categories[group][indexes[i]]);
-    sections.forEach(({summary, buttons}, i) => {
-      summary.textContent = `${groups[groupIds[i]]} · ${parts[i].label}`;
-      buttons.forEach((button, index) => button.setAttribute('aria-pressed', String(index === indexes[i])));
+export function defaultGamePiece(data) {
+  const settings = groupIds.map(() => 0);
+  const {title, parts} = describePiece(data, settings);
+  return {name: `Spillebrik ${title}`, layout: printLayout(parts), settings};
+}
+
+export function setupGamePiece({panel, insertGroup, updateGroup}) {
+  const selectors = panel.querySelector('[data-piece-options]');
+  selectors.classList.add('mechanical-fields');
+  const status = panel.querySelector('[role="status"]');
+  const canvas = panel.querySelector('canvas');
+  const shuffle = panel.querySelector('[data-piece-shuffle]');
+  let data, loading, current, activeUpdate, indexes;
+  let selects = [], selectedId = null, savedKey = '', ready = false, revision = 0, insertion = 0;
+
+  function controls() {
+    const unavailable = !current || !ready || Boolean(activeUpdate);
+    shuffle.setAttribute('aria-disabled', String(unavailable));
+    selects.forEach((select, i) => {
+      if (indexes) select.value = String(indexes[i]);
+      // Keep the focused field on screen while the worker calculates the new piece.
+      select.disabled = unavailable && select !== document.activeElement;
+      select.setAttribute('aria-disabled', String(unavailable));
     });
-    const number = indexes.reduce((total, index, i) => total * data.categories[groupIds[i]].length + index, 0) + 1;
-    const title = `${namesA[indexes[1]]}-${namesB[indexes[2]]} ${number}`;
-    const skewer = Math.floor(data.spyd.sokkel + parts[1].anchors.top[2] + parts[2].anchors.top[2] + data.spyd.hat - 1);
-    current = {title, parts};
-    drawPreview(canvas, parts);
-    status.textContent = `${title}. Samles med et grillspyd på ca. ${skewer} mm.`;
   }
 
-  opener.addEventListener('click', async () => {
-    const attempt = ++opening;
-    dialog.showModal();
-    if (data) {
-      sections.forEach(({details}) => { details.open = false; });
-      sections[0].summary.focus();
+  function preview() {
+    try {
+      current = indexes && describePiece(data, indexes);
+      if (current) drawPreview(canvas, current.parts);
+    } catch {
+      current = null;
+    }
+    if (!current) {
+      status.textContent = 'Denne briks dele kunne ikke læses.';
+      canvas.getContext('2d')?.clearRect(0, 0, canvas.width, canvas.height);
+      controls();
       return;
     }
-    status.textContent = 'Henter brikkernes dele …';
-    try {
-      const loaded = await loadCatalog();
-      if (!dialog.open || attempt !== opening) return;
-      sections = groupIds.map((group, groupIndex) => {
-        // Keep choices inside Chromium's page in the kiosk session.
-        const details = document.createElement('details');
-        details.name = 'game-piece-part';
-        const summary = document.createElement('summary');
-        const options = document.createElement('div');
-        options.className = 'game-piece-choices';
-        const buttons = loaded.categories[group].map((part, index) => {
-          const button = document.createElement('button');
-          button.type = 'button';
-          button.textContent = part.label;
-          button.addEventListener('click', () => {
-            indexes[groupIndex] = index;
-            update();
-            details.open = false;
-            summary.focus();
-          });
-          return button;
-        });
-        options.append(...buttons);
-        details.append(summary, options);
-        return {details, summary, buttons};
-      });
-      selectors.replaceChildren(...sections.map(({details}) => details));
-      data = loaded;
-      update();
-      shuffle.disabled = insert.disabled = false;
-      if (dialog.contains(document.activeElement)) sections[0].summary.focus();
-    } catch {
-      if (dialog.open && attempt === opening) status.textContent = 'Delene kunne ikke hentes. Luk vinduet, og prøv igen.';
-    }
-  });
+    const {title, skewer} = current;
+    status.textContent = `${title}. Samles med et grillspyd på ca. ${skewer} mm.`;
+    controls();
+  }
 
-  dialog.addEventListener('cancel', event => {
-    const section = sections?.find(({details}) => details.open);
-    if (!section) return;
-    event.preventDefault();
-    section.details.open = false;
-    section.summary.focus();
-  });
+  async function apply(next) {
+    if (!current || !ready || activeUpdate || next.join(',') === savedKey) return;
+    let piece, layout;
+    try {
+      piece = describePiece(data, next);
+      layout = printLayout(piece.parts);
+    }
+    catch {
+      status.textContent = 'Delen kunne ikke læses. Vælg en anden del.';
+      return;
+    }
+    const update = {id: selectedId};
+    activeUpdate = update;
+    controls();
+    try {
+      await updateGroup(update.id, `Spillebrik ${piece.title}`, layout, next);
+    } catch (error) {
+      if (activeUpdate === update) status.textContent = error?.message || 'Spillebrikken kunne ikke opdateres.';
+    } finally {
+      if (activeUpdate === update) {
+        activeUpdate = null;
+        controls();
+      }
+    }
+  }
+
+  function loadOptions() {
+    if (loading) return;
+    loading = loadCatalog().then(loaded => {
+      data = loaded;
+      selects = groupIds.map((group, groupIndex) => {
+        const select = document.createElement('select');
+        select.append(...data.categories[group].map((part, index) => new Option(part.label, String(index))));
+        select.addEventListener('change', () => {
+          if (!indexes || select.selectedIndex < 0) return;
+          const next = indexes.slice();
+          next[groupIndex] = select.selectedIndex;
+          // Show the applied choice if a damaged asset or busy worker rejects the change.
+          select.value = String(indexes[groupIndex]);
+          void apply(next);
+        });
+        select.addEventListener('blur', controls);
+        return select;
+      });
+      selectors.replaceChildren(...selects.map((select, i) => {
+        const label = document.createElement('label');
+        label.textContent = groups[groupIds[i]];
+        label.append(select);
+        return label;
+      }));
+      if (indexes) preview();
+      else controls();
+    }).catch(() => {
+      if (indexes) status.textContent = 'Delene kunne ikke hentes. Vælg brikken igen for at prøve på ny.';
+    }).finally(() => { loading = null; });
+  }
+
+  function render(node, canEdit) {
+    ready = canEdit;
+    const settings = node?.generator?.kind === 'game-piece' ? node.generator.settings : null;
+    const valid = Array.isArray(settings) && settings.length === groupIds.length && settings.every(Number.isInteger);
+    const id = node?.id ?? null, key = valid ? settings.join(',') : '';
+    if (id === selectedId && key === savedKey) { controls(); return; }
+    revision++;
+    selectedId = id;
+    savedKey = key;
+    indexes = valid ? settings.slice() : null;
+    current = activeUpdate = null;
+    panel.hidden = !indexes;
+    controls();
+    if (!indexes) return;
+    if (data) preview();
+    else {
+      status.textContent = 'Henter brikkernes dele …';
+      loadOptions();
+    }
+  }
+
+  async function insert(placement) {
+    const started = revision, attempt = ++insertion;
+    let loaded;
+    try { loaded = await loadCatalog(); }
+    catch {
+      if (revision === started && attempt === insertion) throw Error('Spillebrikkens dele kunne ikke hentes. Prøv igen.');
+      return null;
+    }
+    if (revision !== started || attempt !== insertion) return null;
+    const {name, layout, settings} = defaultGamePiece(loaded);
+    return insertGroup(name, layout, settings, placement);
+  }
+
+  function reset() {
+    revision++;
+    render(null, false);
+  }
 
   shuffle.addEventListener('click', () => {
-    groupIds.forEach((group, i) => { indexes[i] = Math.floor(Math.random() * data.categories[group].length); });
-    update();
+    if (shuffle.getAttribute('aria-disabled') === 'true') return;
+    const next = groupIds.map(group => Math.floor(Math.random() * data.categories[group].length));
+    if (next.join(',') === savedKey) next[0] = (next[0] + 1) % data.categories[groupIds[0]].length;
+    void apply(next);
   });
 
-  insert.addEventListener('click', () => {
-    if (!current || !dialog.open) return;
-    try {
-      insertGroup(`Spillebrik ${current.title}`, printLayout(current.parts));
-      dialog.close();
-    } catch (error) {
-      status.textContent = error.message || 'Brikken kunne ikke sættes på pladen.';
-    }
-  });
+  panel.hidden = true;
+  controls();
+  return {insert, render, reset};
 }

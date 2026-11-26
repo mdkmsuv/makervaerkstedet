@@ -39,6 +39,13 @@ assert.deepEqual(findFreeSpot([20,20],[{min:[-35,-13],max:[35,13]}]),[0,30],'a n
 const placed=new SceneModel(), legacy=placed.add('box',[5,6]); assert.deepEqual(placed.object(legacy).position,[5,6,10]);
 const label=placed.add('text',{position:[3,4],bottom:3.5,params:{height:10,depth:1.5}}), text=placed.object(label);
 assert.deepEqual(text.position,[3,4,4.25]); assert.deepEqual(text.params,{text:'Navn',font:'mkv-sans',height:10,depth:1.5});
+const unchanged=structuredClone(text);
+assert.equal(placed.setText(label,{font:'bungee'}),true);
+assert.deepEqual(placed.object(label),{...unchanged,params:{...unchanged.params,font:'bungee'}});
+assert.equal(placed.setText(label,{font:'../example.ttf'}),false);
+assert.equal(placed.add('text',{params:{font:'https://example.test/font.ttf'}}),null);
+placed.undo(); assert.deepEqual(placed.object(label),unchanged);
+placed.redo(); assert.equal(placed.object(label).params.font,'bungee');
 // Typing a height keeps the bottom on the plate; a handle pivot keeps the opposite side in place.
 const sized=new SceneModel(), part=sized.add('box'), local={min:[-10,-10,-10],max:[10,10,10]};
 assert.equal(sized.resize(part,2,40,local),true); let m=objectMatrix(sized.object(part)).elements;
@@ -46,4 +53,59 @@ assert.equal(m[10],2); assert.equal(m[14]-2*10,0,'resized part left the plate');
 assert.equal(sized.resize(part,0,30,local,[-10,0,-10]),true); m=objectMatrix(sized.object(part)).elements;
 assert.equal(m[12]-1.5*10,-10,'left side moved while the right handle was dragged');
 assert.equal(sized.resize(part,0,0,local),false); assert.equal(sized.resize(part,0,Number.NaN,local),false);
-console.log(JSON.stringify({result:'PASS',checks:['scene v2 local mm','rotated local size 90x26x4 without shear','rotation preserved','transformed ungroup retains hole and matrix','undo/redo selection and modes','rotation refuses existing shear without changing geometry','free spot beside existing parts','add keeps legacy position and stands text on a surface','typed height keeps the bottom on the plate','handle pivot keeps the opposite side','invalid sizes are refused'],count:11}));
+
+// A legacy cylinder has its own base size and rotation, without a matrix until first edited.
+const circles = new SceneModel(), circle = circles.add('cylinder', {mode: 'hole', size: [20, 20, 4], position: [12, -7], bottom: 3});
+circles.object(circle).rotation = [0, 0, 37];
+const legacyCircle = circles.snapshot(), beforeDiameter = circles.undoStack.length;
+assert.equal(circles.setDiameter(circle, 7.5), true);
+const changedCircle = objectMatrix(circles.object(circle)).elements;
+assert.deepEqual(changedCircle.slice(12, 15), [12, -7, 5], 'the centre and bottom remain at the same positions');
+assert.equal(changedCircle[10], 1, 'height is unchanged');
+assert(Math.abs(Math.hypot(changedCircle[0], changedCircle[1]) * 20 - 7.5) < 1e-9);
+assert(Math.abs(Math.hypot(changedCircle[4], changedCircle[5]) * 20 - 7.5) < 1e-9);
+assert(Math.abs(Math.atan2(changedCircle[1], changedCircle[0]) * 180 / Math.PI - 37) < 1e-9);
+assert.equal(circles.undoStack.length, beforeDiameter + 1, 'both axes are edited in one history step');
+const resizedCircle = circles.snapshot();
+circles.undo(); assert.equal(circles.snapshot(), legacyCircle);
+circles.redo(); assert.equal(circles.snapshot(), resizedCircle);
+for (const options of [{size: [20, 13, 4]}, {params: {sides: 8}}, {matrix: objectMatrix({rotation: [24, 0, 0]}).toArray()}, {matrix: [1,0,0,0,.5,1,0,0,0,0,1,0,0,0,0,1]}]) {
+  const different = circles.add('cylinder', options);
+  assert.equal(circles.setDiameter(different, 10), false, 'the diameter command refuses an ellipse, polygon, angled or sheared cylinder');
+}
+const mirrored = circles.add('cylinder', {matrix: [-1,0,0,0,0,1,0,0,0,0,-1,0,0,0,10,1]});
+assert.equal(circles.setDiameter(mirrored, 10), true, 'an upright cylinder may be mirrored or stand upside down');
+assert.equal(circles.setDiameter(mirrored, 10), false, 'entering the existing diameter creates no duplicate history step');
+circles.flag('locked', true);
+assert.equal(circles.setDiameter(mirrored, 8), false, 'locked cylinders cannot be resized');
+
+const oval = circles.add('cylinder', {mode: 'hole', size: [8, 8, 4]});
+const roundShape = circles.snapshot();
+assert.equal(circles.setCylinderSize(oval, {width: 5}), true);
+let ovalMatrix = objectMatrix(circles.object(oval)).elements;
+assert.deepEqual([ovalMatrix[0] * 8, ovalMatrix[5] * 8, ovalMatrix[10] * 4], [8, 5, 4], 'an edit of the width does not change the length or height');
+circles.undo(); assert.equal(circles.snapshot(), roundShape, 'one undo restores the diameter');
+circles.redo();
+const ovalShape = circles.snapshot();
+assert.equal(circles.setCylinderSize(oval, {width: 8}), true);
+ovalMatrix = objectMatrix(circles.object(oval)).elements;
+assert.deepEqual([ovalMatrix[0] * 8, ovalMatrix[5] * 8, ovalMatrix[10] * 4], [8, 8, 4], 'making the ellipse round keeps its length');
+circles.undo(); assert.equal(circles.snapshot(), ovalShape, 'one undo restores the 8 x 5 ellipse');
+
+const faceted = new SceneModel();
+for (const kind of ['sphere', 'halfsphere']) {
+  const id = faceted.add(kind), original = faceted.snapshot();
+  for (const invalid of [4, 9, 100, 40.5, NaN]) assert.equal(faceted.setFacets(id, invalid), false);
+  assert.equal(faceted.snapshot(), original);
+  assert.equal(faceted.setFacets(id, 16), true);
+  assert.deepEqual(faceted.object(id).params, {facets: 16});
+  assert.equal(faceted.setFacets(id, 48), true);
+  assert.equal(faceted.snapshot(), original);
+  faceted.undo();
+  assert.deepEqual(faceted.object(id).params, {facets: 16});
+  faceted.flag('locked', true);
+  assert.equal(faceted.setFacets(id, 32), false);
+}
+assert.equal(faceted.setFacets(faceted.add('box'), 16), false);
+const checks = ['scene v2 local mm','rotated local size 90x26x4 without shear','rotation preserved','transformed ungroup retains hole and matrix','undo/redo selection and modes','rotation refuses existing shear without changing geometry','free spot beside existing parts','add keeps legacy position and stands text on a surface','typed height keeps the bottom on the plate','handle pivot keeps the opposite side','invalid sizes are refused','diameter changes both axes of a legacy upright cylinder in one undo step','locked, elliptical, tilted, sheared, and faceted cylinders refuse a diameter edit','oval width and restoration can each be undone in one step'];
+console.log(JSON.stringify({result: 'PASS', checks, count: checks.length}));

@@ -43,6 +43,6 @@ i 3D-værkstedet og Laserværkstedet. Kilde og udgaver er beskrevet i
 [3D-værkstedets appbeskrivelse](apps/3dprint/README.md) og
 [Laserværkstedets appbeskrivelse](apps/laser/README.md).
 
-Manifold3.5.4 af Emmett Lalish og bidragydere bruges som lokal geometrikerne (Apache-2.0). Three.js0.183.2 bruges til visning (MIT). Originale licenstekster følger i web/assets/licenses/model3d/. Ingen biblioteker hentes fra CDN under brug.
+Manifold3.5.4 af Emmett Lalish og bidragydere bruges som lokal geometrikerne (Apache-2.0). Three.js0.183.2 bruges til visning (MIT). 3MF-filer pakkes og udpakkes med fflate 0.8.3 (MIT). Originale licenstekster følger i web/assets/licenses/model3d/. Ingen biblioteker hentes fra CDN under brug.
 
-Tekstfigurer bruger opentype.js 2.0.0 (MIT) og Metrophobic Regular af The Metrophobic Project Authors (SIL Open Font License 1.1). Den originale font er uændret; lokal licens og kildehenvisning følger i web/assets/model3d/ og web/assets/licenses/model3d/.
+Tekstfigurer bruger opentype.js 2.0.0 (MIT). Standardvalget er Metrophobic Regular af The Metrophobic Project Authors. Kataloget omfatter også Archivo Black, Titan One, Anton, Alfa Slab One, Bungee, Righteous, Bree Serif, Kalam Bold, Space Mono Bold og Rubik Mono One. Alle skrifter er uændrede statiske TrueType-filer under SIL Open Font License 1.1. [Skriftkilder og kontrolsummer](apps/3dprint/web/assets/model3d/font-provenance.json) og [originale licenser og ophavsnotitser](apps/3dprint/web/assets/licenses/model3d/) følger med.

@@ -44,4 +44,42 @@ class Model3dPayloadTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError,'font_hash_mismatch'):gate.validate_model3d_assets(self.root)
         self.manifest.unlink()
         with self.assertRaisesRegex(ValueError,'build_receipt_required'):gate.validate_model3d_assets(self.root)
+
+    def test_catalogue_checks_every_offline_font_and_rejects_an_incomplete_receipt(self):
+        web = self.manifest.parent.parent
+        asset = 'apps/3dprint/web/assets/model3d/'
+        provenance = ROOT / (asset + 'font-provenance.json')
+        copied = web / 'assets/model3d/font-provenance.json'
+        shutil.copyfile(provenance, copied)
+        source = json.loads(provenance.read_text(encoding='utf-8'))
+        value = json.loads(self.manifest.read_text(encoding='utf-8'))
+        value['text'] = {'input_sha256': {asset + copied.name: hashlib.sha256(copied.read_bytes()).hexdigest(),
+                                         asset + 'Metrophobic-Regular.ttf': source['font_sha256']},
+                         'fonts': {'mkv-sans': {'file': 'Metrophobic-Regular.ttf', 'sha256': source['font_sha256'],
+                                               'license': 'Metrophobic-OFL.txt'}}}
+        value['license_sha256']['Metrophobic-OFL.txt'] = source['license_sha256']
+        shutil.copyfile(ROOT / (asset + 'Metrophobic-OFL.txt'), web / 'assets/licenses/model3d/Metrophobic-OFL.txt')
+        for entry in source['catalog']['fonts']:
+            filename = entry['source_path'].rsplit('/', 1)[-1]
+            license_name = entry['license_file']
+            value['text']['input_sha256'][asset + filename] = entry['font_sha256']
+            value['text']['fonts'][entry['key']] = {'file': filename, 'sha256': entry['font_sha256'], 'license': license_name}
+            value['license_sha256'][license_name] = entry['license_sha256']
+            shutil.copyfile(ROOT / (asset + filename), web / 'assets/model3d' / filename)
+            shutil.copyfile(ROOT / 'apps/3dprint/web/assets/licenses/model3d' / license_name,
+                            web / 'assets/licenses/model3d' / license_name)
+        self.manifest.write_text(json.dumps(value), encoding='utf-8')
+        gate.validate_model3d_assets(self.root)
+
+        font = value['text']['fonts']['titan-one']['file']
+        (web / 'assets/model3d' / font).unlink()
+        with self.assertRaisesRegex(ValueError, 'model3d_font_hash_mismatch'):
+            gate.validate_model3d_assets(self.root)
+        shutil.copyfile(ROOT / (asset + font), web / 'assets/model3d' / font)
+
+        del value['text']['fonts']['titan-one']
+        del value['text']['input_sha256'][asset + font]
+        self.manifest.write_text(json.dumps(value), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'model3d_font_receipt_incomplete'):
+            gate.validate_model3d_assets(self.root)
 if __name__=='__main__':unittest.main()

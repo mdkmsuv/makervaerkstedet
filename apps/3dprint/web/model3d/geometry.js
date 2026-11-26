@@ -1,4 +1,7 @@
 import {textContours,TextGeometryError} from './text-geometry.js';
+import {FONT_BY_KEY} from './fonts.js';
+import {Matrix4} from 'three/src/math/Matrix4.js';
+import {NATIVE_PROFILES, validProfile} from './native-profiles.js';
 /* Pure millimetre geometry. Rendering, history and project storage live elsewhere. */
 const DEFAULT_COLOR = '#c92e35';
 const KINDS = new Set(['box', 'cylinder', 'sphere', 'cone', 'wedge', 'tube', 'roof', 'halfsphere', 'pyramid', 'star', 'heart', 'text', 'mesh', 'group']);
@@ -7,7 +10,8 @@ const MESSAGES = {
   for_lang_tekst: 'Brug højst 40 tegn i teksten.',
   ugyldig_tekst: 'Teksten indeholder tegn, som ikke kan laves til figurer.',
   for_detaljeret_tekst: 'Teksten er for detaljeret. Brug færre tegn eller mindre tekst.',
-  ukendt_skrifttype: 'Skrifttypen er ikke klar. Prøv at åbne værkstedet igen.',
+  ukendt_skrifttype: 'Modellen bruger en skrifttype, som 3D-værkstedet ikke kender.',
+  skrifttype_ikke_indlaest: 'Skrifttypen kunne ikke indlæses. Prøv at vælge den igen.',
   ukombinerede_huller: 'Kombinér hullerne med de solide figurer, før du henter STL.',
   ugyldig_scene: 'Modellen kunne ikke læses. Fortryd den seneste ændring.',
   ugyldige_maal: 'Brug positive mål og gyldige tal til figuren.',
@@ -54,7 +58,7 @@ function sceneGraph(scene) {
   need(scene && scene.format === 'makervaerkstedet-3d' && scene.version === 2 && scene.units === 'mm');
   need(scene.plate?.w === 180 && scene.plate?.d === 180);
   need(Array.isArray(scene.objects) && scene.objects.length <= 512 && Array.isArray(scene.roots));
-  const nodes = new Map(), parents = new Set();
+  const nodes = new Map(), parents = new Set(), fontKeys = new Set();
   for (const node of scene.objects) {
     need(node && typeof node.id === 'string' && /^[a-zA-Z0-9_-]{1,80}$/.test(node.id) && !nodes.has(node.id));
     need(KINDS.has(node.kind) && ['solid','hole'].includes(node.mode || 'solid'));
@@ -62,9 +66,12 @@ function sceneGraph(scene) {
     need(node.color === undefined || (typeof node.color === 'string' && /^#[0-9a-f]{6}$/i.test(node.color)));
     transform(node);
     if(node.kind!=='group'&&node.kind!=='text')vector(node.size,true);
+    if (node.kind === 'text') need(FONT_BY_KEY.has(node.params?.font), 'ukendt_skrifttype');
     if(node.kind==='box'&&node.params!==undefined)need(node.params&&Number.isFinite(node.params.round)&&node.params.round>=0&&node.params.round<=500,'ugyldige_maal');
     if((node.kind==='cylinder'||node.kind==='cone')&&node.params!==undefined)need(node.params&&Number.isInteger(node.params.sides)&&node.params.sides>=3&&node.params.sides<=64,'ugyldige_maal');
     if(node.kind==='tube'&&node.params!==undefined)need(node.params&&Number.isFinite(node.params.wall)&&node.params.wall>0&&node.params.wall<=500,'ugyldige_maal');
+    if(['sphere','halfsphere'].includes(node.kind)&&node.params!==undefined)need(node.params&&node.params.facets>=8&&node.params.facets<=96&&node.params.facets%4===0,'ugyldige_maal');
+    if(Object.hasOwn(NATIVE_PROFILES,node.kind)&&node.params!==undefined)need(validProfile(node.kind,node.params),'ugyldige_maal');
     if(node.kind==='mesh')need(typeof node.asset==='string'&&/^(stl|svg)-[a-z0-9-]{1,40}$/.test(node.asset));
     nodes.set(node.id, node);
   }
@@ -75,14 +82,17 @@ function sceneGraph(scene) {
   const roots = new Set(scene.roots); need(roots.size === scene.roots.length);
   for (const id of roots) need(nodes.has(id) && !parents.has(id));
   const visited = new Set();
-  function visit(id, depth) {
+  function visit(id, depth, ancestorsVisible = true) {
     need(depth <= 32 && !visited.has(id)); visited.add(id);
     const node = nodes.get(id);
-    if (node.kind === 'group') node.children.forEach(child => visit(child, depth+1));
+    const visible = ancestorsVisible && !node.hidden;
+    if (visible && node.kind === 'text') fontKeys.add(node.params.font);
+    if (node.kind === 'group') node.children.forEach(child => visit(child, depth+1, visible));
   }
   roots.forEach(id => visit(id, 0)); need(visited.size === nodes.size);
-  return { nodes, roots };
+  return { nodes, roots, fontKeys };
 }
+export function requiredTextFonts(scene) { return sceneGraph(scene).fontKeys; }
 
 // How much a node's own matrix stretches its local X, Y and Z axes.
 function stretch(node) {
@@ -137,7 +147,9 @@ export function createGeometryKernel(module, {fonts={}, cache: cacheSize=0}={}) 
         for (const hole of entries.filter(x => x.mode === 'hole')) {
           if (!positive.length) continue;
           if (own(result.intersect(hole.solid)).isEmpty()) { found.missed.push(hole.id); continue; }
-          const solidBox = result.boundingBox(), holeBox = hole.solid.boundingBox();
+          // The cutter can go through any face. Check the edges around its opening in the cutter's own XY plane.
+          const inverse = new Matrix4().fromArray(hole.matrix).invert().toArray();
+          const solidBox = own(result.transform(inverse)).boundingBox(), holeBox = hole.part.localBounds;
           if ([0, 1].some(i => holeBox.min[i] < solidBox.min[i] - 1e-6 || holeBox.max[i] > solidBox.max[i] + 1e-6)) found.edge.push(hole.id);
         }
         return checked(negative.length ? own(Manifold.difference([result, unite(negative)])) : result);
@@ -145,8 +157,9 @@ export function createGeometryKernel(module, {fonts={}, cache: cacheSize=0}={}) 
       function primitive(node) {
         const kind=node.kind;
         if(kind==='text'){
-          need(node.params?.font==='mkv-sans' && fonts['mkv-sans'], 'ukendt_skrifttype');
-          const section=own(new CrossSection(textContours(fonts['mkv-sans'],node.params),'NonZero'));
+          const font = Object.hasOwn(fonts, node.params.font) && fonts[node.params.font];
+          need(font, 'skrifttype_ikke_indlaest');
+          const section=own(new CrossSection(textContours(font,node.params),'NonZero'));
           return own(section.extrude(node.params.depth,0,0,[1,1],true));
         }
         if (kind === 'tube' && node.params?.wall > 0) {
@@ -204,7 +217,7 @@ export function createGeometryKernel(module, {fonts={}, cache: cacheSize=0}={}) 
           const unit = own(solid.transform([1 / size[0], 0, 0, 0, 0, 1 / size[1], 0, 0, 0, 0, 1 / size[2], 0, -center[0] / size[0], -center[1] / size[1], -center[2] / size[2], 1]));
           return own(unit.transform([node.size[0],0,0,0,0,node.size[1],0,0,0,0,node.size[2],0,0,0,0,1]));
         }
-        if (kind === 'sphere') return scaled(own(Manifold.sphere(0.5, 48)));
+        if (kind === 'sphere') return scaled(own(Manifold.sphere(0.5, node.params?.facets ?? 48)));
         if ((kind === 'cylinder' || kind === 'cone') && node.params?.sides) {
           // A prism or a pointed pyramid with this many sides; one flat side faces the front, and the outline fills the unit square.
           const outline = own(own(CrossSection.circle(.5, node.params.sides)).rotate(270 - 180 / node.params.sides)), b = outline.bounds(), w = b.max[0] - b.min[0], d = b.max[1] - b.min[1];
@@ -214,9 +227,15 @@ export function createGeometryKernel(module, {fonts={}, cache: cacheSize=0}={}) 
         if (kind === 'cylinder' || kind === 'cone') return scaled(own(Manifold.cylinder(1, 0.5, kind === 'cone' ? 0 : 0.5, 32, true)));
         // Every shape fills the unit box centred on the origin before it is scaled to node.size.
         if (kind === 'tube') return scaled(own(Manifold.difference([own(Manifold.cylinder(1, .5, .5, 48, true)), own(Manifold.cylinder(1.2, .32, .32, 48, true))])));
-        if (kind === 'halfsphere') return scaled(own(own(own(Manifold.sphere(.5, 48)).trimByPlane([0, 0, 1], 0)).transform([1,0,0,0, 0,1,0,0, 0,0,2,0, 0,0,-.5,1])));
-        if (kind === 'roof') return scaled(own(Manifold.hull([[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,0,.5],[.5,0,.5]])));
-        if (kind === 'pyramid') return scaled(own(Manifold.hull([[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[0,0,.5]])));
+        if (kind === 'halfsphere') return scaled(own(own(own(Manifold.sphere(.5, node.params?.facets ?? 48)).trimByPlane([0, 0, 1], 0)).transform([1,0,0,0, 0,1,0,0, 0,0,2,0, 0,0,-.5,1])));
+        if (kind === 'roof') {
+          const ridge = (node.params?.ridge ?? 50) / 100 - .5;
+          return scaled(own(Manifold.hull([[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,ridge,.5],[.5,ridge,.5]])));
+        }
+        if (kind === 'pyramid') {
+          const x = (node.params?.peakX ?? 50) / 100 - .5, y = (node.params?.peakY ?? 50) / 100 - .5;
+          return scaled(own(Manifold.hull([[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[x,y,.5]])));
+        }
         // Flat outlines: drawn in 2D, stretched to fill the unit square and pulled up to the unit height.
         const filled = section => {
           const b = section.bounds(), w = b.max[0] - b.min[0], d = b.max[1] - b.min[1];
@@ -224,14 +243,19 @@ export function createGeometryKernel(module, {fonts={}, cache: cacheSize=0}={}) 
           return scaled(own(unit.extrude(1, 0, 0, [1, 1], true)));
         };
         if (kind === 'star') {
-          // Five points; the inner corners lie at 45 % of the outer radius.
-          const points = Array.from({length: 10}, (_, i) => { const r = i % 2 ? .45 : 1, a = Math.PI / 2 + i * Math.PI / 5; return [r * Math.cos(a), r * Math.sin(a)]; });
+          const count = node.params?.points ?? 5, inner = (node.params?.inner ?? 45) / 100;
+          const points = Array.from({length: count * 2}, (_, i) => { const r = i % 2 ? inner : 1, a = Math.PI / 2 + i * Math.PI / count; return [r * Math.cos(a), r * Math.sin(a)]; });
           return filled(own(new CrossSection([points], 'Positive')));
         }
         if (kind === 'heart') {
           // Two round lobes, each pulled down to one shared tip.
-          const lobe = x => own(own(CrossSection.circle(.3, 48)).translate([x, .18])), tip = own(own(CrossSection.circle(.01, 8)).translate([0, -.62]));
-          return filled(own(own(CrossSection.hull([lobe(-.26), tip])).add(own(CrossSection.hull([lobe(.26), tip])))));
+          const offset = (node.params?.lobes ?? 26) / 100;
+          const lobe = x => own(own(CrossSection.circle(.3, 48)).translate([x, .18])), tip = own(own(CrossSection.circle((node.params?.tip ?? 1) / 100, 8)).translate([0, -.62]));
+          return filled(own(own(CrossSection.hull([lobe(-offset), tip])).add(own(CrossSection.hull([lobe(offset), tip])))));
+        }
+        if (kind === 'wedge' && node.params?.ledge) {
+          const edge = .5 - node.params.ledge / 100;
+          return scaled(own(Manifold.hull([[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],[-.5,.5,.5],[.5,.5,.5],[-.5,edge,.5],[.5,edge,.5]])));
         }
         const mesh = new Mesh({ numProp:3,
           vertProperties:new Float32Array([-.5,-.5,-.5, .5,-.5,-.5, .5,.5,-.5, -.5,.5,-.5, -.5,-.5,.5, .5,-.5,.5]),
@@ -241,7 +265,7 @@ export function createGeometryKernel(module, {fonts={}, cache: cacheSize=0}={}) 
       // What a part is made of, without where it is: the cache key. A group includes its parts' places.
       function shape(id) {
         const node = nodes.get(id);
-        if (node.kind !== 'group') return {k: node.kind, s: node.size, p: ['text', 'box', 'cylinder', 'cone', 'tube'].includes(node.kind) ? node.params : undefined, a: node.asset, st: (node.kind === 'box' && node.params?.round > 0) || (node.kind === 'tube' && node.params?.wall > 0) ? stretch(node).map(v => Math.round(v * 1e6) / 1e6) : undefined};
+        if (node.kind !== 'group') return {k: node.kind, s: node.size, p: node.params, a: node.asset, st: (node.kind === 'box' && node.params?.round > 0) || (node.kind === 'tube' && node.params?.wall > 0) ? stretch(node).map(v => Math.round(v * 1e6) / 1e6) : undefined};
         return {k: 'group', op: node.op, c: node.color, ch: node.children.filter(child => !nodes.get(child).hidden).map(child => {
           const part = nodes.get(child); return {d: shape(child), m: part.matrix, pos: part.position, rot: part.rotation, mode: part.mode || 'solid', c: part.color};
         })};
@@ -304,8 +328,22 @@ export function createGeometryKernel(module, {fonts={}, cache: cacheSize=0}={}) 
         }
         const meshes = entries.map(entry => ({id: entry.id, mode: entry.mode, localBounds: entry.localBounds, naturalSize: entry.naturalSize, ...arrays(entry.solid), paints: paints(entry)}));
         const uncombinedHoles=entries.filter(x=>x.mode==='hole').map(x=>x.id),exportBlocked=uncombinedHoles.length>0;
-        if (!entries.some(x => x.mode !== 'hole')) return {meshes,merged:null,bounds:null,volume:0,parts:0,warnings:['tom_model'],uncombinedHoles,exportBlocked};
         const solids = entries.filter(x => x.mode !== 'hole');
+        const overlaps = (a, b) => [0, 1, 2].every(i => a.min[i] <= b.max[i] + 1e-6 && b.min[i] <= a.max[i] + 1e-6);
+        const holeTargets = {};
+        if (exportBlocked) {
+          const candidates = solids.map(entry => ({entry, bounds: entry.solid.boundingBox()}));
+          for (const hole of entries.filter(entry => entry.mode === 'hole')) {
+            const bounds = hole.solid.boundingBox();
+            holeTargets[hole.id] = candidates.filter(({entry, bounds: target}) => {
+              if (!overlaps(bounds, target)) return false;
+              const overlap = entry.solid.intersect(hole.solid);
+              try { return !overlap.isEmpty() && overlap.volume() > 1e-8; }
+              finally { overlap.delete(); }
+            }).map(({entry}) => entry.id);
+          }
+        }
+        if (!solids.length) return {meshes,merged:null,bounds:null,volume:0,parts:0,warnings:['tom_model'],uncombinedHoles,holeTargets,exportBlocked};
         // The printable model: every solid part melted together. Cached by the parts and their places, so adding a loose
         // hole or changing a colour does not melt a long text again.
         const totalKey = cacheSize ? JSON.stringify(solids.map(x => [x.id, x.part.key, x.matrix])) : null;
@@ -318,7 +356,6 @@ export function createGeometryKernel(module, {fonts={}, cache: cacheSize=0}={}) 
           let looseRoots = [];
           if (parts.length > 1 && solids.length > 1) {
             // A part is loose when the printed piece it belongs to holds no other part. Parts that touch share a piece.
-            const overlaps = (a, b) => [0, 1, 2].every(i => a.min[i] <= b.max[i] + 1e-6 && b.min[i] <= a.max[i] + 1e-6);
             const pieceOf = solids.map(entry => { const bounds = entry.solid.boundingBox(); return parts.findIndex(piece => overlaps(bounds, piece.boundingBox()) && !own(entry.solid.intersect(piece)).isEmpty()); });
             looseRoots = solids.filter((entry, i) => pieceOf.every((piece, j) => j === i || piece !== pieceOf[i])).map(entry => entry.id);
           }
@@ -326,7 +363,7 @@ export function createGeometryKernel(module, {fonts={}, cache: cacheSize=0}={}) 
         }
         // Fresh copies: the worker hands the arrays over to the page, which empties them here.
         const merged = {positions: total.merged.positions.slice(), indices: total.merged.indices.slice()};
-        return {meshes,uncombinedHoles,exportBlocked, merged, bounds: {min: [...total.bounds.min], max: [...total.bounds.max]}, volume: total.volume, parts: total.parts, missedHoles:[...missed], edgeHoles:[...edge], looseRoots: [...total.looseRoots], warnings:[]};
+        return {meshes,uncombinedHoles,holeTargets,exportBlocked, merged, bounds: {min: [...total.bounds.min], max: [...total.bounds.max]}, volume: total.volume, parts: total.parts, missedHoles:[...missed], edgeHoles:[...edge], looseRoots: [...total.looseRoots], warnings:[]};
       } catch (error) {
         if (error instanceof GeometryError) throw error;
         if (error instanceof TextGeometryError) throw new GeometryError(error.code);

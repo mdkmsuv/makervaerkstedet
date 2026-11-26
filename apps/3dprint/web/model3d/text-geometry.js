@@ -2,6 +2,24 @@
 export class TextGeometryError extends Error {
   constructor(code) { super(code); this.code=code; }
 }
+function glyphPath(font, text, glyphs) {
+  try {
+    return font.getPath(text, 0, 0, 1, {kerning:true});
+  } catch (error) {
+    // In particular, Space Mono uses a contextual substitution OpenType.js cannot apply.
+    // Precomposed Latin text can still use its actual outlines, advances and pair kerning.
+    if (!/^substitutionType\s*:\s*\d+ lookupType: \d+ - substFormat: \d+ is not yet supported$/.test(error?.message)) throw error;
+    if (!/^[\p{Script=Latin}\p{Script=Common}]+$/u.test(text)) throw new TextGeometryError('ugyldig_tekst');
+    const path = glyphs[0].getPath(0, 0, 1, {}, font);
+    let x = 0;
+    for (let i = 1; i < glyphs.length; i++) {
+      const previous = glyphs[i - 1], glyph = glyphs[i];
+      x += ((previous.advanceWidth || 0) + font.getKerningValue(previous, glyph)) / font.unitsPerEm;
+      path.extend(glyph.getPath(x, 0, 1, {}, font));
+    }
+    return path;
+  }
+}
 export function textContours(font, params) {
   const fail=code=>{throw new TextGeometryError(code);};
   if(!params || typeof params.text!=='string')fail('ugyldig_tekst');
@@ -11,8 +29,10 @@ export function textContours(font, params) {
   if(/[\u0000-\u001f\u007f]/.test(text))fail('ugyldig_tekst');
   const {height,depth}=params;
   if(![height,depth].every(x=>Number.isFinite(x)&&x>=0.01&&x<=350))fail('ugyldige_maal');
-  if(!font || [...text].some(c=>font.charToGlyph(c).index===0))fail('ugyldig_tekst');
-  const path=font.getPath(text,0,0,1,{kerning:true}),box=path.getBoundingBox();
+  if(!font)fail('ugyldig_tekst');
+  const glyphs=[...text].map(c=>font.charToGlyph(c));
+  if(glyphs.some(glyph=>glyph.index===0))fail('ugyldig_tekst');
+  const path=glyphPath(font,text,glyphs),box=path.getBoundingBox();
   if(![box.x1,box.x2,box.y1,box.y2].every(Number.isFinite)||box.y2-box.y1<=0)fail('tom_tekst');
   const scale=height/(box.y2-box.y1),cx=(box.x1+box.x2)/2,cy=(box.y1+box.y2)/2;
   const point=(x,y)=>{if(!Number.isFinite(x)||!Number.isFinite(y))fail('ugyldig_tekst');return [(x-cx)*scale,-(y-cy)*scale];};
@@ -35,7 +55,7 @@ export function textContours(font, params) {
     else fail('ugyldig_tekst');
     current=end;
   }
-  // The actual pinned font/parser may omit Z; each next M and EOF closes a contour.
+  // The parser may omit Z; each next M and EOF closes a contour.
   flush();if(!contours.length)fail('tom_tekst');
   const all=contours.flat(),min=[Infinity,Infinity],max=[-Infinity,-Infinity];
   for(const p of all)for(let axis=0;axis<2;axis++){min[axis]=Math.min(min[axis],p[axis]);max[axis]=Math.max(max[axis],p[axis]);}

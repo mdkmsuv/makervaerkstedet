@@ -1,12 +1,17 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import crypto from 'node:crypto';
 import {createGeometryKernel,exportBinaryStl} from '../apps/3dprint/web/model3d/geometry.js';
+import {DEFAULT_FONT,TEXT_FONTS} from '../apps/3dprint/web/model3d/fonts.js';
 import {validateSTL} from '../sdk/web/stl-validation.mjs';
 const {default:Module}=await import(process.env.MODEL3D_MANIFOLD_MODULE||'manifold-3d');
 const {parse}=await import(process.env.MODEL3D_OPENTYPE_MODULE||'opentype.js/dist/opentype.mjs');
-const bytes=fs.readFileSync(process.env.MODEL3D_FONT_FILE||new URL('../apps/3dprint/web/assets/model3d/Metrophobic-Regular.ttf',import.meta.url));
-assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),'34e4ac3257307c28e6dd14f5d77bb296211f0ddd217607228a5375416ed8ac58');
-const font=parse(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)),wasm=await Module();wasm.setup();
-const kernel=createGeometryKernel(wasm,{fonts:{'mkv-sans':font}}),I=[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1];
+const fonts=Object.fromEntries(TEXT_FONTS.map(({key,file,sha256})=>{
+ const local=new URL(`../apps/3dprint/web/assets/model3d/${file}`,import.meta.url);
+ const bytes=fs.readFileSync(key===DEFAULT_FONT && process.env.MODEL3D_FONT_FILE || local);
+ assert.equal(crypto.createHash('sha256').update(bytes).digest('hex'),sha256,key);
+ return [key,parse(bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength))];
+}));
+const font=fonts[DEFAULT_FONT],wasm=await Module();wasm.setup();
+const kernel=createGeometryKernel(wasm,{fonts});
 const scene=(objects,roots=objects.map(x=>x.id))=>({format:'makervaerkstedet-3d',version:2,units:'mm',plate:{w:180,d:180},objects,roots});
 const text=(value,extra={})=>({id:'text',kind:'text',mode:'solid',position:[0,0,1],params:{text:value,font:'mkv-sans',height:12,depth:2},...extra});
 const group=(children)=>({id:'g',kind:'group',op:'difference',mode:'solid',children});
@@ -19,6 +24,8 @@ function closedSTL(result){const buffer=exportBinaryStl(result),valid=validateST
 
 test('real Danish glyphs have physical centred bounds, positive closed STL and preserved counters',()=>{
  const result=kernel.evaluateScene(scene([text('ÆØÅ æøå')]));assert.ok(result.volume>0);near(result.meshes[0].naturalSize[1],12);near(result.meshes[0].naturalSize[2],2);
+ // This footprint and volume come from a project rendered before the font catalogue was added.
+ near(result.meshes[0].naturalSize[0],57.67741935);near(result.volume,308.66784989);
  const bounds=result.meshes[0].localBounds;near(bounds.min[1],-6);near(bounds.max[1],6);near(bounds.min[2],-1);near(bounds.max[2],1);closedSTL(result);
  const o=text('O'),before=kernel.evaluateScene(scene([o]));
  const cutter={id:'cut',kind:'cylinder',mode:'hole',size:[1,1,4],position:[0,0,1]};
@@ -30,6 +37,46 @@ test('real Danish glyphs have physical centred bounds, positive closed STL and p
 test('changing text changes measured natural width without guessing or stretching height',()=>{
  const a=kernel.evaluateScene(scene([text('I')])),b=kernel.evaluateScene(scene([text('MMMM')]));
  assert.ok(b.meshes[0].naturalSize[0]>a.meshes[0].naturalSize[0]*4);near(a.meshes[0].naturalSize[1],12);near(b.meshes[0].naturalSize[1],12);
+});
+
+test('all bundled typefaces yield distinct Danish STL geometry at an identical height and preserve counters',()=>{
+ const markers=new Set(), cached=createGeometryKernel(wasm,{fonts,cache:48});
+ assert.equal(TEXT_FONTS.length,11);
+ const label=(value,key)=>text(value,{params:{text:value,font:key,height:12,depth:2}});
+ const cutter={id:'cut',kind:'cylinder',mode:'hole',size:[1,1,4],position:[0,0,1]};
+ try {
+  for(const {key} of TEXT_FONTS){
+   const result=cached.evaluateScene(scene([label('ÆØÅ æøå',key)]));
+   near(result.meshes[0].naturalSize[1],12);near(result.meshes[0].naturalSize[2],2);
+   closedSTL(result);
+   markers.add(crypto.createHash('sha256').update(Buffer.from(exportBinaryStl(result))).digest('hex'));
+   const o=label('O',key), before=cached.evaluateScene(scene([o]));
+   const after=cached.evaluateScene(scene([o,cutter,group(['text','cut'])],['g']));
+   assert.ok(Math.abs(after.volume-before.volume)<1e-4,`${key} closes the O counter`);
+   closedSTL(after);
+  }
+  assert.equal(markers.size,11,'every actual STL uses different outlines, even through the scene cache');
+ } finally { cached.clearCache(); }
+});
+
+test('kerning follows the typeface and Space Mono keeps its real space advance after its shaping fallback',()=>{
+ const width=(value,key,engine=kernel)=>engine.evaluateScene(scene([text(value,{params:{text:value,font:key,height:12,depth:2}})])).meshes[0].naturalSize[0];
+ const kerned=['mkv-sans','archivo-black','titan-one','anton','alfa-slab-one','bungee','righteous','bree-serif'];
+ const reductions=[];
+ for(const key of kerned){
+  const real=fonts[key], noKerning=Object.create(real);
+  noKerning.getPath=(text,x,y,size,options)=>real.getPath(text,x,y,size,{...options,kerning:false});
+  const unkerned=createGeometryKernel(wasm,{fonts:{[key]:noKerning}});
+  const reduction=width('AV',key,unkerned)-width('AV',key);
+  assert.ok(reduction>.01,`${key} did not apply its AV kerning`);
+  reductions.push(Math.round(reduction*100));
+ }
+ assert.ok(new Set(reductions).size>=5,'the pair adjustment depends on the typeface');
+ const mono='space-mono-bold', face=fonts[mono], letter=face.charToGlyph('A').getPath(0,0,1).getBoundingBox();
+ const expected=12*face.charToGlyph(' ').advanceWidth/face.unitsPerEm/(letter.y2-letter.y1);
+ near(width('A A',mono)-width('AA',mono),expected,.025);
+ near(width('A\u030A',mono),width('Å',mono));
+ assert.throws(()=>width('A😀',mono),error=>error.code==='ugyldig_tekst');
 });
 
 test('name badge unions real text then cuts a six millimetre hole, all one closed solid',()=>{

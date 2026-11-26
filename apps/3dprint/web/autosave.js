@@ -2,7 +2,10 @@
 (() => {
   'use strict';
   let running = false, pointerDown = false, lastInput = 0;
-  const status = () => document.getElementById('elevhub-project-bar')?.querySelector('[role="status"]');
+  const status = () => {
+    const inline = window.ElevhubProjectAdapter?.inline;
+    return inline?.active ? inline.status : document.getElementById('elevhub-project-bar')?.querySelector('[role="status"]');
+  };
   const say = (text, error = false) => {
     const target = status();
     if (target && (target.textContent !== text || target.classList.contains('error') !== error)) {

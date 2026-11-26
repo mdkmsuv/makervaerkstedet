@@ -27,6 +27,17 @@ test('a half sphere is half a sphere', () => {
   const volume = kind => kernel.evaluateScene(scene([part(kind, kind === 'sphere' ? {size: [20, 20, 40], position: [0, 0, 20]} : {})])).volume;
   const ratio = volume('halfsphere') / volume('sphere'); assert(Math.abs(ratio - .5) < .02, `ratio ${ratio}`);
 });
+test('native profile settings change the special shape while keeping its requested bounds', () => {
+  for (const [kind, params] of Object.entries({sphere: {facets: 12}, halfsphere: {facets: 16}, wedge: {ledge: 30},
+    roof: {ridge: 25}, pyramid: {peakX: 32, peakY: 66}, star: {points: 8, inner: 60}, heart: {lobes: 20, tip: 10}})) {
+    const original = kernel.evaluateScene(scene([part(kind)]));
+    const changed = kernel.evaluateScene(scene([part(kind, {params})]));
+    assert.equal(changed.parts, 1, kind);
+    assert.deepEqual(changed.bounds.min.map(Math.round), [-10, -10, 0], kind);
+    assert.deepEqual(changed.bounds.max.map(Math.round), [10, 10, 20], kind);
+    assert.notDeepEqual(exportBinaryStl(changed), exportBinaryStl(original), kind);
+  }
+});
 test('a hole pyramid cuts a plate', () => {
   const objects = [{id: 'p', kind: 'box', mode: 'solid', size: [40, 40, 10], position: [0, 0, 5], rotation: [0, 0, 0]}, {...part('pyramid'), id: 'h', mode: 'hole'}];
   const result = kernel.evaluateScene(scene([...objects, {id: 'g', kind: 'group', op: 'difference', mode: 'solid', children: ['p', 'h']}], ['g']));

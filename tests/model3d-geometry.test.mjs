@@ -54,6 +54,17 @@ test('all five actual WASM primitives are closed, Z-up, finite and nonuniformly 
   }
 });
 
+test('only a cutter that crosses the side of its opening is reported as a notch', () => {
+  const box = primitive('box');
+  const cutter = primitive('hole', 'box', {mode: 'hole', size: [2, 2, 12], rotation: [90, 0, 0]});
+  const bore = kernel.evaluateScene(combined([box, cutter]));
+  assert.deepEqual(bore.edgeHoles, []);
+  near(bore.volume, 960);
+  const notch = kernel.evaluateScene(combined([box, {...cutter, position: [0, 0, 9.5]}]));
+  assert.deepEqual(notch.edgeHoles, ['hole']);
+  near(notch.volume, 970);
+});
+
 test('intrinsic XYZ degrees and centre position produce correct transformed bounds',()=>{
   const result=kernel.evaluateScene(scene([primitive('a','box',{size:[2,4,6],position:[10,20,30],rotation:[90,90,0]})]));
   for(let axis=0;axis<3;axis++)near(result.bounds.max[axis]-result.bounds.min[axis],[6,2,4][axis]);

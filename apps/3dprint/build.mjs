@@ -4,6 +4,7 @@ import {repoRoot, sourcePath as repositorySourcePath} from '../../scripts/reposi
 import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {createRequire} from 'node:module';
+import {DEFAULT_FONT, FONT_BY_KEY, TEXT_FONTS} from './web/model3d/fonts.js';
 
 const root = repoRoot(import.meta.url);
 const localPath = name => repositorySourcePath(name, root);
@@ -29,11 +30,14 @@ const lock = await json('package-lock.json');
 const manifold = await json('node_modules/manifold-3d/package.json');
 const three = await json('node_modules/three/package.json');
 const opentype = await json('node_modules/opentype.js/package.json');
+const fflate = await json('node_modules/fflate/package.json');
 if (manifest.dependencies['manifold-3d'] !== '3.5.4' || manifold.version !== '3.5.4'
     || lock.packages['node_modules/manifold-3d'].integrity !== integrity
     || manifest.dependencies.three !== '0.183.2' || three.version !== '0.183.2'
     || manifest.dependencies['opentype.js'] !== '2.0.0' || opentype.version !== '2.0.0'
     || lock.packages['node_modules/opentype.js'].integrity !== 'sha512-kCyjv6xdDY1W/jLWZ/L3QhhTlKUqDZMQ5+Jdlw12b3dXkKNpYBqqlMMj0YDQPShWFTMwgZI1hG14kN3XUDSg/A=='
+    || manifest.dependencies.fflate !== '0.8.3' || fflate.version !== '0.8.3'
+    || lock.packages['node_modules/fflate'].integrity !== 'sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA=='
     || esbuildVersion !== '0.28.2') throw new Error('Pinned model3d dependencies do not match');
 
 const textPins = {
@@ -42,6 +46,29 @@ const textPins = {
   [relativePath('web/assets/model3d/Metrophobic-Regular.ttf')]: '34e4ac3257307c28e6dd14f5d77bb296211f0ddd217607228a5375416ed8ac58',
   [relativePath('web/assets/model3d/Metrophobic-OFL.txt')]: '4eaa1fae0ddbce35cfbc42ec1079f7fd78e4146b1d322630600af07a1e3212a9',
 };
+const fontProvenancePath = relativePath('web/assets/model3d/font-provenance.json');
+const provenance = await json(fontProvenancePath);
+const addedFonts = new Map(provenance.catalog.fonts.map(entry => [entry.key, entry]));
+const standard = FONT_BY_KEY.get(DEFAULT_FONT);
+if (FONT_BY_KEY.size !== TEXT_FONTS.length || addedFonts.size + 1 !== TEXT_FONTS.length
+    || standard?.file !== 'Metrophobic-Regular.ttf' || standard.sha256 !== textPins[relativePath(`web/assets/model3d/${standard.file}`)]) {
+  throw new Error('Font catalog does not match the pinned sources');
+}
+const fontLicenseNames = ['Metrophobic-OFL.txt'];
+const fontReceipts = {[DEFAULT_FONT]: {file: standard.file, sha256: standard.sha256, license: fontLicenseNames[0]}};
+for (const {key, file, sha256} of TEXT_FONTS) {
+  if (key === DEFAULT_FONT) continue;
+  const entry = addedFonts.get(key);
+  if (!entry || path.posix.basename(entry.source_path) !== file || entry.font_sha256 !== sha256
+      || !/^[A-Za-z0-9-]+\.ttf$/.test(file) || !/^[A-Za-z0-9-]+-OFL\.txt$/.test(entry.license_file)) {
+    throw new Error(`Font catalog does not match the pinned source: ${key}`);
+  }
+  fontLicenseNames.push(entry.license_file);
+  fontReceipts[key] = {file, sha256, license: entry.license_file};
+  textPins[relativePath(`web/assets/model3d/${file}`)] = sha256;
+  textPins[relativePath(`web/assets/licenses/model3d/${entry.license_file}`)] = entry.license_sha256;
+}
+textPins[fontProvenancePath] = hash(await readFile(sourcePath(fontProvenancePath)));
 for (const [name, expected] of Object.entries(textPins)) {
   if (hash(await readFile(sourcePath(name))) !== expected) throw new Error(`Text source pin mismatch: ${name}`);
 }
@@ -50,6 +77,11 @@ const sources = {};
 for (const [name, expected] of Object.entries(pins)) {
   sources[name] = await readFile(path.join(dependencies, 'manifold-3d', name));
   if (hash(sources[name]) !== expected) throw new Error(`Manifold source pin mismatch: ${name}`);
+}
+const fflateLicense = await readFile(sourcePath('node_modules/fflate/LICENSE'));
+if (hash(fflateLicense) !== '0a1df3a083d0c010560aa342e87959c8c1070e6fd54545741f083f22d0c8b551'
+    || hash(await readFile(sourcePath('node_modules/fflate/esm/browser.js'))) !== 'b7ca4450b19559a1d50eb381adcee94b82449674be4cd17789d9beba7e6122a1') {
+  throw new Error('fflate source pin mismatch');
 }
 const entries = [
   [relativePath('web/model3d/app.js'), 'model3d-app.js'],
@@ -78,11 +110,12 @@ await writeFile(path.join(vendor, 'model3d-manifold.wasm'), sources['manifold.wa
 await writeFile(path.join(licenses, 'manifold-3d-LICENSE.txt'), sources.LICENSE);
 await copyFile(path.join(dependencies, 'three/LICENSE'), path.join(licenses, 'three-LICENSE.txt'));
 await copyFile(path.join(dependencies, 'opentype.js/LICENSE'), path.join(licenses, 'opentype-LICENSE.txt'));
+await writeFile(path.join(licenses, 'fflate-LICENSE.txt'), fflateLicense);
 await copyFile(localPath('web/assets/model3d/Metrophobic-OFL.txt'), path.join(licenses, 'Metrophobic-OFL.txt'));
 const sourceFiles = ['package.json', 'package-lock.json', 'scripts/build_model3d_vendor.mjs',
   relativePath('scripts/build_model3d_vendor.mjs'), 'scripts/repository-layout.mjs', 'REPOSITORY-LAYOUT.json',
   relativePath('web/model3d.html'), relativePath('web/model3d.css'),
-  relativePath('web/assets/model3d/game-piece-data.json'), ...bundledSources,
+  relativePath('web/assets/model3d/game-piece-data.json'), relativePath('web/assets/model3d/form-thumbnails.png'), ...bundledSources,
   ...Object.keys(textPins).filter(name => !name.startsWith('node_modules/'))];
 const {readdir} = await import('node:fs/promises');
 async function collect(directory) {
@@ -96,7 +129,7 @@ await collect(relativePath('web/model3d'));
 const source_sha256 = {};
 for (const name of [...new Set(sourceFiles)].sort()) source_sha256[name] = hash(await readFile(path.join(root, name)));
 const license_sha256 = {};
-for (const name of ['manifold-3d-LICENSE.txt','three-LICENSE.txt','opentype-LICENSE.txt','Metrophobic-OFL.txt']) license_sha256[name] = hash(await readFile(path.join(licenses, name)));
+for (const name of ['manifold-3d-LICENSE.txt','three-LICENSE.txt','opentype-LICENSE.txt','fflate-LICENSE.txt', ...fontLicenseNames]) license_sha256[name] = hash(await readFile(path.join(licenses, name)));
 const outputs = {};
 for (const name of generated.map(file => path.basename(file.path)).concat('model3d-manifold.wasm')) {
   const bytes = await readFile(path.join(vendor, name));
@@ -105,9 +138,9 @@ for (const name of generated.map(file => path.basename(file.path)).concat('model
 await writeFile(path.join(vendor, 'model3d-vendor-manifest.json'), JSON.stringify({
   schema: 1, source_sha256, license_sha256, manifold: {version: '3.5.4', integrity, license: 'Apache-2.0',
     source: 'https://github.com/elalish/manifold/releases/tag/v3.5.4'},
-  three: {version: '0.183.2', license: 'MIT'}, esbuild: esbuildVersion, outputs,
-  text: {opentype: '2.0.0', font: 'Metrophobic', fontKey: 'mkv-sans',
-    fontUrl: '../assets/model3d/Metrophobic-Regular.ttf', input_sha256: textPins,
+  three: {version: '0.183.2', license: 'MIT'}, fflate: {version: fflate.version, license: 'MIT'}, esbuild: esbuildVersion, outputs,
+  text: {opentype: '2.0.0', font: standard.name, fontKey: DEFAULT_FONT,
+    fontUrl: `../assets/model3d/${standard.file}`, fonts: fontReceipts, input_sha256: textPins,
     source: 'https://github.com/googlefonts/MetrophobicFont/tree/d4da54632ddd53631332a5a469183c887b4ea3e1'},
   runtime_network: 'same-origin local files only',
 }, null, 2) + '\n');

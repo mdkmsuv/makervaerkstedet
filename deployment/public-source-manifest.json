@@ -390,7 +390,29 @@
     "system/third_party/boxes.py/documentation/src/burn2.svg",
     "system/third_party/boxes.py/documentation/src/overcuts.svg",
     "system/third_party/boxes.py/tests/data/.gitkeep",
-    "sdk/README.md"
+    "sdk/README.md",
+    "apps/3dprint/web/assets/licenses/model3d/AlfaSlabOne-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/Anton-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/ArchivoBlack-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/BreeSerif-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/Bungee-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/Kalam-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/Righteous-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/RubikMonoOne-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/SpaceMono-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/TitanOne-OFL.txt",
+    "apps/3dprint/web/assets/licenses/model3d/fflate-LICENSE.txt",
+    "apps/3dprint/web/assets/model3d/AlfaSlabOne-Regular.ttf",
+    "apps/3dprint/web/assets/model3d/Anton-Regular.ttf",
+    "apps/3dprint/web/assets/model3d/ArchivoBlack-Regular.ttf",
+    "apps/3dprint/web/assets/model3d/BreeSerif-Regular.ttf",
+    "apps/3dprint/web/assets/model3d/Bungee-Regular.ttf",
+    "apps/3dprint/web/assets/model3d/Kalam-Bold.ttf",
+    "apps/3dprint/web/assets/model3d/Righteous-Regular.ttf",
+    "apps/3dprint/web/assets/model3d/RubikMonoOne-Regular.ttf",
+    "apps/3dprint/web/assets/model3d/SpaceMono-Bold.ttf",
+    "apps/3dprint/web/assets/model3d/TitanOne-Regular.ttf",
+    "apps/3dprint/web/assets/model3d/form-thumbnails.png"
   ],
   "includeExtensions": [
     ".py",
@@ -842,6 +864,11 @@
       "path": "system/linux-elevhub/server/elevhub/web/assets/workshop-internet-v2.png",
       "sha256": "4427433bbcc921cd9863055280f433394d2f2ce9b86d3a97267ec13df81f69ab",
       "provenance": "CC-BY-4.0; imagegen-genereret i denne session til den fælles elevindgang; se WORKSHOP-IMAGES.md; Klostermarksskolen krediteres."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/form-thumbnails.png",
+      "sha256": "57d86c3bbc28a4d75f04055bbde1c4bebe5decfeb61af4683c87c0780131cd79",
+      "provenance": "Generated locally by render-form-thumbnails.mjs from standard 3D-værksted parametric shapes and bundled project assets."
     }
   ],
   "privacyRules": {
@@ -3269,6 +3296,26 @@
       {
         "sha256": "f096f25b45b2602dadcd12c5079da5d6e2efc5e6fefb30f89c3fe1a9069c5373",
         "reason": "Public upstream copyright, author or maintainer contact in retained third-party source/license notices; exact reviewed contact only."
+      },
+      {
+        "sha256": "2bd67f75fb2b1d674ae1e44071e856473f8040422f23db8f2ab8f72a574ee1b7",
+        "reason": "Public upstream font copyright or maintainer contact in a retained original SIL Open Font License notice."
+      },
+      {
+        "sha256": "510b1645e36293e13f14b24844b0c30873d7499b352b1f853864069041a2c24a",
+        "reason": "Public upstream font copyright or maintainer contact in a retained original SIL Open Font License notice."
+      },
+      {
+        "sha256": "75de6ed4cc0b4aa1f2806b6e4aaa0cd3e3073a92f5b8cbbb4a7374504dc8c554",
+        "reason": "Public upstream font copyright or maintainer contact in a retained original SIL Open Font License notice."
+      },
+      {
+        "sha256": "9b93a584b20c1afb7f436961d37c5faf7782135ecc5d7bada93f67a62b4ced00",
+        "reason": "Public upstream font copyright or maintainer contact in a retained original SIL Open Font License notice."
+      },
+      {
+        "sha256": "bfa87b3f11dd3b6eaba4f6b2c0f63ffa042b2d2dc6072be05128a9a53f6a70bd",
+        "reason": "Public upstream font copyright or maintainer contact in a retained original SIL Open Font License notice."
       }
     ]
   },
@@ -3302,6 +3349,56 @@
       "path": "system/linux-elevhub/server/elevhub/web/assets/Manrope.ttf",
       "sha256": "3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6",
       "provenance": "Copied from user-provided reference-kit ZIP; Copyright 2018 The Manrope Project Authors (https://github.com/googlefonts/manrope), SIL Open Font License 1.1 retained in adjacent Manrope-OFL.txt; acquisition URL unknown."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/ArchivoBlack-Regular.ttf",
+      "sha256": "dd9a89a019b4849f66ab75455fe7bdf931311042cbb0f0f97acc061539703180",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in ArchivoBlack-OFL.txt."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/TitanOne-Regular.ttf",
+      "sha256": "563ff6de179bbd44bcd7d2a6c448d6dc3bf935834237cf1250e506e65cd86ff1",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in TitanOne-OFL.txt."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/Anton-Regular.ttf",
+      "sha256": "a4ba3a92350ebb031da0cb47630ac49eb265082ca1bc0450442f4a83ab947cab",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in Anton-OFL.txt."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/AlfaSlabOne-Regular.ttf",
+      "sha256": "28664afa698a3393bd5a29eec750230a0645c5301d62200e5f2d3a027fb2299d",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in AlfaSlabOne-OFL.txt."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/Bungee-Regular.ttf",
+      "sha256": "c4f5361ce120af3e6b9156d0bf379fa19cda2ea0cd18ac01fd99596c6bf66e3f",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in Bungee-OFL.txt."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/Righteous-Regular.ttf",
+      "sha256": "2ffb3fe5c27d7e6571210b800448c4e234e651b46c6b4426c1bb567e5341348a",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in Righteous-OFL.txt."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/BreeSerif-Regular.ttf",
+      "sha256": "fd080582d70112ef479ba4ddd72407f9a4fcbcec4caa7d29de259b13eeb5f431",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in BreeSerif-OFL.txt."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/Kalam-Bold.ttf",
+      "sha256": "2f6576601db015d4f6c08678120277fc8510b98c06e932ce7a6a9cbff4cbdded",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in Kalam-OFL.txt."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/SpaceMono-Bold.ttf",
+      "sha256": "405e73d41afb7e5906efce206a326af5c956f38e255f35421c260e861e599c59",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in SpaceMono-OFL.txt."
+    },
+    {
+      "path": "apps/3dprint/web/assets/model3d/RubikMonoOne-Regular.ttf",
+      "sha256": "b22624b6a36e543e942106edfccd198c50b57b65b924bfe02a6f0a5699429e6b",
+      "provenance": "Original static TrueType from Google Fonts revision 0f3edfe222bdb0b49ce0c631d677a83542ad6d5a; SIL Open Font License 1.1 in RubikMonoOne-OFL.txt."
     }
   ]
 }

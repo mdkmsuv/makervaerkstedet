@@ -1,21 +1,78 @@
+import {FONT_BY_KEY} from './fonts.js';
+import {spurGearLimits} from './spur-gear.js';
+import {ROD_LENGTH, THREAD_SIZES} from './threaded-nut.js';
+import {CATALOG_RECIPES} from './catalog-recipes.js';
+import {connectorDimensions, connectorOrigin} from './connector-profiles.js';
+import {hasRigidAxes, isConnector} from './connector-transform.js';
+import {objectMatrix} from './scene.js';
+import {NATIVE_PROFILES, validProfile} from './native-profiles.js';
 // Editable scene and imported geometry only; no browser/session state or rendered mesh.
 const FORMAT = 'makervaerkstedet-3d-project';
 const MAX_BYTES = 50 * 1024 * 1024;
+export const MAX_PROJECT_OBJECTS = 512;
 const KINDS = new Set(['box','cylinder','sphere','cone','wedge','tube','roof','halfsphere','pyramid','star','heart','text','mesh','group']);
-const NODE_FIELDS = new Set(['id','kind','mode','size','position','rotation','matrix','params','asset','name','color','hidden','locked','children','op']);
+const NODE_FIELDS = new Set(['id','kind','mode','size','position','rotation','matrix','params','asset','name','color','hidden','locked','children','op','generator']);
 const ID = /^[a-zA-Z0-9_-]{1,80}$/;
 const ASSET_ID = /^(stl|svg)-[a-z0-9-]{1,40}$/;
 function need(condition) { if (!condition) throw new Error('3D-projektet er ugyldigt eller for stort. Åbn en gyldig projektfil.'); }
 function record(value) { return value !== null && typeof value === 'object' && !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype; }
 function keys(value, allowed) { need(record(value) && Object.keys(value).every(key => allowed.has(key))); }
+function exactKeys(value, fields) {
+  return record(value) && Object.keys(value).length === fields.length && fields.every(key => Object.hasOwn(value, key));
+}
+const between = (value, min, max) => Number.isFinite(value) && value >= min && value <= max;
+export function validGenerator(nodeKind, generator) {
+  if (!exactKeys(generator, ['kind', 'settings', 'origin'])) return false;
+  const {kind, settings, origin} = generator;
+  if (!Array.isArray(origin) || origin.length !== 3 || !Array.from(origin).every(value => between(value, -180, 180))
+      || (kind !== 'connector' && origin[2] <= 0)) return false;
+  if (kind === 'game-piece') {
+    // Each of the four catalog categories contains seven choices.
+    return nodeKind === 'group' && origin[0] === 0 && origin[1] === 0 && Array.isArray(settings) && settings.length === 4
+      && Array.from(settings).every(index => Number.isInteger(index) && index >= 0 && index <= 6);
+  }
+  if (kind === 'catalog-shape') {
+    if (!exactKeys(settings, ['recipe', 'values']) || !record(settings.values)) return false;
+    const recipe = CATALOG_RECIPES.get(settings.recipe);
+    return Boolean(recipe?.kind === nodeKind && recipe.validate(settings.values) === null);
+  }
+  if (nodeKind !== 'mesh') return false;
+  if (kind === 'connector') {
+    if (!exactKeys(settings, ['profile', 'role'])) return false;
+    const anchor = connectorOrigin(settings.profile, settings.role);
+    return Boolean(anchor?.every((value, axis) => origin[axis] === value));
+  }
+  if (kind === 'gear') {
+    if (!exactKeys(settings, ['teeth', 'module', 'pressureAngle', 'backlash', 'thickness', 'bore']) || !Object.values(settings).every(Number.isFinite)) return false;
+    const limits = spurGearLimits(settings);
+    return Boolean(limits?.pitchDiameter && between(settings.backlash, 0, limits.maxBacklash)
+      && between(settings.thickness, limits.minThickness, limits.maxThickness)
+      && (settings.bore === 0 || between(settings.bore, limits.minBore, limits.maxBore)));
+  }
+  if (kind === 'nut' || kind === 'rod') {
+    const dimensions = kind === 'nut' ? ['clearance', 'thickness'] : ['length'];
+    // Old upright rods have no print setting. Preserve that format when the option is off.
+    if (kind === 'rod' && record(settings) && Object.hasOwn(settings, 'lying')) {
+      if (typeof settings.lying !== 'boolean') return false;
+      dimensions.push('lying');
+    }
+    if (!exactKeys(settings, ['diameter', 'pitch', 'hand', ...dimensions])) return false;
+    const standard = THREAD_SIZES.find(thread => thread.diameter === settings.diameter);
+    if (!standard?.pitches.includes(settings.pitch) || !['right', 'left'].includes(settings.hand)) return false;
+    return kind === 'nut'
+      ? between(settings.clearance, 0, .5) && between(settings.thickness, Math.max(2, 2 * settings.pitch), 24)
+      : between(settings.length, ROD_LENGTH.min, ROD_LENGTH.max);
+  }
+  return false;
+}
 function vector(value, length, positive = false) {
   need(Array.isArray(value) && value.length === length && Array.from(value).every(n => Number.isFinite(n) && Math.abs(n) <= 1_000_000 && (!positive || n >= .01)));
 }
-function validateScene(scene) {
+export function validateScene(scene) {
   keys(scene,new Set(['format','version','units','plate','objects','roots']));
   need(scene.format === 'makervaerkstedet-3d' && scene.version === 2 && scene.units === 'mm');
   keys(scene.plate,new Set(['w','d'])); need(scene.plate.w === 180 && scene.plate.d === 180);
-  need(Array.isArray(scene.objects) && scene.objects.length <= 512 && Array.isArray(scene.roots) && scene.roots.length <= 512);
+  need(Array.isArray(scene.objects) && scene.objects.length <= MAX_PROJECT_OBJECTS && Array.isArray(scene.roots) && scene.roots.length <= MAX_PROJECT_OBJECTS);
   const nodes = new Map(), parents = new Set();
   for (const node of scene.objects) {
     keys(node,NODE_FIELDS);
@@ -38,24 +95,37 @@ function validateScene(scene) {
     if (node.kind === 'text') {
       keys(node.params,new Set(['text','font','height','depth'])); const p = node.params;
       need(typeof p.text === 'string' && p.text.trim() && [...p.text.normalize('NFC')].length <= 40 && !/[\x00-\x1f\x7f]/.test(p.text));
-      need(p.font === 'mkv-sans' && [p.height,p.depth].every(n => Number.isFinite(n) && n >= .01 && n <= 350));
+      need(FONT_BY_KEY.has(p.font) && [p.height,p.depth].every(n => Number.isFinite(n) && n >= .01 && n <= 350));
+    } else if (node.params !== undefined && Object.hasOwn(NATIVE_PROFILES, node.kind)) {
+      need(record(node.params) && validProfile(node.kind, node.params));
     } else if (node.params !== undefined) {
-      const field = {box:'round',cylinder:'sides',cone:'sides',tube:'wall'}[node.kind];
+      const field = {box:'round',cylinder:'sides',cone:'sides',tube:'wall',sphere:'facets',halfsphere:'facets'}[node.kind];
       need(field !== undefined); keys(node.params,new Set([field])); const n = node.params[field];
-      need(Number.isFinite(n) && (field === 'sides' ? Number.isInteger(n) && n >= 3 && n <= 64 : n >= (field === 'wall' ? Number.MIN_VALUE : 0) && n <= 500));
+      need(Number.isFinite(n) && (field === 'sides' ? Number.isInteger(n) && n >= 3 && n <= 64
+        : field === 'facets' ? n % 4 === 0 && n >= 8 && n <= 96 : n >= (field === 'wall' ? Number.MIN_VALUE : 0) && n <= 500));
     }
     if (node.kind === 'mesh') need(typeof node.asset === 'string' && ASSET_ID.test(node.asset));
     else need(node.asset === undefined);
+    if (node.generator !== undefined) need(validGenerator(node.kind, node.generator));
+    if (isConnector(node)) {
+      const size = connectorDimensions(node.generator.settings.profile, node.generator.settings.role);
+      need(node.size.every((value, axis) => value === size[axis]));
+      need(node.mode === (node.generator.settings.role === 'socket' ? 'hole' : 'solid'));
+    }
     nodes.set(node.id,node);
   }
   for (const node of nodes.values()) if (node.kind === 'group') for (const id of node.children) {
     need(typeof id === 'string' && nodes.has(id) && !parents.has(id)); parents.add(id);
   }
   const seen = new Set();
-  function visit(id, depth) {
+  const hasConnectors = [...nodes.values()].some(isConnector);
+  function visit(id, depth, parent = null) {
     need(typeof id === 'string' && nodes.has(id) && !seen.has(id) && depth <= 32);
     seen.add(id); const node = nodes.get(id);
-    if (node.kind === 'group') node.children.forEach(child => visit(child,depth+1));
+    const world = hasConnectors ? objectMatrix(node) : null;
+    if (parent) world.premultiply(parent);
+    if (isConnector(node)) need(hasRigidAxes(world.elements));
+    if (node.kind === 'group') node.children.forEach(child => visit(child,depth+1,world));
   }
   for (const id of scene.roots) { need(!parents.has(id)); visit(id,0); }
   need(seen.size === nodes.size);
