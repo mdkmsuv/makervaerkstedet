@@ -20,10 +20,11 @@ class PublicSourceAssetTests(unittest.TestCase):
         cls.by_path = {item["path"]: item for item in cls.items}
 
     def test_schema_pins_existing_non_logo_runtime_assets(self):
-        self.assertEqual(len(self.items), 28, 'New public assets require an explicit allowlist review')
+        self.assertEqual(len(self.items), 29, 'New public assets require an explicit allowlist review')
         required = {'system/linux-elevhub/server/elevhub/web/assets/workshop-' + name for name in (
             'folie-v2.webp', 'laser-v2.webp', '3d-v2.webp', 'scratch-v2.png',
             'microbit-v2.png', 'internet-v2.png')}
+        required.add('apps/3dprint/web/assets/model3d/form-thumbnails.png')
         self.assertTrue(required <= set(self.by_path), required - set(self.by_path))
         self.assertEqual(len(self.by_path), len(self.items))
         explicit = set(self.policy["explicitFiles"])
